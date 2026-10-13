@@ -6,6 +6,7 @@ on:
     branches:
       - arena/b2da2695-app1
       - arena/5fd5cd5d-app1
+      - arena/9ecb1f7a-app2
 
 permissions:
   contents: write
