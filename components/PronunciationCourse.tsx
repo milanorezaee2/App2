@@ -347,7 +347,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
         />
         <ActionButton
           title={index + 1 === units.length ? 'پایان و بازگشت به مسیر' : 'تمرین بعدی'}
-          style={styles.footerAction}
+          style={{ ...styles.footerAction, ...styles.nextFooterAction }}
           accent={theme.accent}
           soft={theme.soft}
           disabled={saving}
@@ -436,10 +436,10 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { minHeight: 72, width: '100%', maxWidth: 980, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 11, paddingHorizontal: 18, paddingTop: 45, paddingBottom: 10, borderBottomWidth: 1 },
   headerCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
-  brand: { fontSize: 8, fontWeight: '900', letterSpacing: 1.1, writingDirection: 'ltr' },
+  brand: { fontSize: 6, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
   headerTitle: { fontSize: 16, lineHeight: 24, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
   headerCount: { minWidth: 52, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 999, alignItems: 'center' },
-  headerCountText: { fontSize: 10, fontWeight: '800', writingDirection: 'ltr' },
+  headerCountText: { fontSize: 8, fontWeight: '800', writingDirection: 'ltr' },
   track: { height: 5, width: '100%', overflow: 'hidden' },
   trackFill: { height: '100%', alignSelf: 'flex-end' },
   scrollContent: { flexGrow: 1, paddingBottom: 18 },
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   smallBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
   smallBadgeText: { fontSize: 9, fontWeight: '800', writingDirection: 'rtl' },
   example: { padding: 12, borderRadius: 14, borderWidth: 1, gap: 5 },
-  exampleText: { fontSize: 21, lineHeight: 31, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
+  exampleText: { fontSize: 19, lineHeight: 31, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   exampleMeaning: { fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
   exampleFocus: { fontSize: 10, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl' },
   audioButtons: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7, paddingTop: 4 },
@@ -468,13 +468,14 @@ const styles = StyleSheet.create({
   audioButtonText: { fontSize: 10, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
   practiceCard: { padding: 17, borderRadius: 20, gap: 9 },
   practiceLabel: { color: '#F2D99C', fontSize: 11, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  practiceText: { color: '#FFFFFF', fontSize: 20, lineHeight: 31, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
+  practiceText: { color: '#FFFFFF', fontSize: 18, lineHeight: 31, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   practiceMeaning: { color: '#E1DDEF', fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
   practiceInstruction: { color: '#E1DDEF', fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   selfCheck: { padding: 16, borderRadius: 19, borderWidth: 1, gap: 10 },
   markButtons: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
   actionButton: { minHeight: 42, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9 },
   footerAction: { flex: 1, minWidth: 0 },
+  nextFooterAction: { transform: [{ translateY: -30 }] },
   actionButtonText: { flexShrink: 1, fontSize: 10, fontWeight: '800', textAlign: 'center', writingDirection: 'rtl' },
   disabled: { opacity: 0.45 },
   clearMark: { minHeight: 36, flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-start', gap: 5, paddingHorizontal: 2 },

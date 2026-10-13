@@ -154,7 +154,7 @@ export const CategoryLabels: Record<string, string> = {
 type DirectionStyle = ViewStyle & TextStyle;
 
 export const RtlDirection: DirectionStyle =
-  Platform.OS === 'web' ? {} : { direction: 'rtl' };
+  Platform.OS === 'web' ? { writingDirection: 'rtl' } : { direction: 'rtl', writingDirection: 'rtl' };
 
 export const LtrDirection: DirectionStyle =
   Platform.OS === 'web' ? { writingDirection: 'ltr' } : { direction: 'ltr' };

@@ -49,7 +49,7 @@ export function GermanCoursePage({
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.content, LtrDirection]}>{children}</View>
       </ScrollView>
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      {footer ? <View style={styles.footer}><View style={styles.footerAction}>{footer}</View></View> : null}
       {isGermanRoute && normalizedProgress === undefined ? <GermanBottomNav /> : null}
     </View>
   );
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   header: { width: '100%', maxWidth: 900, minHeight: 70, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 15, paddingTop: 39, paddingBottom: 8 },
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
   headerCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
-  brand: { color: Palette.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
+  brand: { color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
   title: { fontFamily: 'Vazirmatn-Bold', color: Palette.ink, fontSize: 21, lineHeight: 28, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
   subtitle: { fontFamily: 'Vazirmatn-Bold', color: Palette.muted, fontSize: 12, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
   progressPill: { minWidth: 42, paddingHorizontal: 8, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Palette.primarySoft, color: Palette.primaryDark, textAlign: 'center', fontSize: 12, fontWeight: '800', writingDirection: 'rtl' },
@@ -97,11 +97,12 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, paddingBottom: 30 },
   content: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 9, paddingBottom: 22, gap: 11 },
   footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 8, paddingBottom: 35, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border },
+  footerAction: { transform: [{ translateY: -30 }] },
   card: { width: '100%', padding: 14, borderRadius: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10, shadowColor: '#174B86', shadowOpacity: .035, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
   heading: { fontFamily: 'Vazirmatn-Bold', color: Palette.ink, fontSize: 19, lineHeight: 26, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
   description: { fontFamily: 'Vazirmatn-Bold', color: Palette.text, fontSize: 15, lineHeight: 23, textAlign: 'right', writingDirection: 'rtl' },
   small: { fontFamily: 'Vazirmatn-Bold', color: Palette.muted, fontSize: 12, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl' },
-  target: { color: Palette.ink, fontSize: 25, lineHeight: 36, fontWeight: '700', textAlign: 'left', writingDirection: 'ltr' },
+  target: { color: Palette.ink, fontSize: 23, lineHeight: 36, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   pronunciation: { fontFamily: 'Vazirmatn-Bold', color: Palette.primary, fontSize: 14, lineHeight: 21, textAlign: 'right', writingDirection: 'rtl' },
   button: { minHeight: 47, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, paddingVertical: 11, borderRadius: 14, backgroundColor: Palette.primary },
   buttonSecondary: { backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
@@ -113,16 +114,16 @@ const styles = StyleSheet.create({
   pill: { alignSelf: 'flex-start', fontFamily: 'Vazirmatn-Bold', color: Palette.primaryDark, fontSize: 12, fontWeight: '700', backgroundColor: Palette.primarySoft, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, textAlign: 'right', writingDirection: 'rtl' },
   notice: { fontFamily: 'Vazirmatn-Bold', color: Palette.warning, backgroundColor: Palette.warningSoft, borderWidth: 1, borderColor: '#F2DFC1', padding: 14, borderRadius: 15, fontSize: 13, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   error: { fontFamily: 'Vazirmatn-Bold', color: Palette.danger, backgroundColor: Palette.dangerSoft, borderWidth: 1, borderColor: '#F2D1D8', padding: 13, borderRadius: 14, fontSize: 13, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
-  word: { color: Palette.ink, fontSize: 22, lineHeight: 30, textAlign: 'left', writingDirection: 'ltr' },
+  word: { color: Palette.ink, fontSize: 20, fontWeight: '800', lineHeight: 30, textAlign: 'left', writingDirection: 'ltr' },
   divider: { height: 1, width: '100%', backgroundColor: Palette.border },
   answerBox: { padding: 16, borderRadius: 15, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
   reading: { padding: 16, gap: 12, borderRadius: 16, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
   choice: { borderWidth: 1, borderColor: Palette.border, borderRadius: 13, padding: 14, backgroundColor: Palette.surface },
   selected: { borderColor: Palette.primary, backgroundColor: Palette.primarySoft },
-  input: { minHeight: 96, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 14, padding: 15, fontSize: 21, color: Palette.ink, textAlign: 'left', writingDirection: 'ltr', textAlignVertical: 'top' },
+  input: { minHeight: 96, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 14, padding: 15, fontSize: 19, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr', textAlignVertical: 'top' },
   tokens: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, ...LtrDirection },
   token: { borderRadius: 11, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: 13, paddingVertical: 11 },
-  tokenText: { color: Palette.ink, fontSize: 19, writingDirection: 'ltr' },
+  tokenText: { color: Palette.ink, fontSize: 17, fontWeight: '800', writingDirection: 'ltr' },
   feedback: { backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border, borderRadius: 16, padding: 16, gap: 13 },
 });
 

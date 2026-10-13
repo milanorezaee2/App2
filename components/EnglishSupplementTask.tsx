@@ -52,10 +52,10 @@ export const supplementStyles = StyleSheet.create({
   sentenceCard: { backgroundColor: EnglishPalette.surfaceMuted, borderColor: EnglishPalette.border, borderWidth: 1, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 12, gap: 7 },
   sentenceEnglishRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
   sentenceSoundButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: EnglishPalette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  sentenceEnglish: { flex: 1, fontFamily: Typography.fontFamily, color: EnglishPalette.ink, fontSize: 16, lineHeight: 25, textAlign: 'right', writingDirection: 'ltr' },
+  sentenceEnglish: { flex: 1, fontFamily: Typography.fontFamily, color: EnglishPalette.ink, fontSize: 14, fontWeight: '800', lineHeight: 25, textAlign: 'right', writingDirection: 'ltr' },
   sentencePersian: { fontFamily: Typography.fontFamily, color: EnglishPalette.text, fontSize: 14, lineHeight: 24, textAlign: 'right', writingDirection: 'rtl' },
-  sentencePattern: { fontFamily: Typography.fontFamily, color: EnglishPalette.primaryDark, fontSize: 12, lineHeight: 19, textAlign: 'right', writingDirection: 'ltr' },
-  english: { fontFamily: Typography.fontFamily, color: EnglishPalette.ink, fontSize: 16, lineHeight: 27, textAlign: 'right', writingDirection: 'ltr' },
+  sentencePattern: { fontFamily: Typography.fontFamily, color: EnglishPalette.primaryDark, fontSize: 10, fontWeight: '800', lineHeight: 19, textAlign: 'right', writingDirection: 'ltr' },
+  english: { fontFamily: Typography.fontFamily, color: EnglishPalette.ink, fontSize: 14, fontWeight: '800', lineHeight: 27, textAlign: 'right', writingDirection: 'ltr' },
   input: {
     fontFamily: Typography.fontFamily,
     color: EnglishPalette.ink,

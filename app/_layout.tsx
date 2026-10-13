@@ -6,11 +6,7 @@ import { SplashScreen } from 'expo-router';
 import { I18nManager, Image, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createAudioPlayer } from 'expo-audio';
-import {
-  Vazirmatn_400Regular,
-  Vazirmatn_500Medium,
-  Vazirmatn_700Bold,
-} from '@expo-google-fonts/vazirmatn';
+import { Vazirmatn_700Bold } from '@expo-google-fonts/vazirmatn';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
@@ -19,6 +15,9 @@ import { RtlDirection } from '@/lib/theme';
 import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
 
+// Older React Native builds do not expose this switch at runtime.
+(I18nManager as typeof I18nManager & { swapLeftAndRightInRTL?: (value: boolean) => void })
+  .swapLeftAndRightInRTL?.(false);
 I18nManager.forceRTL(true);
 I18nManager.allowRTL(true);
 SplashScreen.preventAutoHideAsync();
@@ -63,8 +62,9 @@ export default function RootLayout() {
   useFrameworkReady();
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   const [fontsLoaded, fontError] = useFonts({
-    Vazirmatn: Vazirmatn_400Regular,
-    'Vazirmatn-Medium': Vazirmatn_500Medium,
+    // Persian copy uses the bold Vazirmatn face throughout the application.
+    Vazirmatn: Vazirmatn_700Bold,
+    'Vazirmatn-Medium': Vazirmatn_700Bold,
     'Vazirmatn-Bold': Vazirmatn_700Bold,
   });
 
@@ -136,8 +136,8 @@ export default function RootLayout() {
 const introStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F5FAFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
   image: { width: 280, height: 280, marginBottom: -12 },
-  brand: { color: '#102A56', fontSize: 26, lineHeight: 31, fontWeight: '900', letterSpacing: 5, writingDirection: 'ltr' },
-  caption: { color: '#6882A6', fontSize: 9, fontWeight: '800', letterSpacing: 2.1, writingDirection: 'ltr', marginTop: 2 },
+  brand: { color: '#102A56', fontSize: 24, lineHeight: 31, fontWeight: '800', letterSpacing: 5, writingDirection: 'ltr' },
+  caption: { color: '#6882A6', fontSize: 7, fontWeight: '800', letterSpacing: 2.1, writingDirection: 'ltr', marginTop: 2 },
   loader: { width: 92, height: 3, borderRadius: 99, overflow: 'hidden', backgroundColor: '#DCE9F8', marginTop: 24 },
   loaderFill: { width: '100%', height: '100%', borderRadius: 99, backgroundColor: '#2878DE' },
 });
