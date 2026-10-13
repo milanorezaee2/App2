@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, BookOpenCheck, Check, Headphones, Mic2, Sparkles, Target } from 'lucide-react-native';
+import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
 import { LANGUAGES } from '@/lib/languages/catalog';
 import { FEATURES } from '@/lib/features';
+import { SENTENCE_LESSONS } from '@/lib/courseContent';
+import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
+import { toPersianDigits as fa } from '@/lib/format';
 
 const languageMeta = {
   en: { flag: '🇬🇧', code: 'EN', nativeName: 'English', tint: '#EAF2FF', border: '#CFE0FF' },
@@ -16,6 +19,20 @@ const learningSteps = [
   { icon: Headphones, number: '۰۱', title: 'بشنو', detail: 'جمله را با صدای طبیعی بشنو' },
   { icon: Mic2, number: '۰۲', title: 'تکرار کن', detail: 'با سرعت خودت تمرین کن' },
   { icon: Target, number: '۰۳', title: 'به‌خاطر بسپار', detail: 'با مرور هوشمند تثبیت کن' },
+] as const;
+
+const englishSentenceCount = SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
+const germanSentenceCount = GERMAN_SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
+const learningStats = [
+  { value: fa(SENTENCE_LESSONS.length + GERMAN_SENTENCE_LESSONS.length), label: 'درس مرحله‌بندی‌شده' },
+  { value: fa(englishSentenceCount + germanSentenceCount), label: 'جملهٔ کاربردی' },
+  { value: '۲۴/۷', label: 'دسترسی به یادگیری' },
+] as const;
+
+const productFeatures = [
+  { icon: Volume2, title: 'شنیدن هوشمند', detail: 'سرعت طبیعی و آهسته برای درک بهتر', color: '#1769D2', soft: '#EAF3FF' },
+  { icon: RefreshCw, title: 'مرور شخصی', detail: 'تمرین دوباره در زمان مناسب یادگیری', color: '#128DA8', soft: '#E9F9FC' },
+  { icon: ShieldCheck, title: 'پیشرفت محفوظ', detail: 'ادامهٔ مسیر از همان نقطهٔ قبلی', color: '#168451', soft: '#ECF9F2' },
 ] as const;
 
 export default function LanguagesHome() {
@@ -75,6 +92,25 @@ export default function LanguagesHome() {
               <Image source={require('../assets/images/splash-learning-light.png')} resizeMode="contain" style={styles.heroImage} />
             </View>
           </LinearGradient>
+
+          <View style={[styles.statsStrip, compact && styles.statsStripCompact]}>
+            <View style={[styles.statsLead, compact && styles.statsLeadCompact]}>
+              <View style={styles.statsLeadIcon}><BarChart3 size={17} color="#1769D2" /></View>
+              <View style={styles.statsLeadCopy}>
+                <Text style={styles.statsLeadTitle}>یک مسیر کامل، نه چند تمرین پراکنده</Text>
+                <Text style={styles.statsLeadDetail}>محتوای واقعی و منظم برای پیشرفت روزانه</Text>
+              </View>
+            </View>
+            <View style={[styles.statsValues, compact && styles.statsValuesCompact]}>
+              {learningStats.map((item, index) => (
+                <View key={item.label} style={styles.statItem}>
+                  <Text style={styles.statValue}>{item.value}</Text>
+                  <Text style={styles.statLabel}>{item.label}</Text>
+                  {index < learningStats.length - 1 ? <View style={styles.statDivider} /> : null}
+                </View>
+              ))}
+            </View>
+          </View>
 
           <View style={styles.languageSection}>
             <View style={styles.sectionCopy}>
@@ -137,6 +173,28 @@ export default function LanguagesHome() {
             </View>
           </View>
 
+          <View style={styles.advantagesSection}>
+            <View style={styles.advantagesHeading}>
+              <View style={styles.advantagesBadge}><Sparkles size={13} color="#1769D2" /><Text style={styles.advantagesBadgeText}>تجربهٔ کامل یادگیری</Text></View>
+              <Text style={styles.advantagesTitle}>همه‌چیز برای یک برنامهٔ منظم روزانه</Text>
+              <Text style={styles.advantagesDetail}>هر بخش طوری طراحی شده که سریع وارد تمرین شوی و مسیرت را بدون سردرگمی ادامه بدهی.</Text>
+            </View>
+            <View style={styles.advantagesGrid}>
+              {productFeatures.map(feature => {
+                const Icon = feature.icon;
+                return (
+                  <View key={feature.title} style={styles.advantageCard}>
+                    <View style={[styles.advantageIcon, { backgroundColor: feature.soft }]}><Icon size={19} color={feature.color} /></View>
+                    <View style={styles.advantageCopy}>
+                      <Text style={styles.advantageTitle}>{feature.title}</Text>
+                      <Text style={styles.advantageDetail}>{feature.detail}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
           <View style={styles.footer}>
             <Text style={styles.footerText}>آماده‌ای شروع کنی؟ زبانت را انتخاب کن و اولین درس را بساز.</Text>
             <Text style={styles.footerBrand}>MILO · LEARN A LITTLE, EVERY DAY</Text>
@@ -177,12 +235,26 @@ const styles = StyleSheet.create({
   heroVisual: { width: '36%', height: 235, alignItems: 'center', justifyContent: 'center' },
   heroVisualCompact: { position: 'absolute', width: 138, height: 138, left: 10, bottom: -3, opacity: .98 },
   heroImage: { width: '100%', height: '100%' },
-  languageSection: { gap: 13, paddingTop: 4 },
-  sectionCopy: { alignItems: 'flex-end', gap: 3 },
+  statsStrip: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 14, borderRadius: 20, paddingHorizontal: 17, paddingVertical: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8', shadowColor: '#174B86', shadowOpacity: .035, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
+  statsStripCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+  statsLead: { flex: 1.25, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
+  statsLeadCompact: { flex: 0, width: '100%' },
+  statsLeadIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#EAF3FF', alignItems: 'center', justifyContent: 'center' },
+  statsLeadCopy: { flex: 1, alignItems: 'flex-end', gap: 1 },
+  statsLeadTitle: { fontFamily: 'Vazirmatn-Bold', color: '#18385F', fontSize: 11, lineHeight: 18, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  statsLeadDetail: { fontFamily: 'Vazirmatn', color: '#7186A0', fontSize: 9, lineHeight: 15, textAlign: 'right', writingDirection: 'rtl' },
+  statsValues: { flex: 1.5, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-around' },
+  statsValuesCompact: { flex: 0, width: '100%', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E7EFF8' },
+  statItem: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center' },
+  statValue: { color: '#1769D2', fontSize: 15, lineHeight: 19, fontWeight: '900', writingDirection: 'rtl' },
+  statLabel: { fontFamily: 'Vazirmatn-Bold', color: '#7186A0', fontSize: 8, lineHeight: 13, fontWeight: '700', textAlign: 'center', writingDirection: 'rtl' },
+  statDivider: { position: 'absolute', left: 0, width: 1, height: 28, backgroundColor: '#E0EAF6' },
+  languageSection: { gap: 13, paddingTop: 4, alignItems: 'center' },
+  sectionCopy: { width: '100%', alignItems: 'center', gap: 3 },
   sectionEyebrow: { color: '#1769D2', fontSize: 9, fontWeight: '900', letterSpacing: 1.25, writingDirection: 'ltr' },
-  sectionTitle: { fontFamily: 'Vazirmatn-Bold', color: '#102A56', fontSize: 21, lineHeight: 31, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
-  sectionDetail: { fontFamily: 'Vazirmatn', color: '#6A7F9B', fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
-  languageRow: { flexDirection: 'row-reverse', gap: 10, alignItems: 'stretch' },
+  sectionTitle: { fontFamily: 'Vazirmatn-Bold', color: '#102A56', fontSize: 21, lineHeight: 31, fontWeight: '900', textAlign: 'center', writingDirection: 'rtl' },
+  sectionDetail: { fontFamily: 'Vazirmatn', color: '#6A7F9B', fontSize: 12, lineHeight: 20, textAlign: 'center', writingDirection: 'rtl' },
+  languageRow: { width: '100%', flexDirection: 'row-reverse', justifyContent: 'center', gap: 12, alignItems: 'stretch' },
   languageCard: { flex: 1, minWidth: 0, maxWidth: 190, minHeight: 92, borderRadius: 18, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', gap: 6, shadowColor: '#174B86', shadowOpacity: .045, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
   languageCardTiny: { minHeight: 84, paddingHorizontal: 7, paddingVertical: 9, borderRadius: 15 },
   flag: { fontSize: 27, lineHeight: 33 },
@@ -206,6 +278,18 @@ const styles = StyleSheet.create({
   stepTitle: { fontFamily: 'Vazirmatn-Bold', color: '#18385F', fontSize: 12, lineHeight: 18, fontWeight: '900', writingDirection: 'rtl' },
   stepDetail: { maxWidth: 100, fontFamily: 'Vazirmatn', color: '#7186A0', fontSize: 9, lineHeight: 15, textAlign: 'center', writingDirection: 'rtl' },
   connector: { width: 18, height: 1, marginTop: 19, backgroundColor: '#C9DCF4' },
+  advantagesSection: { gap: 14, paddingVertical: 4 },
+  advantagesHeading: { alignItems: 'center', gap: 4, paddingHorizontal: 10 },
+  advantagesBadge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#EAF3FF' },
+  advantagesBadgeText: { fontFamily: 'Vazirmatn-Bold', color: '#1769D2', fontSize: 9, fontWeight: '800', writingDirection: 'rtl' },
+  advantagesTitle: { fontFamily: 'Vazirmatn-Bold', color: '#102A56', fontSize: 18, lineHeight: 28, fontWeight: '900', textAlign: 'center', writingDirection: 'rtl' },
+  advantagesDetail: { maxWidth: 620, fontFamily: 'Vazirmatn', color: '#6A7F9B', fontSize: 11, lineHeight: 20, textAlign: 'center', writingDirection: 'rtl' },
+  advantagesGrid: { flexDirection: 'row-reverse', justifyContent: 'center', gap: 10 },
+  advantageCard: { flex: 1, maxWidth: 260, minWidth: 0, minHeight: 108, alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: 18, paddingHorizontal: 10, paddingVertical: 13, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8', shadowColor: '#174B86', shadowOpacity: .035, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
+  advantageIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  advantageCopy: { alignItems: 'center', gap: 2 },
+  advantageTitle: { fontFamily: 'Vazirmatn-Bold', color: '#18385F', fontSize: 11, lineHeight: 18, fontWeight: '900', textAlign: 'center', writingDirection: 'rtl' },
+  advantageDetail: { fontFamily: 'Vazirmatn', color: '#7186A0', fontSize: 9, lineHeight: 15, textAlign: 'center', writingDirection: 'rtl' },
   footer: { paddingVertical: 8, alignItems: 'center', gap: 5 },
   footerText: { fontFamily: 'Vazirmatn', color: '#627B9B', fontSize: 11, lineHeight: 20, textAlign: 'center', writingDirection: 'rtl' },
   footerBrand: { color: '#A0B2C9', fontSize: 7, fontWeight: '900', letterSpacing: 1.1, writingDirection: 'ltr' },
