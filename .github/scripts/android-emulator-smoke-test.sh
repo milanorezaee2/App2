@@ -87,7 +87,11 @@ failed_step="dumping the Android UI hierarchy"
 capture_ui
 
 for attempt in 1 2; do
-  if ! grep -Fq "System UI isn't responding" "$ui_file"; then
+  # Slow hosted emulators can report either the System UI package or the core
+  # Android "system" process as temporarily unresponsive during first boot.
+  # Both dialogs expose a Wait action and are infrastructure noise when our
+  # activity remains resumed without a FATAL EXCEPTION.
+  if ! grep -Eq "System UI isn't responding|Process system isn't responding" "$ui_file"; then
     break
   fi
 
@@ -107,11 +111,11 @@ for node in ET.parse(sys.argv[1]).getroot().iter():
 PY
 )"
   if [[ -z "$wait_coords" ]]; then
-    echo 'System UI is not responding, but its Wait button could not be located.'
+    echo 'Android system is not responding, but its Wait button could not be located.'
     break
   fi
   read -r wait_x wait_y <<< "$wait_coords"
-  echo "System UI reported an ANR; selecting Wait at $wait_x,$wait_y and allowing the app another 30 seconds."
+  echo "Android system reported a transient ANR; selecting Wait at $wait_x,$wait_y and allowing the app another 30 seconds."
   adb shell input tap "$wait_x" "$wait_y"
   sleep 30
   failed_step="rechecking the screen after waiting for Android System UI"
