@@ -19,8 +19,10 @@ const layout = read('app/_layout.tsx');
 const theme = read('lib/theme.ts');
 const pkg = JSON.parse(read('package.json'));
 check(pkg.dependencies['@expo-google-fonts/inter'], 'bundled Inter dependency is declared');
+check(pkg.dependencies['@expo-google-fonts/vazirmatn'], 'bundled open-source Vazir dependency is declared');
 check(/Inter_400Regular[\s\S]*Inter_600SemiBold[\s\S]*Inter_800ExtraBold/.test(layout), 'regular, semibold and extrabold Inter faces are bundled');
-check(/IRANSansBusiness:[\s\S]*IRANSansWeb\.ttf/.test(layout), 'Persian IRANSans face remains bundled locally');
+check(/Vazir:[\s\S]*Vazirmatn_400Regular[\s\S]*'Vazir-Black': Vazirmatn_900Black/.test(layout), 'Vazir regular through black faces are bundled locally');
+check(/fontFamily:\s*'Vazir'/.test(theme) && /numberFontFamily:\s*'Vazir-Black'/.test(theme), 'Persian copy and decorative Persian digits use Vazir');
 check(/I18nManager\.allowRTL\(false\)/.test(entry) && /I18nManager\.forceRTL\(false\)/.test(entry)
   && !/I18nManager\.(?:allowRTL|forceRTL)\(true\)/.test(entry + layout),
   'entry point and root layout cannot alternate native direction between launches');
@@ -52,6 +54,8 @@ check(/companionenglish:\/\/\/conversations\/emma/.test(androidSmoke)
   && /Composer is clipped/.test(androidSmoke),
   'Android release smoke test opens the real keyboard and rejects a clipped composer');
 check(/messages:\s*\{\s*flex:\s*1,\s*minHeight:\s*0/.test(emma) && /messages:\s*\{\s*flex:\s*1,\s*minHeight:\s*0/.test(human), 'message lists yield all resized height to the composer');
+check(/KeyboardStickyView style=\{styles\.composer\}/.test(emma)
+  && /KeyboardStickyView style=\{styles\.composer\}/.test(human), 'both complete composers and their side buttons animate with the keyboard');
 check(/composer:\s*\{\s*flexShrink:\s*0,\s*minHeight:\s*64,\s*overflow:\s*'visible'/.test(emma)
   && /composer:\s*\{\s*flexShrink:\s*0,\s*minHeight:\s*64,\s*overflow:\s*'visible'/.test(human), 'chat composers retain their full visible height during resize');
 check((human.match(/containsRtlScript/g) || []).length >= 4

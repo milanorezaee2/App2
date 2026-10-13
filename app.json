@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.devicecontrol.companion",
-      "versionCode": 5,
+      "versionCode": 6,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
@@ -31,6 +31,14 @@
       "expo-router",
       "./plugins/withStableLayoutDirection",
       "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#2878DE",
+          "defaultChannel": "milo-chat"
+        }
+      ],
       [
         "expo-local-authentication",
         {

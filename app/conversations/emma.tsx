@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardStickyView } from '@/components/KeyboardRuntime';
 
 import * as Speech from 'expo-speech';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
@@ -134,12 +135,7 @@ export default function EmmaChat() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior="padding"
-      enabled={Platform.OS === 'ios'}
-      keyboardVerticalOffset={0}
-    >
+    <View style={styles.root}>
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩🏻‍🏫</Text><View style={styles.online} /></View>
@@ -212,7 +208,7 @@ export default function EmmaChat() {
         ) : null}
       </View>
 
-      <View style={styles.composer}>
+      <KeyboardStickyView style={styles.composer} offset={{ closed: 0, opened: 0 }}>
         <View style={styles.helper} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Languages size={19} color={Colors.neutral[400]} /></View>
         <TextInput
           accessibilityLabel="پیام انگلیسی برای Emma"
@@ -227,8 +223,8 @@ export default function EmmaChat() {
         <Pressable accessibilityRole="button" accessibilityLabel="ارسال پیام به Emma" accessibilityState={{ disabled: !PAID_AI_ENABLED || !input.trim() || thinking || transcribing || recorderState.isRecording }} style={[styles.send, (!input.trim() || thinking || transcribing || recorderState.isRecording) && styles.sendDisabled]} disabled={!PAID_AI_ENABLED || !input.trim() || thinking || transcribing || recorderState.isRecording} onPress={() => void send()}>
           {thinking || transcribing ? <ActivityIndicator size="small" color={Colors.onColor} /> : <Send size={18} color={Colors.onColor} />}
         </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardStickyView>
+    </View>
   );
 }
 

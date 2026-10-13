@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   body: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   statsGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
   stat: { minWidth: '30%', flexGrow: 1, alignItems: 'center', gap: 3, padding: 10, borderRadius: 13, backgroundColor: Palette.surfaceMuted },
-  statValue: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 14, fontWeight: '400', writingDirection: 'rtl' },
+  statValue: { fontFamily: Typography.numberFontFamily, color: Palette.primaryDark, fontSize: 14, fontWeight: '400', writingDirection: 'rtl' },
   statLabel: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 9, textAlign: 'center', writingDirection: 'rtl' },
   small: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 9, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
   primaryButton: { minHeight: 46, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingHorizontal: 13, borderRadius: 13, backgroundColor: Palette.primary },

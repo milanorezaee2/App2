@@ -127,6 +127,6 @@ const styles = StyleSheet.create({
   railConnectorActive: { backgroundColor: Palette.success },
   sectionHeading: { gap: 3, alignItems: 'flex-end' },
   sectionEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },
-  sectionTitle: { fontFamily: 'IRANSansBusiness', color: Palette.ink, fontSize: 19, lineHeight: 28, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  sectionDetail: { fontFamily: 'IRANSansBusiness', color: Palette.muted, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+  sectionTitle: { fontFamily: 'Vazir', color: Palette.ink, fontSize: 19, lineHeight: 28, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  sectionDetail: { fontFamily: 'Vazir', color: Palette.muted, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
 });

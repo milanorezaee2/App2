@@ -5,11 +5,14 @@ import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import { I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardProvider } from '@/components/KeyboardRuntime';
 import { createAudioPlayer } from 'expo-audio';
 import { Inter_400Regular, Inter_600SemiBold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
+import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_700Bold, Vazirmatn_900Black } from '@expo-google-fonts/vazirmatn';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';
+import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
 import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
@@ -83,21 +86,23 @@ export default function RootLayout() {
   useFrameworkReady();
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   const [fontsLoaded, fontError] = useFonts({
-    // Bundle the downloaded IRANSans business-style faces locally so Persian UI
-    // typography is identical offline and independent of the Android system font.
-    IRANSansBusiness: require('iransans/ttf/IRANSansWeb.ttf'),
-    'IRANSansBusiness-Medium': require('iransans/ttf/IRANSansWeb_Medium.ttf'),
-    'IRANSansBusiness-Bold': require('iransans/ttf/IRANSansWeb_Bold.ttf'),
+    // Bundle Vazir locally so Persian typography and numerals stay identical
+    // offline and independent of each Android manufacturer's system fonts.
+    Vazir: Vazirmatn_400Regular,
+    'Vazir-Medium': Vazirmatn_500Medium,
+    'Vazir-Bold': Vazirmatn_700Bold,
+    'Vazir-Black': Vazirmatn_900Black,
     // Latin teaching content uses bundled faces too, eliminating Android OEM
     // font and fallback-metric differences between phones.
     Inter: Inter_400Regular,
     'Inter-SemiBold': Inter_600SemiBold,
     'Inter-ExtraBold': Inter_800ExtraBold,
-    // Legacy aliases keep every older screen on the same family during migration.
-    Lalezar: require('iransans/ttf/IRANSansWeb.ttf'),
-    Vazirmatn: require('iransans/ttf/IRANSansWeb.ttf'),
-    'Vazirmatn-Medium': require('iransans/ttf/IRANSansWeb_Medium.ttf'),
-    'Vazirmatn-Bold': require('iransans/ttf/IRANSansWeb_Bold.ttf'),
+    // Legacy aliases now resolve to Vazir too, preventing an old screen from
+    // silently falling back to an OEM font.
+    Lalezar: Vazirmatn_400Regular,
+    Vazirmatn: Vazirmatn_400Regular,
+    'Vazirmatn-Medium': Vazirmatn_500Medium,
+    'Vazirmatn-Bold': Vazirmatn_700Bold,
   });
 
   useEffect(() => {
@@ -148,10 +153,12 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <KeyboardProvider>
       <ErrorBoundary>
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <AppLockGate>
             <RuntimeGate />
+            <ChatNotificationBridge />
             <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
               <Stack.Screen name="index" />
               <Stack.Screen name="agent" />
@@ -164,6 +171,7 @@ export default function RootLayout() {
           <StatusBar style="dark" />
         </SafeAreaView>
       </ErrorBoundary>
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }

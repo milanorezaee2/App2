@@ -101,8 +101,12 @@ export const Radius = {
 };
 
 export const Typography = {
-  // Persian UI uses IRANSans Business; explicit LTR teaching copy uses bundled Inter.
-  fontFamily: 'IRANSansBusiness',
+  // Persian UI and Persian numerals use bundled Vazir; explicit LTR teaching
+  // copy uses bundled Inter, so neither path depends on an OEM font.
+  fontFamily: 'Vazir',
+  mediumFontFamily: 'Vazir-Medium',
+  boldFontFamily: 'Vazir-Bold',
+  numberFontFamily: 'Vazir-Black',
   latinFontFamily: 'Inter-ExtraBold',
   sizes: {
     xs: 11,

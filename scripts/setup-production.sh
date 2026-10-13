@@ -28,9 +28,17 @@ echo "Deploying authenticated Edge Functions..."
 for fn in emma-chat speech-evaluate human-chat-assist turn-credentials; do
   "${SUPABASE[@]}" functions deploy "$fn"
 done
+# Database webhooks authenticate with CHAT_WEBHOOK_SECRET instead of a user JWT.
+"${SUPABASE[@]}" functions deploy chat-push --no-verify-jwt
 
 echo "Production backend setup finished. TURN provider secrets can be added later with:"
 echo "npx supabase secrets set METERED_DOMAIN=YOUR_DOMAIN METERED_SECRET_KEY=YOUR_SECRET"
+echo
+echo "For push delivery while the app is closed, set a strong webhook secret:"
+echo "  npx supabase secrets set CHAT_WEBHOOK_SECRET=YOUR_RANDOM_SECRET"
+echo "Then create two Supabase Database Webhooks targeting /functions/v1/chat-push:"
+echo "  public.messages / INSERT and public.learning_contacts / INSERT"
+echo "Add request header: x-chat-webhook-secret: YOUR_RANDOM_SECRET"
 echo
 echo "Remaining manual step (dashboard only, cannot be done from SQL):"
 echo "  Supabase > Authentication > Providers > Anonymous Sign-Ins = ON"

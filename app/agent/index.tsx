@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   tileValue: {
-    fontFamily: Typography.fontFamily,
+    fontFamily: Typography.numberFontFamily,
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.bold,
     color: Colors.neutral[0],

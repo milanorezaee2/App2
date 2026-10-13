@@ -207,4 +207,74 @@ PY
 
 failed_step="capturing the keyboard-open chat screen"
 timeout 30s adb exec-out screencap -p > "$screenshot_file"
-echo 'Android emulator verified the full-height chat composer with the software keyboard open.'
+echo 'Android emulator verified the full-height Emma composer with the software keyboard open.'
+
+failed_step="opening the human chat keyboard test route"
+adb shell input keyevent KEYCODE_BACK
+adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/human/00000000-0000-0000-0000-000000000001?name=Test' com.devicecontrol.companion
+sleep 8
+capture_ui
+
+failed_step="locating the human chat composer"
+human_composer_coords="$(python3 - "$ui_file" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+for node in ET.parse(sys.argv[1]).getroot().iter():
+    if node.attrib.get('content-desc', '') == 'متن پیام فارسی یا انگلیسی':
+        match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+        if match:
+            x1, y1, x2, y2 = map(int, match.groups())
+            print((x1 + x2) // 2, (y1 + y2) // 2)
+            break
+PY
+)"
+if [[ -z "$human_composer_coords" ]]; then
+  echo 'The human chat composer was not found through Android accessibility.'
+  exit 1
+fi
+read -r human_composer_x human_composer_y <<< "$human_composer_coords"
+adb shell input tap "$human_composer_x" "$human_composer_y"
+sleep 5
+capture_ui
+
+failed_step="verifying the human composer and side buttons stay above the keyboard"
+keyboard_state="$(adb shell dumpsys input_method 2>/dev/null || true)"
+if ! grep -Eq 'mInputShown=true|isInputViewShown=true|inputShown=true' <<< "$keyboard_state"; then
+  echo 'Android did not report a visible software keyboard in the human conversation.'
+  exit 1
+fi
+python3 - "$ui_file" "${density_dpi:-160}" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, density_value = sys.argv[1], int(sys.argv[2])
+minimum_input_height = round(40 * density_value / 160)
+minimum_button_size = round(38 * density_value / 160)
+input_ok = False
+button_count = 0
+for node in ET.parse(path).getroot().iter():
+    match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+    if not match:
+        continue
+    x1, y1, x2, y2 = map(int, match.groups())
+    width, height = x2 - x1, y2 - y1
+    label = node.attrib.get('content-desc', '')
+    if label == 'متن پیام فارسی یا انگلیسی':
+        if height < minimum_input_height:
+            raise SystemExit(f'Human composer is clipped: {height}px; expected at least {minimum_input_height}px.')
+        input_ok = True
+    if label in ('باز و بسته‌کردن دستیار زبان', 'ضبط و ارسال پیام صوتی فعلاً غیرفعال است', 'شروع یا پایان ضبط پیام صوتی', 'ارسال پیام متنی'):
+        if width >= minimum_button_size and height >= minimum_button_size:
+            button_count += 1
+if not input_ok:
+    raise SystemExit('Human composer disappeared while its keyboard was open.')
+if button_count < 2:
+    raise SystemExit(f'Human composer side buttons are clipped or missing; found {button_count}.')
+print(f'Human composer and {button_count} side buttons remain fully visible with the keyboard open.')
+PY
+
+timeout 30s adb exec-out screencap -p > "$screenshot_file"
+echo 'Android emulator verified both complete chat composers and their side buttons with the keyboard open.'
