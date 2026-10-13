@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookOpen, BookOpenCheck, RefreshCw, Volume2 } from 'lucide-react-native';
 import { Radius, Typography } from '@/lib/theme';
 import { GermanPalette as Palette } from '@/components/germanTheme';
@@ -15,10 +14,9 @@ const items = [
 export function GermanBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.shell, { marginBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={styles.shell}>
       {items.map(item => {
         const active = item.path === '/learn/de'
           ? pathname === '/learn/de' || pathname.startsWith('/learn/de/')

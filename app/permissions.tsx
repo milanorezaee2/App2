@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Colors.neutral[950],
-    paddingTop: 52,
+    paddingTop: 12,
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xl,
     justifyContent: 'center',

@@ -4,9 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import { I18nManager, Image, Platform, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createAudioPlayer } from 'expo-audio';
-import { Vazirmatn_700Bold } from '@expo-google-fonts/vazirmatn';
+import { Lalezar_400Regular } from '@expo-google-fonts/lalezar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
@@ -61,10 +61,12 @@ export default function RootLayout() {
   useFrameworkReady();
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   const [fontsLoaded, fontError] = useFonts({
-    // Persian copy uses the bold Vazirmatn face throughout the application.
-    Vazirmatn: Vazirmatn_700Bold,
-    'Vazirmatn-Medium': Vazirmatn_700Bold,
-    'Vazirmatn-Bold': Vazirmatn_700Bold,
+    // Keep legacy family aliases so every existing Persian screen receives the
+    // same regular Lalezar face without changing its content or structure.
+    Lalezar: Lalezar_400Regular,
+    Vazirmatn: Lalezar_400Regular,
+    'Vazirmatn-Medium': Lalezar_400Regular,
+    'Vazirmatn-Bold': Lalezar_400Regular,
   });
 
   useEffect(() => {
@@ -116,7 +118,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <View style={{ flex: 1, ...RtlDirection }}>
+        <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <RuntimeGate />
           <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
             <Stack.Screen name="index" />
@@ -126,7 +128,7 @@ export default function RootLayout() {
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="dark" />
-        </View>
+        </SafeAreaView>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

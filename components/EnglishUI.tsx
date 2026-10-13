@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   railConnector: { height: 3, flex: 1, borderRadius: 99, backgroundColor: Palette.border, marginTop: 15 },
   railConnectorActive: { backgroundColor: Palette.success },
   sectionHeading: { gap: 3, alignItems: 'flex-end' },
-  sectionEyebrow: { fontFamily: 'Vazirmatn', color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },
-  sectionTitle: { fontFamily: 'Vazirmatn', color: Palette.ink, fontSize: 19, lineHeight: 28, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  sectionDetail: { fontFamily: 'Vazirmatn', color: Palette.muted, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+  sectionEyebrow: { color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },
+  sectionTitle: { fontFamily: 'Lalezar', color: Palette.ink, fontSize: 19, lineHeight: 28, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  sectionDetail: { fontFamily: 'Lalezar', color: Palette.muted, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
 });

@@ -197,7 +197,7 @@ export default function EmmaChat() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.neutral[950] },
-  header: { paddingTop: 50, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm, minHeight: 104, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800], flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.sm },
+  header: { paddingTop: 12, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm, minHeight: 64, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800], flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.sm },
   back: { width: 39, height: 39, borderRadius: Radius.md, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
   avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: Colors.accent[500] + '20', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   avatarEmoji: { fontSize: 27 },

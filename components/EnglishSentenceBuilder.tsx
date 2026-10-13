@@ -71,10 +71,10 @@ export function EnglishSentenceBuilder({ sentence }: { sentence: CourseSentence 
 
 const styles = StyleSheet.create({
   card: { width: '100%', backgroundColor: Palette.surface, borderRadius: 18, borderWidth: 1, borderColor: Palette.border, padding: 16, gap: 12 },
-  kicker: { fontFamily: 'Vazirmatn-Bold', fontSize: 12, fontWeight: '700' as const, color: Palette.primary, textAlign: 'right' as const, writingDirection: 'rtl' as const },
-  translation: { fontFamily: 'Vazirmatn-Bold', fontSize: 17, lineHeight: 28, color: Palette.ink, textAlign: 'right' as const, writingDirection: 'rtl' as const },
+  kicker: { fontFamily: 'Lalezar', fontSize: 12, fontWeight: '400' as const, color: Palette.primary, textAlign: 'right' as const, writingDirection: 'rtl' as const },
+  translation: { fontFamily: 'Lalezar', fontSize: 17, lineHeight: 28, color: Palette.ink, textAlign: 'right' as const, writingDirection: 'rtl' as const },
   answerArea: { minHeight: 76, borderRadius: 13, borderWidth: 1, borderColor: Palette.primary, backgroundColor: Palette.primarySoft, padding: 10, flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 7, alignItems: 'center' as const },
-  placeholder: { flex: 1, fontFamily: 'Vazirmatn-Bold', fontSize: 13, lineHeight: 21, color: Palette.muted, textAlign: 'right' as const, writingDirection: 'rtl' as const },
+  placeholder: { flex: 1, fontFamily: 'Lalezar', fontSize: 13, lineHeight: 21, color: Palette.muted, textAlign: 'right' as const, writingDirection: 'rtl' as const },
   answerChip: { borderRadius: 9, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.primary, paddingHorizontal: 9, paddingVertical: 7 },
   answerText: { color: Palette.ink, fontSize: 12, fontWeight: '800', writingDirection: 'ltr' as const },
   wordBank: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'flex-start' as const, gap: 8 },
@@ -84,10 +84,10 @@ const styles = StyleSheet.create({
   usedText: { color: Palette.muted },
   actions: { flexDirection: 'row-reverse' as const, alignItems: 'center' as const, gap: 9 },
   primaryButton: { flex: 1, minHeight: 44, backgroundColor: Palette.primary, borderRadius: 12, paddingHorizontal: 12, alignItems: 'center' as const, justifyContent: 'center' as const },
-  primaryButtonText: { fontFamily: 'Vazirmatn-Bold', color: '#FFFFFF', fontSize: 14, fontWeight: '700' as const, writingDirection: 'rtl' as const },
+  primaryButtonText: { fontFamily: 'Lalezar', color: '#FFFFFF', fontSize: 14, fontWeight: '400' as const, writingDirection: 'rtl' as const },
   secondaryButton: { minHeight: 44, backgroundColor: Palette.surfaceMuted, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center' as const, justifyContent: 'center' as const },
-  secondaryButtonText: { fontFamily: 'Vazirmatn-Bold', color: Palette.ink, fontSize: 13, fontWeight: '600' as const, writingDirection: 'rtl' as const },
-  feedback: { fontFamily: 'Vazirmatn-Bold', fontSize: 13, lineHeight: 20, textAlign: 'right' as const, writingDirection: 'rtl' as const },
+  secondaryButtonText: { fontFamily: 'Lalezar', color: Palette.ink, fontSize: 13, fontWeight: '400' as const, writingDirection: 'rtl' as const },
+  feedback: { fontFamily: 'Lalezar', fontSize: 13, lineHeight: 20, textAlign: 'right' as const, writingDirection: 'rtl' as const },
   success: { color: Palette.success },
   tryAgain: { color: Palette.warning },
 });

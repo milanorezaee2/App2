@@ -142,7 +142,7 @@ export default function ConversationsHome() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.neutral[950] },
-  header: { paddingTop: 56, paddingBottom: Spacing.lg, paddingHorizontal: Spacing.lg, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800] },
+  header: { paddingTop: 12, paddingBottom: Spacing.lg, paddingHorizontal: Spacing.lg, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800] },
   headerTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   headerCopy: { flex: 1, alignItems: 'flex-end' },
   title: { fontFamily: Typography.fontFamily, fontSize: 26, fontWeight: Typography.weights.bold, color: Colors.neutral[0], textAlign: 'right' },

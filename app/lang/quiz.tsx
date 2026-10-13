@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   progressWrap: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg },
   qWrap: { flex: 1, padding: Spacing.xl, gap: Spacing.lg, margin: Spacing.lg, backgroundColor: Palette.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: Palette.border, shadowColor: '#172033', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   qLabel: { alignSelf: 'stretch', fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
-  qWord: { alignSelf: 'stretch', fontFamily: Typography.fontFamily, fontSize: 42, fontWeight: Typography.weights.bold, color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
+  qWord: { alignSelf: 'stretch', fontFamily: Typography.latinFontFamily, fontSize: 42, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   optionsWrap: { gap: Spacing.sm, marginTop: Spacing.md },
   option: { flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.md, backgroundColor: Palette.surface, borderRadius: Radius.lg, borderWidth: 1.5, borderColor: Palette.border, paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg },
   optionCorrect: { backgroundColor: Palette.successSoft, borderColor: Palette.success },

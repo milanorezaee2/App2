@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookOpen, MessageCircle, RefreshCw, Volume2 } from 'lucide-react-native';
 import { Radius, Typography } from '@/lib/theme';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
@@ -15,10 +14,9 @@ const items = [
 export function AppBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.shell, { marginBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={styles.shell}>
       {items.map((item) => {
         const active = pathname === item.path || pathname.startsWith(`${item.path}/`);
         const Icon = item.icon;

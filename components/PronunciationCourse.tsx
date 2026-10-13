@@ -6,7 +6,6 @@ import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw, Volume2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { GermanBottomNav } from '@/components/GermanBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
@@ -60,7 +59,6 @@ const THEMES = {
 
 export function PronunciationCourse({ language }: { language: PronunciationLanguage }) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const speechGeneration = useRef(0);
   const units = PRONUNCIATION_COURSES[language];
@@ -188,8 +186,8 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
   return (
     <View style={[styles.root, { backgroundColor: theme.canvas }]}>
       <StatusBar style="dark" />
-      <View style={[styles.header, { borderBottomColor: theme.border, paddingTop: Math.max(insets.top + 6, 12) }]}>
-        <PageNavigation safeTop={false} backFallback={theme.home} accentColor={theme.accent} borderColor={theme.border} />
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <PageNavigation backFallback={theme.home} accentColor={theme.accent} borderColor={theme.border} />
         <View style={styles.headerCopy}>
           <Text style={[styles.brand, { color: theme.accent }]}>{theme.brand}</Text>
           <Text style={[styles.headerTitle, { color: theme.ink }]}>کارگاه تلفظ {theme.languageFa}</Text>

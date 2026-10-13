@@ -68,7 +68,7 @@ export default function RussianSentenceBuilder({ sentence }: { sentence: Learnin
 
 const styles = StyleSheet.create({
   card: { width: '100%', backgroundColor: Palette.surface, borderRadius: 18, borderWidth: 1, borderColor: Palette.border, padding: 16, gap: 12, marginTop: 18 },
-  kicker: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '700', color: Palette.primary, textAlign: 'right', writingDirection: 'rtl' },
+  kicker: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '400', color: Palette.primary, textAlign: 'right', writingDirection: 'rtl' },
   translation: { fontFamily: Typography.fontFamily, fontSize: 17, lineHeight: 28, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
   answerArea: { minHeight: 76, borderRadius: 13, borderWidth: 1, borderColor: Palette.primary, backgroundColor: Palette.primarySoft, padding: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 7, alignItems: 'center' },
   placeholder: { flex: 1, fontFamily: Typography.fontFamily, fontSize: 13, lineHeight: 21, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
@@ -79,9 +79,9 @@ const styles = StyleSheet.create({
   wordText: { color: Palette.ink, fontSize: 12, fontWeight: '800', writingDirection: 'ltr' },
   actions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
   primaryButton: { flex: 1, minHeight: 44, backgroundColor: Palette.primary, borderRadius: 12, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  primaryButtonText: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 14, fontWeight: '700', writingDirection: 'rtl' },
+  primaryButtonText: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 14, fontWeight: '400', writingDirection: 'rtl' },
   secondaryButton: { minHeight: 44, backgroundColor: Palette.surfaceMuted, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
-  secondaryButtonText: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 13, fontWeight: '600', writingDirection: 'rtl' },
+  secondaryButtonText: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 13, fontWeight: '400', writingDirection: 'rtl' },
   disabled: { opacity: .48 },
   feedback: { fontFamily: Typography.fontFamily, fontSize: 13, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   success: { color: Palette.success },
