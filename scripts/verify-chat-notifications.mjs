@@ -14,7 +14,9 @@ const edge = read('supabase/functions/chat-push/index.ts');
 const layout = read('app/_layout.tsx');
 
 check(pkg.dependencies['expo-notifications'], 'expo-notifications is installed');
-check(pkg.dependencies['react-native-keyboard-controller'], 'native keyboard controller is installed');
+const keyboardRuntime = read('components/KeyboardRuntime.native.tsx');
+check(/measureInWindow/.test(keyboardRuntime) && /keyboardDidShow/.test(keyboardRuntime)
+  && /Animated\.timing/.test(keyboardRuntime), 'native composer uses measured dynamic keyboard overlap instead of a fixed offset');
 check(/"expo-notifications"/.test(config) && /"defaultChannel": "milo-chat"/.test(config), 'Android notification plugin and channel are configured');
 check(/KeyboardProvider/.test(layout) && /ChatNotificationBridge/.test(layout), 'keyboard and notification providers mount globally');
 check(/AndroidImportance\.HIGH/.test(notifications) && /sound:\s*'default'/.test(notifications), 'chat channel uses visible high-priority alerts with sound');
