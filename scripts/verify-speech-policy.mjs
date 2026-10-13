@@ -82,9 +82,9 @@ check(/recorder\.stop\(\)[\s\S]*?sendVoiceMessage\(conversationId,\s*recorder\.u
 check(/disabled=\{sending\s*\|\|\s*!ONLINE_AUDIO_ENABLED\}/.test(human), 'human voice-message control remains protected by the explicit online-audio policy');
 check(/requireOnlineAudioEnabled\(\);\s*const user = await ensureChatIdentity\(\);/.test(read('lib/conversations.ts')), 'lower-level voice upload API retains its product-policy gate before identity or upload work');
 check(/playResponsiveSpeech\(\{\s*text,\s*locale:\s*'en-US',\s*rate\s*\}\)/.test(lesson), 'device/platform speech playback remains available');
-check(/behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/.test(human)
-  && /behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/.test(emma),
-  'iOS chat composers use keyboard padding while Android delegates to native adjustResize');
+check(/behavior="padding"[\s\S]*?enabled=\{Platform\.OS === 'ios'\}/.test(human)
+  && /behavior="padding"[\s\S]*?enabled=\{Platform\.OS === 'ios'\}/.test(emma),
+  'iOS chat composers use keyboard padding while Android explicitly delegates to native adjustResize');
 check(!/Platform\.OS === 'android' \? 'height'/.test(human) && !/Platform\.OS === 'android' \? 'height'/.test(emma),
   'Android avoids the double keyboard-height subtraction that clipped the composer');
 check(!/marginBottom:\s*100/.test(human) && !/marginBottom:\s*100/.test(emma), 'fixed chat offsets no longer fight keyboard and safe-area movement');

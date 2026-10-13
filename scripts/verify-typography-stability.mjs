@@ -22,6 +22,7 @@ check(/Inter_400Regular[\s\S]*Inter_600SemiBold[\s\S]*Inter_800ExtraBold/.test(l
 check(/IRANSansBusiness:[\s\S]*IRANSansWeb\.ttf/.test(layout), 'Persian IRANSans face remains bundled locally');
 check(/latinFontFamily:\s*'Inter-ExtraBold'/.test(theme), 'shared Latin typography points to the bundled deterministic face');
 check(/allowFontScaling:\s*false/.test(layout) && /maxFontSizeMultiplier:\s*1/.test(layout), 'OEM/user font scaling cannot destabilize layouts');
+check(/includeFontPadding:\s*false/.test(layout) && /textBreakStrategy:\s*'simple'/.test(layout), 'Android OEM font padding and line-breaking differences are neutralized');
 
 const missing = [];
 for (const file of [...walk('app'), ...walk('components')]) {
@@ -40,7 +41,13 @@ const emma = read('app/conversations/emma.tsx');
 const human = read('app/conversations/human/[conversationId].tsx');
 const appConfig = read('app.json');
 check(/"softwareKeyboardLayoutMode":\s*"resize"/.test(appConfig), 'Android manifest is generated with native keyboard resize');
-check(/composer:\s*\{\s*flexShrink:\s*0/.test(emma) && /composer:\s*\{\s*flexShrink:\s*0/.test(human), 'chat composers cannot be clipped during resize');
+check(/messages:\s*\{\s*flex:\s*1,\s*minHeight:\s*0/.test(emma) && /messages:\s*\{\s*flex:\s*1,\s*minHeight:\s*0/.test(human), 'message lists yield all resized height to the composer');
+check(/composer:\s*\{\s*flexShrink:\s*0,\s*minHeight:\s*64,\s*overflow:\s*'visible'/.test(emma)
+  && /composer:\s*\{\s*flexShrink:\s*0,\s*minHeight:\s*64,\s*overflow:\s*'visible'/.test(human), 'chat composers retain their full visible height during resize');
+check((human.match(/containsRtlScript/g) || []).length >= 4
+  && /rtlText:\s*\{\s*fontFamily:\s*Typography\.fontFamily/.test(human)
+  && /ltrText:\s*\{\s*fontFamily:\s*Typography\.latinFontFamily/.test(human),
+  'mixed human chat selects a deterministic bundled font per script');
 check(!/Platform\.OS === 'android' \? 'height'/.test(emma) && !/Platform\.OS === 'android' \? 'height'/.test(human), 'Android native adjustResize is not double-applied');
 check(/automaticallyAdjustKeyboardInsets=\{Platform\.OS === 'ios'\}/.test(emma)
   && /automaticallyAdjustKeyboardInsets=\{Platform\.OS === 'ios'\}/.test(human), 'iOS scroll insets track the keyboard');

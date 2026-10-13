@@ -26,8 +26,20 @@ I18nManager.forceRTL(false);
 type StableFontDefaults = { defaultProps?: Record<string, unknown> };
 const stableText = Text as typeof Text & StableFontDefaults;
 const stableInput = TextInput as typeof TextInput & StableFontDefaults;
-stableText.defaultProps = { ...stableText.defaultProps, allowFontScaling: false, maxFontSizeMultiplier: 1 };
-stableInput.defaultProps = { ...stableInput.defaultProps, allowFontScaling: false, maxFontSizeMultiplier: 1 };
+stableText.defaultProps = {
+  ...stableText.defaultProps,
+  allowFontScaling: false,
+  maxFontSizeMultiplier: 1,
+  includeFontPadding: false,
+  textBreakStrategy: 'simple',
+  android_hyphenationFrequency: 'none',
+};
+stableInput.defaultProps = {
+  ...stableInput.defaultProps,
+  allowFontScaling: false,
+  maxFontSizeMultiplier: 1,
+  includeFontPadding: false,
+};
 
 SplashScreen.preventAutoHideAsync();
 

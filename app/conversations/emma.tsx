@@ -136,7 +136,8 @@ export default function EmmaChat() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior="padding"
+      enabled={Platform.OS === 'ios'}
       keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
@@ -221,7 +222,7 @@ export default function EmmaChat() {
           placeholder="پیام انگلیسی بنویسید…"
           placeholderTextColor={Colors.neutral[600]}
           multiline
-          textAlign="right"
+          textAlign="left"
         />
         <Pressable accessibilityRole="button" accessibilityLabel="ارسال پیام به Emma" accessibilityState={{ disabled: !PAID_AI_ENABLED || !input.trim() || thinking || transcribing || recorderState.isRecording }} style={[styles.send, (!input.trim() || thinking || transcribing || recorderState.isRecording) && styles.sendDisabled]} disabled={!PAID_AI_ENABLED || !input.trim() || thinking || transcribing || recorderState.isRecording} onPress={() => void send()}>
           {thinking || transcribing ? <ActivityIndicator size="small" color={Colors.onColor} /> : <Send size={18} color={Colors.onColor} />}
@@ -247,7 +248,7 @@ const styles = StyleSheet.create({
   voiceCallActive: { backgroundColor: Colors.error[500] },
   voiceStatus: { minHeight: 34, paddingHorizontal: Spacing.md, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.error[500] + '0D', borderBottomWidth: 1, borderBottomColor: Colors.error[500] + '20' },
   voiceStatusText: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.error[300], textAlign: 'center' },
-  messages: { flex: 1 },
+  messages: { flex: 1, minHeight: 0 },
   messageContent: { padding: Spacing.md, gap: Spacing.sm },
   topicChip: { alignSelf: 'center', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.accent[500] + '10', flexDirection: 'row-reverse', gap: 5, alignItems: 'center', marginBottom: Spacing.md },
   topicText: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.accent[300] },
@@ -276,9 +277,9 @@ const styles = StyleSheet.create({
   suggestions: { gap: 7 },
   suggestion: { borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.primary[500] + '45', backgroundColor: Colors.primary[500] + '0C', paddingHorizontal: 11, paddingVertical: 7 },
   suggestionText: { fontFamily: Typography.latinFontFamily, fontSize: 12, fontWeight: '800', color: Colors.primary[200], writingDirection: 'ltr' },
-  composer: { flexShrink: 0, padding: Spacing.sm, paddingBottom: 12, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
+  composer: { flexShrink: 0, minHeight: 64, overflow: 'visible', padding: Spacing.sm, paddingBottom: 10, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   helper: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingVertical: 10, fontFamily: Typography.latinFontFamily, fontSize: Typography.sizes.sm, fontWeight: '800', color: Colors.neutral[100], textAlignVertical: 'center', writingDirection: 'ltr' },
+  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingTop: 10, paddingBottom: 8, fontFamily: Typography.latinFontFamily, fontSize: Typography.sizes.sm, lineHeight: 22, fontWeight: '800', color: Colors.neutral[100], textAlignVertical: 'center', includeFontPadding: false, writingDirection: 'ltr' },
   send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.accent[500], alignItems: 'center', justifyContent: 'center' },
   sendDisabled: { opacity: .4 },
 });

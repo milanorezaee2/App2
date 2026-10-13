@@ -28,6 +28,8 @@ import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
 import { ONLINE_AUDIO_DISABLED_MESSAGE, ONLINE_AUDIO_ENABLED } from '@/lib/onlineAudioPolicy';
 
+const containsRtlScript = (value: string) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(value);
+
 function VoiceMessage({ message }: { message: DirectMessage }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -199,13 +201,14 @@ export default function HumanConversationScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior="padding"
+      enabled={Platform.OS === 'ios'}
       keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><UserRound size={22} color={Colors.primary[300]} /></View>
-        <View style={styles.headerText}><Text style={styles.name}>{name || 'مخاطب واقعی'}</Text><Text style={styles.status}>{call.phase === 'connected' ? 'تماس امن برقرار است' : 'گفتگوی خصوصی'}</Text></View>
+        <View style={styles.headerText}><Text style={[styles.name, containsRtlScript(name || 'مخاطب واقعی') ? styles.rtlText : styles.ltrText]}>{name || 'مخاطب واقعی'}</Text><Text style={styles.status}>{call.phase === 'connected' ? 'تماس امن برقرار است' : 'گفتگوی خصوصی'}</Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel={ONLINE_AUDIO_ENABLED ? 'شروع تماس صوتی' : 'تماس صوتی فعلاً غیرفعال است'} accessibilityHint={!ONLINE_AUDIO_ENABLED ? ONLINE_AUDIO_DISABLED_MESSAGE : undefined} accessibilityState={{ disabled: !ONLINE_AUDIO_ENABLED || call.phase !== 'idle' }} style={[styles.callButton, !ONLINE_AUDIO_ENABLED && styles.disabled]} disabled={!ONLINE_AUDIO_ENABLED || call.phase !== 'idle'} onPress={() => void call.startCall()}><Phone size={19} color={call.phase === 'idle' && ONLINE_AUDIO_ENABLED ? Colors.success[300] : Colors.neutral[600]} /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="حذف این مخاطب و گفتگو" accessibilityState={{ disabled: sending }} style={styles.deleteButton} onPress={confirmDeleteConversation} disabled={sending}><Trash2 size={18} color={Colors.error[300]} /></Pressable>
         <ShieldCheck size={20} color={Colors.success[400]} />
@@ -243,7 +246,7 @@ export default function HumanConversationScreen() {
             const mine = message.senderId === myId;
             return (
               <View key={message.id} style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
-                {message.type === 'voice' ? <VoiceMessage message={message} /> : <Text style={styles.messageText}>{message.body}</Text>}
+                {message.type === 'voice' ? <VoiceMessage message={message} /> : <Text style={[styles.messageText, containsRtlScript(message.body || '') ? styles.rtlText : styles.ltrText]}>{message.body}</Text>}
                 <Text style={styles.time}>{new Date(message.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</Text>
               </View>
             );
@@ -275,7 +278,15 @@ export default function HumanConversationScreen() {
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       <View style={styles.composer}>
         <Pressable accessibilityRole="button" accessibilityLabel="باز و بسته‌کردن دستیار زبان" accessibilityState={{ expanded: showCoach }} style={styles.helper} onPress={() => setShowCoach((value) => !value)}><Sparkles size={19} color={showCoach ? Colors.warning[400] : Colors.neutral[400]} /></Pressable>
-        <TextInput accessibilityLabel="متن پیام فارسی یا انگلیسی" style={styles.input} value={input} onChangeText={setInput} placeholder="پیام فارسی یا انگلیسی بنویسید…" placeholderTextColor={Colors.neutral[600]} multiline textAlign="right" />
+        <TextInput
+          accessibilityLabel="متن پیام فارسی یا انگلیسی"
+          style={[styles.input, containsRtlScript(input || 'پیام') ? styles.rtlText : styles.ltrText]}
+          value={input}
+          onChangeText={setInput}
+          placeholder="پیام فارسی یا انگلیسی بنویسید…"
+          placeholderTextColor={Colors.neutral[600]}
+          multiline
+        />
         {input.trim() ? (
           <Pressable accessibilityRole="button" accessibilityLabel="ارسال پیام متنی" accessibilityState={{ disabled: sending }} style={[styles.send, sending && styles.disabled]} disabled={sending} onPress={() => void send()}>{sending ? <ActivityIndicator size="small" color={Colors.onColor} /> : <Send size={18} color={Colors.onColor} />}</Pressable>
         ) : (
@@ -293,7 +304,7 @@ const styles = StyleSheet.create({
   header: { paddingTop: 12, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm, minHeight: 64, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800], flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.sm },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary[500] + '15', alignItems: 'center', justifyContent: 'center' },
   headerText: { flex: 1 },
-  name: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md, fontWeight: Typography.weights.bold, color: Colors.neutral[100], textAlign: 'right' },
+  name: { fontSize: Typography.sizes.md, fontWeight: Typography.weights.bold, color: Colors.neutral[100] },
   status: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.success[400], textAlign: 'right', marginTop: 2 },
   callButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.success[500] + '14', alignItems: 'center', justifyContent: 'center' },
   deleteButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.error[500] + '12', alignItems: 'center', justifyContent: 'center' },
@@ -307,7 +318,7 @@ const styles = StyleSheet.create({
   callError: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.error[300], textAlign: 'center', padding: 6, backgroundColor: Colors.error[500] + '10' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
   centerText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[500] },
-  messages: { flex: 1 },
+  messages: { flex: 1, minHeight: 0 },
   messageContent: { flexGrow: 1, padding: Spacing.md, gap: Spacing.sm },
   privateNote: { alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 5, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.success[500] + '0D', marginBottom: Spacing.md },
   privateText: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.success[400] },
@@ -318,7 +329,9 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '84%', borderRadius: Radius.xl, padding: Spacing.md, borderWidth: 1 },
   mine: { alignSelf: 'flex-end', backgroundColor: Colors.primary[600], borderColor: Colors.primary[500], borderBottomRightRadius: 5 },
   theirs: { alignSelf: 'flex-start', backgroundColor: Colors.neutral[850], borderColor: Colors.neutral[700], borderBottomLeftRadius: 5 },
-  messageText: { fontFamily: Typography.fontFamily, fontSize: 16, lineHeight: 24, color: Colors.neutral[50], textAlign: 'left' },
+  messageText: { fontSize: 16, lineHeight: 24, color: Colors.neutral[50] },
+  rtlText: { fontFamily: Typography.fontFamily, textAlign: 'right', writingDirection: 'rtl' },
+  ltrText: { fontFamily: Typography.latinFontFamily, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   time: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.neutral[400], marginTop: 5, textAlign: 'left' },
   voiceMessage: { minWidth: 190, flexDirection: 'row', alignItems: 'center', gap: 9 },
   voicePlay: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.neutral[50] + '22', alignItems: 'center', justifyContent: 'center' },
@@ -343,9 +356,9 @@ const styles = StyleSheet.create({
   audioNotice: { minHeight: 34, paddingHorizontal: Spacing.md, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.success[500] + '0D' },
   audioNoticeText: { flexShrink: 1, fontFamily: Typography.fontFamily, fontSize: 9, lineHeight: 16, color: Colors.success[300], textAlign: 'right' },
   error: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.error[300], textAlign: 'center', paddingHorizontal: Spacing.md, paddingTop: 6, backgroundColor: Colors.neutral[900] },
-  composer: { flexShrink: 0, padding: Spacing.sm, paddingBottom: 12, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
+  composer: { flexShrink: 0, minHeight: 64, overflow: 'visible', padding: Spacing.sm, paddingBottom: 10, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   helper: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingVertical: 10, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Colors.neutral[100], textAlignVertical: 'center' },
+  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingTop: 10, paddingBottom: 8, fontSize: Typography.sizes.sm, lineHeight: 22, color: Colors.neutral[100], textAlignVertical: 'center', includeFontPadding: false },
   send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.primary[500], alignItems: 'center', justifyContent: 'center' },
   recordStop: { backgroundColor: Colors.error[500] },
   disabled: { opacity: .4 },
