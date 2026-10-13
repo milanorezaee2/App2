@@ -1,4 +1,6 @@
 import type { RealtimeChannel, User } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { readableSupabaseError } from './errors';
 import { requireOnlineAudioEnabled } from './onlineAudioPolicy';
@@ -24,6 +26,48 @@ export interface DirectMessage {
 }
 
 export { SUPABASE_NOT_CONFIGURED_MESSAGE, readableSupabaseError } from './errors';
+
+const HIDDEN_CONVERSATIONS_KEY = 'milo_hidden_conversations_v1';
+
+async function getHiddenConversationIds(): Promise<Set<string>> {
+  try {
+    const raw = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? null : window.localStorage.getItem(HIDDEN_CONVERSATIONS_KEY))
+      : await AsyncStorage.getItem(HIDDEN_CONVERSATIONS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter(value => typeof value === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+async function writeHiddenConversationIds(hidden: Set<string>): Promise<void> {
+  const value = JSON.stringify(Array.from(hidden).slice(-200));
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.localStorage.setItem(HIDDEN_CONVERSATIONS_KEY, value);
+  } else {
+    await AsyncStorage.setItem(HIDDEN_CONVERSATIONS_KEY, value);
+  }
+}
+
+async function hideConversationLocally(conversationId: string): Promise<void> {
+  try {
+    const hidden = await getHiddenConversationIds();
+    hidden.add(conversationId);
+    await writeHiddenConversationIds(hidden);
+  } catch {
+    // Continue with the RLS-protected remote delete when local storage is full.
+  }
+}
+
+async function unhideConversationLocally(conversationId: string): Promise<void> {
+  try {
+    const hidden = await getHiddenConversationIds();
+    if (hidden.delete(conversationId)) await writeHiddenConversationIds(hidden);
+  } catch {
+    // A remote contact remains authoritative if local storage is unavailable.
+  }
+}
 
 export async function ensureChatIdentity(displayName = 'زبان‌آموز'): Promise<User> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -56,6 +100,7 @@ export async function claimRealContactInvite(code: string, displayName = 'زبا
     p_display_name: displayName,
   });
   if (error || typeof data !== 'string') throw new Error(readableSupabaseError(error));
+  await unhideConversationLocally(data);
   return data;
 }
 
@@ -68,16 +113,19 @@ export async function listRealContacts(): Promise<RealContact[]> {
   if (error) throw new Error(readableSupabaseError(error));
 
   if (!data?.length) return [];
+  const hiddenConversationIds = await getHiddenConversationIds();
+  const visibleRows = data.filter(row => !hiddenConversationIds.has(row.conversation_id));
+  if (!visibleRows.length) return [];
   // contact_id references auth.users, not profiles. Fetch profiles separately;
   // both queries remain subject to the current user's RLS policies.
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
     .select('id,display_name,avatar_emoji,english_level,last_seen')
-    .in('id', Array.from(new Set(data.map((row) => row.contact_id))));
+    .in('id', Array.from(new Set(visibleRows.map((row) => row.contact_id))));
   if (profilesError) throw new Error(readableSupabaseError(profilesError));
   const profilesById = new Map((profiles || []).map((profile) => [profile.id, profile]));
 
-  return data.flatMap((row) => {
+  return visibleRows.flatMap((row) => {
     const contact = profilesById.get(row.contact_id);
     if (!contact) return [];
     return [{
@@ -89,6 +137,25 @@ export async function listRealContacts(): Promise<RealContact[]> {
       lastSeen: contact.last_seen ?? null,
     } satisfies RealContact];
   });
+}
+
+export async function deleteConversationForMe(conversationId: string): Promise<'deleted' | 'hidden'> {
+  if (!conversationId) throw new Error('گفتگو مشخص نیست.');
+  // Hide first so deletion remains responsive and private on this device even
+  // while offline or before the production database receives the new grant.
+  await hideConversationLocally(conversationId);
+  try {
+    const user = await ensureChatIdentity();
+    const { error } = await supabase
+      .from('learning_contacts')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('conversation_id', conversationId);
+    if (error) return 'hidden';
+    return 'deleted';
+  } catch {
+    return 'hidden';
+  }
 }
 
 function mapMessage(row: any): DirectMessage {

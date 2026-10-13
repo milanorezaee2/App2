@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import * as Speech from 'expo-speech';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
-import { Bot, Languages, Lightbulb, Mic, Send, Sparkles, Square, Volume2 } from 'lucide-react-native';
+import { Bot, Languages, Lightbulb, Mic, Send, Sparkles, Square, Trash2, Volume2 } from 'lucide-react-native';
 import { askEmma, getEmmaPracticeContext, type EmmaCorrection, type EmmaPracticeContext } from '@/lib/emma';
-import { loadEmmaHistory, saveEmmaHistory, type EmmaStoredMessage } from '@/lib/emmaHistory';
+import { clearEmmaHistory, loadEmmaHistory, saveEmmaHistory, type EmmaStoredMessage } from '@/lib/emmaHistory';
 import { transcribeLearnerSpeech } from '@/lib/speechPractice';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
@@ -112,8 +112,33 @@ export default function EmmaChat() {
     }
   };
 
+  const confirmClearConversation = () => {
+    Alert.alert(
+      'حذف گفتگوی Emma',
+      'همهٔ پیام‌های ذخیره‌شدهٔ این گفتگو از دستگاه حذف شوند؟',
+      [
+        { text: 'انصراف', style: 'cancel' },
+        {
+          text: 'حذف گفتگو',
+          style: 'destructive',
+          onPress: () => {
+            void clearEmmaHistory().then(() => {
+              setMessages(initialMessages);
+              setCorrection(null);
+              setError(null);
+            }).catch(() => setError('حذف سابقهٔ گفتگو انجام نشد.'));
+          },
+        },
+      ],
+    );
+  };
+
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+      keyboardVerticalOffset={0}
+    >
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩🏻‍🏫</Text><View style={styles.online} /></View>
@@ -121,6 +146,9 @@ export default function EmmaChat() {
           <View style={styles.nameRow}><Text style={styles.name}>Emma</Text><Bot size={14} color={Colors.accent[400]} /></View>
           <Text style={styles.status}>هوش مصنوعی آنلاین · فعلاً غیرفعال</Text>
         </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="حذف گفتگوی ذخیره‌شدهٔ Emma" style={styles.deleteButton} onPress={confirmClearConversation}>
+          <Trash2 size={18} color={Colors.error[300]} />
+        </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={PAID_AI_ENABLED ? 'شروع یا پایان گفتار آنلاین Emma' : 'گفتار آنلاین Emma فعلاً غیرفعال است'} accessibilityHint={!PAID_AI_ENABLED ? PAID_AI_DISABLED_MESSAGE : 'با اجازهٔ میکروفن صدا پردازش می‌شود.'} accessibilityState={{ disabled: !PAID_AI_ENABLED || thinking || transcribing }}
           disabled={!PAID_AI_ENABLED || thinking || transcribing}
           style={[styles.voiceCall, recorderState.isRecording && styles.voiceCallActive]}
@@ -206,6 +234,7 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
   name: { fontSize: 18, fontWeight: '700', color: Colors.neutral[100] },
   status: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.success[400], textAlign: 'right', marginTop: 2 },
+  deleteButton: { width: 39, height: 39, borderRadius: Radius.full, backgroundColor: Colors.error[500] + '12', alignItems: 'center', justifyContent: 'center' },
   voiceCall: { width: 39, height: 39, borderRadius: Radius.full, backgroundColor: Colors.primary[500] + '15', alignItems: 'center', justifyContent: 'center' },
   voiceCallActive: { backgroundColor: Colors.error[500] },
   voiceStatus: { minHeight: 34, paddingHorizontal: Spacing.md, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.error[500] + '0D', borderBottomWidth: 1, borderBottomColor: Colors.error[500] + '20' },
@@ -239,7 +268,7 @@ const styles = StyleSheet.create({
   suggestions: { gap: 7 },
   suggestion: { borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.primary[500] + '45', backgroundColor: Colors.primary[500] + '0C', paddingHorizontal: 11, paddingVertical: 7 },
   suggestionText: { fontSize: 12, color: Colors.primary[200] },
-  composer: { padding: Spacing.sm, paddingBottom: 18, marginBottom: 100, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 7 },
+  composer: { padding: Spacing.sm, paddingBottom: 18, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 7 },
   helper: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
   input: { flex: 1, minHeight: 42, maxHeight: 100, borderRadius: 21, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingVertical: 10, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Colors.neutral[100] },
   send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.accent[500], alignItems: 'center', justifyContent: 'center' },

@@ -82,7 +82,10 @@ check(/recorder\.stop\(\)[\s\S]*?sendVoiceMessage\(conversationId,\s*recorder\.u
 check(/disabled=\{sending\s*\|\|\s*!ONLINE_AUDIO_ENABLED\}/.test(human), 'human voice-message control remains protected by the explicit online-audio policy');
 check(/requireOnlineAudioEnabled\(\);\s*const user = await ensureChatIdentity\(\);/.test(read('lib/conversations.ts')), 'lower-level voice upload API retains its product-policy gate before identity or upload work');
 check(/playResponsiveSpeech\(\{\s*text,\s*locale:\s*'en-US',\s*rate\s*\}\)/.test(lesson), 'device/platform speech playback remains available');
-check(/marginBottom:\s*100/.test(human) && /marginBottom:\s*100/.test(emma), 'both chat composers stay 100 pixels above phone navigation controls');
+check(/Platform\.OS === 'ios' \? 'padding' : Platform\.OS === 'android' \? 'height'/.test(human)
+  && /Platform\.OS === 'ios' \? 'padding' : Platform\.OS === 'android' \? 'height'/.test(emma),
+'both chat composers dynamically follow the native keyboard on iOS and Android');
+check(!/marginBottom:\s*100/.test(human) && !/marginBottom:\s*100/.test(emma), 'fixed chat offsets no longer fight keyboard and safe-area movement');
 
 globalThis.fetch = originalFetch;
-console.log(`${checks} checks passed; paid-AI speech stays gated, real participant voice messaging is enabled, and chat composers keep their mobile bottom clearance.`);
+console.log(`${checks} checks passed; paid-AI speech stays gated, real participant voice messaging is enabled, and chat composers follow the keyboard dynamically.`);

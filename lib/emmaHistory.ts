@@ -37,3 +37,11 @@ export async function loadEmmaHistory(fallback: EmmaStoredMessage[]): Promise<Em
 export async function saveEmmaHistory(messages: EmmaStoredMessage[]): Promise<void> {
   await write(JSON.stringify(messages.slice(-30)));
 }
+
+export async function clearEmmaHistory(): Promise<void> {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.localStorage.removeItem(KEY);
+    return;
+  }
+  await AsyncStorage.removeItem(KEY);
+}

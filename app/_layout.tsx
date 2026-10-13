@@ -8,6 +8,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createAudioPlayer } from 'expo-audio';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AppLockGate } from '@/components/AppLockGate';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
 import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
@@ -122,14 +123,17 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
-          <RuntimeGate />
-          <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-            <Stack.Screen name="index" />
-            <Stack.Screen name="agent" />
-            <Stack.Screen name="permissions" />
-            <Stack.Screen name="lang/index" />
-            <Stack.Screen name="+not-found" />
-          </Stack>
+          <AppLockGate>
+            <RuntimeGate />
+            <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+              <Stack.Screen name="index" />
+              <Stack.Screen name="agent" />
+              <Stack.Screen name="permissions" />
+              <Stack.Screen name="app-lock" />
+              <Stack.Screen name="lang/index" />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+          </AppLockGate>
           <StatusBar style="dark" />
         </SafeAreaView>
       </ErrorBoundary>

@@ -906,6 +906,7 @@ GRANT EXECUTE ON FUNCTION claim_contact_invite(text, text) TO authenticated;
 
 GRANT SELECT, INSERT, UPDATE ON profiles TO authenticated;
 GRANT SELECT ON conversations, conversation_members, learning_contacts, contact_invites TO authenticated;
+GRANT DELETE ON learning_contacts TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON messages TO authenticated;
 
 -- Enable real-time delivery for chat messages once, without failing on reruns.

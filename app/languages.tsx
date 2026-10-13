@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
+import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
 import { LANGUAGES } from '@/lib/languages/catalog';
 import { FEATURES } from '@/lib/features';
 import { SENTENCE_LESSONS } from '@/lib/courseContent';
@@ -58,9 +58,14 @@ export default function LanguagesHome() {
                 <Text style={styles.brandCaption}>LANGUAGE LEARNING</Text>
               </View>
             </View>
-            <View style={styles.statusPill}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>آمادهٔ یادگیری</Text>
+            <View style={styles.headerActions}>
+              <Pressable accessibilityRole="button" accessibilityLabel="تنظیم قفل برنامه" style={styles.lockButton} onPress={() => router.push('/app-lock' as never)}>
+                <LockKeyhole size={17} color="#1769D2" />
+              </Pressable>
+              <View style={styles.statusPill}>
+                <View style={styles.statusDot} />
+                <Text style={styles.statusText}>آمادهٔ یادگیری</Text>
+              </View>
             </View>
           </View>
 
@@ -215,6 +220,8 @@ const styles = StyleSheet.create({
   brandIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#1769D2', alignItems: 'center', justifyContent: 'center', shadowColor: '#1769D2', shadowOpacity: .2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   brandName: { color: '#102A56', fontSize: 16, lineHeight: 20, fontWeight: '800', textAlign: 'right', letterSpacing: 2, writingDirection: 'ltr' },
   brandCaption: { color: '#6680A5', fontSize: 6, fontWeight: '800', letterSpacing: 1.35, writingDirection: 'ltr' },
+  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
+  lockButton: { width: 36, height: 36, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
   statusPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#22A06B' },
   statusText: { fontFamily: 'IRANSansBusiness', color: '#49617F', fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
