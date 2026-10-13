@@ -3,7 +3,7 @@ import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
-import { I18nManager, Platform, View } from 'react-native';
+import { I18nManager, Image, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createAudioPlayer } from 'expo-audio';
 import {
@@ -61,7 +61,7 @@ function CompanionRuntime() {
  */
 export default function RootLayout() {
   useFrameworkReady();
-  const pathname = usePathname();
+  const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   const [fontsLoaded, fontError] = useFonts({
     Vazirmatn: Vazirmatn_400Regular,
     'Vazirmatn-Medium': Vazirmatn_500Medium,
@@ -72,28 +72,47 @@ export default function RootLayout() {
     if (!fontsLoaded && !fontError) return;
     void SplashScreen.hideAsync();
 
-    // Keep the existing splash duration: the chime begins only as the ready app
-    // replaces the native splash, and it never delays navigation.
-    if (Platform.OS !== 'web' && !startupChimePlayed) {
-      startupChimePlayed = true;
-      try {
-        const player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
-        player.volume = 0.32;
-        player.play();
-        setTimeout(() => player.remove(), 2400);
-        // Prime both native TTS voices after the opening chime, well before a
-        // learner reaches a lesson sound button.
-        setTimeout(() => {
-          warmSpeech('en-US');
-          setTimeout(() => warmSpeech('de-DE'), 350);
-        }, 1900);
-      } catch {
-        // Audio must never block startup on devices with unavailable playback.
-      }
+    if (Platform.OS === 'web') {
+      setIntroComplete(true);
+      return;
     }
+    if (startupChimePlayed) {
+      setIntroComplete(true);
+      return;
+    }
+
+    // The React splash and the 1.65-second chime start and finish together.
+    // It follows the native splash seamlessly, so there is no dark flash.
+    startupChimePlayed = true;
+    let player: ReturnType<typeof createAudioPlayer> | null = null;
+    try {
+      player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
+      player.volume = 0.28;
+      player.play();
+    } catch {
+      // A device without playback support still receives the same visual intro.
+    }
+    const finish = setTimeout(() => {
+      player?.remove();
+      setIntroComplete(true);
+      warmSpeech('en-US');
+      setTimeout(() => warmSpeech('de-DE'), 350);
+    }, 1650);
+    return () => clearTimeout(finish);
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return null;
+  if (!introComplete) {
+    return (
+      <View style={introStyles.root}>
+        <Image source={require('../assets/images/splash-learning-light.png')} resizeMode="contain" style={introStyles.image} />
+        <Text style={introStyles.brand}>MILO</Text>
+        <Text style={introStyles.caption}>LANGUAGE LEARNING</Text>
+        <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -107,9 +126,18 @@ export default function RootLayout() {
             <Stack.Screen name="lang/index" />
             <Stack.Screen name="+not-found" />
           </Stack>
-          <StatusBar style={pathname === '/lang' || pathname === '/languages' ? 'dark' : 'light'} />
+          <StatusBar style="dark" />
         </View>
       </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
+
+const introStyles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#F5FAFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  image: { width: 280, height: 280, marginBottom: -12 },
+  brand: { color: '#102A56', fontSize: 26, lineHeight: 31, fontWeight: '900', letterSpacing: 5, writingDirection: 'ltr' },
+  caption: { color: '#6882A6', fontSize: 9, fontWeight: '800', letterSpacing: 2.1, writingDirection: 'ltr', marginTop: 2 },
+  loader: { width: 92, height: 3, borderRadius: 99, overflow: 'hidden', backgroundColor: '#DCE9F8', marginTop: 24 },
+  loaderFill: { width: '100%', height: '100%', borderRadius: 99, backgroundColor: '#2878DE' },
+});

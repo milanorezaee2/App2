@@ -85,7 +85,7 @@ export function GermanCourseButton({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.canvas },
-  header: { width: '100%', maxWidth: 900, minHeight: 78, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 44, paddingBottom: 10 },
+  header: { width: '100%', maxWidth: 900, minHeight: 70, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 15, paddingTop: 39, paddingBottom: 8 },
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
   headerCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
   brand: { color: Palette.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
@@ -95,9 +95,9 @@ const styles = StyleSheet.create({
   track: { height: 5, width: '100%', backgroundColor: Palette.border, overflow: 'hidden' },
   fill: { height: '100%', backgroundColor: Palette.primary, alignSelf: 'flex-end' },
   scrollContent: { flexGrow: 1, paddingBottom: 30 },
-  content: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28, gap: 14 },
-  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 43, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border },
-  card: { width: '100%', padding: 18, borderRadius: 21, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 12, shadowColor: '#173E34', shadowOpacity: .035, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
+  content: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 9, paddingBottom: 22, gap: 11 },
+  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 8, paddingBottom: 35, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border },
+  card: { width: '100%', padding: 14, borderRadius: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10, shadowColor: '#174B86', shadowOpacity: .035, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
   heading: { fontFamily: 'Vazirmatn-Bold', color: Palette.ink, fontSize: 19, lineHeight: 26, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
   description: { fontFamily: 'Vazirmatn-Bold', color: Palette.text, fontSize: 15, lineHeight: 23, textAlign: 'right', writingDirection: 'rtl' },
   small: { fontFamily: 'Vazirmatn-Bold', color: Palette.muted, fontSize: 12, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl' },

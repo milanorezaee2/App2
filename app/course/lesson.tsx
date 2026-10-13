@@ -408,7 +408,7 @@ export default function SentenceLessonScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.canvas },
   // Match the German lesson player's 900px canvas and vertical safe area.
-  header: { width: '100%', maxWidth: 900, minHeight: 78, alignSelf: 'center', paddingTop: 44, paddingHorizontal: 20, paddingBottom: 10, gap: 12, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
+  header: { width: '100%', maxWidth: 900, minHeight: 70, alignSelf: 'center', paddingTop: 39, paddingHorizontal: 15, paddingBottom: 8, gap: 9, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
   headerTop: { width: '100%', maxWidth: 900, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   headerText: { flex: 1, alignItems: 'flex-end', gap: 2 },
   headerEyebrow: { color: 'rgba(255,255,255,0.72)', fontSize: 10, fontWeight: '900', letterSpacing: 1, writingDirection: 'ltr' },
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   stepSegmentCurrent: { height: 8, marginTop: -1.5, backgroundColor: Palette.teal },
   stepperEnds: { flexDirection: 'row-reverse', justifyContent: 'space-between' },
   stepperEndText: { color: Palette.muted, fontSize: 10, fontWeight: '800', writingDirection: 'ltr' },
-  content: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28, gap: 14 },
+  content: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 9, paddingBottom: 22, gap: 11 },
   centerStage: { alignItems: 'center', width: '100%' },
   bigIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#DDE2FF', alignItems: 'center', justifyContent: 'center', marginVertical: Spacing.lg },
   stageEyebrow: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '800', color: Palette.primary, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   vocabWord: { fontSize: 20, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '700', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
   vocabExample: { fontSize: 15, fontWeight: '700', color: Palette.text, textAlign: 'right', writingDirection: 'ltr', marginTop: 8 },
-  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 43, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
+  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 8, paddingBottom: 35, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
   nextButton: { width: '100%', maxWidth: 900, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   nextText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md + 2, fontWeight: '900', color: Colors.onColor, writingDirection: 'rtl' },
 });

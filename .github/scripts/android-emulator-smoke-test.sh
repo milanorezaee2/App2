@@ -126,8 +126,8 @@ fi
 failed_step="verifying the language home screen rendered"
 # UIAutomator only reports visible nodes; the course cards are below the fold on
 # this small emulator, so assert the visible premium brand and new hero instead.
-if ! grep -Fq 'LANGUAGE JOURNEY' "$ui_file" || ! grep -Fq 'زبان تازه' "$ui_file"; then
-  echo 'The visible language-home brand and luxury hero title were not found in the UI hierarchy.'
+if ! grep -Fq 'MILO' "$ui_file" || ! grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+  echo 'The visible MILO brand and bright language-home hero were not found in the UI hierarchy.'
   exit 1
 fi
 

@@ -33,22 +33,22 @@ import { ENGLISH_ENGINE_BLUEPRINT, getEnglishLevelMetrics } from '@/lib/englishL
 import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel } from '@/components/EnglishUI';
 
 const HomeColors = {
-  canvas: '#F5F3F7',
+  canvas: '#F6FAFF',
   surface: '#FFFFFF',
-  surfaceSoft: '#FBF9F5',
-  ink: '#191A31',
-  text: '#56566D',
-  muted: '#858398',
-  border: '#E7E2EC',
-  accent: '#6654CE',
-  accentDeep: '#40327F',
-  accentSoft: '#F0ECFA',
-  sage: '#66805E',
-  sageSoft: '#EFF4EA',
-  amber: '#9A7133',
-  amberSoft: '#FBF3E3',
-  gold: '#D8B76E',
-  goldSoft: '#F5EBD5',
+  surfaceSoft: '#F2F7FD',
+  ink: '#102A56',
+  text: '#425E80',
+  muted: '#7086A2',
+  border: '#DCE8F7',
+  accent: '#1769D2',
+  accentDeep: '#104A94',
+  accentSoft: '#EAF3FF',
+  sage: '#168451',
+  sageSoft: '#ECF9F2',
+  amber: '#A65C14',
+  amberSoft: '#FFF6E8',
+  gold: '#2878DE',
+  goldSoft: '#EAF3FF',
 } as const;
 
 export default function LearningHome() {
@@ -108,7 +108,7 @@ export default function LearningHome() {
         <View style={styles.page}>
           <View style={styles.header}>
             <View style={styles.brandLockup}>
-              <LinearGradient colors={['#7864DF', '#37306F']} start={{ x: .9, y: 0 }} end={{ x: .1, y: 1 }} style={styles.brandMark}>
+              <LinearGradient colors={['#2878DE', '#1259B5']} start={{ x: .9, y: 0 }} end={{ x: .1, y: 1 }} style={styles.brandMark}>
                 <BookOpenCheck size={20} color="#F9E8B9" strokeWidth={2} />
               </LinearGradient>
               <View style={styles.brandCopy}>
@@ -120,7 +120,7 @@ export default function LearningHome() {
           </View>
 
           <LinearGradient
-            colors={['#171A38', '#29285C', '#45377D']}
+            colors={['#FFFFFF', '#EDF5FF', '#DDEEFF']}
             start={{ x: .95, y: .08 }}
             end={{ x: .04, y: 1 }}
             style={[styles.welcomeBlock, compact && styles.welcomeBlockCompact]}
@@ -147,7 +147,7 @@ export default function LearningHome() {
             </View>
             <View style={[styles.welcomeVisual, compact && styles.welcomeVisualCompact]}>
               <Image source={require('../../assets/english-learning-hero.jpg')} resizeMode="cover" style={styles.welcomeImage} />
-              <LinearGradient colors={['rgba(16,18,43,0.02)', 'rgba(16,18,43,0.35)']} style={styles.welcomeImageShade} />
+              <LinearGradient colors={['rgba(16,42,86,0.00)', 'rgba(16,42,86,0.12)']} style={styles.welcomeImageShade} />
               <View style={styles.welcomeImageStamp}>
                 <Text style={styles.welcomeImageStampMain}>EN</Text>
                 <View style={styles.welcomeImageStampLine} />
@@ -157,7 +157,7 @@ export default function LearningHome() {
           </LinearGradient>
 
           <View style={styles.lessonCard}>
-            <LinearGradient colors={['#D8B76E', '#8C69D8', '#D8B76E']} start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} style={styles.lessonCardAccent} />
+            <LinearGradient colors={['#4D9AF2', '#21A7C0', '#4D9AF2']} start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} style={styles.lessonCardAccent} />
             <View style={styles.lessonMetaRow}>
               <View style={styles.levelTag}>
                 <View style={[styles.levelTagDot, { backgroundColor: currentLevel.color }]} />
@@ -212,7 +212,7 @@ export default function LearningHome() {
                 style={({ pressed }) => [styles.continueButton, pressed && styles.buttonPressed]}
                 onPress={openCurrentLesson}
               >
-                <LinearGradient colors={['#705BD7', '#40347F']} start={{ x: .96, y: 0 }} end={{ x: .04, y: 1 }} style={styles.continueButtonGradient}>
+                <LinearGradient colors={['#2878DE', '#1259B5']} start={{ x: .96, y: 0 }} end={{ x: .04, y: 1 }} style={styles.continueButtonGradient}>
                   <Play size={16} color="#F5E7BC" fill="#F5E7BC" />
                   <Text style={styles.continueButtonText}>{completed ? 'ادامهٔ درس' : 'شروع اولین درس'}</Text>
                   <ArrowLeft size={17} color="#FFFFFF" />
@@ -236,7 +236,7 @@ export default function LearningHome() {
             </View>
           </View>
 
-          <LinearGradient colors={['#1A1D3D', '#2D2B62', '#403879']} start={{ x: .95, y: .05 }} end={{ x: .04, y: 1 }} style={styles.todayCard}>
+          <LinearGradient colors={['#FFFFFF', '#EDF5FF', '#E1F0FF']} start={{ x: .95, y: .05 }} end={{ x: .04, y: 1 }} style={styles.todayCard}>
             <View pointerEvents="none" style={styles.todayGlow} />
             <View style={styles.todayTopRow}>
               <View style={styles.todayIcon}><Clock3 size={18} color={HomeColors.gold} /></View>
@@ -399,7 +399,7 @@ export default function LearningHome() {
             </Pressable>
           </View>
 
-          <LinearGradient colors={['#25214E', '#443571']} start={{ x: .95, y: .1 }} end={{ x: .05, y: 1 }} style={styles.noteCard}>
+          <LinearGradient colors={['#FFFFFF', '#EDF5FF']} start={{ x: .95, y: .1 }} end={{ x: .05, y: 1 }} style={styles.noteCard}>
             <View style={styles.noteIcon}><Sparkles size={16} color={HomeColors.gold} /></View>
             <View style={styles.noteCopy}>
               <Text style={styles.noteTitle}>یادگیری در بافت</Text>
@@ -417,25 +417,25 @@ export default function LearningHome() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: HomeColors.canvas },
   scrollContent: { flexGrow: 1 },
-  page: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 22, paddingTop: 17, paddingBottom: 108, gap: 19 },
+  page: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 12, paddingBottom: 94, gap: 14 },
   header: { minHeight: 58, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   brandLockup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
   brandMark: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(216,183,110,0.4)', shadowColor: '#38306F', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   brandCopy: { gap: 2 },
   brandEyebrow: { color: '#8C7BB8', fontSize: 8, fontWeight: '900', letterSpacing: 1.45, textAlign: 'right', writingDirection: 'ltr' },
   headerTitle: { fontFamily: Typography.fontFamily, fontSize: 16, lineHeight: 24, fontWeight: '800', color: HomeColors.ink, textAlign: 'right', writingDirection: 'rtl' },
-  welcomeBlock: { position: 'relative', minHeight: 202, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 18, overflow: 'hidden', padding: 18, borderRadius: 27, borderWidth: 1, borderColor: '#514878', shadowColor: '#211A50', shadowOpacity: 0.2, shadowRadius: 23, shadowOffset: { width: 0, height: 11 }, elevation: 6 },
+  welcomeBlock: { position: 'relative', minHeight: 202, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 18, overflow: 'hidden', padding: 18, borderRadius: 27, borderWidth: 1, borderColor: '#D4E5FA', shadowColor: '#174B86', shadowOpacity: 0.08, shadowRadius: 23, shadowOffset: { width: 0, height: 11 }, elevation: 6 },
   welcomeBlockCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 15, padding: 16 },
-  welcomeGlowOne: { position: 'absolute', top: -104, right: '18%', width: 270, height: 270, borderRadius: 135, backgroundColor: 'rgba(216,183,110,0.09)' },
-  welcomeGlowTwo: { position: 'absolute', bottom: -142, left: -90, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(130,111,221,0.22)' },
+  welcomeGlowOne: { position: 'absolute', top: -104, right: '18%', width: 270, height: 270, borderRadius: 135, backgroundColor: 'rgba(40,120,222,0.09)' },
+  welcomeGlowTwo: { position: 'absolute', bottom: -142, left: -90, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(33,167,192,0.12)' },
   welcomeCopy: { flex: 1, gap: 7, alignItems: 'stretch', zIndex: 1 },
-  welcomeEyebrowRow: { flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-end', gap: 6, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  welcomeEyebrow: { color: '#E5D7B5', fontSize: 8, fontWeight: '900', letterSpacing: 1.35, textAlign: 'right', writingDirection: 'ltr' },
-  welcomeTitle: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 23, lineHeight: 35, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  welcomeDescription: { fontFamily: Typography.fontFamily, color: '#DAD6EA', fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+  welcomeEyebrowRow: { flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-end', gap: 6, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.82)', borderWidth: 1, borderColor: '#D5E6FA' },
+  welcomeEyebrow: { color: '#1769D2', fontSize: 8, fontWeight: '900', letterSpacing: 1.35, textAlign: 'right', writingDirection: 'ltr' },
+  welcomeTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 23, lineHeight: 35, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  welcomeDescription: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   welcomeTags: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  welcomeTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  welcomeTagText: { fontFamily: Typography.fontFamily, color: '#F2EFF8', fontSize: 8, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  welcomeTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.82)', borderWidth: 1, borderColor: '#D5E6FA' },
+  welcomeTagText: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 8, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
   welcomeVisual: { position: 'relative', width: '36%', maxWidth: 270, height: 164, flexShrink: 0, overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(216,183,110,0.56)', backgroundColor: '#191A34' },
   welcomeVisualCompact: { width: '100%', maxWidth: '100%', height: 145 },
   welcomeImage: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100%' },
@@ -489,19 +489,19 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 18, lineHeight: 27, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
   dailyGoalPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, borderRadius: Radius.full, backgroundColor: HomeColors.goldSoft, borderWidth: 1, borderColor: '#E9DDBF', paddingHorizontal: 10, paddingVertical: 7 },
   dailyGoalText: { fontFamily: Typography.fontFamily, color: HomeColors.amber, fontSize: 8, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  todayCard: { position: 'relative', overflow: 'hidden', borderRadius: 22, padding: 16, borderWidth: 1, borderColor: '#575087', gap: 12, shadowColor: '#201B4C', shadowOpacity: 0.17, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
-  todayGlow: { position: 'absolute', top: -80, left: -35, width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(216,183,110,0.09)' },
+  todayCard: { position: 'relative', overflow: 'hidden', borderRadius: 22, padding: 16, borderWidth: 1, borderColor: '#D4E5FA', gap: 12, shadowColor: '#174B86', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  todayGlow: { position: 'absolute', top: -80, left: -35, width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(40,120,222,0.09)' },
   todayTopRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
   todayIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)', alignItems: 'center', justifyContent: 'center' },
   todayCopy: { flex: 1, alignItems: 'stretch', gap: 1 },
-  todayValue: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 23, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
-  todayUnit: { fontSize: 10, fontWeight: '600', color: '#D6D0E9' },
-  todayLabel: { fontFamily: Typography.fontFamily, color: '#D3CEE1', fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
+  todayValue: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 23, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  todayUnit: { fontSize: 10, fontWeight: '600', color: HomeColors.text },
+  todayLabel: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
   todayPercentPill: { minWidth: 47, minHeight: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: 'rgba(216,183,110,0.14)', borderWidth: 1, borderColor: 'rgba(216,183,110,0.34)' },
   todayPercentText: { fontFamily: Typography.fontFamily, color: '#F2DDA9', fontSize: 10, fontWeight: '800', writingDirection: 'rtl' },
   todayProgressTrack: { width: '100%' },
   todayFootnote: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)' },
-  todayFootnoteText: { flex: 1, fontFamily: Typography.fontFamily, color: '#E7E3F0', fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
+  todayFootnoteText: { flex: 1, fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
   streakPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, borderRadius: Radius.full, backgroundColor: 'rgba(184,227,213,0.12)', borderWidth: 1, borderColor: 'rgba(184,227,213,0.2)', paddingHorizontal: 8, paddingVertical: 5 },
   streakText: { fontFamily: Typography.fontFamily, color: '#C4E8D8', fontSize: 8, fontWeight: '800', writingDirection: 'rtl' },
   pathPanel: { borderRadius: 24, padding: 17, backgroundColor: HomeColors.surface, borderWidth: 1, borderColor: '#E4DCEB', gap: 14, shadowColor: '#30254E', shadowOpacity: 0.065, shadowRadius: 18, shadowOffset: { width: 0, height: 7 }, elevation: 3 },
@@ -543,10 +543,10 @@ const styles = StyleSheet.create({
   quickCopy: { flex: 1, alignItems: 'stretch', gap: 2 },
   quickTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 10, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
   quickDesc: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 8, lineHeight: 15, textAlign: 'right', writingDirection: 'rtl' },
-  noteCard: { position: 'relative', overflow: 'hidden', flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: '#574887' },
+  noteCard: { position: 'relative', overflow: 'hidden', flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: '#D4E5FA' },
   noteIcon: { width: 36, height: 36, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(216,183,110,0.25)', alignItems: 'center', justifyContent: 'center' },
   noteCopy: { flex: 1, alignItems: 'stretch', gap: 2, zIndex: 1 },
-  noteTitle: { fontFamily: Typography.fontFamily, color: '#E7CC91', fontSize: 10, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
-  noteText: { fontFamily: Typography.fontFamily, color: '#E4E0EF', fontSize: 9, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
+  noteTitle: { fontFamily: Typography.fontFamily, color: HomeColors.accent, fontSize: 10, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  noteText: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 9, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
   noteOrnament: { position: 'absolute', left: 13, bottom: -6, opacity: 0.8 },
 });

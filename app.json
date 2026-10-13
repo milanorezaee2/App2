@@ -32,13 +32,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#211747",
-          "image": "./assets/images/splash-learning.png",
+          "backgroundColor": "#F5FAFF",
+          "image": "./assets/images/splash-learning-light.png",
           "imageWidth": 280,
           "resizeMode": "contain",
           "dark": {
-            "backgroundColor": "#211747",
-            "image": "./assets/images/splash-learning.png"
+            "backgroundColor": "#F5FAFF",
+            "image": "./assets/images/splash-learning-light.png"
           }
         }
       ],
