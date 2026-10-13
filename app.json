@@ -28,6 +28,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withStableLayoutDirection",
       "expo-font",
       [
         "expo-splash-screen",

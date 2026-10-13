@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, usePathname } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PageNavigation } from '@/components/PageNavigation';
 import { GermanBottomNav } from '@/components/GermanBottomNav';
 import { GermanPalette as Palette } from '@/components/germanTheme';
@@ -24,6 +25,7 @@ export function GermanCoursePage({
   scrollResetKey?: string | number;
 }) {
   const scrollRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
   useEffect(() => { scrollRef.current?.scrollTo({ y: 0, animated: false }); }, [scrollResetKey]);
   const pathname = usePathname();
   const { language } = useLocalSearchParams<{ language?: string }>();
@@ -32,8 +34,8 @@ export function GermanCoursePage({
 
   return (
     <View style={styles.root}>
-      <View style={styles.header}>
-        <PageNavigation backFallback={back} accentColor={Palette.primary} borderColor={Palette.border} />
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 6, 12) }]}>
+        <PageNavigation safeTop={false} backFallback={back} accentColor={Palette.primary} borderColor={Palette.border} />
         <View style={styles.headerCopy}>
           <Text style={styles.brand}>DEUTSCH LERNEN · KURS</Text>
           <Text style={styles.title}>{title}</Text>
@@ -49,7 +51,7 @@ export function GermanCoursePage({
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.content, LtrDirection]}>{children}</View>
       </ScrollView>
-      {footer ? <View style={styles.footer}><View style={styles.footerAction}>{footer}</View></View> : null}
+      {footer ? <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 30, 38) }]}>{footer}</View> : null}
       {isGermanRoute && normalizedProgress === undefined ? <GermanBottomNav /> : null}
     </View>
   );
@@ -85,7 +87,7 @@ export function GermanCourseButton({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.canvas },
-  header: { width: '100%', maxWidth: 900, minHeight: 70, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 15, paddingTop: 39, paddingBottom: 8 },
+  header: { width: '100%', maxWidth: 900, minHeight: 64, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingHorizontal: 15, paddingTop: 12, paddingBottom: 7 },
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
   headerCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
   brand: { color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
@@ -96,8 +98,7 @@ const styles = StyleSheet.create({
   fill: { height: '100%', backgroundColor: Palette.primary, alignSelf: 'flex-end' },
   scrollContent: { flexGrow: 1, paddingBottom: 30 },
   content: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 9, paddingBottom: 22, gap: 11 },
-  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 8, paddingBottom: 35, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border },
-  footerAction: { transform: [{ translateY: -30 }] },
+  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 7, paddingBottom: 8, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border },
   card: { width: '100%', padding: 14, borderRadius: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10, shadowColor: '#174B86', shadowOpacity: .035, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
   heading: { fontFamily: 'Vazirmatn-Bold', color: Palette.ink, fontSize: 19, lineHeight: 26, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
   description: { fontFamily: 'Vazirmatn-Bold', color: Palette.text, fontSize: 15, lineHeight: 23, textAlign: 'right', writingDirection: 'rtl' },

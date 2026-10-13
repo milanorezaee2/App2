@@ -12,7 +12,7 @@ export function CoursePage({title,subtitle,children,back='/languages',progress,f
   <View style={courseStyles.header}><PageNavigation tone="dark" backFallback={back}/><View style={{flex:1}}><Text style={courseStyles.title}>{title}</Text>{subtitle&&<Text style={courseStyles.description}>{subtitle}</Text>}</View>{progress!==undefined&&<Text style={courseStyles.pill}>{Math.round(progress*100)}٪</Text>}</View>
   {progress!==undefined&&<View style={courseStyles.track}><View style={[courseStyles.fill,{width:`${Math.min(1,Math.max(0,progress))*100}%`}]}/></View>}
   <ScrollView contentContainerStyle={courseStyles.page}><View style={courseStyles.content}>{children}</View></ScrollView>
-  {footer&&<View style={courseStyles.footer}><View style={{transform:[{translateY:-30}]}}>{footer}</View></View>}
+  {footer&&<View style={courseStyles.footer}>{footer}</View>}
   {activeLanguage==='de'&&progress===undefined&&<GermanBottomNav/>}
   {activeLanguage==='ru'&&progress===undefined&&<RussianBottomNav/>}
  </View>;

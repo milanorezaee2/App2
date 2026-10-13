@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowRight, Home } from 'lucide-react-native';
 
 export type PageNavigationTone = 'light' | 'dark';
@@ -12,6 +13,7 @@ export function PageNavigation({
   onBack,
   accentColor,
   borderColor,
+  safeTop = true,
 }: {
   backFallback?: string;
   tone?: PageNavigationTone;
@@ -19,13 +21,15 @@ export function PageNavigation({
   onBack?: () => void;
   accentColor?: string;
   borderColor?: string;
+  safeTop?: boolean;
 }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const dark = tone === 'dark';
   const iconColor = dark ? '#F7F5FF' : accentColor ?? '#4F438D';
 
   return (
-    <View style={[styles.row, style]}>
+    <View style={[styles.row, safeTop && { marginTop: Math.max(insets.top - 16, 0) }, style]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="بازگشت به صفحهٔ قبل"

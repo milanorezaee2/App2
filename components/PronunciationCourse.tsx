@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw, Volume2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { GermanBottomNav } from '@/components/GermanBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
@@ -59,6 +60,7 @@ const THEMES = {
 
 export function PronunciationCourse({ language }: { language: PronunciationLanguage }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const speechGeneration = useRef(0);
   const units = PRONUNCIATION_COURSES[language];
@@ -186,8 +188,8 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
   return (
     <View style={[styles.root, { backgroundColor: theme.canvas }]}>
       <StatusBar style="dark" />
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <PageNavigation backFallback={theme.home} accentColor={theme.accent} borderColor={theme.border} />
+      <View style={[styles.header, { borderBottomColor: theme.border, paddingTop: Math.max(insets.top + 6, 12) }]}>
+        <PageNavigation safeTop={false} backFallback={theme.home} accentColor={theme.accent} borderColor={theme.border} />
         <View style={styles.headerCopy}>
           <Text style={[styles.brand, { color: theme.accent }]}>{theme.brand}</Text>
           <Text style={[styles.headerTitle, { color: theme.ink }]}>کارگاه تلفظ {theme.languageFa}</Text>
@@ -334,7 +336,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { backgroundColor: theme.canvas, borderTopColor: theme.border }]}>
+      <View style={[styles.footer, { backgroundColor: theme.canvas, borderTopColor: theme.border, paddingBottom: 30 }]}>
         <ActionButton
           title="تمرین قبلی"
           style={styles.footerAction}
@@ -347,7 +349,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
         />
         <ActionButton
           title={index + 1 === units.length ? 'پایان و بازگشت به مسیر' : 'تمرین بعدی'}
-          style={{ ...styles.footerAction, ...styles.nextFooterAction }}
+          style={styles.footerAction}
           accent={theme.accent}
           soft={theme.soft}
           disabled={saving}
@@ -434,7 +436,7 @@ function ActionButton({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { minHeight: 72, width: '100%', maxWidth: 980, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 11, paddingHorizontal: 18, paddingTop: 45, paddingBottom: 10, borderBottomWidth: 1 },
+  header: { minHeight: 64, width: '100%', maxWidth: 980, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 15, paddingTop: 12, paddingBottom: 7, borderBottomWidth: 1 },
   headerCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
   brand: { fontSize: 6, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
   headerTitle: { fontSize: 16, lineHeight: 24, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
@@ -475,7 +477,6 @@ const styles = StyleSheet.create({
   markButtons: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
   actionButton: { minHeight: 42, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9 },
   footerAction: { flex: 1, minWidth: 0 },
-  nextFooterAction: { transform: [{ translateY: -30 }] },
   actionButtonText: { flexShrink: 1, fontSize: 10, fontWeight: '800', textAlign: 'center', writingDirection: 'rtl' },
   disabled: { opacity: 0.45 },
   clearMark: { minHeight: 36, flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-start', gap: 5, paddingHorizontal: 2 },

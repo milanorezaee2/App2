@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import {
   RecordingPresets,
@@ -36,6 +37,7 @@ const stages = ENGLISH_ENGINE_STEPS;
 
 export default function SentenceLessonScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const lesson = getSentenceLesson(id || '') ?? SENTENCE_LESSONS[0];
   const courseLevel = COURSE_LEVELS.find(item => item.id === lesson.levelId) ?? COURSE_LEVELS[0];
@@ -176,9 +178,9 @@ export default function SentenceLessonScreen() {
   if (!sessionReady) return <View style={styles.root}><PageNavigation backFallback="/lang" /><Text style={styles.stageDesc}>{sessionError || 'در حال بازیابی جلسه…'}</Text></View>;
   return (
     <View style={styles.root} onTouchStart={timer.interact}>
-      <LinearGradient colors={ENGLISH_LEVEL_GRADIENTS[courseLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.header}>
+      <LinearGradient colors={ENGLISH_LEVEL_GRADIENTS[courseLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={[styles.header, { paddingTop: Math.max(insets.top + 6, 12) }]}>
         <View style={styles.headerTop}>
-          <PageNavigation tone="dark" backFallback="/lang" />
+          <PageNavigation safeTop={false} tone="dark" backFallback="/lang" />
           <View style={styles.headerText}>
             <Text style={styles.headerEyebrow}>LEVEL {courseLevel.id} · {courseLevel.title.toUpperCase()}</Text>
             <Text style={styles.headerTitle}>{lesson.title}</Text>
@@ -395,7 +397,7 @@ export default function SentenceLessonScreen() {
         {!!completionError && <Text style={styles.stageDesc}>{completionError}</Text>}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 30, 38) }]}>
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || !!sessionError || (stage === stages.length - 1 && !evidencePassed) }} disabled={saving || !!sessionError || (stage === stages.length - 1 && !evidencePassed)} style={[styles.nextButton, (saving || (stage === stages.length - 1 && !evidencePassed)) && { opacity: .45 }]} onPress={() => void next()}>
           <Text style={styles.nextText}>{stage === stages.length - 1 ? 'پایان درس' : stage === 1 && sentenceIndex < lesson.sentences.length - 1 ? 'جمله بعدی' : 'ادامه'}</Text>
           {stage === stages.length - 1 ? <Check size={20} color={Colors.onColor} /> : <ChevronLeft size={20} color={Colors.onColor} />}
@@ -408,7 +410,7 @@ export default function SentenceLessonScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.canvas },
   // Match the German lesson player's 900px canvas and vertical safe area.
-  header: { width: '100%', maxWidth: 900, minHeight: 70, alignSelf: 'center', paddingTop: 39, paddingHorizontal: 15, paddingBottom: 8, gap: 9, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
+  header: { width: '100%', maxWidth: 900, minHeight: 64, alignSelf: 'center', paddingTop: 12, paddingHorizontal: 15, paddingBottom: 7, gap: 8, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
   headerTop: { width: '100%', maxWidth: 900, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   headerText: { flex: 1, alignItems: 'flex-end', gap: 2 },
   headerEyebrow: { color: 'rgba(255,255,255,0.72)', fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
@@ -503,7 +505,7 @@ const styles = StyleSheet.create({
   vocabWord: { fontSize: 18, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '700', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
   vocabExample: { fontSize: 13, fontWeight: '800', color: Palette.text, textAlign: 'right', writingDirection: 'ltr', marginTop: 8 },
-  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 8, paddingBottom: 35, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
-  nextButton: { width: '100%', maxWidth: 900, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3, transform: [{ translateY: -30 }] },
+  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 7, paddingBottom: 8, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
+  nextButton: { width: '100%', maxWidth: 900, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   nextText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md + 2, fontWeight: '900', color: Colors.onColor, writingDirection: 'rtl' },
 });

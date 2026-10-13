@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radius } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /** Map the icon names stored in the curriculum to real components. */
 export const LESSON_ICONS: Record<string, LucideIcon> = {
@@ -70,9 +71,10 @@ export async function speakEnglish(text: string): Promise<void> {
 
 /** Nice top bar for the mini-app screens: page title + back arrow on the right (RTL). */
 export function AgentTopBar({ title, subtitle, alignRight = false, backFallback = '/languages' }: { title: string; subtitle?: string; alignRight?: boolean; backFallback?: string }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={topBarStyles.bar}>
-      <PageNavigation tone="dark" backFallback={backFallback} />
+    <View style={[topBarStyles.bar, { paddingTop: Math.max(insets.top + 6, 12) }]}>
+      <PageNavigation safeTop={false} tone="dark" backFallback={backFallback} />
       <View style={[topBarStyles.texts, alignRight && topBarStyles.alignRightTexts]}>
         <Text style={[topBarStyles.title, alignRight && topBarStyles.alignRightText]}>{title}</Text>
         {subtitle ? <Text style={[topBarStyles.subtitle, alignRight && topBarStyles.alignRightText]}>{subtitle}</Text> : null}
@@ -86,8 +88,9 @@ const topBarStyles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 56,
-    paddingBottom: Spacing.md,
+    minHeight: 62,
+    paddingTop: 12,
+    paddingBottom: Spacing.sm,
     paddingHorizontal: Spacing.lg,
     backgroundColor: Colors.neutral[850],
     borderBottomWidth: 1,

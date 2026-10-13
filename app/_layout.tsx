@@ -15,8 +15,10 @@ import { RtlDirection } from '@/lib/theme';
 import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
 
-I18nManager.forceRTL(true);
-I18nManager.allowRTL(true);
+// Android native mirroring is disabled in withStableLayoutDirection. Persian
+// and course-language direction are applied explicitly, independent of device locale.
+I18nManager.allowRTL(false);
+I18nManager.forceRTL(false);
 SplashScreen.preventAutoHideAsync();
 
 let startupChimePlayed = false;
