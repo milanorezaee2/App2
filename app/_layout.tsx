@@ -3,8 +3,9 @@ import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
-import { I18nManager, View } from 'react-native';
+import { I18nManager, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { createAudioPlayer } from 'expo-audio';
 import {
   Vazirmatn_400Regular,
   Vazirmatn_500Medium,
@@ -20,6 +21,8 @@ import { useRealAgent } from '@/lib/useRealAgent';
 I18nManager.forceRTL(true);
 I18nManager.allowRTL(true);
 SplashScreen.preventAutoHideAsync();
+
+let startupChimePlayed = false;
 
 function RuntimeGate() {
   const pathname = usePathname();
@@ -65,7 +68,22 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) SplashScreen.hideAsync();
+    if (!fontsLoaded && !fontError) return;
+    void SplashScreen.hideAsync();
+
+    // Keep the existing splash duration: the chime begins only as the ready app
+    // replaces the native splash, and it never delays navigation.
+    if (Platform.OS !== 'web' && !startupChimePlayed) {
+      startupChimePlayed = true;
+      try {
+        const player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
+        player.volume = 0.32;
+        player.play();
+        setTimeout(() => player.remove(), 2400);
+      } catch {
+        // Audio must never block startup on devices with unavailable playback.
+      }
+    }
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return null;

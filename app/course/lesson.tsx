@@ -405,10 +405,9 @@ export default function SentenceLessonScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.canvas },
-  // Keep the lesson gradient below the device notch instead of painting behind it.
-  // A 120px safe-area gap places the gradient well below the preview notch.
-  header: { marginTop: 120, paddingTop: 10, paddingHorizontal: 20, paddingBottom: 15, gap: 14, borderRadius: 22 },
-  headerTop: { width: '100%', maxWidth: 820, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  // Match the German lesson player's 900px canvas and vertical safe area.
+  header: { width: '100%', maxWidth: 900, minHeight: 78, alignSelf: 'center', paddingTop: 44, paddingHorizontal: 20, paddingBottom: 10, gap: 12, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
+  headerTop: { width: '100%', maxWidth: 900, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   headerText: { flex: 1, alignItems: 'flex-end', gap: 2 },
   headerEyebrow: { color: 'rgba(255,255,255,0.72)', fontSize: 10, fontWeight: '900', letterSpacing: 1, writingDirection: 'ltr' },
   headerTitle: { fontFamily: Typography.fontFamily, fontSize: 20, lineHeight: 27, fontWeight: '900', color: '#FFFFFF', textAlign: 'right', writingDirection: 'rtl' },
@@ -416,10 +415,10 @@ const styles = StyleSheet.create({
   percentBadge: { minWidth: 50, height: 50, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   percent: { fontFamily: Typography.fontFamily, fontSize: 16, lineHeight: 18, fontWeight: '900', color: '#FFFFFF', writingDirection: 'rtl' },
   percentLabel: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.72)', fontSize: 9, fontWeight: '700', writingDirection: 'rtl' },
-  headerBottom: { width: '100%', maxWidth: 820, alignSelf: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
+  headerBottom: { width: '100%', maxWidth: 900, alignSelf: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
   headerInfoChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
   headerInfoText: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 11, fontWeight: '700', writingDirection: 'rtl' },
-  stepperCard: { width: '94%', maxWidth: 820, alignSelf: 'center', marginTop: 13, padding: 13, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10, shadowColor: '#20264A', shadowOpacity: .04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
+  stepperCard: { width: '100%', maxWidth: 900, alignSelf: 'center', marginTop: 12, paddingHorizontal: 20, paddingVertical: 13, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10, shadowColor: '#20264A', shadowOpacity: .04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
   stepperHeading: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   stepperEyebrow: { color: Palette.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1, writingDirection: 'ltr' },
   stepperTitle: { fontFamily: Typography.fontFamily, fontSize: 14, lineHeight: 18, fontWeight: '900', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
@@ -432,7 +431,7 @@ const styles = StyleSheet.create({
   stepSegmentCurrent: { height: 8, marginTop: -1.5, backgroundColor: Palette.teal },
   stepperEnds: { flexDirection: 'row-reverse', justifyContent: 'space-between' },
   stepperEndText: { color: Palette.muted, fontSize: 10, fontWeight: '800', writingDirection: 'ltr' },
-  content: { width: '100%', maxWidth: 820, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, gap: Spacing.md },
+  content: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28, gap: 14 },
   centerStage: { alignItems: 'center', width: '100%' },
   bigIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#DDE2FF', alignItems: 'center', justifyContent: 'center', marginVertical: Spacing.lg },
   stageEyebrow: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '800', color: Palette.primary, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
@@ -502,7 +501,7 @@ const styles = StyleSheet.create({
   vocabWord: { fontSize: 20, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '700', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
   vocabExample: { fontSize: 15, fontWeight: '700', color: Palette.text, textAlign: 'right', writingDirection: 'ltr', marginTop: 8 },
-  footer: { marginBottom: 100, paddingHorizontal: 18, paddingTop: 11, paddingBottom: 14, backgroundColor: 'rgba(255,255,255,0.96)', borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
-  nextButton: { width: '100%', maxWidth: 820, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 43, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
+  nextButton: { width: '100%', maxWidth: 900, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   nextText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md + 2, fontWeight: '900', color: Colors.onColor, writingDirection: 'rtl' },
 });

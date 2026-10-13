@@ -29,6 +29,19 @@
     "plugins": [
       "expo-router",
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#211747",
+          "image": "./assets/images/splash-learning.png",
+          "imageWidth": 280,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#211747",
+            "image": "./assets/images/splash-learning.png"
+          }
+        }
+      ],
       "expo-web-browser",
       [
         "expo-audio",
