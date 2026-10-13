@@ -15,9 +15,6 @@ import { RtlDirection } from '@/lib/theme';
 import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
 
-// Older React Native builds do not expose this switch at runtime.
-(I18nManager as typeof I18nManager & { swapLeftAndRightInRTL?: (value: boolean) => void })
-  .swapLeftAndRightInRTL?.(false);
 I18nManager.forceRTL(true);
 I18nManager.allowRTL(true);
 SplashScreen.preventAutoHideAsync();
