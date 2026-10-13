@@ -124,10 +124,10 @@ if ! timeout 30s adb exec-out screencap -p > "$screenshot_file"; then
 fi
 
 failed_step="verifying the language home screen rendered"
-# UIAutomator only reports visible nodes; the section heading is below the fold
-# on this small emulator, so assert the visible brand and hero title instead.
-if ! grep -Fq 'Language Journey' "$ui_file" || ! grep -Fq 'کلمات را کشف کن' "$ui_file"; then
-  echo 'The visible language-home brand and hero title were not found in the UI hierarchy.'
+# UIAutomator only reports visible nodes; the course cards are below the fold on
+# this small emulator, so assert the visible premium brand and new hero instead.
+if ! grep -Fq 'LANGUAGE JOURNEY' "$ui_file" || ! grep -Fq 'زبان تازه' "$ui_file"; then
+  echo 'The visible language-home brand and luxury hero title were not found in the UI hierarchy.'
   exit 1
 fi
 
