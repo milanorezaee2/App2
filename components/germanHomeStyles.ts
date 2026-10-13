@@ -23,8 +23,8 @@ export const germanHomeStyles = StyleSheet.create({
   },
   brandLockup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
   brandMark: { width: 42, height: 42, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  brandEyebrow: { fontFamily: Typography.fontFamily, fontSize: 9, fontWeight: '800', letterSpacing: 1.2, color: Palette.primary, textAlign: 'right', writingDirection: 'ltr' },
-  headerTitle: { fontFamily: Typography.fontFamily, fontSize: 20, lineHeight: 27, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
+  brandEyebrow: { fontFamily: Typography.latinFontFamily, fontSize: 9, fontWeight: '800', letterSpacing: 1.2, color: Palette.primary, textAlign: 'right', writingDirection: 'ltr' },
+  headerTitle: { fontFamily: Typography.latinFontFamily, fontSize: 20, lineHeight: 27, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   headerSubtitle: { fontFamily: Typography.fontFamily, fontSize: 10, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: 2 },
 
   heroCard: { position: 'relative', overflow: 'hidden', borderRadius: 28, padding: 19, gap: 15, borderWidth: 1, borderColor: 'rgba(215,180,107,0.34)', shadowColor: '#0D302A', shadowOpacity: 0.22, shadowRadius: 22, shadowOffset: { width: 0, height: 11 }, elevation: 6 },

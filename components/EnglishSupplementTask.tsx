@@ -57,7 +57,7 @@ export const supplementStyles = StyleSheet.create({
   sentencePattern: { fontFamily: Typography.latinFontFamily, color: EnglishPalette.primaryDark, fontSize: 10, fontWeight: '800', lineHeight: 19, textAlign: 'right', writingDirection: 'ltr' },
   english: { fontFamily: Typography.latinFontFamily, color: EnglishPalette.ink, fontSize: 14, fontWeight: '800', lineHeight: 27, textAlign: 'right', writingDirection: 'ltr' },
   input: {
-    fontFamily: Typography.fontFamily,
+    fontFamily: Typography.latinFontFamily,
     color: EnglishPalette.ink,
     backgroundColor: EnglishPalette.surfaceMuted,
     borderColor: EnglishPalette.border,

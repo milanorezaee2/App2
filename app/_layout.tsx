@@ -3,9 +3,10 @@ import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
-import { I18nManager, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import { I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createAudioPlayer } from 'expo-audio';
+import { Inter_400Regular, Inter_600SemiBold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';
@@ -19,6 +20,15 @@ import { warmSpeech } from '@/lib/responsiveSpeech';
 // and course-language direction are applied explicitly, independent of device locale.
 I18nManager.allowRTL(false);
 I18nManager.forceRTL(false);
+
+// Keep typography metrics deterministic across OEM Android builds and user font
+// scale settings. Accessibility labels remain available to screen readers.
+type StableFontDefaults = { defaultProps?: Record<string, unknown> };
+const stableText = Text as typeof Text & StableFontDefaults;
+const stableInput = TextInput as typeof TextInput & StableFontDefaults;
+stableText.defaultProps = { ...stableText.defaultProps, allowFontScaling: false, maxFontSizeMultiplier: 1 };
+stableInput.defaultProps = { ...stableInput.defaultProps, allowFontScaling: false, maxFontSizeMultiplier: 1 };
+
 SplashScreen.preventAutoHideAsync();
 
 let startupChimePlayed = false;
@@ -66,6 +76,11 @@ export default function RootLayout() {
     IRANSansBusiness: require('iransans/ttf/IRANSansWeb.ttf'),
     'IRANSansBusiness-Medium': require('iransans/ttf/IRANSansWeb_Medium.ttf'),
     'IRANSansBusiness-Bold': require('iransans/ttf/IRANSansWeb_Bold.ttf'),
+    // Latin teaching content uses bundled faces too, eliminating Android OEM
+    // font and fallback-metric differences between phones.
+    Inter: Inter_400Regular,
+    'Inter-SemiBold': Inter_600SemiBold,
+    'Inter-ExtraBold': Inter_800ExtraBold,
     // Legacy aliases keep every older screen on the same family during migration.
     Lalezar: require('iransans/ttf/IRANSansWeb.ttf'),
     Vazirmatn: require('iransans/ttf/IRANSansWeb.ttf'),
@@ -144,8 +159,8 @@ export default function RootLayout() {
 const introStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F5FAFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
   image: { width: 280, height: 280, marginBottom: -12 },
-  brand: { color: '#102A56', fontSize: 24, lineHeight: 31, fontWeight: '800', letterSpacing: 5, writingDirection: 'ltr' },
-  caption: { color: '#6882A6', fontSize: 7, fontWeight: '800', letterSpacing: 2.1, writingDirection: 'ltr', marginTop: 2 },
+  brand: { fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 24, lineHeight: 31, fontWeight: '800', letterSpacing: 5, writingDirection: 'ltr' },
+  caption: { fontFamily: 'Inter-ExtraBold', color: '#6882A6', fontSize: 7, fontWeight: '800', letterSpacing: 2.1, writingDirection: 'ltr', marginTop: 2 },
   loader: { width: 92, height: 3, borderRadius: 99, overflow: 'hidden', backgroundColor: '#DCE9F8', marginTop: 24 },
   loaderFill: { width: '100%', height: '100%', borderRadius: 99, backgroundColor: '#2878DE' },
 });

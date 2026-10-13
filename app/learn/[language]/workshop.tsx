@@ -282,10 +282,10 @@ function ChecklistRow({ label, checked, onPress }: { label: string; checked: boo
 const styles = StyleSheet.create({
   field: { width: '100%', gap: 6 },
   fieldLabel: { fontFamily: 'IRANSansBusiness', color: Palette.ink, fontSize: 12, lineHeight: 20, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  formInput: { minHeight: 48, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10, color: Palette.ink, fontSize: 13, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
-  messageInput: { minHeight: 126, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 12, color: Palette.ink, fontSize: 13, fontWeight: '800', lineHeight: 24, textAlign: 'left', writingDirection: 'ltr' },
+  formInput: { fontFamily: 'Inter-ExtraBold', minHeight: 48, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10, color: Palette.ink, fontSize: 13, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
+  messageInput: { fontFamily: 'Inter-ExtraBold', minHeight: 126, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 12, color: Palette.ink, fontSize: 13, fontWeight: '800', lineHeight: 24, textAlign: 'left', writingDirection: 'ltr' },
   sampleBox: { padding: 13, gap: 7, borderRadius: 13, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: Palette.border },
-  sampleText: { color: Palette.primaryDark, fontSize: 12, fontWeight: '800', lineHeight: 22, textAlign: 'left', writingDirection: 'ltr' },
+  sampleText: { fontFamily: 'Inter-ExtraBold', color: Palette.primaryDark, fontSize: 12, fontWeight: '800', lineHeight: 22, textAlign: 'left', writingDirection: 'ltr' },
   feedbackBox: { gap: 8 },
   checkRow: { width: '100%', minHeight: 46, flexDirection: 'row-reverse', alignItems: 'center', gap: 11, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted },
   pressed: { opacity: .82 },

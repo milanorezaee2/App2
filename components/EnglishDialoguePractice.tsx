@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   bubble: { alignSelf: 'flex-start' as const, width: '94%' as const, borderRadius: 15, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, padding: 14, gap: 7 },
   replyCard: { alignSelf: 'flex-end' as const, width: '94%' as const, borderRadius: 15, borderWidth: 1, borderColor: '#DDE2FF', backgroundColor: Palette.primarySoft, padding: 14, gap: 7 },
   speaker: { fontFamily: 'IRANSansBusiness', fontSize: 11, fontWeight: '400' as const, color: Palette.primaryDark, textAlign: 'right' as const, writingDirection: 'rtl' as const },
-  english: { fontSize: 16, fontWeight: '800', lineHeight: 27, color: Palette.ink, textAlign: 'left' as const, writingDirection: 'ltr' as const },
+  english: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', lineHeight: 27, color: Palette.ink, textAlign: 'left' as const, writingDirection: 'ltr' as const },
   persian: { fontFamily: 'IRANSansBusiness', fontSize: 14, lineHeight: 23, color: Palette.text, textAlign: 'right' as const, writingDirection: 'rtl' as const },
   soundButton: { alignSelf: 'flex-start' as const, minHeight: 34, flexDirection: 'row-reverse' as const, alignItems: 'center' as const, gap: 5 },
   soundText: { fontFamily: 'IRANSansBusiness', fontSize: 12, color: Palette.primary, writingDirection: 'rtl' as const },

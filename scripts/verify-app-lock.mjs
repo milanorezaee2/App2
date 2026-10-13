@@ -30,8 +30,9 @@ check(/deleteConversationForMe/.test(humanChat) && /confirmDeleteConversation/.t
 check(/clearEmmaHistory/.test(emmaChat) && /confirmClearConversation/.test(emmaChat), 'the Emma chat history can be deleted');
 check(/hideConversationLocally/.test(conversations) && /\.from\('learning_contacts'\)[\s\S]*?\.delete\(\)/.test(conversations), 'contact deletion is immediate locally and RLS-protected remotely');
 check(/GRANT DELETE ON TABLE public\.learning_contacts TO authenticated/.test(migration), 'database migration grants the DELETE operation constrained by existing RLS');
-check(/KeyboardAvoidingView[\s\S]*?Platform\.OS === 'android' \? 'height'/.test(humanChat)
-  && /KeyboardAvoidingView[\s\S]*?Platform\.OS === 'android' \? 'height'/.test(emmaChat), 'both composers dynamically follow the mobile keyboard');
+check(/behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/.test(humanChat)
+  && /behavior=\{Platform\.OS === 'ios' \? 'padding' : undefined\}/.test(emmaChat), 'iOS composers follow the keyboard without double-applying Android resize');
+check(/composer:\s*\{\s*flexShrink:\s*0/.test(humanChat) && /composer:\s*\{\s*flexShrink:\s*0/.test(emmaChat), 'both composers remain fully visible during keyboard resize');
 check(!/marginBottom:\s*100/.test(humanChat) && !/marginBottom:\s*100/.test(emmaChat), 'no fixed composer offset fights keyboard movement');
 
 console.log(`${checks} app-lock, deletion, and dynamic-keyboard checks passed.`);

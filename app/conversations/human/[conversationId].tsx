@@ -199,7 +199,7 @@ export default function HumanConversationScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
@@ -207,7 +207,7 @@ export default function HumanConversationScreen() {
         <View style={styles.avatar}><UserRound size={22} color={Colors.primary[300]} /></View>
         <View style={styles.headerText}><Text style={styles.name}>{name || 'مخاطب واقعی'}</Text><Text style={styles.status}>{call.phase === 'connected' ? 'تماس امن برقرار است' : 'گفتگوی خصوصی'}</Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel={ONLINE_AUDIO_ENABLED ? 'شروع تماس صوتی' : 'تماس صوتی فعلاً غیرفعال است'} accessibilityHint={!ONLINE_AUDIO_ENABLED ? ONLINE_AUDIO_DISABLED_MESSAGE : undefined} accessibilityState={{ disabled: !ONLINE_AUDIO_ENABLED || call.phase !== 'idle' }} style={[styles.callButton, !ONLINE_AUDIO_ENABLED && styles.disabled]} disabled={!ONLINE_AUDIO_ENABLED || call.phase !== 'idle'} onPress={() => void call.startCall()}><Phone size={19} color={call.phase === 'idle' && ONLINE_AUDIO_ENABLED ? Colors.success[300] : Colors.neutral[600]} /></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="حذف این مخاطب و گفتگو" style={styles.deleteButton} onPress={confirmDeleteConversation} disabled={sending}><Trash2 size={18} color={Colors.error[300]} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="حذف این مخاطب و گفتگو" accessibilityState={{ disabled: sending }} style={styles.deleteButton} onPress={confirmDeleteConversation} disabled={sending}><Trash2 size={18} color={Colors.error[300]} /></Pressable>
         <ShieldCheck size={20} color={Colors.success[400]} />
       </View>
 
@@ -227,7 +227,15 @@ export default function HumanConversationScreen() {
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={Colors.primary[400]} /><Text style={styles.centerText}>در حال بازکردن گفتگو…</Text></View>
       ) : (
-        <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={styles.messageContent} onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.messages}
+          contentContainerStyle={styles.messageContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+        >
           <View style={styles.privateNote}><ShieldCheck size={14} color={Colors.success[400]} /><Text style={styles.privateText}>فقط شما و این مخاطب پیام‌ها را می‌بینید.</Text></View>
           {!messages.length ? (
             <View style={styles.empty}><Text style={styles.emptyEmoji}>👋</Text><Text style={styles.emptyTitle}>گفتگو را شروع کنید</Text><Text style={styles.emptyDesc}>یک سلام ساده انگلیسی بهترین شروع است.</Text></View>
@@ -310,7 +318,7 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '84%', borderRadius: Radius.xl, padding: Spacing.md, borderWidth: 1 },
   mine: { alignSelf: 'flex-end', backgroundColor: Colors.primary[600], borderColor: Colors.primary[500], borderBottomRightRadius: 5 },
   theirs: { alignSelf: 'flex-start', backgroundColor: Colors.neutral[850], borderColor: Colors.neutral[700], borderBottomLeftRadius: 5 },
-  messageText: { fontSize: 16, lineHeight: 23, color: Colors.neutral[50], textAlign: 'left' },
+  messageText: { fontFamily: Typography.fontFamily, fontSize: 16, lineHeight: 24, color: Colors.neutral[50], textAlign: 'left' },
   time: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.neutral[400], marginTop: 5, textAlign: 'left' },
   voiceMessage: { minWidth: 190, flexDirection: 'row', alignItems: 'center', gap: 9 },
   voicePlay: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.neutral[50] + '22', alignItems: 'center', justifyContent: 'center' },
@@ -324,20 +332,20 @@ const styles = StyleSheet.create({
   coachAction: { flex: 1, minHeight: 34, borderRadius: Radius.md, backgroundColor: Colors.neutral[850], flexDirection: 'row-reverse', gap: 5, alignItems: 'center', justifyContent: 'center' },
   coachActionText: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.neutral[300] },
   assistResult: { borderRadius: Radius.md, backgroundColor: Colors.neutral[900], padding: Spacing.sm, gap: 5 },
-  assistPrimary: { fontSize: 14, lineHeight: 20, color: Colors.neutral[50], textAlign: 'left' },
+  assistPrimary: { fontFamily: Typography.latinFontFamily, fontSize: 14, lineHeight: 20, fontWeight: '800', color: Colors.neutral[50], textAlign: 'left', writingDirection: 'ltr' },
   assistExplanation: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.neutral[500], textAlign: 'right' },
   useSuggestion: { alignSelf: 'flex-end', borderRadius: Radius.full, backgroundColor: Colors.primary[500], paddingHorizontal: 10, paddingVertical: 6 },
   useSuggestionText: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.onColor },
-  alternative: { fontSize: 12, color: Colors.primary[200], textAlign: 'left', paddingVertical: 3 },
+  alternative: { fontFamily: Typography.latinFontFamily, fontSize: 12, fontWeight: '800', color: Colors.primary[200], textAlign: 'left', writingDirection: 'ltr', paddingVertical: 3 },
   recording: { minHeight: 34, backgroundColor: Colors.error[500] + '12', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7 },
   recordDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.error[400] },
   recordingText: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.error[300] },
   audioNotice: { minHeight: 34, paddingHorizontal: Spacing.md, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.success[500] + '0D' },
   audioNoticeText: { flexShrink: 1, fontFamily: Typography.fontFamily, fontSize: 9, lineHeight: 16, color: Colors.success[300], textAlign: 'right' },
   error: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.error[300], textAlign: 'center', paddingHorizontal: Spacing.md, paddingTop: 6, backgroundColor: Colors.neutral[900] },
-  composer: { padding: Spacing.sm, paddingBottom: 18, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 7 },
+  composer: { flexShrink: 0, padding: Spacing.sm, paddingBottom: 12, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   helper: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, minHeight: 42, maxHeight: 100, borderRadius: 21, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingVertical: 10, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Colors.neutral[100] },
+  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingVertical: 10, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Colors.neutral[100], textAlignVertical: 'center' },
   send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.primary[500], alignItems: 'center', justifyContent: 'center' },
   recordStop: { backgroundColor: Colors.error[500] },
   disabled: { opacity: .4 },

@@ -101,9 +101,9 @@ export const Radius = {
 };
 
 export const Typography = {
-  // Persian UI uses IRANSans Business; explicit LTR teaching copy falls back to the native system face.
+  // Persian UI uses IRANSans Business; explicit LTR teaching copy uses bundled Inter.
   fontFamily: 'IRANSansBusiness',
-  latinFontFamily: undefined as string | undefined,
+  latinFontFamily: 'Inter-ExtraBold',
   sizes: {
     xs: 11,
     sm: 13,

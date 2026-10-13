@@ -136,7 +136,7 @@ export default function EmmaChat() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
@@ -162,7 +162,15 @@ export default function EmmaChat() {
         <View style={styles.voiceStatus}><Text style={styles.voiceStatusText}>{recorderState.isRecording ? `در حال شنیدن شما · ${Math.max(1, Math.round(recorderState.durationMillis / 1000))} ثانیه · برای پایان دوباره بزنید` : 'در حال تبدیل صدای شما به متن…'}</Text></View>
       ) : null}
 
-      <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={styles.messageContent} onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.messages}
+        contentContainerStyle={styles.messageContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+      >
         <View style={styles.topicChip}><Sparkles size={13} color={Colors.accent[400]} /><Text style={styles.topicText}>موضوع امروز: {context?.lessonTitleFa || 'درس فعلی شما'}</Text></View>
         {messages.map((message) => (
           <View key={message.id} style={[styles.bubble, message.from === 'learner' ? styles.mine : styles.theirs]}>
@@ -232,7 +240,7 @@ const styles = StyleSheet.create({
   online: { position: 'absolute', left: 0, bottom: 2, width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.success[500], borderWidth: 2, borderColor: Colors.neutral[900] },
   headerText: { flex: 1 },
   nameRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  name: { fontSize: 18, fontWeight: '700', color: Colors.neutral[100] },
+  name: { fontFamily: Typography.latinFontFamily, fontSize: 18, fontWeight: '800', color: Colors.neutral[100] },
   status: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.success[400], textAlign: 'right', marginTop: 2 },
   deleteButton: { width: 39, height: 39, borderRadius: Radius.full, backgroundColor: Colors.error[500] + '12', alignItems: 'center', justifyContent: 'center' },
   voiceCall: { width: 39, height: 39, borderRadius: Radius.full, backgroundColor: Colors.primary[500] + '15', alignItems: 'center', justifyContent: 'center' },
@@ -246,7 +254,7 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '86%', borderRadius: Radius.xl, padding: Spacing.md, borderWidth: 1 },
   theirs: { alignSelf: 'flex-start', backgroundColor: Colors.neutral[850], borderColor: Colors.neutral[700], borderBottomLeftRadius: 5 },
   mine: { alignSelf: 'flex-end', backgroundColor: Colors.primary[600], borderColor: Colors.primary[500], borderBottomRightRadius: 5 },
-  messageText: { fontSize: 16, lineHeight: 23, color: Colors.neutral[50], textAlign: 'left' },
+  messageText: { fontFamily: Typography.latinFontFamily, fontSize: 16, lineHeight: 23, fontWeight: '800', color: Colors.neutral[50], textAlign: 'left', writingDirection: 'ltr' },
   translation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[400], textAlign: 'right', lineHeight: 19, marginTop: 7, paddingTop: 7, borderTopWidth: 1, borderTopColor: Colors.neutral[700] + '80' },
   listen: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, marginTop: 7, alignSelf: 'flex-end' },
   listenText: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.primary[300] },
@@ -254,8 +262,8 @@ const styles = StyleSheet.create({
   thinkingText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[500] },
   correctionCard: { alignSelf: 'stretch', borderRadius: Radius.lg, backgroundColor: Colors.warning[500] + '0D', borderWidth: 1, borderColor: Colors.warning[500] + '25', padding: Spacing.md, marginTop: Spacing.sm },
   correctionTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, fontWeight: Typography.weights.bold, color: Colors.warning[300], textAlign: 'right' },
-  correctionOld: { fontSize: 13, color: Colors.error[300], textDecorationLine: 'line-through', marginTop: 7 },
-  correctionNew: { fontSize: 14, color: Colors.success[300], fontWeight: '600', marginTop: 4 },
+  correctionOld: { fontFamily: Typography.latinFontFamily, fontSize: 13, fontWeight: '800', color: Colors.error[300], textDecorationLine: 'line-through', marginTop: 7, writingDirection: 'ltr' },
+  correctionNew: { fontFamily: Typography.latinFontFamily, fontSize: 14, color: Colors.success[300], fontWeight: '800', marginTop: 4, writingDirection: 'ltr' },
   correctionExplanation: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.neutral[500], textAlign: 'right', lineHeight: 18, marginTop: 6 },
   error: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.error[300], textAlign: 'center', padding: Spacing.sm },
   coachArea: { backgroundColor: Colors.neutral[900], borderTopWidth: 1, borderTopColor: Colors.neutral[800] },
@@ -267,10 +275,10 @@ const styles = StyleSheet.create({
   toolText: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.neutral[500] },
   suggestions: { gap: 7 },
   suggestion: { borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.primary[500] + '45', backgroundColor: Colors.primary[500] + '0C', paddingHorizontal: 11, paddingVertical: 7 },
-  suggestionText: { fontSize: 12, color: Colors.primary[200] },
-  composer: { padding: Spacing.sm, paddingBottom: 18, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 7 },
+  suggestionText: { fontFamily: Typography.latinFontFamily, fontSize: 12, fontWeight: '800', color: Colors.primary[200], writingDirection: 'ltr' },
+  composer: { flexShrink: 0, padding: Spacing.sm, paddingBottom: 12, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   helper: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, minHeight: 42, maxHeight: 100, borderRadius: 21, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingVertical: 10, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Colors.neutral[100] },
+  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingVertical: 10, fontFamily: Typography.latinFontFamily, fontSize: Typography.sizes.sm, fontWeight: '800', color: Colors.neutral[100], textAlignVertical: 'center', writingDirection: 'ltr' },
   send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.accent[500], alignItems: 'center', justifyContent: 'center' },
   sendDisabled: { opacity: .4 },
 });
