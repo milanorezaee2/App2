@@ -281,7 +281,7 @@ function ChecklistRow({ label, checked, onPress }: { label: string; checked: boo
 
 const styles = StyleSheet.create({
   field: { width: '100%', gap: 6 },
-  fieldLabel: { color: Palette.ink, fontSize: 12, lineHeight: 20, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  fieldLabel: { fontFamily: 'IRANSansBusiness', color: Palette.ink, fontSize: 12, lineHeight: 20, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
   formInput: { minHeight: 48, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10, color: Palette.ink, fontSize: 13, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   messageInput: { minHeight: 126, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 12, color: Palette.ink, fontSize: 13, fontWeight: '800', lineHeight: 24, textAlign: 'left', writingDirection: 'ltr' },
   sampleBox: { padding: 13, gap: 7, borderRadius: 13, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: Palette.border },
@@ -292,6 +292,6 @@ const styles = StyleSheet.create({
   checkbox: { width: 21, height: 21, borderRadius: 6, borderWidth: 1.5, borderColor: Palette.muted, alignItems: 'center', justifyContent: 'center' },
   checkboxChecked: { backgroundColor: Palette.primary, borderColor: Palette.primary },
   checkMark: { color: '#FFFFFF', fontSize: 14, lineHeight: 17, fontWeight: '800' },
-  checkLabel: { flex: 1, color: Palette.ink, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+  checkLabel: { fontFamily: 'IRANSansBusiness', flex: 1, color: Palette.ink, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   confirmRow: { flexDirection: 'row-reverse', gap: 10 },
 });

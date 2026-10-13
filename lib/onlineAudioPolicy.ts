@@ -1,10 +1,11 @@
 /**
- * Outbound learner audio is intentionally blocked pending product consent,
- * upload/retention terms, and a documented opt-in decision. Playback of existing
- * audio and on-device speech synthesis are separate capabilities.
+ * Real-time calls and voice messages are enabled by product request. Recording
+ * still starts only after an explicit tap and Android/iOS microphone permission;
+ * voice-message objects remain private to conversation participants through the
+ * existing Supabase Storage RLS policies.
  */
-export const ONLINE_AUDIO_ENABLED = false;
-export const ONLINE_AUDIO_DISABLED_MESSAGE = 'ضبط و ارسال آنلاین صدا فعلاً غیرفعال است؛ پیام متنی را می‌توانید ارسال کنید.';
+export const ONLINE_AUDIO_ENABLED = true;
+export const ONLINE_AUDIO_DISABLED_MESSAGE = 'ارسال صوت در این نسخه در دسترس نیست.';
 
 export function requireOnlineAudioEnabled(): void {
   if (!ONLINE_AUDIO_ENABLED) throw new Error(ONLINE_AUDIO_DISABLED_MESSAGE);

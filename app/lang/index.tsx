@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   currentLevelName: { fontFamily: Typography.latinFontFamily, color: HomeColors.ink, fontSize: 9, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
   currentLevelDescription: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 8, textAlign: 'right', writingDirection: 'rtl' },
   currentLevelCount: { alignItems: 'center', minWidth: 45 },
-  levelCountValue: { fontSize: 12, fontWeight: '900', writingDirection: 'rtl' },
+  levelCountValue: { fontFamily: 'IRANSansBusiness', fontSize: 12, fontWeight: '900', writingDirection: 'rtl' },
   levelCountLabel: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 8, writingDirection: 'rtl' },
   mapToggle: { minHeight: 50, flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 11, borderRadius: 15, backgroundColor: '#FAF8F4', borderWidth: 1, borderColor: '#EAE3D6' },
   mapToggleIcon: { width: 31, height: 31, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: HomeColors.goldSoft },

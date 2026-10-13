@@ -6,7 +6,6 @@ import { SplashScreen } from 'expo-router';
 import { I18nManager, Image, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createAudioPlayer } from 'expo-audio';
-import { Lalezar_400Regular } from '@expo-google-fonts/lalezar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
@@ -61,12 +60,16 @@ export default function RootLayout() {
   useFrameworkReady();
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   const [fontsLoaded, fontError] = useFonts({
-    // Keep legacy family aliases so every existing Persian screen receives the
-    // same regular Lalezar face without changing its content or structure.
-    Lalezar: Lalezar_400Regular,
-    Vazirmatn: Lalezar_400Regular,
-    'Vazirmatn-Medium': Lalezar_400Regular,
-    'Vazirmatn-Bold': Lalezar_400Regular,
+    // Bundle the downloaded IRANSans business-style faces locally so Persian UI
+    // typography is identical offline and independent of the Android system font.
+    IRANSansBusiness: require('iransans/ttf/IRANSansWeb.ttf'),
+    'IRANSansBusiness-Medium': require('iransans/ttf/IRANSansWeb_Medium.ttf'),
+    'IRANSansBusiness-Bold': require('iransans/ttf/IRANSansWeb_Bold.ttf'),
+    // Legacy aliases keep every older screen on the same family during migration.
+    Lalezar: require('iransans/ttf/IRANSansWeb.ttf'),
+    Vazirmatn: require('iransans/ttf/IRANSansWeb.ttf'),
+    'Vazirmatn-Medium': require('iransans/ttf/IRANSansWeb_Medium.ttf'),
+    'Vazirmatn-Bold': require('iransans/ttf/IRANSansWeb_Bold.ttf'),
   });
 
   useEffect(() => {

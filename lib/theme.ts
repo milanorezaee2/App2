@@ -101,8 +101,8 @@ export const Radius = {
 };
 
 export const Typography = {
-  // Persian UI uses Lalezar; explicit LTR teaching copy falls back to the native system face.
-  fontFamily: 'Lalezar',
+  // Persian UI uses IRANSans Business; explicit LTR teaching copy falls back to the native system face.
+  fontFamily: 'IRANSansBusiness',
   latinFontFamily: undefined as string | undefined,
   sizes: {
     xs: 11,

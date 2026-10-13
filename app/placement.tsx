@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   optionSelected: { backgroundColor: '#F3F0FE', borderColor: colors.violet },
   optionNumber: { width: 27, height: 27, alignItems: 'center', justifyContent: 'center', borderRadius: 9, backgroundColor: '#F2F0F7' },
   optionNumberSelected: { backgroundColor: colors.violet },
-  optionNumberText: { color: colors.muted, fontSize: 10, fontWeight: '800', writingDirection: 'rtl' },
+  optionNumberText: { fontFamily: 'IRANSansBusiness', color: colors.muted, fontSize: 10, fontWeight: '800', writingDirection: 'rtl' },
   optionText: { flex: 1, fontFamily: Typography.fontFamily, color: colors.text, fontSize: 12, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
   optionTextLtr: { textAlign: 'left', writingDirection: 'ltr' },
   optionTextSelected: { color: colors.violet, fontWeight: '800' },
