@@ -136,3 +136,75 @@ if ! grep -Fq 'MILO' "$ui_file" || ! grep -Fq 'هر روز، یک قدم' "$ui_f
 fi
 
 echo 'Android emulator opened MiloMultiApp and rendered its language-home screen.'
+
+failed_step="opening the Emma chat keyboard test route"
+timeout 60s adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/emma' com.devicecontrol.companion
+sleep 8
+capture_ui
+
+failed_step="locating the English chat composer"
+composer_coords="$(python3 - "$ui_file" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+for node in ET.parse(sys.argv[1]).getroot().iter():
+    label = node.attrib.get('content-desc', '')
+    text = node.attrib.get('text', '')
+    if label == 'پیام انگلیسی برای Emma' or (node.attrib.get('class') == 'android.widget.EditText' and 'پیام انگلیسی' in text):
+        match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+        if match:
+            x1, y1, x2, y2 = map(int, match.groups())
+            print((x1 + x2) // 2, (y1 + y2) // 2)
+            break
+PY
+)"
+if [[ -z "$composer_coords" ]]; then
+  echo 'The Emma chat composer was not found through Android accessibility.'
+  exit 1
+fi
+read -r composer_x composer_y <<< "$composer_coords"
+
+failed_step="opening the Android keyboard in the Emma composer"
+adb shell settings put secure show_ime_with_hard_keyboard 1
+adb shell input tap "$composer_x" "$composer_y"
+sleep 5
+capture_ui
+
+failed_step="verifying the composer remains fully visible above the keyboard"
+keyboard_state="$(adb shell dumpsys input_method 2>/dev/null || true)"
+if ! grep -Eq 'mInputShown=true|isInputViewShown=true|inputShown=true' <<< "$keyboard_state"; then
+  echo 'Android did not report a visible software keyboard after focusing the composer.'
+  exit 1
+fi
+
+density_dpi="$(adb shell wm density | grep -Eo '[0-9]+' | tail -n 1)"
+python3 - "$ui_file" "${density_dpi:-160}" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, density_value = sys.argv[1], int(sys.argv[2])
+minimum_height = round(40 * density_value / 160)
+for node in ET.parse(path).getroot().iter():
+    label = node.attrib.get('content-desc', '')
+    text = node.attrib.get('text', '')
+    if label == 'پیام انگلیسی برای Emma' or (node.attrib.get('class') == 'android.widget.EditText' and 'پیام انگلیسی' in text):
+        match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+        if not match:
+            raise SystemExit('Composer bounds are unavailable while the keyboard is open.')
+        x1, y1, x2, y2 = map(int, match.groups())
+        height = y2 - y1
+        if height < minimum_height:
+            raise SystemExit(f'Composer is clipped: {height}px visible; expected at least {minimum_height}px at {density_value}dpi.')
+        if x2 <= x1 or y2 <= y1:
+            raise SystemExit(f'Composer has invalid bounds: {node.attrib.get("bounds")}')
+        print(f'Emma composer remains fully visible at {height}px with the Android keyboard open.')
+        break
+else:
+    raise SystemExit('Composer disappeared from accessibility while the keyboard was open.')
+PY
+
+failed_step="capturing the keyboard-open chat screen"
+timeout 30s adb exec-out screencap -p > "$screenshot_file"
+echo 'Android emulator verified the full-height chat composer with the software keyboard open.'

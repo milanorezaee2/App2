@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
   focusHeadingRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
   focusIcon: { width: 36, height: 36, borderRadius: 13, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   focusHeadingCopy: { flex: 1, alignItems: 'flex-end', gap: 1 },
-  focusEyebrow: { color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  focusEyebrow: { fontFamily: Typography.latinFontFamily, color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1.2, writingDirection: 'ltr' },
   focusTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 17, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   focusDescription: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   moduleGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7 },

@@ -3,6 +3,7 @@ import { Check } from 'lucide-react-native';
 import { COURSE_LEVELS, type CourseLevelId } from '@/lib/courseContent';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { toPersianDigits } from '@/lib/format';
+import { Typography } from '@/lib/theme';
 
 export const ENGLISH_LEVEL_GRADIENTS: Record<CourseLevelId, [string, string]> = {
   0: ['#6555E9', '#29246F'],
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
   railNode: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   railNodeActive: { backgroundColor: Palette.primary, borderColor: Palette.primary, shadowColor: Palette.primary, shadowOpacity: 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
   railNodeDone: { backgroundColor: Palette.success, borderColor: Palette.success },
-  railNodeText: { color: Palette.muted, fontSize: 11, fontWeight: '800' },
+  railNodeText: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 11, fontWeight: '800', writingDirection: 'rtl' },
   railNodeTextActive: { color: '#FFFFFF' },
   railLabel: { fontFamily: 'Inter-ExtraBold', maxWidth: 42, color: Palette.muted, fontSize: 6, fontWeight: '800', textAlign: 'center', writingDirection: 'ltr' },
   railLabelActive: { color: Palette.primaryDark },

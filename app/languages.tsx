@@ -8,6 +8,7 @@ import { FEATURES } from '@/lib/features';
 import { SENTENCE_LESSONS } from '@/lib/courseContent';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { toPersianDigits as fa } from '@/lib/format';
+import { Typography } from '@/lib/theme';
 
 const languageMeta = {
   en: { flag: '🇬🇧', code: 'EN', nativeName: 'English', tint: '#EAF2FF', border: '#CFE0FF' },
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
   flowEyebrow: { fontFamily: 'IRANSansBusiness', color: '#1769D2', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   flowTitle: { fontFamily: 'IRANSansBusiness', color: '#102A56', fontSize: 16, lineHeight: 25, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   minutesBadge: { minWidth: 64, borderRadius: 14, backgroundColor: '#EAF3FF', borderWidth: 1, borderColor: '#D3E5FC', paddingVertical: 7, alignItems: 'center' },
-  minutesValue: { color: '#1769D2', fontSize: 17, lineHeight: 19, fontWeight: '900' },
+  minutesValue: { fontFamily: Typography.fontFamily, writingDirection: 'rtl', color: '#1769D2', fontSize: 17, lineHeight: 19, fontWeight: '900' },
   minutesText: { fontFamily: 'IRANSansBusiness', color: '#6680A5', fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
   stepsRow: { flexDirection: 'row-reverse', alignItems: 'flex-start' },
   stepWrap: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center' },

@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
   railWrap: { paddingVertical: 3, paddingHorizontal: 3 },
   currentLevelCard: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 11, borderRadius: 17, backgroundColor: '#FBF9F4', borderWidth: 1, borderColor: '#EAE2D3' },
   levelNumber: { width: 35, height: 35, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  levelNumberText: { fontSize: 14, fontWeight: '900' },
+  levelNumberText: { fontFamily: Typography.fontFamily, writingDirection: 'rtl', fontSize: 14, fontWeight: '900' },
   currentLevelCopy: { flex: 1, alignItems: 'stretch', gap: 1 },
   currentLevelName: { fontFamily: Typography.latinFontFamily, color: HomeColors.ink, fontSize: 9, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
   currentLevelDescription: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 8, textAlign: 'right', writingDirection: 'rtl' },

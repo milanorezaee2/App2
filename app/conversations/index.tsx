@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   onlineDot: { position: 'absolute', left: 1, bottom: 3, width: 13, height: 13, borderRadius: 7, backgroundColor: Colors.success[500], borderWidth: 2, borderColor: Colors.neutral[850] },
   contactText: { flex: 1 },
   nameRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  contactName: { fontSize: 19, fontWeight: '700', color: Colors.neutral[50] },
+  contactName: { fontFamily: Typography.latinFontFamily, fontSize: 19, fontWeight: '800', color: Colors.neutral[50], textAlign: 'left', writingDirection: 'ltr' },
   aiBadge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, borderRadius: Radius.full, paddingHorizontal: 7, paddingVertical: 3, backgroundColor: Colors.accent[500] + '15' },
   aiBadgeText: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.accent[300] },
   contactDesc: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[400], textAlign: 'right', lineHeight: 18, marginTop: 3 },

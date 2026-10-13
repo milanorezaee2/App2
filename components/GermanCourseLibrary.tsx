@@ -24,6 +24,7 @@ import {
 } from '@/lib/languages/germanSentenceCourse';
 import { germanProgress } from '@/lib/languages/catalog';
 import type { CourseProgress } from '@/lib/createCourseProgressStore';
+import { Typography } from '@/lib/theme';
 
 function resolveLevel(value?: string): GermanSentenceLevelId | null {
   if (value === undefined) return null;
@@ -330,7 +331,7 @@ const styles = StyleSheet.create({
   levelList: { gap: 9 },
   levelOption: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
   levelOptionMark: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  levelOptionNumber: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+  levelOptionNumber: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 15, fontWeight: '800', writingDirection: 'rtl' },
   levelOptionContent: { flex: 1, gap: 4 },
   levelOptionTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   levelOptionTitle: { flexShrink: 1, fontFamily: 'IRANSansBusiness', color: Palette.ink, fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
   focusHeadingRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
   focusIcon: { width: 36, height: 36, borderRadius: 13, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   focusHeadingCopy: { flex: 1, alignItems: 'flex-end', gap: 1 },
-  focusEyebrow: { color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
+  focusEyebrow: { fontFamily: Typography.latinFontFamily, color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1.2, writingDirection: 'ltr' },
   focusTitle: { fontFamily: 'IRANSansBusiness', color: Palette.ink, fontSize: 16, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   focusDescription: { fontFamily: 'IRANSansBusiness', color: Palette.text, fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
   moduleGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7 },
