@@ -1,477 +1,271 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, ImageSourcePropType, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Award, BarChart3, BookOpen, ChevronDown, ChevronLeft, Clock, Cloud, Globe2, Headphones, Layers3, Mic, RefreshCw, ShieldCheck, Sparkles, Star, TrendingUp } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Award,
+  BookOpenCheck,
+  Check,
+  ChevronLeft,
+  Clock3,
+  Globe2,
+  Headphones,
+  Layers3,
+  Mic2,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Volume2,
+} from 'lucide-react-native';
 import { LANGUAGES } from '@/lib/languages/catalog';
 import { FEATURES } from '@/lib/features';
-import { COURSE_LEVELS, SENTENCE_LESSONS, type CourseLevelId } from '@/lib/courseContent';
+import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
 import { GERMAN_SENTENCE_LESSONS, germanSentenceLevelMetrics } from '@/lib/languages/germanSentenceCourse';
 import { toPersianDigits as fa } from '@/lib/format';
 
-const ink = '#24213A';
-const muted = '#777388';
-const violet = '#7656DF';
-
 const activeLanguages = LANGUAGES.filter(language => language.id !== 'ru' || FEATURES.russianCourse);
+const totalEnglishSentences = SENTENCE_LESSONS.reduce((total, lesson) => total + lesson.sentences.length, 0);
+const totalGermanSentences = GERMAN_SENTENCE_LESSONS.reduce((total, lesson) => total + lesson.sentences.length, 0);
+const totalLessons = SENTENCE_LESSONS.length + GERMAN_SENTENCE_LESSONS.length;
+const totalSentences = totalEnglishSentences + totalGermanSentences;
 
-const ENGLISH_LEVEL_LABELS: Record<CourseLevelId, string> = {
-  0: 'پایه',
-  1: 'موقعیت‌های ضروری',
-  2: 'روزمره',
-  3: 'ارتباط',
-  4: 'پیشرفته',
-};
-
-const englishLevelSummaries = COURSE_LEVELS.map(level => {
-  const lessons = SENTENCE_LESSONS.filter(lesson => lesson.levelId === level.id);
-  return {
-    id: level.id,
-    label: ENGLISH_LEVEL_LABELS[level.id],
-    lessonCount: lessons.length,
-    sentenceCount: lessons.reduce((count, lesson) => count + lesson.sentences.length, 0),
-  };
-});
-const totalEnglishSentences = englishLevelSummaries.reduce((count, level) => count + level.sentenceCount, 0);
-const totalEnglishLessons = englishLevelSummaries.reduce((count, level) => count + level.lessonCount, 0);
-
-const germanLevelSummaries = ([
-  { id: 0, label: 'مقدماتی' },
-  { id: 1, label: 'پایه (A1)' },
-  { id: 2, label: 'روزمره (A2)' },
-  { id: 3, label: 'بیان و ارتباط (B1)' },
-] as const).map(level => ({ ...level, ...germanSentenceLevelMetrics(level.id) }));
-const totalGermanSentences = GERMAN_SENTENCE_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0);
-
-const BENEFITS = [
-  {
-    id: 'daily',
-    title: '۵ دقیقه در روز',
-    desc: 'درس‌های کوتاه و متمرکز — بدون فشار، هر روز یک قدم',
-    icon: Clock,
-    soft: '#F0EAFE',
-    ink: '#704FD2',
-  },
-  {
-    id: 'voice',
-    title: 'تلفظ هوشمند',
-    desc: 'تحلیل صدا و بازخورد فوری برای لهجه بهتر',
-    icon: Mic,
-    soft: '#E6F5EF',
-    ink: '#197D70',
-  },
-  {
-    id: 'progress',
-    title: 'پیشرفت قابل مشاهده',
-    desc: 'نمودار هفتگی، استریک و یادآور هوشمند',
-    icon: TrendingUp,
-    soft: '#FEF3E2',
-    ink: '#B45309',
-  },
-  {
-    id: 'sync',
-    title: 'همگام بین دستگاه‌ها',
-    desc: 'با ورود ایمیلی، همه‌چیز امن ذخیره می‌شود',
-    icon: RefreshCw,
-    soft: '#EBF0FA',
-    ink: '#4267A8',
-  },
-] as const;
-
-const STATS = [
-  { label: 'مسیر فعال', value: () => `${fa(activeLanguages.length)} مسیر` },
-  { label: 'درس', value: () => `${fa(totalEnglishLessons + GERMAN_SENTENCE_LESSONS.length)} درس` },
-  { label: 'جمله', value: () => `${fa(totalEnglishSentences + totalGermanSentences)} جمله` },
-  { label: 'رضایت', value: () => '۴.۸ ★' },
-] as const;
-
-
-const accents = {
+const coursePresentation = {
   en: {
-    ink: '#704FD2', soft: '#F0EAFE', line: '#E1D8FA', gradient: ['#3A216E', '#7753D6', '#A77BE8'],
-    greeting: 'Hello!', caption: 'هر جمله، یک شروع تازه', orbit: '#E4C6FF', available: 'مسیر انگلیسی',
+    code: 'EN',
+    nativeName: 'English',
+    eyebrow: 'ENGLISH PATH',
+    colors: ['#38206B', '#6743C7', '#9A72EC'] as const,
+    glow: '#B895FF',
+    image: require('../assets/english-learning-hero.jpg') as ImageSourcePropType,
+    levels: `${fa(COURSE_LEVELS.length)} مرحله`,
+    lessons: `${fa(SENTENCE_LESSONS.length)} درس`,
+    sentences: `${fa(totalEnglishSentences)} جمله`,
+    detail: 'از پایه تا مکالمهٔ پیشرفته، با جمله‌های واقعی و مرور هوشمند',
+    duration: '۵ تا ۱۲ دقیقه',
+    placement: 'تعیین سطح انگلیسی',
   },
   de: {
-    ink: '#197D70', soft: '#E6F5EF', line: '#D0E9DF', gradient: ['#124B59', '#1E877B', '#55B6A2'],
-    greeting: 'Hallo!', caption: 'قدم‌به‌قدم، از پایه', orbit: '#B8F0CF', available: 'مسیر آلمانی',
+    code: 'DE',
+    nativeName: 'Deutsch',
+    eyebrow: 'DEUTSCH PATH',
+    colors: ['#0F423B', '#167467', '#45AA8F'] as const,
+    glow: '#79E2C3',
+    image: require('../assets/german-learning-hero.jpg') as ImageSourcePropType,
+    levels: `${fa(4)} مرحله`,
+    lessons: `${fa(GERMAN_SENTENCE_LESSONS.length)} درس`,
+    sentences: `${fa(totalGermanSentences)} جمله`,
+    detail: 'مسیر جمله‌محور Pre-A1 تا B1 با تلفظ، واژگان و مکالمه',
+    duration: '۵ تا ۱۰ دقیقه',
+    placement: 'تعیین سطح آلمانی',
   },
   ru: {
-    ink: '#4267A8', soft: '#EBF0FA', line: '#D9E3F4', gradient: ['#304A82', '#5278B8', '#83A4D8'],
-    greeting: 'Привет!', caption: 'گام‌به‌گام با خط سیریلیک', orbit: '#D5E5FF', available: 'مسیر روسی',
+    code: 'RU',
+    nativeName: 'Русский',
+    eyebrow: 'RUSSIAN PATH',
+    colors: ['#263A68', '#4267A8', '#7899D0'] as const,
+    glow: '#A9C6FF',
+    image: require('../assets/language-learning-hero.jpg') as ImageSourcePropType,
+    levels: `${fa(5)} مرحله`,
+    lessons: 'مسیر آغازین',
+    sentences: 'تمرین جمله‌محور',
+    detail: 'شروع قدم‌به‌قدم با خط سیریلیک و جمله‌های کاربردی',
+    duration: '۵ تا ۱۰ دقیقه',
+    placement: 'شروع مسیر روسی',
   },
 } as const;
 
-function FantasyPortal({ compact, tiny }: { compact: boolean; tiny: boolean }) {
-  return (
-    <View style={[styles.artStage, compact && styles.artStageCompact, tiny && styles.artStageTiny]} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <View style={[styles.artOrbit, compact && styles.artOrbitCompact, tiny && styles.artOrbitTiny]} />
-      <Image
-        source={require('../assets/language-learning-hero.jpg')}
-        resizeMode="cover"
-        style={[styles.artImage, compact && styles.artImageCompact, tiny && styles.artImageTiny]}
-      />
-      <View style={styles.artStarTop}><Star size={15} color="#FFE7A7" fill="#FFE7A7" /></View>
-      <View style={styles.artStarSide}><Sparkles size={20} color="#C6F4E5" /></View>
-    </View>
-  );
-}
+const proofItems = [
+  { value: `${fa(activeLanguages.length)}`, label: 'مسیر فعال' },
+  { value: fa(totalLessons), label: 'درس ساختاریافته' },
+  { value: fa(totalSentences), label: 'جملهٔ واقعی' },
+  { value: 'آفلاین', label: 'حفظ پیشرفت' },
+] as const;
+
+const features = [
+  { icon: Volume2, title: 'صدای طبیعی', detail: 'سرعت عادی و تمرین آهسته', color: '#BBA1FF', soft: 'rgba(132,94,220,0.15)' },
+  { icon: BookOpenCheck, title: 'مسیر روشن', detail: 'درس کوتاه و مرحله‌بندی‌شده', color: '#77D8BC', soft: 'rgba(59,176,145,0.14)' },
+  { icon: Award, title: 'مرور ماندگار', detail: 'تکرار هوشمند بر اساس پیشرفت', color: '#F2C879', soft: 'rgba(220,164,64,0.14)' },
+] as const;
 
 export default function LanguagesHome() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [hydrated, setHydrated] = useState(false);
-  const [details, setDetails] = useState(false);
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [focused, setFocused] = useState<string | null>(null);
-
   useEffect(() => setHydrated(true), []);
-  // Native phones use the purpose-built responsive layout. Scaling the 1120px
-  // desktop canvas down made labels, images, and controls too small to read.
-  const compact = !hydrated || width < 760;
-  const tiny = !hydrated || width < 380;
+  const compact = !hydrated || width < 720;
+  const tiny = !hydrated || width < 390;
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={[styles.page, compact && styles.pageCompact]} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={[styles.header, tiny && styles.headerTiny]}>
-            <View style={styles.brandRow}>
-              <LinearGradient colors={['#9B78F0', '#5E42C5']} style={styles.logo}>
-                <Globe2 size={24} color="#FFFFFF" strokeWidth={1.8} />
-                <View style={styles.logoSpark}><Sparkles size={10} color="#FFEBA9" fill="#FFEBA9" /></View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.page, compact && styles.pageCompact]}
+      >
+        <View style={styles.shell}>
+          <View style={styles.topbar}>
+            <View style={styles.brandLockup}>
+              <LinearGradient colors={['#A887FF', '#6544D0']} style={styles.brandMark}>
+                <Globe2 size={22} color="#FFFFFF" strokeWidth={1.8} />
+                <Sparkles size={10} color="#FFE7A7" fill="#FFE7A7" style={styles.brandSpark} />
               </LinearGradient>
               <View style={styles.brandCopy}>
-                <Text style={[styles.brand, tiny && styles.brandTiny]}>Language Journey</Text>
-                <Text style={styles.brandCaption}>دنیای تازه‌ای با هر جمله</Text>
+                <Text style={styles.brandName}>LANGUAGE JOURNEY</Text>
+                <Text style={styles.brandFa}>آموزش زبان، طراحی‌شده برای پیشرفت واقعی</Text>
               </View>
             </View>
-            <View style={[styles.headerTag, tiny && styles.headerTagTiny]}>
-              <View style={styles.liveDot} />
-              <Text style={styles.headerTagText}>{tiny ? `${fa(activeLanguages.length)} مسیر` : `${fa(activeLanguages.length)} مسیر آمادهٔ شروع`}</Text>
+            <View style={styles.premiumBadge}>
+              <Star size={12} color="#F5CD79" fill="#F5CD79" />
+              <Text style={styles.premiumText}>PREMIUM LEARNING</Text>
             </View>
           </View>
 
           <LinearGradient
-            colors={['#17112F', '#29205E', '#4A348F']}
-            start={{ x: 0.95, y: 0.08 }}
-            end={{ x: 0.05, y: 1 }}
+            colors={['#171229', '#241A43', '#34245B']}
+            start={{ x: .92, y: .02 }}
+            end={{ x: .05, y: 1 }}
             style={[styles.hero, compact && styles.heroCompact]}
           >
-            <View pointerEvents="none" style={styles.heroGlowOne} />
-            <View pointerEvents="none" style={styles.heroGlowTwo} />
-            <View style={[styles.heroCopy, compact && styles.heroCopyCompact]}>
-              <View style={styles.eyebrow}>
-                <Sparkles size={14} color="#FFE19A" />
-                <Text style={styles.eyebrowText}>یک قدم کوچک، یک دنیای بزرگ</Text>
+            <View style={styles.heroGlowOne} pointerEvents="none" />
+            <View style={styles.heroGlowTwo} pointerEvents="none" />
+            <View style={[styles.heroContent, compact && styles.heroContentCompact]}>
+              <View style={styles.heroEyebrow}>
+                <View style={styles.liveDot} />
+                <Text style={styles.heroEyebrowText}>یک مسیر شخصی برای هر زبان‌آموز</Text>
               </View>
-              <Text accessibilityRole="header" style={[styles.title, compact && styles.titleCompact]}>
-                کلمات را کشف کن؛{'\n'}<Text style={styles.titleAccent}>دنیاها را باز کن.</Text>
+              <Text accessibilityRole="header" style={[styles.heroTitle, compact && styles.heroTitleCompact]}>
+                زبان تازه،{`\n`}نسخهٔ تازه‌ای از تو.
               </Text>
-              <Text style={styles.description}>
-                مسیر خودت را انتخاب کن؛ با جمله‌های واقعی، صدا و تمرین‌های کوتاه، هر روز کمی جلوتر برو.
+              <Text style={styles.heroDescription}>
+                با جمله‌های واقعی، شنیدن هدفمند و تمرین‌های کوتاه پیش برو؛ بدون شلوغی، بدون حفظ‌کردن بی‌هدف.
               </Text>
-              <View style={styles.heroFacts}>
-                <View style={styles.fact}>
-                  <Layers3 size={15} color="#D8C5FF" />
-                  <Text style={styles.factText}>دو مسیر آموزشی</Text>
-                </View>
-                <View style={styles.factDivider} />
-                <View style={styles.fact}>
-                  <Headphones size={15} color="#B8F2DD" />
-                  <Text style={styles.factText}>صدا و تمرین روزانه</Text>
-                </View>
+              <View style={styles.heroHighlights}>
+                <View style={styles.heroHighlight}><Check size={13} color="#8BE0C5" /><Text style={styles.heroHighlightText}>محتوای جمله‌محور</Text></View>
+                <View style={styles.heroHighlight}><Check size={13} color="#8BE0C5" /><Text style={styles.heroHighlightText}>پیشرفت ذخیره‌شونده</Text></View>
               </View>
             </View>
-            <FantasyPortal compact={compact} tiny={tiny} />
-            {compact && (
-              <View style={styles.mobileTrail} pointerEvents="none" accessibilityElementsHidden>
-                <View style={styles.trailDot} /><View style={styles.trailLine} /><View style={[styles.trailDot, styles.trailDotMint]} />
-                <Text style={styles.trailText}>شروع سفر تو همین‌جاست</Text>
+            <View style={[styles.heroArt, compact && styles.heroArtCompact]} pointerEvents="none">
+              <View style={styles.heroArtHalo} />
+              <Image source={require('../assets/images/splash-learning.png')} resizeMode="cover" style={[styles.heroImage, compact && styles.heroImageCompact]} />
+              <View style={styles.heroArtBadge}>
+                <Headphones size={14} color="#FFFFFF" />
+                <Text style={styles.heroArtBadgeText}>بشنو · تکرار کن · پیش برو</Text>
               </View>
-            )}
+            </View>
           </LinearGradient>
 
-          <View style={styles.section}>
-            <View style={styles.sectionHeading}>
-              <View style={styles.sectionEyebrowRow}><Sparkles size={13} color={violet} /><Text style={styles.sectionEyebrow}>CHOOSE YOUR JOURNEY</Text></View>
-              <Text style={styles.sectionTitle}>کدام دنیا را باز کنیم؟</Text>
-              <Text style={styles.sectionSubtitle}>یک زبان انتخاب کن و سفر خودت را شروع کن.</Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderCopy}>
+              <Text style={styles.sectionEyebrow}>SELECT YOUR PATH</Text>
+              <Text style={styles.sectionTitle}>مسیر یادگیری خودت را انتخاب کن</Text>
+              <Text style={styles.sectionDescription}>هر مسیر مستقل است و پیشرفت آن جداگانه ذخیره می‌شود.</Text>
             </View>
-            {!tiny && <View style={styles.sectionCount}><Text style={styles.sectionCountText}>{fa(activeLanguages.length)} / مسیرهای فعال</Text></View>}
+            <View style={styles.pathCount}><Layers3 size={15} color="#9B81E8" /><Text style={styles.pathCountText}>{fa(activeLanguages.length)} مسیر حرفه‌ای</Text></View>
           </View>
 
-          <View style={[styles.cards, compact && styles.cardsCompact]}>
+          <View style={styles.courseRow}>
             {activeLanguages.map(language => {
-              const accent = accents[language.id as keyof typeof accents];
-              const active = hovered === language.id || focused === language.id;
+              const presentation = coursePresentation[language.id as keyof typeof coursePresentation];
               return (
-                <Pressable
-                  key={language.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`ورود به آموزش ${language.name}`}
-                  accessibilityHint={`باز کردن درس‌ها و مرور ${language.name}`}
-                  onHoverIn={() => setHovered(language.id)}
-                  onHoverOut={() => setHovered(null)}
-                  onFocus={() => setFocused(language.id)}
-                  onBlur={() => setFocused(null)}
-                  onPress={() => router.push(language.home as never)}
-                  style={({ pressed }) => [
-                    styles.card,
-                    compact && styles.cardCompact,
-                    { borderColor: active ? accent.ink : accent.line },
-                    active && styles.cardActive,
-                    pressed && styles.cardPressed,
-                  ]}
-                >
-                  <LinearGradient colors={accent.gradient} start={{ x: 0.95, y: 0 }} end={{ x: 0.05, y: 1 }} style={styles.cardCover}>
-                    <View pointerEvents="none" style={[styles.coverOrb, { borderColor: accent.orbit }]} />
-                    <View pointerEvents="none" style={[styles.coverGlow, { backgroundColor: accent.orbit }]} />
-                    <View style={styles.cardTop}>
-                      <View style={styles.languageIcon}><Text style={[styles.code, { color: accent.ink }]}>{language.id.toUpperCase()}</Text></View>
-                      <View style={styles.available}>
-                        <View style={styles.smallDot} />
-                        <Text style={styles.availableText}>{accent.available}</Text>
-                      </View>
+                <View key={language.id} style={styles.courseCard}>
+                  <LinearGradient colors={presentation.colors} style={styles.courseCover}>
+                    <Image source={presentation.image} resizeMode="cover" style={styles.courseImage} />
+                    <LinearGradient colors={['rgba(8,8,20,0.02)', 'rgba(8,8,20,0.70)']} style={styles.courseShade} />
+                    <View style={styles.courseCoverTop}>
+                      <View style={styles.codeBadge}><Text style={styles.codeText}>{presentation.code}</Text></View>
+                      <Text style={styles.courseEyebrow}>{presentation.eyebrow}</Text>
                     </View>
-                    <View style={styles.cardGreetingRow}>
-                      <View style={styles.greetingOrb}><BookOpen size={20} color="#FFFFFF" /></View>
-                      <View style={styles.greetingWrap}>
-                        <Text style={styles.greeting}>{accent.greeting}</Text>
-                        <Text style={styles.greetingCaption}>{accent.caption}</Text>
-                      </View>
+                    <View style={styles.courseCoverBottom}>
+                      <Text style={styles.courseNative}>{presentation.nativeName}</Text>
+                      <Text style={styles.courseName}>{language.name}</Text>
                     </View>
-                    <View style={styles.coverSparkle}><Sparkles size={17} color="#FFF0BA" /></View>
                   </LinearGradient>
 
-                  <View style={[styles.cardBody, compact && styles.cardBodyCompact]}>
-                    <View style={styles.cardIdentity}>
-                      <View style={styles.languageIdentity}>
-                        <Text style={styles.languageName}>{language.name}</Text>
-                        <Text style={[styles.nativeName, { color: accent.ink }]}>{language.nativeName}</Text>
-                      </View>
-                      <View style={[styles.cardBadge, { backgroundColor: accent.soft }]}><Text style={[styles.cardBadgeText, { color: accent.ink }]}>مسیر مستقل</Text></View>
+                  <View style={[styles.courseBody, tiny && styles.courseBodyTiny]}>
+                    <Text style={styles.courseDetail} numberOfLines={3}>{presentation.detail}</Text>
+                    <View style={styles.metricGrid}>
+                      <View style={styles.metric}><Layers3 size={13} color={presentation.glow} /><Text style={styles.metricText}>{presentation.levels}</Text></View>
+                      <View style={styles.metric}><BookOpenCheck size={13} color={presentation.glow} /><Text style={styles.metricText}>{presentation.lessons}</Text></View>
+                      <View style={styles.metric}><Mic2 size={13} color={presentation.glow} /><Text style={styles.metricText}>{presentation.sentences}</Text></View>
+                      <View style={styles.metric}><Clock3 size={13} color={presentation.glow} /><Text style={styles.metricText}>{presentation.duration}</Text></View>
                     </View>
-                    <Text style={styles.cardDescription}>{language.description}</Text>
-                    <View style={styles.meta}>
-                      <View style={styles.metaItem}><BookOpen size={14} color={muted} /><Text style={styles.metaText}>{fa(language.lessonsCount)} درس</Text></View>
-                      <View style={styles.metaDot} />
-                      <View style={styles.metaItem}><Headphones size={14} color={muted} /><Text style={styles.metaText}>تلفظ صوتی</Text></View>
-                      <View style={styles.metaDot} />
-                      <Text style={styles.metaText}>راهنمای فارسی</Text>
+                    <View style={styles.cardDivider} />
+                    <View style={styles.courseAssurance}>
+                      <ShieldCheck size={13} color="#71C9AE" />
+                      <Text style={styles.courseAssuranceText}>پیشرفت مستقل و محفوظ</Text>
                     </View>
-                    <View style={[styles.enter, { backgroundColor: accent.ink }]}>
-                      <Text style={styles.enterText}>شروع سفر {language.name}</Text>
-                      <View style={styles.enterIcon}><ChevronLeft size={18} color="#FFFFFF" /></View>
-                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`ورود به مسیر ${language.name}`}
+                      onPress={() => router.push(language.home as never)}
+                      style={({ pressed }) => [styles.enterButton, { backgroundColor: presentation.glow }, pressed && styles.pressed]}
+                    >
+                      <Text style={styles.enterButtonText}>ورود به مسیر</Text>
+                      <ArrowLeft size={16} color="#151220" />
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={presentation.placement}
+                      onPress={() => language.id === 'ru'
+                        ? router.push(language.home as never)
+                        : router.push({ pathname: '/placement', params: { language: language.id } } as never)}
+                      style={({ pressed }) => [styles.placementButton, pressed && styles.pressed]}
+                    >
+                      <Text style={styles.placementText}>{presentation.placement}</Text>
+                      <ChevronLeft size={14} color="#B9ACD7" />
+                    </Pressable>
                   </View>
-                </Pressable>
+                </View>
               );
             })}
           </View>
 
-          {/* ۱+۲: نوار آمار + گرید مزایا — پر کردن فضای خالی به سبک بین‌المللی */}
-          <View style={[styles.statsStrip, compact && styles.statsStripCompact]}>
-            {STATS.map((s, i) => (
-              <View key={s.label} style={styles.statPill}>
-                <Text style={styles.statValue}>{s.value()}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
-                {i < STATS.length - 1 && <View style={styles.statDivider} />}
+          <View style={styles.proofStrip}>
+            {proofItems.map((item, index) => (
+              <View key={item.label} style={styles.proofItem}>
+                <Text style={styles.proofValue}>{item.value}</Text>
+                <Text style={styles.proofLabel}>{item.label}</Text>
+                {index < proofItems.length - 1 ? <View style={styles.proofDivider} /> : null}
               </View>
             ))}
           </View>
 
-          <View style={styles.benefitsSection}>
-            <View style={styles.benefitsHeader}>
-              <View style={styles.benefitsEyebrowRow}><Award size={13} color={violet} /><Text style={styles.benefitsEyebrow}>WHY LEARNERS LOVE US</Text></View>
-              <Text style={styles.benefitsTitle}>چرا زبان‌آموزان ما می‌مانند؟</Text>
-              <Text style={styles.benefitsSubtitle}>طراحی شده برای عادت روزانه — نه حفظ طوطی‌وار</Text>
+          <View style={styles.featureSection}>
+            <View style={styles.featureHeading}>
+              <Sparkles size={16} color="#A98AF8" />
+              <View style={styles.featureHeadingCopy}>
+                <Text style={styles.featureTitle}>کمتر شلوغ، بیشتر مؤثر</Text>
+                <Text style={styles.featureSubtitle}>ابزارهایی که واقعاً به یادگیری کمک می‌کنند.</Text>
+              </View>
             </View>
-            <View style={[styles.benefitsGrid, compact && styles.benefitsGridCompact]}>
-              {BENEFITS.map(b => {
-                const Icon = b.icon;
+            <View style={[styles.featureRow, compact && styles.featureRowCompact]}>
+              {features.map(feature => {
+                const Icon = feature.icon;
                 return (
-                  <View key={b.id} style={[styles.benefitCard, compact && styles.benefitCardCompact]}>
-                    <View style={[styles.benefitIcon, { backgroundColor: b.soft }]}><Icon size={18} color={b.ink} /></View>
-                    <View style={styles.benefitCopy}>
-                      <Text style={styles.benefitTitle}>{b.title}</Text>
-                      <Text style={styles.benefitDesc}>{b.desc}</Text>
-                    </View>
+                  <View key={feature.title} style={styles.featureCard}>
+                    <View style={[styles.featureIcon, { backgroundColor: feature.soft }]}><Icon size={20} color={feature.color} /></View>
+                    <View style={styles.featureCopy}><Text style={styles.featureCardTitle}>{feature.title}</Text><Text style={styles.featureDetail}>{feature.detail}</Text></View>
                   </View>
                 );
               })}
             </View>
           </View>
 
-          <View style={[styles.reassurance, compact && styles.reassuranceCompact]}>
-            <View style={styles.shield}><ShieldCheck size={20} color="#527745" /></View>
-            <View style={styles.reassuranceCopy}>
-              <Text style={styles.reassuranceTitle}>دو زبان، دو مسیر روشن</Text>
-              <Text style={styles.reassuranceText}>هر مسیر سابقهٔ جدا دارد؛ با ورود ایمیلی می‌توانی آن‌ها را امن میان دستگاه‌ها همگام کنی.</Text>
+          <LinearGradient colors={['#22183D', '#302052']} style={styles.closingCard}>
+            <View style={styles.closingIcon}><Globe2 size={23} color="#DCCEFF" /></View>
+            <View style={styles.closingCopy}>
+              <Text style={styles.closingTitle}>آماده‌ای اولین جمله را بسازی؟</Text>
+              <Text style={styles.closingText}>یک مسیر را انتخاب کن؛ ادامهٔ راه قدم‌به‌قدم برایت روشن می‌شود.</Text>
             </View>
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="ورود ایمیلی و همگام‌سازی امن پیشرفت انگلیسی، آلمانی و تلفظ میان دستگاه‌ها"
-            onPress={() => router.push('/personal-sync' as never)}
-            style={({ pressed }) => [styles.syncCard, pressed && styles.syncCardPressed]}
-          >
-            <View style={styles.syncIcon}><Cloud size={20} color="#FFFFFF" /></View>
-            <View style={styles.syncCopy}>
-              <Text style={styles.syncTitle}>همگام‌سازی میان دستگاه‌ها</Text>
-              <Text style={styles.syncText}>ورود ایمیلی با کد یک‌بارمصرف؛ ادغام بدون پاک‌شدن پیشرفت قبلی</Text>
-            </View>
-            <ChevronLeft size={18} color="#6554B4" />
-          </Pressable>
-
-          <View style={styles.note}>
-            <Pressable accessibilityRole="button" accessibilityLabel="اطلاعات مسیرهای انگلیسی و آلمانی" accessibilityState={{ expanded: details }} onPress={() => setDetails(!details)} style={styles.noteToggle}>
-              <View style={styles.noteLabel}>
-                <BookOpen size={17} color={muted} />
-                <View style={styles.noteCopy}>
-                  <Text style={styles.noteTitle}>مسیرهای انگلیسی و آلمانی · سطح‌ها و دامنهٔ محتوا</Text>
-                  <Text style={styles.noteCaption}>کتابخانه‌های فعال · آمار محتوا و سنجش آغازین اختیاری</Text>
-                </View>
-              </View>
-              <ChevronDown size={18} color={muted} style={{ transform: [{ rotate: details ? '180deg' : '0deg' }] }} />
+            <Pressable onPress={() => router.push(activeLanguages[0]?.home as never)} style={({ pressed }) => [styles.closingButton, pressed && styles.pressed]}>
+              <Text style={styles.closingButtonText}>شروع یادگیری</Text>
+              <ChevronLeft size={17} color="#5B3CB8" />
             </Pressable>
-            {details && (
-              <View style={styles.noteDetails}>
-                <View style={[styles.courseDetailsCard, styles.englishDetailsCard]}>
-                  <View style={styles.courseDetailsHeader}>
-                    <Text style={styles.courseDetailsTitle}>مسیر انگلیسی</Text>
-                    <Text style={styles.courseDetailsTotal}>{fa(totalEnglishLessons)} درس · {fa(totalEnglishSentences)} جمله</Text>
-                  </View>
-                  <Text style={styles.courseDetailsIntro}>تقسیم‌بندی درس‌ها در پنج مرحلهٔ آموزشی:</Text>
-                  <View style={styles.levelSummaryList}>
-                    {englishLevelSummaries.map(level => (
-                      <View key={level.id} style={styles.levelSummaryRow}>
-                        <Text style={styles.levelSummaryName}>{level.label}</Text>
-                        <Text style={styles.levelSummaryStats}>{fa(level.lessonCount)} درس · {fa(level.sentenceCount)} جمله</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <Pressable accessibilityRole="button" accessibilityLabel="شروع سنجش آغازین انگلیسی" onPress={() => router.push({ pathname: '/placement', params: { language: 'en' } } as never)} style={({ pressed }) => [styles.placementButton, styles.placementEnglish, pressed && styles.cardPressed]}>
-                    <Text style={styles.placementButtonText}>پیداکردن نقطهٔ شروع انگلیسی</Text>
-                    <ChevronLeft size={16} color="#FFFFFF" />
-                  </Pressable>
-                </View>
-
-                <View style={[styles.courseDetailsCard, styles.germanDetailsCard]}>
-                  <View style={styles.courseDetailsHeader}>
-                    <Text style={styles.courseDetailsTitle}>مسیر آلمانی</Text>
-                    <Text style={styles.courseDetailsTotal}>{fa(GERMAN_SENTENCE_LESSONS.length)} درس · {fa(totalGermanSentences)} جمله</Text>
-                  </View>
-                  <Text style={styles.courseDetailsIntro}>تقسیم‌بندی چهار مرحلهٔ آموزشی، همراه با شمار واژگان یکتا:</Text>
-                  <View style={styles.levelSummaryList}>
-                    {germanLevelSummaries.map(level => (
-                      <View key={level.id} style={styles.levelSummaryRow}>
-                        <Text style={styles.levelSummaryName}>{level.label}</Text>
-                        <Text style={styles.levelSummaryStats}>
-                          {fa(level.lessonCount)} درس · {fa(level.sentenceCount)} جمله · {fa(level.vocabularyCount)} واژهٔ یکتا
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                  <Pressable accessibilityRole="button" accessibilityLabel="شروع سنجش آغازین آلمانی" onPress={() => router.push({ pathname: '/placement', params: { language: 'de' } } as never)} style={({ pressed }) => [styles.placementButton, styles.placementGerman, pressed && styles.cardPressed]}>
-                    <Text style={styles.placementButtonText}>پیداکردن نقطهٔ شروع آلمانی</Text>
-                    <ChevronLeft size={16} color="#FFFFFF" />
-                  </Pressable>
-                </View>
-
-                <Text style={styles.noteFootnote}>
-                  کتابخانهٔ هدایت‌شدهٔ قدیمی آلمانی برای سازگاری جدا نگهداری می‌شود و در این آمار نیست. نام‌گذاری سطح‌ها آموزشی و داخلی است و گواهی رسمی CEFR یا بازبینی مستقل مدرس به‌شمار نمی‌آید.
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* فانتزی جذاب — پر کردن گپ سفید پایانی با محتوای تصویری */}
-          <LinearGradient
-            colors={['#1E0F3A', '#3B1E6B', '#6D3BD9', '#9A6CFF']}
-            start={{ x: 0.1, y: 0 }}
-            end={{ x: 0.9, y: 1 }}
-            style={[styles.fantasyCard, compact && styles.fantasyCardCompact]}
-          >
-            <View pointerEvents="none" style={styles.fantasyGlowA} />
-            <View pointerEvents="none" style={styles.fantasyGlowB} />
-            <View pointerEvents="none" style={styles.fantasyStarsTop}><Sparkles size={16} color="#FFEBA9" fill="#FFEBA9" /></View>
-            <View pointerEvents="none" style={styles.fantasyStarsBottom}><Star size={14} color="#C6F4E5" fill="#C6F4E5" /></View>
-
-            <View style={[styles.fantasyInner, compact && styles.fantasyInnerCompact]}>
-              <View style={[styles.fantasyArtWrap, compact && styles.fantasyArtWrapCompact]}>
-                <View style={styles.fantasyOrbit} />
-                <Image
-                  source={require('../assets/language-learning-hero.jpg')}
-                  resizeMode="cover"
-                  style={[styles.fantasyImage, compact && styles.fantasyImageCompact]}
-                />
-                <View style={styles.fantasyBookBadge}>
-                  <BookOpen size={14} color="#FFFFFF" />
-                  <Text style={styles.fantasyBookText}>کتاب جادویی</Text>
-                </View>
-              </View>
-
-              <View style={[styles.fantasyCopy, compact && styles.fantasyCopyCompact]}>
-                <View style={styles.fantasyEyebrow}>
-                  <Sparkles size={12} color="#FFE19A" />
-                  <Text style={styles.fantasyEyebrowText}>داستان تو اینجاست</Text>
-                  <View style={styles.fantasyEyebrowDot} />
-                </View>
-                <Text style={[styles.fantasyTitle, compact && styles.fantasyTitleCompact]}>
-                  هر کلمه،{"\n"}<Text style={styles.fantasyTitleAccent}>یک کلید جادویی</Text>
-                </Text>
-                <Text style={styles.fantasyDesc}>
-                  کتاب رو باز کن، عبارت‌ها مثل ستاره می‌درخشند. با هر جمله، دنیای جدیدی باز می‌شود — از سلام اول تا گفت‌وگوی روان.
-                </Text>
-                <View style={styles.fantasyPoints}>
-                  <View style={styles.fantasyPoint}><View style={styles.fantasyPointDot} /><Text style={styles.fantasyPointText}>قصه‌های تصویری با صدا</Text></View>
-                  <View style={styles.fantasyPoint}><View style={[styles.fantasyPointDot, { backgroundColor: '#9FE5CD' }]} /><Text style={styles.fantasyPointText}>مرور جادویی با تکرار هوشمند</Text></View>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="شروع ماجراجویی فانتزی"
-                  onPress={() => router.push(activeLanguages[0]?.home as never)}
-                  style={({ pressed }) => [styles.fantasyCTA, pressed && styles.cardPressed]}
-                >
-                  <Text style={styles.fantasyCTAText}>شروع ماجراجویی ✨</Text>
-                  <View style={styles.fantasyCTAIcon}><ChevronLeft size={18} color="#5E42C5" /></View>
-                </Pressable>
-                <Text style={styles.fantasyFootnote}>بدون تبلیغ • مناسب همه سنین • هر روز ۵ دقیقه</Text>
-              </View>
-            </View>
           </LinearGradient>
 
-          <View style={styles.footerExtended}>
-            <View style={styles.footerTop}>
-              <View style={styles.footerBrandRow}>
-                <View style={styles.footerBrandLeft}>
-                  <LinearGradient colors={['#9B78F0', '#5E42C5']} style={styles.footerLogoMini}>
-                    <Globe2 size={16} color="#FFFFFF" strokeWidth={1.8} />
-                  </LinearGradient>
-                  <View>
-                    <Text style={styles.footerBrandText}>Language Journey</Text>
-                    <Text style={styles.footerVersion}>نسخه ۱.۰ • xhdpi بهینه</Text>
-                  </View>
-                </View>
-                <View style={styles.footerBadge}>
-                  <View style={styles.footerBadgeDot} />
-                  <Text style={styles.footerBadgeText}>همه‌چیز آفلاین هم می‌ماند</Text>
-                </View>
-              </View>
-              <View style={styles.footerLinks}>
-                <Text style={styles.footerLink}>حریم خصوصی</Text>
-                <View style={styles.footerLinkDot} />
-                <Text style={styles.footerLink}>پشتیبانی</Text>
-                <View style={styles.footerLinkDot} />
-                <Text style={styles.footerLink}>درباره ما</Text>
-              </View>
-            </View>
-            <View style={styles.footerBottom}>
-              <View style={styles.footerLine} />
-              <Text style={styles.footerText}>با قدم‌های کوچک، هر روز کمی جلوتر — طراحی شده برای ۳۶۰×۸۰۰</Text>
-              <BarChart3 size={14} color="#A89BD0" />
-            </View>
+          <View style={styles.footer}>
+            <Text style={styles.footerBrand}>LANGUAGE JOURNEY</Text>
+            <Text style={styles.footerText}>یادگیری کوتاه، واقعی و پیوسته</Text>
           </View>
         </View>
       </ScrollView>
@@ -480,204 +274,105 @@ export default function LanguagesHome() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F6FB' },
-  page: { flexGrow: 1, paddingHorizontal: 40, paddingTop: 54, paddingBottom: 66 },
-  pageCompact: { paddingHorizontal: 18, paddingTop: 46 },
-  content: { width: '100%', maxWidth: 1120, alignSelf: 'center' },
-  header: { minHeight: 55, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 26 },
-  headerTiny: { alignItems: 'stretch', flexDirection: 'column', gap: 8 },
-  brandRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
-  logo: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  logoSpark: { position: 'absolute', right: -3, top: -3, width: 17, height: 17, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#423478' },
-  brandCopy: { alignItems: 'flex-end' },
-  brand: { color: ink, fontSize: 20, fontWeight: '800', letterSpacing: -.5, textAlign: 'right', writingDirection: 'ltr' },
-  brandTiny: { fontSize: 17 },
-  brandCaption: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 12, marginTop: 2, textAlign: 'right', writingDirection: 'rtl' },
-  headerTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 24, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#ECE7F3' },
-  headerTagTiny: { alignSelf: 'flex-end', paddingHorizontal: 9, paddingVertical: 6 },
-  headerTagText: { fontFamily: 'Vazirmatn-Bold', color: '#695C84', fontSize: 12, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#81A869' },
-  hero: { position: 'relative', minHeight: 330, overflow: 'hidden', borderRadius: 30, borderWidth: 1, borderColor: '#514382', paddingHorizontal: 34, paddingVertical: 27, flexDirection: 'row-reverse', alignItems: 'center', gap: 16, shadowColor: '#231752', shadowOpacity: .18, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: 6 },
-  heroCompact: { minHeight: 0, paddingHorizontal: 19, paddingVertical: 22, borderRadius: 25, flexDirection: 'column', alignItems: 'stretch', gap: 7 },
-  heroGlowOne: { position: 'absolute', top: -126, right: '28%', width: 315, height: 315, borderRadius: 158, backgroundColor: 'rgba(156,119,250,0.18)' },
-  heroGlowTwo: { position: 'absolute', bottom: -172, left: -74, width: 330, height: 330, borderRadius: 165, backgroundColor: 'rgba(78,213,189,0.12)' },
-  heroCopy: { flex: 1, alignItems: 'flex-end', gap: 11, zIndex: 2 },
-  heroCopyCompact: { width: '100%' },
-  eyebrow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  eyebrowText: { fontFamily: 'Vazirmatn-Bold', color: '#FFE9B4', fontSize: 12, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  title: { fontFamily: 'Vazirmatn-Bold', color: '#FFFFFF', fontSize: 39, lineHeight: 58, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl', letterSpacing: -.7 },
-  titleCompact: { fontSize: 30, lineHeight: 44 },
-  titleAccent: { color: '#D8C4FF' },
-  description: { maxWidth: 480, alignSelf: 'flex-end', fontFamily: 'Vazirmatn-Bold', color: '#E1DAF7', fontSize: 14, lineHeight: 24, textAlign: 'right', writingDirection: 'rtl' },
-  heroFacts: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'center', gap: 11, marginTop: 3 },
-  fact: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  factText: { fontFamily: 'Vazirmatn-Bold', color: '#EEE9FF', fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
-  factDivider: { height: 13, width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-  artStage: { position: 'relative', width: 300, height: 280, alignItems: 'center', justifyContent: 'center' },
-  artStageCompact: { width: '100%', height: 226 },
-  artStageTiny: { height: 190 },
-  artOrbit: { position: 'absolute', width: 252, height: 252, borderRadius: 126, borderWidth: 1, borderColor: 'rgba(223,206,255,0.4)', backgroundColor: 'rgba(255,255,255,0.035)' },
-  artOrbitCompact: { width: 220, height: 220, borderRadius: 110 },
-  artOrbitTiny: { width: 184, height: 184, borderRadius: 92 },
-  artImage: { width: 252, height: 252, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(241,229,255,0.35)' },
-  artImageCompact: { width: 220, height: 220, borderRadius: 28 },
-  artImageTiny: { width: 184, height: 184, borderRadius: 24 },
-  artStarTop: { position: 'absolute', top: 17, right: 35 },
-  artStarSide: { position: 'absolute', bottom: 25, left: 18 },
-  mobileTrail: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 15, marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.14)' },
-  trailDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#E2C1FF' },
-  trailDotMint: { backgroundColor: '#9FE5CD' },
-  trailLine: { width: 24, height: 1, backgroundColor: 'rgba(226,193,255,0.65)' },
-  trailText: { fontFamily: 'Vazirmatn-Bold', color: '#D8D0F0', fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
-  section: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 31, marginBottom: 17 },
-  sectionHeading: { flex: 1, alignItems: 'flex-end', gap: 3 },
-  sectionEyebrowRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  sectionEyebrow: { color: '#897BAA', fontSize: 10, fontWeight: '900', letterSpacing: 1.25, textAlign: 'right', writingDirection: 'ltr' },
-  sectionTitle: { fontFamily: 'Vazirmatn-Bold', color: ink, fontSize: 23, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  sectionSubtitle: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 12, textAlign: 'right', writingDirection: 'rtl' },
-  sectionCount: { minHeight: 34, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderRadius: 12, backgroundColor: '#F0ECF8' },
-  sectionCountText: { fontFamily: 'Vazirmatn-Bold', color: '#7A6A9B', fontSize: 11, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  cards: { flexDirection: 'row-reverse', gap: 19 },
-  cardsCompact: { flexDirection: 'column', gap: 14 },
-  card: { flex: 1, borderRadius: 24, borderWidth: 1, backgroundColor: '#FFFFFF', overflow: 'hidden', shadowColor: '#32284E', shadowOpacity: .06, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
-  cardCompact: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%' },
-  cardActive: { shadowOpacity: .15, shadowRadius: 21, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
-  cardPressed: { opacity: .92, transform: [{ scale: .992 }] },
-  cardCover: { position: 'relative', minHeight: 165, overflow: 'hidden', padding: 19, justifyContent: 'space-between' },
-  coverOrb: { position: 'absolute', top: -55, left: 80, width: 210, height: 210, borderRadius: 105, borderWidth: 1, opacity: .5 },
-  coverGlow: { position: 'absolute', right: -45, bottom: -100, width: 220, height: 220, borderRadius: 110, opacity: .14 },
-  cardTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 },
-  languageIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', shadowColor: '#1A1730', shadowOpacity: .17, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
-  code: { fontSize: 14, fontWeight: '900', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },
-  available: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  availableText: { fontFamily: 'Vazirmatn-Bold', color: '#FFFFFF', fontSize: 11, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  smallDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#D5F6C7' },
-  cardGreetingRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, zIndex: 1 },
-  greetingOrb: { width: 40, height: 40, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.17)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' },
-  greetingWrap: { alignItems: 'flex-end', gap: 2 },
-  greeting: { color: '#FFFFFF', fontSize: 33, fontWeight: '800', letterSpacing: -.8, textAlign: 'right', writingDirection: 'ltr' },
-  greetingCaption: { fontFamily: 'Vazirmatn-Bold', color: 'rgba(255,255,255,0.82)', fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
-  coverSparkle: { position: 'absolute', left: 24, top: 72, opacity: .88 },
-  cardBody: { padding: 20, paddingTop: 17, gap: 12 },
-  cardBodyCompact: { padding: 17, gap: 10 },
-  cardIdentity: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 9 },
-  languageIdentity: { alignItems: 'flex-end' },
-  languageName: { fontFamily: 'Vazirmatn-Bold', color: ink, fontSize: 27, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  nativeName: { fontSize: 13, fontWeight: '700', letterSpacing: .3, textAlign: 'right', writingDirection: 'ltr' },
-  cardBadge: { paddingHorizontal: 9, paddingVertical: 6, borderRadius: 11 },
-  cardBadgeText: { fontFamily: 'Vazirmatn-Bold', fontSize: 10, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  cardDescription: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 13, lineHeight: 22, textAlign: 'right', writingDirection: 'rtl' },
-  meta: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  metaItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4 },
-  metaText: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
-  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#C8C2D2' },
-  enter: { minHeight: 47, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13, paddingVertical: 8, borderRadius: 14, marginTop: 1 },
-  enterText: { fontFamily: 'Vazirmatn-Bold', color: '#FFFFFF', fontSize: 13, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  enterIcon: { width: 29, height: 29, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' },
-  reassurance: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, marginTop: 20, padding: 15, borderRadius: 18, backgroundColor: '#EEF4E9', borderWidth: 1, borderColor: '#E0EBD9' },
-  reassuranceCompact: { alignItems: 'flex-start' },
-  shield: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
-  reassuranceCopy: { flex: 1, gap: 2 },
-  reassuranceTitle: { fontFamily: 'Vazirmatn-Bold', color: '#516A45', fontSize: 12, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  reassuranceText: { fontFamily: 'Vazirmatn-Bold', color: '#718168', fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
-  syncCard: { minHeight: 75, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 15, paddingVertical: 13, borderRadius: 18, backgroundColor: '#F2F0FC', borderWidth: 1, borderColor: '#DFD9F4' },
-  syncCardPressed: { opacity: .8, transform: [{ scale: .99 }] },
-  syncIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#6554B4' },
-  syncCopy: { flex: 1, alignItems: 'flex-end', gap: 3 },
-  syncTitle: { fontFamily: 'Vazirmatn-Bold', color: '#43387D', fontSize: 13, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  syncText: { fontFamily: 'Vazirmatn-Bold', color: '#706A8E', fontSize: 11, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
-  note: { borderTopWidth: 1, borderTopColor: '#E7E1ED', marginTop: 11 },
-  noteToggle: { minHeight: 66, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 15 },
-  noteLabel: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
-  noteCopy: { flex: 1, gap: 2 },
-  noteTitle: { fontFamily: 'Vazirmatn-Bold', color: '#5C536A', fontSize: 13, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  noteCaption: { fontFamily: 'Vazirmatn-Bold', color: '#8B8397', fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
-  noteDetails: { gap: 10, paddingBottom: 12 },
-  courseDetailsCard: { padding: 14, borderRadius: 16, borderWidth: 1 },
-  englishDetailsCard: { backgroundColor: '#F3EFFC', borderColor: '#E3DAF7' },
-  germanDetailsCard: { backgroundColor: '#EEF6F0', borderColor: '#DDEBDD' },
-  courseDetailsHeader: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 5 },
-  courseDetailsTitle: { fontFamily: 'Vazirmatn-Bold', color: ink, fontSize: 13, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  courseDetailsTotal: { fontFamily: 'Vazirmatn-Bold', color: '#695C84', fontSize: 11, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  courseDetailsIntro: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 11, textAlign: 'right', writingDirection: 'rtl', marginTop: 7 },
-  levelSummaryList: { marginTop: 5 },
-  levelSummaryRow: { minHeight: 29, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4, paddingVertical: 5, borderTopWidth: 1, borderTopColor: 'rgba(110,100,130,0.11)' },
-  levelSummaryName: { flexShrink: 0, fontFamily: 'Vazirmatn-Bold', color: '#50475F', fontSize: 11, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  levelSummaryStats: { flexShrink: 1, fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
-  placementButton: { minHeight: 43, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingHorizontal: 12, marginTop: 10, borderRadius: 12 },
-  placementEnglish: { backgroundColor: '#7558D8' },
-  placementGerman: { backgroundColor: '#198373' },
-  placementButtonText: { fontFamily: 'Vazirmatn-Bold', color: '#FFFFFF', fontSize: 12, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  noteFootnote: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 11, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl', paddingHorizontal: 4 },
-  footer: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10, paddingBottom: 16 },
-  footerLine: { width: 24, height: 1, backgroundColor: '#D3CBDD' },
-  footerText: { fontFamily: 'Vazirmatn-Bold', color: '#9990A7', fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
-  // --- New: StatsStrip + Benefits + Extended Footer (1+2+3) to fill 360x800 without white gap ---
-  statsStrip: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 18, paddingHorizontal: 12, paddingVertical: 12, borderRadius: 16, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#ECE7F3', shadowColor: '#32284E', shadowOpacity: .04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
-  statsStripCompact: { gap: 6, paddingHorizontal: 8 },
-  statPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  statValue: { fontFamily: 'Vazirmatn-Bold', color: ink, fontSize: 13, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  statLabel: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
-  statDivider: { width: 1, height: 12, backgroundColor: '#E9E2F3', marginHorizontal: 4 },
-  benefitsSection: { marginTop: 20, gap: 12 },
-  benefitsHeader: { alignItems: 'flex-end', gap: 4 },
-  benefitsEyebrowRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  benefitsEyebrow: { color: '#897BAA', fontSize: 10, fontWeight: '900', letterSpacing: 1.25, textAlign: 'right', writingDirection: 'ltr' },
-  benefitsTitle: { fontFamily: 'Vazirmatn-Bold', color: ink, fontSize: 20, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  benefitsSubtitle: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 12, textAlign: 'right', writingDirection: 'rtl' },
-  benefitsGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 },
-  benefitsGridCompact: { flexDirection: 'column', gap: 10 },
-  benefitCard: { flexBasis: '48%', flexGrow: 1, flexShrink: 1, minWidth: 140, flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 16, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#ECE7F3', shadowColor: '#32284E', shadowOpacity: .05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
-  benefitCardCompact: { flexBasis: 'auto', width: '100%', minWidth: 0 },
-  benefitIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  benefitCopy: { flex: 1, gap: 3, alignItems: 'flex-end' },
-  benefitTitle: { fontFamily: 'Vazirmatn-Bold', color: ink, fontSize: 13, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  benefitDesc: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 11, lineHeight: 16, textAlign: 'right', writingDirection: 'rtl' },
-  fantasyCard: { marginTop: 22, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: '#514382', padding: 18, minHeight: 420, shadowColor: '#231752', shadowOpacity: .18, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 6, position: 'relative' },
-  fantasyCardCompact: { padding: 16, minHeight: 0, borderRadius: 22 },
-  fantasyGlowA: { position: 'absolute', top: -80, right: -40, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(255, 235, 169, 0.12)' },
-  fantasyGlowB: { position: 'absolute', bottom: -90, left: -50, width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(78, 213, 189, 0.13)' },
-  fantasyStarsTop: { position: 'absolute', top: 14, right: 18, opacity: 0.9 },
-  fantasyStarsBottom: { position: 'absolute', bottom: 14, left: 18, opacity: 0.8 },
-  fantasyInner: { flexDirection: 'row-reverse', alignItems: 'center', gap: 18, zIndex: 2 },
-  fantasyInnerCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 14 },
-  fantasyArtWrap: { position: 'relative', width: 220, height: 280, alignItems: 'center', justifyContent: 'center' },
-  fantasyArtWrapCompact: { width: '100%', height: 260 },
-  fantasyOrbit: { position: 'absolute', width: 195, height: 195, borderRadius: 97, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.04)' },
-  fantasyImage: { width: 195, height: 240, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)' },
-  fantasyImageCompact: { width: 200, height: 240, borderRadius: 20 },
-  fantasyBookBadge: { position: 'absolute', bottom: 6, right: 12, flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' },
-  fantasyBookText: { fontFamily: 'Vazirmatn-Bold', color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
-  fantasyCopy: { flex: 1, gap: 10, alignItems: 'flex-end' },
-  fantasyCopyCompact: { gap: 8 },
-  fantasyEyebrow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.11)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
-  fantasyEyebrowText: { fontFamily: 'Vazirmatn-Bold', color: '#FFE9B4', fontSize: 11, fontWeight: '700' },
-  fantasyEyebrowDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#9FE5CD' },
-  fantasyTitle: { fontFamily: 'Vazirmatn-Bold', color: '#FFFFFF', fontSize: 28, lineHeight: 38, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
-  fantasyTitleCompact: { fontSize: 24, lineHeight: 34 },
-  fantasyTitleAccent: { color: '#FFEBA9' },
-  fantasyDesc: { fontFamily: 'Vazirmatn-Bold', color: '#E1DAF7', fontSize: 13, lineHeight: 21, textAlign: 'right', writingDirection: 'rtl' },
-  fantasyPoints: { gap: 6, alignItems: 'flex-end', marginTop: 2 },
-  fantasyPoint: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  fantasyPointDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFEBA9' },
-  fantasyPointText: { fontFamily: 'Vazirmatn-Bold', color: '#EEE9FF', fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
-  fantasyCTA: { marginTop: 4, minHeight: 44, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, borderRadius: 14, backgroundColor: '#FFFFFF', shadowColor: '#1A1730', shadowOpacity: .12, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  fantasyCTAText: { fontFamily: 'Vazirmatn-Bold', color: '#5E42C5', fontSize: 14, fontWeight: '800' },
-  fantasyCTAIcon: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0EAFE' },
-  fantasyFootnote: { fontFamily: 'Vazirmatn-Bold', color: 'rgba(225,218,247,0.8)', fontSize: 10, textAlign: 'right', writingDirection: 'rtl', marginTop: 2 },
-  footerExtended: { marginTop: 22, paddingTop: 16, paddingBottom: 8, borderTopWidth: 1, borderTopColor: '#E7E1ED', gap: 12, backgroundColor: 'transparent' },
-  footerTop: { gap: 12 },
-  footerBrandRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  footerBrandLeft: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  footerLogoMini: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  footerBrandText: { color: ink, fontSize: 15, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
-  footerVersion: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 11, textAlign: 'right', writingDirection: 'rtl', marginTop: 1 },
-  footerBadge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#ECE7F3' },
-  footerBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#81A869' },
-  footerBadgeText: { fontFamily: 'Vazirmatn-Bold', color: '#695C84', fontSize: 11, fontWeight: '600', textAlign: 'right', writingDirection: 'rtl' },
-  footerLinks: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' },
-  footerLink: { fontFamily: 'Vazirmatn-Bold', color: muted, fontSize: 12, textAlign: 'right', writingDirection: 'rtl' },
-  footerLinkDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#D3CBDD' },
-  footerBottom: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, paddingTop: 4 },
+  root: { flex: 1, backgroundColor: '#0D0B16' },
+  page: { flexGrow: 1, paddingHorizontal: 34, paddingTop: 50, paddingBottom: 42, backgroundColor: '#0D0B16' },
+  pageCompact: { paddingHorizontal: 14, paddingTop: 44, paddingBottom: 34 },
+  shell: { width: '100%', maxWidth: 1080, alignSelf: 'center' },
+  topbar: { minHeight: 56, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 },
+  brandLockup: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  brandMark: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center', shadowColor: '#8D6AF0', shadowOpacity: .28, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
+  brandSpark: { position: 'absolute', top: -3, right: -3 },
+  brandCopy: { flex: 1, alignItems: 'flex-end' },
+  brandName: { color: '#F4F0FF', fontSize: 15, fontWeight: '900', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
+  brandFa: { fontFamily: 'Vazirmatn-Bold', color: '#9189A6', fontSize: 10, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
+  premiumBadge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#171321', borderWidth: 1, borderColor: '#302841' },
+  premiumText: { color: '#CFC3E8', fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
 
+  hero: { minHeight: 330, borderRadius: 30, borderWidth: 1, borderColor: '#49386D', overflow: 'hidden', flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 30, paddingVertical: 24, shadowColor: '#000000', shadowOpacity: .28, shadowRadius: 20, shadowOffset: { width: 0, height: 12 }, elevation: 5 },
+  heroCompact: { minHeight: 0, borderRadius: 24, paddingHorizontal: 18, paddingTop: 21, paddingBottom: 15, flexDirection: 'column', alignItems: 'stretch', gap: 7 },
+  heroGlowOne: { position: 'absolute', width: 300, height: 300, borderRadius: 150, top: -155, right: '22%', backgroundColor: 'rgba(165,122,255,0.14)' },
+  heroGlowTwo: { position: 'absolute', width: 250, height: 250, borderRadius: 125, bottom: -160, left: -60, backgroundColor: 'rgba(72,206,173,0.10)' },
+  heroContent: { flex: 1, alignItems: 'flex-end', gap: 11, zIndex: 2 },
+  heroContentCompact: { width: '100%' },
+  heroEyebrow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#70D5B7' },
+  heroEyebrowText: { fontFamily: 'Vazirmatn-Bold', color: '#CFC5E5', fontSize: 11, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  heroTitle: { fontFamily: 'Vazirmatn-Bold', color: '#FFFFFF', fontSize: 39, lineHeight: 54, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  heroTitleCompact: { fontSize: 29, lineHeight: 41 },
+  heroDescription: { maxWidth: 510, fontFamily: 'Vazirmatn-Bold', color: '#C8BFD9', fontSize: 14, lineHeight: 25, textAlign: 'right', writingDirection: 'rtl' },
+  heroHighlights: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
+  heroHighlight: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
+  heroHighlightText: { fontFamily: 'Vazirmatn-Bold', color: '#EEE9F8', fontSize: 11, fontWeight: '700', writingDirection: 'rtl' },
+  heroArt: { width: 290, height: 280, alignItems: 'center', justifyContent: 'center' },
+  heroArtCompact: { width: '100%', height: 190 },
+  heroArtHalo: { position: 'absolute', width: 230, height: 230, borderRadius: 115, borderWidth: 1, borderColor: 'rgba(206,186,255,0.20)', backgroundColor: 'rgba(255,255,255,0.03)' },
+  heroImage: { width: 225, height: 225, borderRadius: 38, opacity: .96 },
+  heroImageCompact: { width: 170, height: 170, borderRadius: 30 },
+  heroArtBadge: { position: 'absolute', bottom: 8, flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: 'rgba(21,16,38,0.84)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
+  heroArtBadgeText: { fontFamily: 'Vazirmatn-Bold', color: '#F4F0FC', fontSize: 10, fontWeight: '700', writingDirection: 'rtl' },
+
+  sectionHeader: { marginTop: 28, marginBottom: 14, flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 },
+  sectionHeaderCopy: { flex: 1, alignItems: 'flex-end', gap: 3 },
+  sectionEyebrow: { color: '#9A83D8', fontSize: 9, fontWeight: '900', letterSpacing: 1.5, writingDirection: 'ltr' },
+  sectionTitle: { fontFamily: 'Vazirmatn-Bold', color: '#F4F0FB', fontSize: 22, lineHeight: 31, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  sectionDescription: { fontFamily: 'Vazirmatn-Bold', color: '#8E879C', fontSize: 11, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl' },
+  pathCount: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#17131F', borderWidth: 1, borderColor: '#2A2338' },
+  pathCountText: { fontFamily: 'Vazirmatn-Bold', color: '#B8AEC9', fontSize: 10, fontWeight: '700', writingDirection: 'rtl' },
+
+  courseRow: { flexDirection: 'row-reverse', alignItems: 'stretch', gap: 10 },
+  courseCard: { flex: 1, minWidth: 0, borderRadius: 23, overflow: 'hidden', backgroundColor: '#15121D', borderWidth: 1, borderColor: '#30293B', shadowColor: '#000000', shadowOpacity: .20, shadowRadius: 14, shadowOffset: { width: 0, height: 7 }, elevation: 3 },
+  courseCover: { height: 175, padding: 13, justifyContent: 'space-between', overflow: 'hidden' },
+  courseImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  courseShade: { ...StyleSheet.absoluteFillObject },
+  courseCoverTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 6 },
+  codeBadge: { minWidth: 34, height: 30, paddingHorizontal: 7, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,8,19,0.62)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' },
+  codeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900', writingDirection: 'ltr' },
+  courseEyebrow: { flexShrink: 1, color: 'rgba(255,255,255,0.78)', fontSize: 8, fontWeight: '900', letterSpacing: .8, textAlign: 'left', writingDirection: 'ltr' },
+  courseCoverBottom: { alignItems: 'flex-end' },
+  courseNative: { color: '#FFFFFF', fontSize: 22, lineHeight: 28, fontWeight: '900', textAlign: 'right', writingDirection: 'ltr' },
+  courseName: { fontFamily: 'Vazirmatn-Bold', color: 'rgba(255,255,255,0.82)', fontSize: 11, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  courseBody: { padding: 14, gap: 10 },
+  courseBodyTiny: { paddingHorizontal: 10, paddingVertical: 12, gap: 8 },
+  courseDetail: { minHeight: 59, fontFamily: 'Vazirmatn-Bold', color: '#B8B0C3', fontSize: 11, lineHeight: 19, fontWeight: '600', textAlign: 'right', writingDirection: 'rtl' },
+  metricGrid: { gap: 7 },
+  metric: { minHeight: 24, flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  metricText: { flex: 1, fontFamily: 'Vazirmatn-Bold', color: '#E5DFEC', fontSize: 10, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  cardDivider: { height: 1, backgroundColor: '#2A2433' },
+  courseAssurance: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
+  courseAssuranceText: { flex: 1, fontFamily: 'Vazirmatn-Bold', color: '#8FC9B8', fontSize: 9, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  enterButton: { minHeight: 44, paddingHorizontal: 11, borderRadius: 13, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 5 },
+  enterButtonText: { flex: 1, fontFamily: 'Vazirmatn-Bold', color: '#151220', fontSize: 11, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  placementButton: { minHeight: 36, paddingHorizontal: 8, borderRadius: 11, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#332B40', backgroundColor: '#19151F' },
+  placementText: { flex: 1, fontFamily: 'Vazirmatn-Bold', color: '#B9ACD7', fontSize: 9, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  pressed: { opacity: .78, transform: [{ scale: .99 }] },
+
+  proofStrip: { marginTop: 14, minHeight: 78, flexDirection: 'row-reverse', alignItems: 'center', borderRadius: 20, backgroundColor: '#14111B', borderWidth: 1, borderColor: '#2A2434', paddingVertical: 12 },
+  proofItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  proofValue: { color: '#F0EAF9', fontSize: 14, lineHeight: 20, fontWeight: '900', textAlign: 'center', writingDirection: 'rtl' },
+  proofLabel: { fontFamily: 'Vazirmatn-Bold', color: '#827A90', fontSize: 9, textAlign: 'center', writingDirection: 'rtl' },
+  proofDivider: { position: 'absolute', left: 0, top: 7, bottom: 7, width: 1, backgroundColor: '#2C2636' },
+
+  featureSection: { marginTop: 24, gap: 12 },
+  featureHeading: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
+  featureHeadingCopy: { flex: 1, alignItems: 'flex-end' },
+  featureTitle: { fontFamily: 'Vazirmatn-Bold', color: '#F2EDF8', fontSize: 19, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  featureSubtitle: { fontFamily: 'Vazirmatn-Bold', color: '#87808F', fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
+  featureRow: { flexDirection: 'row-reverse', gap: 10 },
+  featureRowCompact: { gap: 7 },
+  featureCard: { flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, borderRadius: 17, backgroundColor: '#15121C', borderWidth: 1, borderColor: '#2B2535' },
+  featureIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  featureCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
+  featureCardTitle: { fontFamily: 'Vazirmatn-Bold', color: '#EAE4F2', fontSize: 11, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  featureDetail: { fontFamily: 'Vazirmatn-Bold', color: '#81798C', fontSize: 9, lineHeight: 15, textAlign: 'right', writingDirection: 'rtl' },
+
+  closingCard: { marginTop: 18, minHeight: 92, borderRadius: 21, borderWidth: 1, borderColor: '#463666', padding: 15, flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
+  closingIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.08)' },
+  closingCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
+  closingTitle: { fontFamily: 'Vazirmatn-Bold', color: '#F5F0FC', fontSize: 13, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  closingText: { fontFamily: 'Vazirmatn-Bold', color: '#B5ABC6', fontSize: 10, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
+  closingButton: { minHeight: 40, paddingHorizontal: 11, borderRadius: 12, flexDirection: 'row-reverse', alignItems: 'center', gap: 4, backgroundColor: '#E8DDFF' },
+  closingButtonText: { fontFamily: 'Vazirmatn-Bold', color: '#5B3CB8', fontSize: 10, fontWeight: '900', writingDirection: 'rtl' },
+  footer: { marginTop: 22, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#211C2A', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  footerBrand: { color: '#6F657C', fontSize: 9, fontWeight: '900', letterSpacing: 1, writingDirection: 'ltr' },
+  footerText: { fontFamily: 'Vazirmatn-Bold', color: '#675F71', fontSize: 9, writingDirection: 'rtl' },
 });

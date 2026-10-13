@@ -17,6 +17,7 @@ import { getPairingState, isOnboardingComplete } from '@/lib/storage';
 import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
 import { useRealAgent } from '@/lib/useRealAgent';
+import { warmSpeech } from '@/lib/responsiveSpeech';
 
 I18nManager.forceRTL(true);
 I18nManager.allowRTL(true);
@@ -80,6 +81,12 @@ export default function RootLayout() {
         player.volume = 0.32;
         player.play();
         setTimeout(() => player.remove(), 2400);
+        // Prime both native TTS voices after the opening chime, well before a
+        // learner reaches a lesson sound button.
+        setTimeout(() => {
+          warmSpeech('en-US');
+          setTimeout(() => warmSpeech('de-DE'), 350);
+        }, 1900);
       } catch {
         // Audio must never block startup on devices with unavailable playback.
       }

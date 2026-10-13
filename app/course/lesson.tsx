@@ -30,6 +30,7 @@ import { loadSupplement } from '@/lib/englishSupplement/progress';
 import { CORE_LESSON_EVIDENCE, isCoreLessonEvidenceComplete } from '@/lib/englishFoundationEvidence';
 import { useEnglishStudyTimer } from '@/components/useEnglishStudyTimer';
 import { PAID_AI_ENABLED, PAID_AI_DISABLED_MESSAGE } from '@/lib/paidAI';
+import { playResponsiveSpeech, warmSpeech } from '@/lib/responsiveSpeech';
 
 const stages = ENGLISH_ENGINE_STEPS;
 
@@ -94,9 +95,10 @@ export default function SentenceLessonScreen() {
   const vocabulary = getLessonVocabulary(lesson);
   const grammarPatterns = getLessonPatterns(lesson);
 
-  const speak = (text: string, rate = 0.78) => {
-    Speech.stop();
-    Speech.speak(text, { language: 'en-US', rate });
+  useEffect(() => warmSpeech('en-US'), []);
+
+  const speak = (text: string, rate?: number) => {
+    playResponsiveSpeech({ text, locale: 'en-US', rate });
   };
 
   const startSpeechPractice = async () => {
@@ -140,7 +142,7 @@ export default function SentenceLessonScreen() {
     setSentenceIndex(index);
     setSpeechResult(null);
     setSpeechError(null);
-    speak(lesson.sentences[index].en, 0.72);
+    speak(lesson.sentences[index].en);
   };
 
   const next = async () => {
@@ -277,7 +279,7 @@ export default function SentenceLessonScreen() {
             <View style={styles.speechPractice}>
               <Text style={styles.speechTitle}>جملهٔ انتخاب‌شده</Text>
               <Text style={styles.speechSentence}>{current.en}</Text>
-              <Pressable accessibilityRole="button" style={styles.recordButton} onPress={() => speak(current.en, 0.72)}>
+              <Pressable accessibilityRole="button" style={styles.recordButton} onPress={() => speak(current.en, 0.5)}>
                 <Volume2 size={18} color={Colors.onColor} /><Text style={styles.recordButtonText}>پخش آهستهٔ نمونه</Text>
               </Pressable>
               <Text style={styles.speechHint}>{recorderState.isRecording ? `در حال ضبط · ${toPersianDigits(Math.max(1, Math.round(recorderState.durationMillis / 1000)))} ثانیه` : evaluatingSpeech ? 'در حال بررسی…' : PAID_AI_ENABLED ? 'در صورت فعال‌بودن سرویس، می‌توانید ضبط و بررسی آنلاین را هم انتخاب کنید.' : 'میکروفن و ارسال آنلاین در حالت بدون هزینه غیرفعال‌اند؛ جمله را با صدای بلند تکرار کنید.'}</Text>
