@@ -155,7 +155,7 @@ for node in ET.parse(sys.argv[1]).getroot().iter():
         match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
         if match:
             x1, y1, x2, y2 = map(int, match.groups())
-            print((x1 + x2) // 2, (y1 + y2) // 2)
+            print((x1 + x2) // 2, (y1 + y2) // 2, y2)
             break
 PY
 )"
@@ -163,7 +163,7 @@ if [[ -z "$composer_coords" ]]; then
   echo 'The Emma chat composer was not found through Android accessibility.'
   exit 1
 fi
-read -r composer_x composer_y <<< "$composer_coords"
+read -r composer_x composer_y composer_closed_bottom <<< "$composer_coords"
 
 failed_step="opening the Android keyboard in the Emma composer"
 adb shell settings put secure show_ime_with_hard_keyboard 1
@@ -179,13 +179,14 @@ if ! grep -Eq 'mInputShown=true|isInputViewShown=true|inputShown=true' <<< "$key
 fi
 
 density_dpi="$(adb shell wm density | grep -Eo '[0-9]+' | tail -n 1)"
-python3 - "$ui_file" "${density_dpi:-160}" <<'PY'
+python3 - "$ui_file" "${density_dpi:-160}" "$composer_closed_bottom" <<'PY'
 import re
 import sys
 import xml.etree.ElementTree as ET
 
-path, density_value = sys.argv[1], int(sys.argv[2])
+path, density_value, closed_bottom = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 minimum_height = round(40 * density_value / 160)
+minimum_lift = round(100 * density_value / 160)
 for node in ET.parse(path).getroot().iter():
     label = node.attrib.get('content-desc', '')
     text = node.attrib.get('text', '')
@@ -199,7 +200,10 @@ for node in ET.parse(path).getroot().iter():
             raise SystemExit(f'Composer is clipped: {height}px visible; expected at least {minimum_height}px at {density_value}dpi.')
         if x2 <= x1 or y2 <= y1:
             raise SystemExit(f'Composer has invalid bounds: {node.attrib.get("bounds")}')
-        print(f'Emma composer remains fully visible at {height}px with the Android keyboard open.')
+        lift = closed_bottom - y2
+        if lift < minimum_lift:
+            raise SystemExit(f'Composer did not follow the keyboard: moved up only {lift}px; expected at least {minimum_lift}px.')
+        print(f'Emma composer moved up {lift}px and remains fully visible at {height}px with the Android keyboard open.')
         break
 else:
     raise SystemExit('Composer disappeared from accessibility while the keyboard was open.')
@@ -226,7 +230,7 @@ for node in ET.parse(sys.argv[1]).getroot().iter():
         match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
         if match:
             x1, y1, x2, y2 = map(int, match.groups())
-            print((x1 + x2) // 2, (y1 + y2) // 2)
+            print((x1 + x2) // 2, (y1 + y2) // 2, y2)
             break
 PY
 )"
@@ -234,7 +238,7 @@ if [[ -z "$human_composer_coords" ]]; then
   echo 'The human chat composer was not found through Android accessibility.'
   exit 1
 fi
-read -r human_composer_x human_composer_y <<< "$human_composer_coords"
+read -r human_composer_x human_composer_y human_composer_closed_bottom <<< "$human_composer_coords"
 adb shell input tap "$human_composer_x" "$human_composer_y"
 sleep 5
 capture_ui
@@ -245,15 +249,17 @@ if ! grep -Eq 'mInputShown=true|isInputViewShown=true|inputShown=true' <<< "$key
   echo 'Android did not report a visible software keyboard in the human conversation.'
   exit 1
 fi
-python3 - "$ui_file" "${density_dpi:-160}" <<'PY'
+python3 - "$ui_file" "${density_dpi:-160}" "$human_composer_closed_bottom" <<'PY'
 import re
 import sys
 import xml.etree.ElementTree as ET
 
-path, density_value = sys.argv[1], int(sys.argv[2])
+path, density_value, closed_bottom = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 minimum_input_height = round(40 * density_value / 160)
 minimum_button_size = round(38 * density_value / 160)
+minimum_lift = round(100 * density_value / 160)
 input_ok = False
+input_lift = 0
 button_count = 0
 for node in ET.parse(path).getroot().iter():
     match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
@@ -265,6 +271,9 @@ for node in ET.parse(path).getroot().iter():
     if label == 'متن پیام فارسی یا انگلیسی':
         if height < minimum_input_height:
             raise SystemExit(f'Human composer is clipped: {height}px; expected at least {minimum_input_height}px.')
+        input_lift = closed_bottom - y2
+        if input_lift < minimum_lift:
+            raise SystemExit(f'Human composer did not follow the keyboard: moved up only {input_lift}px; expected at least {minimum_lift}px.')
         input_ok = True
     if label in ('باز و بسته‌کردن دستیار زبان', 'ضبط و ارسال پیام صوتی فعلاً غیرفعال است', 'شروع یا پایان ضبط پیام صوتی', 'ارسال پیام متنی'):
         if width >= minimum_button_size and height >= minimum_button_size:
@@ -273,7 +282,7 @@ if not input_ok:
     raise SystemExit('Human composer disappeared while its keyboard was open.')
 if button_count < 2:
     raise SystemExit(f'Human composer side buttons are clipped or missing; found {button_count}.')
-print(f'Human composer and {button_count} side buttons remain fully visible with the keyboard open.')
+print(f'Human composer moved up {input_lift}px and {button_count} side buttons remain fully visible with the keyboard open.')
 PY
 
 timeout 30s adb exec-out screencap -p > "$screenshot_file"

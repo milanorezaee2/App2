@@ -1,10 +1,15 @@
-import type { PropsWithChildren } from 'react';
+import React from 'react';
 import { View, type ViewProps } from 'react-native';
 
-export function KeyboardProvider({ children }: PropsWithChildren) {
-  return children;
+export function KeyboardProvider({ children }: React.PropsWithChildren) {
+  return <>{children}</>;
 }
 
-export function KeyboardStickyView({ children, ...props }: PropsWithChildren<ViewProps & { offset?: { closed?: number; opened?: number } }>) {
+export function KeyboardStickyView({ children, ...props }: React.PropsWithChildren<ViewProps>) {
   return <View {...props}>{children}</View>;
+}
+
+export function KeyboardAvoidingView({ children, ...props }: React.PropsWithChildren<ViewProps & { behavior?: string; enabled?: boolean }>) {
+  const { behavior: _behavior, enabled: _enabled, ...viewProps } = props;
+  return <View {...viewProps}>{children}</View>;
 }

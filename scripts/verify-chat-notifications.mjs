@@ -15,8 +15,10 @@ const layout = read('app/_layout.tsx');
 
 check(pkg.dependencies['expo-notifications'], 'expo-notifications is installed');
 const keyboardRuntime = read('components/KeyboardRuntime.native.tsx');
-check(/measureInWindow/.test(keyboardRuntime) && /keyboardDidShow/.test(keyboardRuntime)
-  && /Animated\.timing/.test(keyboardRuntime), 'native composer uses measured dynamic keyboard overlap instead of a fixed offset');
+const babel = read('babel.config.js');
+check(pkg.dependencies['react-native-keyboard-controller'] && pkg.dependencies['react-native-reanimated'], 'native keyboard animation dependencies are installed');
+check(/KeyboardAvoidingView, KeyboardProvider, KeyboardStickyView/.test(keyboardRuntime)
+  && /react-native-reanimated\/plugin/.test(babel), 'native keyboard controller is wired to the UI-thread animation runtime');
 check(/"expo-notifications"/.test(config) && /"defaultChannel": "milo-chat"/.test(config), 'Android notification plugin and channel are configured');
 check(/KeyboardProvider/.test(layout) && /ChatNotificationBridge/.test(layout), 'keyboard and notification providers mount globally');
 check(/AndroidImportance\.HIGH/.test(notifications) && /sound:\s*'default'/.test(notifications), 'chat channel uses visible high-priority alerts with sound');

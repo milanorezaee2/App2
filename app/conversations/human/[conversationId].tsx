@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { KeyboardStickyView } from '@/components/KeyboardRuntime';
+import { KeyboardAvoidingView } from '@/components/KeyboardRuntime';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   RecordingPresets,
@@ -200,7 +200,7 @@ export default function HumanConversationScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView style={styles.root} behavior="padding" enabled>
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><UserRound size={22} color={Colors.primary[300]} /></View>
@@ -272,7 +272,7 @@ export default function HumanConversationScreen() {
       {recorderState.isRecording ? <View style={styles.recording}><View style={styles.recordDot} /><Text style={styles.recordingText}>در حال ضبط · {Math.max(1, Math.round(recorderState.durationMillis / 1000))} ثانیه · برای ارسال دوباره بزنید</Text></View> : null}
       {!ONLINE_AUDIO_ENABLED ? <View style={styles.audioNotice}><ShieldCheck size={14} color={Colors.success[300]} /><Text style={styles.audioNoticeText}>{ONLINE_AUDIO_DISABLED_MESSAGE} پخش پیام‌های دریافتی همچنان در دسترس است.</Text></View> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      <KeyboardStickyView style={styles.composer} offset={{ closed: 0, opened: 0 }}>
+      <View style={styles.composer}>
         <Pressable accessibilityRole="button" accessibilityLabel="باز و بسته‌کردن دستیار زبان" accessibilityState={{ expanded: showCoach }} style={styles.helper} onPress={() => setShowCoach((value) => !value)}><Sparkles size={19} color={showCoach ? Colors.warning[400] : Colors.neutral[400]} /></Pressable>
         <TextInput
           accessibilityLabel="متن پیام فارسی یا انگلیسی"
@@ -290,8 +290,8 @@ export default function HumanConversationScreen() {
             {sending ? <ActivityIndicator size="small" color={Colors.onColor} /> : recorderState.isRecording ? <Square size={16} color={Colors.onColor} fill={Colors.onColor} /> : <Mic size={19} color={Colors.onColor} />}
           </Pressable>
         )}
-      </KeyboardStickyView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
