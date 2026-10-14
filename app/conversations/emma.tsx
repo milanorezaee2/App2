@@ -135,7 +135,7 @@ export default function EmmaChat() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior="padding" enabled>
+    <KeyboardAvoidingView style={styles.root} behavior="height" enabled>
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩🏻‍🏫</Text><View style={styles.online} /></View>

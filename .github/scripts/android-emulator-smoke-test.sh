@@ -187,7 +187,15 @@ import xml.etree.ElementTree as ET
 path, density_value, closed_bottom = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 minimum_height = round(40 * density_value / 160)
 minimum_lift = round(100 * density_value / 160)
-for node in ET.parse(path).getroot().iter():
+root = ET.parse(path).getroot()
+keyboard_tops = []
+for candidate in root.iter():
+    package = candidate.attrib.get('package', '').lower()
+    bounds = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', candidate.attrib.get('bounds', ''))
+    if bounds and ('inputmethod' in package or 'keyboard' in package):
+        keyboard_tops.append(int(bounds.group(2)))
+keyboard_top = min(keyboard_tops) if keyboard_tops else None
+for node in root.iter():
     label = node.attrib.get('content-desc', '')
     text = node.attrib.get('text', '')
     if label == 'پیام انگلیسی برای Emma' or (node.attrib.get('class') == 'android.widget.EditText' and 'پیام انگلیسی' in text):
@@ -203,7 +211,10 @@ for node in ET.parse(path).getroot().iter():
         lift = closed_bottom - y2
         if lift < minimum_lift:
             raise SystemExit(f'Composer did not follow the keyboard: moved up only {lift}px; expected at least {minimum_lift}px.')
-        print(f'Emma composer moved up {lift}px and remains fully visible at {height}px with the Android keyboard open.')
+        if keyboard_top is not None and y2 > keyboard_top:
+            raise SystemExit(f'Composer overlaps the keyboard by {y2 - keyboard_top}px (composer bottom {y2}, keyboard top {keyboard_top}).')
+        gap = 'unknown' if keyboard_top is None else str(keyboard_top - y2)
+        print(f'Emma composer moved up {lift}px, remains {height}px high, and has a {gap}px keyboard gap.')
         break
 else:
     raise SystemExit('Composer disappeared from accessibility while the keyboard was open.')
@@ -258,10 +269,18 @@ path, density_value, closed_bottom = sys.argv[1], int(sys.argv[2]), int(sys.argv
 minimum_input_height = round(40 * density_value / 160)
 minimum_button_size = round(38 * density_value / 160)
 minimum_lift = round(100 * density_value / 160)
+root = ET.parse(path).getroot()
+keyboard_tops = []
+for candidate in root.iter():
+    package = candidate.attrib.get('package', '').lower()
+    bounds = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', candidate.attrib.get('bounds', ''))
+    if bounds and ('inputmethod' in package or 'keyboard' in package):
+        keyboard_tops.append(int(bounds.group(2)))
+keyboard_top = min(keyboard_tops) if keyboard_tops else None
 input_ok = False
 input_lift = 0
 button_count = 0
-for node in ET.parse(path).getroot().iter():
+for node in root.iter():
     match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
     if not match:
         continue
@@ -274,15 +293,20 @@ for node in ET.parse(path).getroot().iter():
         input_lift = closed_bottom - y2
         if input_lift < minimum_lift:
             raise SystemExit(f'Human composer did not follow the keyboard: moved up only {input_lift}px; expected at least {minimum_lift}px.')
+        if keyboard_top is not None and y2 > keyboard_top:
+            raise SystemExit(f'Human composer overlaps the keyboard by {y2 - keyboard_top}px.')
         input_ok = True
     if label in ('باز و بسته‌کردن دستیار زبان', 'ضبط و ارسال پیام صوتی فعلاً غیرفعال است', 'شروع یا پایان ضبط پیام صوتی', 'ارسال پیام متنی'):
         if width >= minimum_button_size and height >= minimum_button_size:
+            if keyboard_top is not None and y2 > keyboard_top:
+                raise SystemExit(f'Human composer button {label!r} overlaps the keyboard by {y2 - keyboard_top}px.')
             button_count += 1
 if not input_ok:
     raise SystemExit('Human composer disappeared while its keyboard was open.')
 if button_count < 2:
     raise SystemExit(f'Human composer side buttons are clipped or missing; found {button_count}.')
-print(f'Human composer moved up {input_lift}px and {button_count} side buttons remain fully visible with the keyboard open.')
+gap = 'unknown' if keyboard_top is None else str(keyboard_top - (closed_bottom - input_lift))
+print(f'Human composer moved up {input_lift}px; {button_count} side buttons are visible; keyboard gap is {gap}px.')
 PY
 
 timeout 30s adb exec-out screencap -p > "$screenshot_file"

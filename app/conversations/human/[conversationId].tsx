@@ -200,7 +200,7 @@ export default function HumanConversationScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior="padding" enabled>
+    <KeyboardAvoidingView style={styles.root} behavior="height" enabled>
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><UserRound size={22} color={Colors.primary[300]} /></View>

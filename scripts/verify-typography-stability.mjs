@@ -54,8 +54,8 @@ check(/companionenglish:\/\/\/conversations\/emma/.test(androidSmoke)
   && /Composer is clipped/.test(androidSmoke),
   'Android release smoke test opens the real keyboard and rejects a clipped composer');
 check(/messages:\s*\{\s*flex:\s*1,\s*minHeight:\s*0/.test(emma) && /messages:\s*\{\s*flex:\s*1,\s*minHeight:\s*0/.test(human), 'message lists yield all resized height to the composer');
-check(/KeyboardAvoidingView style=\{styles\.root\} behavior="padding" enabled/.test(emma)
-  && /KeyboardAvoidingView style=\{styles\.root\} behavior="padding" enabled/.test(human)
+check(/KeyboardAvoidingView style=\{styles\.root\} behavior="height" enabled/.test(emma)
+  && /KeyboardAvoidingView style=\{styles\.root\} behavior="height" enabled/.test(human)
   && /<View style=\{styles\.composer\}>/.test(emma)
   && /<View style=\{styles\.composer\}>/.test(human), 'both complete composers and their side buttons are inside the UI-thread keyboard avoiding root');
 check(/composer:\s*\{\s*flexShrink:\s*0,\s*minHeight:\s*64,\s*overflow:\s*'visible'/.test(emma)
