@@ -140,6 +140,10 @@ export function registrationError(error: unknown): string {
   if (/already registered|already been registered|user already exists/i.test(message)) return 'این ایمیل قبلاً ثبت شده است؛ از بخش ورود استفاده کنید.';
   if (/Invalid login credentials/i.test(message)) return 'ایمیل یا رمز عبور صحیح نیست.';
   if (/EMAIL_CONFIRMATION_ENABLED|Email not confirmed/i.test(message)) return 'ورود ساده هنوز در تنظیمات سرور فعال نشده است؛ مدیر باید گزینه Confirm email را خاموش کند.';
+  if (/rate limit/i.test(message)) return 'تعداد تلاش‌ها زیاد شده است؛ چند دقیقه صبر کنید و دوباره امتحان کنید.';
+  if (/signup.*disabled|signups not allowed/i.test(message)) return 'ثبت‌نام کاربران در تنظیمات Supabase غیرفعال است.';
+  if (/row-level security|permission denied/i.test(message)) return 'مجوز ثبت پروفایل روی سرور کامل نیست؛ migration ثبت‌نام را بررسی کنید.';
   if (/app_user_profiles|schema cache|does not exist/i.test(message)) return 'زیرساخت ثبت‌نام هنوز روی سرور فعال نشده است.';
-  return 'عملیات انجام نشد؛ اتصال اینترنت را بررسی و دوباره تلاش کنید.';
+  if (/fetch|network|internet|timeout/i.test(message)) return 'ارتباط با سرور برقرار نشد؛ اینترنت یا VPN را بررسی کنید.';
+  return message ? `ثبت‌نام انجام نشد: ${message.slice(0, 140)}` : 'ثبت‌نام انجام نشد؛ دوباره تلاش کنید.';
 }

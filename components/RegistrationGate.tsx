@@ -24,7 +24,6 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
-  const [codeConfirmation, setCodeConfirmation] = useState('');
   const [registrationReady, setRegistrationReady] = useState(false);
   const holdForCode = useRef(false);
 
@@ -91,34 +90,16 @@ export function RegistrationGate({ children }: PropsWithChildren) {
         <LinearGradient colors={['#EAF4FF', '#FFFFFF']} style={styles.card}>
           <View style={styles.logo}><ShieldCheck size={31} color="#FFFFFF" /></View>
           <Text style={styles.title}>کد ورود شما آماده است</Text>
-          <Text style={styles.subtitle}>این کد را یادداشت کنید. سپس همان کد را در کادر پایین وارد کنید تا وارد اپ شوید.</Text>
+          <Text style={styles.subtitle}>این کد را برای ورودهای بعدی یادداشت کنید. اکنون بدون تایپ دوباره وارد اپ می‌شوید.</Text>
           <Text selectable accessibilityLabel={`کد ورود ${generatedCode}`} style={styles.code}>{generatedCode}</Text>
-          {registrationReady ? <>
-            <Text style={styles.label}>کد ۶ رقمی را وارد کنید</Text>
-            <TextInput
-              accessibilityLabel="تأیید کد ورود شش رقمی"
-              value={codeConfirmation}
-              onChangeText={value => { setCodeConfirmation(value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
-              style={[styles.input, styles.codeInput]}
-              placeholder="••••••"
-              placeholderTextColor="#5E6E82"
-              keyboardType="number-pad"
-              maxLength={6}
-              onSubmitEditing={() => {
-                if (codeConfirmation !== generatedCode) { setError('کد واردشده صحیح نیست.'); return; }
-                holdForCode.current = false; setGeneratedCode(''); void inspect();
-              }}
-            />
-          </> : null}
           {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
           {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-          <Pressable accessibilityRole="button" style={[styles.submit, registrationReady && codeConfirmation.length !== 6 && styles.disabled]} disabled={registrationReady && codeConfirmation.length !== 6} onPress={() => {
+          <Pressable accessibilityRole="button" style={styles.submit} onPress={() => {
             if (!registrationReady) {
               holdForCode.current = false; setGeneratedCode(''); setMode('login'); return;
             }
-            if (codeConfirmation !== generatedCode) { setError('کد واردشده صحیح نیست.'); return; }
             holdForCode.current = false; setGeneratedCode(''); void inspect();
-          }}><Text style={styles.submitText}>{registrationReady ? 'تأیید کد و ورود به اپ' : 'رفتن به صفحه ورود'}</Text></Pressable>
+          }}><Text style={styles.submitText}>{registrationReady ? 'ورود مستقیم به اپ' : 'رفتن به صفحه ورود'}</Text></Pressable>
         </LinearGradient>
       </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
@@ -169,7 +150,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#F6FAFF' },
   scroll: { flex: 1 },
-  content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 18, paddingVertical: 28 },
+  content: { flexGrow: 1, justifyContent: 'flex-start', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 140 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#F6FAFF' },
   loadingText: { fontFamily: Typography.fontFamily, color: '#334155', fontSize: 13 },
   card: { width: '100%', maxWidth: 500, alignSelf: 'center', borderRadius: 28, borderWidth: 1, borderColor: '#D7E7FA', padding: 22, shadowColor: '#2D6FB7', shadowOpacity: .12, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 5 },
@@ -186,7 +167,6 @@ const styles = StyleSheet.create({
   input: { minHeight: 50, borderRadius: 15, borderWidth: 1, borderColor: '#AFC4DE', backgroundColor: '#FFFFFF', paddingHorizontal: 14, fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '700', color: '#111111', writingDirection: 'rtl' },
   ltr: { fontFamily: Typography.latinFontFamily, textAlign: 'left', writingDirection: 'ltr', fontWeight: '800' },
   code: { fontFamily: Typography.numberFontFamily, fontSize: 38, lineHeight: 52, letterSpacing: 8, color: '#111111', backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#2878DE', borderRadius: 18, paddingVertical: 12, paddingHorizontal: 18, textAlign: 'center', writingDirection: 'ltr' },
-  codeInput: { fontFamily: Typography.numberFontFamily, fontSize: 24, lineHeight: 32, letterSpacing: 7, color: '#111111', textAlign: 'center', writingDirection: 'ltr' },
   error: { fontFamily: Typography.fontFamily, color: '#B42318', backgroundColor: '#FEECEB', padding: 10, borderRadius: 12, textAlign: 'right', marginTop: 12 },
   notice: { fontFamily: Typography.fontFamily, color: '#16603F', backgroundColor: '#E9F8F0', padding: 10, borderRadius: 12, textAlign: 'right', marginTop: 12 },
   submit: { minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary[600], marginTop: 17 },

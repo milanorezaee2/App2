@@ -23,7 +23,7 @@ check((gate.match(/KeyboardAvoidingView/g) || []).length >= 3
   && (gate.match(/KeyboardAwareScrollView/g) || []).length >= 3
   && /bottomOffset=\{24\}/.test(gate), 'registration and login forms dynamically follow and scroll above the keyboard');
 check(/EMAIL_CONFIRMATION_ENABLED/.test(registration) && !/ابتدا ایمیل تأیید/.test(registration), 'the learner flow never asks users to confirm email');
-check(/codeConfirmation !== generatedCode/.test(gate), 'the generated code must be entered before app access');
+check(/ورود مستقیم به اپ/.test(gate) && /toAuthPassword/.test(registration), 'new learners enter directly while retaining a hardened six-digit login code');
 check(/app_user_profiles/.test(migration) && /ENABLE ROW LEVEL SECURITY/.test(migration), 'registered profiles are protected by RLS');
 check(/user_id = auth\.uid\(\)/.test(migration), 'learners can only access their own profile');
 check(/admin_registered_users/.test(migration) && /is_education_admin/.test(migration), 'the registered-user directory verifies server-side manager authorization');
