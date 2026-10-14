@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+let count = 0;
+const check = (value, message) => { assert.ok(value, message); count += 1; };
+
+const gate = read('components/RegistrationGate.tsx');
+const registration = read('lib/userRegistration.ts');
+const layout = read('app/_layout.tsx');
+const migration = read('supabase/migrations/202610140002_registered_users_admin.sql');
+const admin = read('app/admin/index.tsx');
+const adminApi = read('lib/educationAdmin.ts');
+const appConfig = read('app.config.js');
+const workflow = read('.github/workflows/android-build.yml');
+
+check(/<RegistrationGate>/.test(layout), 'learner routes are protected by the registration gate');
+check(/signUp/.test(registration) && /signInWithPassword/.test(registration) && /updateUser/.test(registration), 'new, returning, and existing anonymous learners are supported');
+check(/full_name/.test(gate) || /fullName/.test(gate), 'registration captures the learner name');
+check(/رمز عبور/.test(gate) && /ایمیل/.test(gate), 'registration captures email and password');
+check(/app_user_profiles/.test(migration) && /ENABLE ROW LEVEL SECURITY/.test(migration), 'registered profiles are protected by RLS');
+check(/user_id = auth\.uid\(\)/.test(migration), 'learners can only access their own profile');
+check(/admin_registered_users/.test(migration) && /is_education_admin/.test(migration), 'the registered-user directory verifies server-side manager authorization');
+check(/education_admins_single_owner_idx/.test(migration), 'the database enforces one operational manager');
+check(/registeredUsers/.test(admin) && /کاربران ثبت‌شده/.test(admin), 'the management UI lists registered learners');
+check(/admin_registered_users/.test(adminApi), 'the management client loads the protected directory RPC');
+check(/com\.devicecontrol\.miloadmin/.test(appConfig) && /com\.devicecontrol\.companion/.test(read('app.json')), 'learner and management APKs have separate Android package IDs');
+check(/MiloAdmin\.apk/.test(workflow) && /MiloMultiApp\.apk/.test(workflow), 'CI builds and publishes both standalone APKs');
+check(/EXPO_PUBLIC_MILO_ADMIN_APP/.test(read('app/index.tsx')), 'the management APK boots directly into its protected panel');
+check(/پیام‌های خصوصی/.test(gate) && /پیام‌های خصوصی/.test(admin), 'both apps disclose and preserve private-message boundaries');
+console.log(`${count} registration and private management checks passed.`);

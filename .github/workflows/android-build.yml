@@ -101,7 +101,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
-      - name: Verify the APK includes its offline JavaScript bundle
+      - name: Verify and preserve the learner APK
         run: |
           python3 - <<'PY'
           from zipfile import ZipFile
@@ -112,10 +112,30 @@ jobs:
               raise SystemExit('APK structure validation failed.')
           if 'assets/index.android.bundle' not in names:
               raise SystemExit('Standalone JS bundle is missing; refusing to publish an APK that needs Metro.')
-          print('Standalone APK verified: Android manifest, DEX, and bundled JavaScript are present.')
+          print('Standalone learner APK verified.')
+          PY
+          cp android/app/build/outputs/apk/release/app-release.apk MiloMultiApp.apk
+
+      - name: Generate and build the private management APK
+        shell: bash
+        run: |
+          rm -rf android
+          MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true ./gradlew assembleRelease --no-daemon
+          cd ..
+          cp android/app/build/outputs/apk/release/app-release.apk MiloAdmin.apk
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile('MiloAdmin.apk') as archive:
+              names = set(archive.namelist())
+          if 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
+              raise SystemExit('Management APK structure validation failed.')
+          print('Standalone private management APK verified.')
           PY
 
-      - name: Smoke-test app launch on Android emulator
+      - name: Smoke-test both APKs on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -140,28 +160,32 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
-      - name: Name APK for direct download
+      - name: Confirm both release APKs are ready
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
-        run: cp android/app/build/outputs/apk/release/app-release.apk MiloMultiApp.apk
+        run: test -s MiloMultiApp.apk && test -s MiloAdmin.apk
 
-      - name: Publish direct APK download
+      - name: Publish direct APK downloads
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: milomultiapp-android-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           name: "MiloMultiApp Android build #${{ github.run_number }}"
-          body: Installable personal-use Android APK. The APK is signed for sideloading.
+          body: Installable learner and private management Android APKs. Both are signed for sideloading.
           prerelease: true
-          files: MiloMultiApp.apk
+          files: |
+            MiloMultiApp.apk
+            MiloAdmin.apk
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Upload APK artifact
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: MiloMultiApp-android-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: Milo-android-apks
+          path: |
+            MiloMultiApp.apk
+            MiloAdmin.apk
           if-no-files-found: error
           retention-days: 7

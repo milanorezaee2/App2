@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-apk_path="android/app/build/outputs/apk/release/app-release.apk"
+apk_path="MiloMultiApp.apk"
+admin_apk_path="MiloAdmin.apk"
 diag_dir="${RUNNER_TEMP:-/tmp}"
 log_file="$diag_dir/milomultiapp-emulator-smoke.log"
 ui_file="$diag_dir/milomultiapp-emulator-window.xml"
@@ -127,16 +128,22 @@ if ! timeout 30s adb exec-out screencap -p > "$screenshot_file"; then
   echo 'Warning: screenshot capture failed; continuing with the UI hierarchy check.'
 fi
 
-failed_step="verifying the language home screen rendered"
-# UIAutomator only reports visible nodes; the course cards are below the fold on
-# this small emulator, so assert the visible premium brand and new hero instead.
-if ! grep -Fq 'MILO' "$ui_file" || ! grep -Fq 'هر روز، یک قدم' "$ui_file"; then
-  echo 'The visible MILO brand and bright language-home hero were not found in the UI hierarchy.'
+failed_step="verifying the mandatory learner registration rendered"
+registration_gate=false
+if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'ثبت‌نام و ورود به اپ' "$ui_file"; then
+  registration_gate=true
+  echo 'Android emulator opened MiloMultiApp and rendered its mandatory registration gate.'
+elif grep -Fq 'MILO' "$ui_file" && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+  echo 'Android emulator restored an authenticated learner and rendered the language home.'
+else
+  echo 'Neither the learner registration gate nor the authenticated language home was found.'
   exit 1
 fi
 
-echo 'Android emulator opened MiloMultiApp and rendered its language-home screen.'
-
+# A clean CI install intentionally has no production learner credentials. Chat
+# geometry remains covered when an authenticated test session is restored; on a
+# first install we verify the account gate and continue with the separate admin APK.
+if [[ "$registration_gate" == false ]]; then
 failed_step="opening the Emma chat keyboard test route"
 timeout 60s adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/emma' com.devicecontrol.companion
 sleep 8
@@ -311,3 +318,25 @@ PY
 
 timeout 30s adb exec-out screencap -p > "$screenshot_file"
 echo 'Android emulator verified both complete chat composers and their side buttons with the keyboard open.'
+fi
+
+failed_step="installing the private management APK"
+adb install -r "$admin_apk_path"
+adb shell am force-stop com.devicecontrol.miloadmin
+
+failed_step="launching the private management app"
+timeout 90s adb shell am start -W -n com.devicecontrol.miloadmin/.MainActivity
+sleep 12
+capture_ui
+
+failed_step="verifying the management login is isolated and protected"
+if ! grep -Fq 'ایمیل مدیر' "$ui_file" || ! grep -Fq 'ورود امن به پنل' "$ui_file"; then
+  echo 'The standalone management APK did not render its protected manager login.'
+  exit 1
+fi
+if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
+  echo 'The management APK incorrectly rendered the learner registration flow.'
+  exit 1
+fi
+
+echo 'Android emulator verified the standalone management APK and protected manager login.'

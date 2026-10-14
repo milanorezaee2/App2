@@ -13,6 +13,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';
 import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
+import { RegistrationGate } from '@/components/RegistrationGate';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
 import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
@@ -47,6 +48,7 @@ stableInput.defaultProps = {
 SplashScreen.preventAutoHideAsync();
 
 let startupChimePlayed = false;
+const IS_ADMIN_APP = process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
 
 function RuntimeGate() {
   const pathname = usePathname();
@@ -157,16 +159,19 @@ export default function RootLayout() {
       <ErrorBoundary>
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <AppLockGate>
-            <RuntimeGate />
-            <ChatNotificationBridge />
-            <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-              <Stack.Screen name="index" />
-              <Stack.Screen name="agent" />
-              <Stack.Screen name="permissions" />
-              <Stack.Screen name="app-lock" />
-              <Stack.Screen name="lang/index" />
-              <Stack.Screen name="+not-found" />
-            </Stack>
+            <RegistrationGate>
+              {!IS_ADMIN_APP && <RuntimeGate />}
+              {!IS_ADMIN_APP && <ChatNotificationBridge />}
+              <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+                <Stack.Screen name="index" />
+                <Stack.Screen name="admin/index" />
+                <Stack.Screen name="agent" />
+                <Stack.Screen name="permissions" />
+                <Stack.Screen name="app-lock" />
+                <Stack.Screen name="lang/index" />
+                <Stack.Screen name="+not-found" />
+              </Stack>
+            </RegistrationGate>
           </AppLockGate>
           <StatusBar style="dark" />
         </SafeAreaView>
