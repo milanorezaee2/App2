@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useRouter, Redirect } from 'expo-router';
+import Constants from 'expo-constants';
 import { FEATURES } from '@/lib/features';
 import { BookOpen, Users, Ticket, LayoutDashboard, ShieldCheck, LogOut, ArrowUpLeft, Search, RefreshCw, GraduationCap } from 'lucide-react-native';
 import { adminClient, loadAdminData, demoStudents, educationError, progressMetrics, type StudentRow, type EducationInvite, type RegisteredUser } from '@/lib/educationAdmin';
@@ -156,7 +157,7 @@ function EducationAdmin() {
         </View>}
         {tab === 'content' && <View style={s.card}><Text style={s.cardTitle}>کتابخانه محتوای فعلی</Text><Text style={s.subtitle}>{fa(SENTENCE_LESSONS.length)} درس · {fa(SENTENCE_LESSONS.reduce((total, lesson) => total + lesson.sentences.length, 0))} جمله · ۵۰۴ واژه مرجع</Text><Text style={s.small}>این بخش فعلاً فقط خواندنی است. ویرایش و انتشار محتوای جدید از پنل هنوز پیاده‌سازی نشده است.</Text>{COURSE_LEVELS.map(l => <View key={l.id} style={s.contentRow}><View style={[s.levelDot,{backgroundColor:l.color}]} /><View style={{flex:1}}><Text style={s.studentName}>{l.title}</Text><Text style={s.small}>{l.description}</Text></View><Text style={s.badge}>{fa(SENTENCE_LESSONS.filter(x=>x.levelId===l.id).length)} درس</Text></View>)}</View>}
         <View style={s.footer}><ShieldCheck size={16} color="#7a899b" /><Text style={s.small}>مدیریت آموزشی • بدون نظارت بر گوشی • داده آفلاین پس از همگام‌سازی دیده می‌شود</Text></View>
-        {process.env.EXPO_PUBLIC_MILO_ADMIN_APP !== 'true' && button('بازگشت به اپ آموزشی',()=>router.replace('/lang'),true)}
+        {Constants.expoConfig?.extra?.appRole !== 'admin' && button('بازگشت به اپ آموزشی',()=>router.replace('/lang'),true)}
       </ScrollView>
     </View>
   </View>;

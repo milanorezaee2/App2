@@ -3,6 +3,7 @@ import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
+import Constants from 'expo-constants';
 import { I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
@@ -48,7 +49,8 @@ stableInput.defaultProps = {
 SplashScreen.preventAutoHideAsync();
 
 let startupChimePlayed = false;
-const IS_ADMIN_APP = process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
+const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
+  || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
 
 function RuntimeGate() {
   const pathname = usePathname();

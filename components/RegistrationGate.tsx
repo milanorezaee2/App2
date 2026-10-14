@@ -1,12 +1,14 @@
 import { type PropsWithChildren, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Constants from 'expo-constants';
 import { BookOpenCheck, LogIn, ShieldCheck, UserPlus } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { getRegisteredSession, loginLearner, registerLearner, registrationError, touchLearnerActivity } from '@/lib/userRegistration';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 
-const IS_ADMIN_APP = process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
+const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
+  || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
 
 type Mode = 'register' | 'login';
 
