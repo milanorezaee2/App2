@@ -140,6 +140,43 @@ else
   exit 1
 fi
 
+if [[ "$registration_gate" == true ]]; then
+  failed_step="opening the keyboard in the learner registration form"
+  registration_coords="$(python3 - "$ui_file" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+for node in ET.parse(sys.argv[1]).getroot().iter():
+    if node.attrib.get('content-desc', '') == 'ایمیل حساب':
+        match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+        if match:
+            x1,y1,x2,y2=map(int,match.groups()); print((x1+x2)//2,(y1+y2)//2); break
+PY
+)"
+  [[ -n "$registration_coords" ]] || { echo 'Registration email input was not found.'; exit 1; }
+  read -r registration_x registration_y <<< "$registration_coords"
+  adb shell settings put secure show_ime_with_hard_keyboard 1
+  adb shell input tap "$registration_x" "$registration_y"
+  sleep 5
+  capture_ui
+  keyboard_state="$(adb shell dumpsys input_method 2>/dev/null || true)"
+  grep -Eq 'mInputShown=true|isInputViewShown=true|inputShown=true' <<< "$keyboard_state" || { echo 'Registration keyboard did not open.'; exit 1; }
+  python3 - "$ui_file" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+root=ET.parse(sys.argv[1]).getroot(); input_bottom=None; keyboard_tops=[]
+for node in root.iter():
+    bounds=re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]',node.attrib.get('bounds',''))
+    if not bounds: continue
+    x1,y1,x2,y2=map(int,bounds.groups())
+    if node.attrib.get('content-desc','') == 'ایمیل حساب': input_bottom=y2
+    package=node.attrib.get('package','').lower()
+    if 'inputmethod' in package or 'keyboard' in package: keyboard_tops.append(y1)
+if input_bottom is None: raise SystemExit('Registration input disappeared with keyboard open.')
+if keyboard_tops and input_bottom > min(keyboard_tops):
+    raise SystemExit(f'Registration input overlaps keyboard by {input_bottom-min(keyboard_tops)}px.')
+print('Registration input remains fully visible above the software keyboard.')
+PY
+  adb shell input keyevent KEYCODE_BACK
+fi
+
 # A clean CI install intentionally has no production learner credentials. Chat
 # geometry remains covered when an authenticated test session is restored; on a
 # first install we verify the account gate and continue with the separate admin APK.

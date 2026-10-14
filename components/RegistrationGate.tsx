@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
 import { BookOpenCheck, LogIn, ShieldCheck, UserPlus } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
+import { KeyboardAvoidingView } from '@/components/KeyboardRuntime';
 import { generateLoginCode, getRegisteredSession, loginLearner, registerLearner, registrationError, touchLearnerActivity } from '@/lib/userRegistration';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 
@@ -23,6 +24,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
+  const [codeConfirmation, setCodeConfirmation] = useState('');
   const [registrationReady, setRegistrationReady] = useState(false);
   const holdForCode = useRef(false);
 
@@ -57,11 +59,11 @@ export function RegistrationGate({ children }: PropsWithChildren) {
       if (mode === 'register') {
         const code = await generateLoginCode();
         holdForCode.current = true;
-        const result = await registerLearner(fullName, email, code);
+        await registerLearner(fullName, email, code);
         setPassword(code);
         setGeneratedCode(code);
-        setRegistrationReady(result === 'ready');
-        setNotice(result === 'verify-email' ? 'ایمیل تأیید هنوز در Supabase فعال است. ایمیل را تأیید کنید و سپس با همین کد وارد شوید.' : 'حساب شما ساخته شد. این کد را برای ورودهای بعدی نگه دارید.');
+        setRegistrationReady(true);
+        setNotice('حساب شما ساخته شد. هیچ تأیید ایمیلی لازم نیست؛ کد را وارد کنید و مستقیم وارد اپ شوید.');
       } else {
         await loginLearner(email, password);
         await inspect();
@@ -77,31 +79,48 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   if (IS_ADMIN_APP || ready) return <>{children}</>;
   if (checking) return <View style={styles.loading}><ActivityIndicator size="large" color={Colors.primary[600]} /><Text style={styles.loadingText}>در حال بررسی حساب…</Text></View>;
   if (generatedCode) return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-      <LinearGradient colors={['#EAF4FF', '#FFFFFF']} style={styles.card}>
-        <View style={styles.logo}><ShieldCheck size={31} color="#FFFFFF" /></View>
-        <Text style={styles.title}>کد ورود شما آماده است</Text>
-        <Text style={styles.subtitle}>این کد را یادداشت یا از آن تصویر بگیرید. برای ورودهای بعدی فقط ایمیل و همین کد لازم است.</Text>
-        <Text selectable accessibilityLabel={`کد ورود ${generatedCode}`} style={styles.code}>{generatedCode}</Text>
-        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-        <Pressable accessibilityRole="button" style={styles.submit} onPress={() => {
-          if (registrationReady) {
-            holdForCode.current = false;
-            setGeneratedCode('');
-            void inspect();
-          } else {
-            holdForCode.current = false;
-            setGeneratedCode('');
-            setMode('login');
-          }
-        }}><Text style={styles.submitText}>{registrationReady ? 'کد را ذخیره کردم؛ ورود به اپ' : 'رفتن به صفحه ورود'}</Text></Pressable>
-      </LinearGradient>
-    </ScrollView>
+    <KeyboardAvoidingView style={styles.page} behavior="height" enabled>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <LinearGradient colors={['#EAF4FF', '#FFFFFF']} style={styles.card}>
+          <View style={styles.logo}><ShieldCheck size={31} color="#FFFFFF" /></View>
+          <Text style={styles.title}>کد ورود شما آماده است</Text>
+          <Text style={styles.subtitle}>این کد را یادداشت کنید. سپس همان کد را در کادر پایین وارد کنید تا وارد اپ شوید.</Text>
+          <Text selectable accessibilityLabel={`کد ورود ${generatedCode}`} style={styles.code}>{generatedCode}</Text>
+          {registrationReady ? <>
+            <Text style={styles.label}>کد ۶ رقمی را وارد کنید</Text>
+            <TextInput
+              accessibilityLabel="تأیید کد ورود شش رقمی"
+              value={codeConfirmation}
+              onChangeText={value => { setCodeConfirmation(value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
+              style={[styles.input, styles.codeInput]}
+              placeholder="••••••"
+              placeholderTextColor="#5E6E82"
+              keyboardType="number-pad"
+              maxLength={6}
+              onSubmitEditing={() => {
+                if (codeConfirmation !== generatedCode) { setError('کد واردشده صحیح نیست.'); return; }
+                holdForCode.current = false; setGeneratedCode(''); void inspect();
+              }}
+            />
+          </> : null}
+          {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+          {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+          <Pressable accessibilityRole="button" style={[styles.submit, registrationReady && codeConfirmation.length !== 6 && styles.disabled]} disabled={registrationReady && codeConfirmation.length !== 6} onPress={() => {
+            if (!registrationReady) {
+              holdForCode.current = false; setGeneratedCode(''); setMode('login'); return;
+            }
+            if (codeConfirmation !== generatedCode) { setError('کد واردشده صحیح نیست.'); return; }
+            holdForCode.current = false; setGeneratedCode(''); void inspect();
+          }}><Text style={styles.submitText}>{registrationReady ? 'تأیید کد و ورود به اپ' : 'رفتن به صفحه ورود'}</Text></Pressable>
+        </LinearGradient>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <LinearGradient colors={['#EAF4FF', '#FFFFFF']} style={styles.card}>
+    <KeyboardAvoidingView style={styles.page} behavior="height" enabled>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+        <LinearGradient colors={['#EAF4FF', '#FFFFFF']} style={styles.card}>
         <View style={styles.logo}><BookOpenCheck size={31} color="#FFFFFF" /></View>
         <Text style={styles.eyebrow}>MILO LANGUAGE LEARNING</Text>
         <Text style={styles.title}>{mode === 'register' ? 'ساخت حساب زبان‌آموز' : 'ورود به حساب'}</Text>
@@ -127,13 +146,15 @@ export function RegistrationGate({ children }: PropsWithChildren) {
         </Pressable>
 
         <View style={styles.privacy}><ShieldCheck size={18} color="#16835D" /><Text style={styles.privacyText}>مدیریت فقط اطلاعات حساب، وضعیت فعالیت و پیشرفت آموزشی را می‌بیند؛ پیام‌های خصوصی نمایش داده نمی‌شوند.</Text></View>
-      </LinearGradient>
-    </ScrollView>
+        </LinearGradient>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#F6FAFF' },
+  scroll: { flex: 1 },
   content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 18, paddingVertical: 28 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#F6FAFF' },
   loadingText: { fontFamily: Typography.fontFamily, color: '#334155', fontSize: 13 },
@@ -151,6 +172,7 @@ const styles = StyleSheet.create({
   input: { minHeight: 50, borderRadius: 15, borderWidth: 1, borderColor: '#AFC4DE', backgroundColor: '#FFFFFF', paddingHorizontal: 14, fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '700', color: '#111111', writingDirection: 'rtl' },
   ltr: { fontFamily: Typography.latinFontFamily, textAlign: 'left', writingDirection: 'ltr', fontWeight: '800' },
   code: { fontFamily: Typography.numberFontFamily, fontSize: 38, lineHeight: 52, letterSpacing: 8, color: '#111111', backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#2878DE', borderRadius: 18, paddingVertical: 12, paddingHorizontal: 18, textAlign: 'center', writingDirection: 'ltr' },
+  codeInput: { fontFamily: Typography.numberFontFamily, fontSize: 24, lineHeight: 32, letterSpacing: 7, color: '#111111', textAlign: 'center', writingDirection: 'ltr' },
   error: { fontFamily: Typography.fontFamily, color: '#B42318', backgroundColor: '#FEECEB', padding: 10, borderRadius: 12, textAlign: 'right', marginTop: 12 },
   notice: { fontFamily: Typography.fontFamily, color: '#16603F', backgroundColor: '#E9F8F0', padding: 10, borderRadius: 12, textAlign: 'right', marginTop: 12 },
   submit: { minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary[600], marginTop: 17 },

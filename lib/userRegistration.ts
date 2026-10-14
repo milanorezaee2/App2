@@ -60,7 +60,7 @@ export async function generateLoginCode(): Promise<string> {
   return String(100000 + (value % 900000));
 }
 
-export async function registerLearner(fullName: string, email: string, loginCode: string): Promise<'ready' | 'verify-email'> {
+export async function registerLearner(fullName: string, email: string, loginCode: string): Promise<'ready'> {
   const cleanName = fullName.trim();
   const cleanEmail = email.trim().toLowerCase();
   if (cleanName.length < 2 || cleanName.length > 80) throw new Error('NAME_INVALID');
@@ -87,7 +87,11 @@ export async function registerLearner(fullName: string, email: string, loginCode
     hasSession = !!result.data.session;
   }
 
-  if (!user || !hasSession || !user.email_confirmed_at) return 'verify-email';
+  // Learners must never be sent through an email-confirmation flow. Hosted
+  // Supabase Email Auth must have Confirm email disabled for this product.
+  if (!user || !hasSession || !user.email_confirmed_at) {
+    throw new Error('EMAIL_CONFIRMATION_ENABLED');
+  }
   await saveProfile(user, cleanName);
   return 'ready';
 }
@@ -118,7 +122,7 @@ export function registrationError(error: unknown): string {
   if (/CODE_INVALID|password.*6/i.test(message)) return 'کد ورود باید دقیقاً ۶ رقم باشد.';
   if (/already registered|already been registered|user already exists/i.test(message)) return 'این ایمیل قبلاً ثبت شده است؛ از بخش ورود استفاده کنید.';
   if (/Invalid login credentials/i.test(message)) return 'ایمیل یا رمز عبور صحیح نیست.';
-  if (/Email not confirmed/i.test(message)) return 'ابتدا ایمیل تأیید را باز کنید و سپس وارد شوید.';
+  if (/EMAIL_CONFIRMATION_ENABLED|Email not confirmed/i.test(message)) return 'ورود ساده هنوز در تنظیمات سرور فعال نشده است؛ مدیر باید گزینه Confirm email را خاموش کند.';
   if (/app_user_profiles|schema cache|does not exist/i.test(message)) return 'زیرساخت ثبت‌نام هنوز روی سرور فعال نشده است.';
   return 'عملیات انجام نشد؛ اتصال اینترنت را بررسی و دوباره تلاش کنید.';
 }
