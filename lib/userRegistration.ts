@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import * as Application from 'expo-application';
+import * as Crypto from 'expo-crypto';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
@@ -53,18 +54,24 @@ export async function getRegisteredSession(): Promise<{ session: Session | null;
   return { session, profile: (profile || null) as RegistrationProfile | null };
 }
 
-export async function registerLearner(fullName: string, email: string, password: string): Promise<'ready' | 'verify-email'> {
+export async function generateLoginCode(): Promise<string> {
+  const bytes = await Crypto.getRandomBytesAsync(4);
+  const value = (((bytes[0] << 24) >>> 0) + (bytes[1] << 16) + (bytes[2] << 8) + bytes[3]) >>> 0;
+  return String(100000 + (value % 900000));
+}
+
+export async function registerLearner(fullName: string, email: string, loginCode: string): Promise<'ready' | 'verify-email'> {
   const cleanName = fullName.trim();
   const cleanEmail = email.trim().toLowerCase();
   if (cleanName.length < 2 || cleanName.length > 80) throw new Error('NAME_INVALID');
   if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) throw new Error('EMAIL_INVALID');
-  if (password.length < 8) throw new Error('PASSWORD_SHORT');
+  if (!/^\d{6}$/.test(loginCode)) throw new Error('CODE_INVALID');
 
   const current = await supabase.auth.getSession();
   let user: User | null = null;
   let hasSession = false;
   if (current.data.session && !isPermanentLearner(current.data.session.user)) {
-    const result = await supabase.auth.updateUser({ email: cleanEmail, password, data: { full_name: cleanName } });
+    const result = await supabase.auth.updateUser({ email: cleanEmail, password: loginCode, data: { full_name: cleanName } });
     if (result.error) throw result.error;
     user = result.data.user;
     hasSession = true;
@@ -72,7 +79,7 @@ export async function registerLearner(fullName: string, email: string, password:
     if (current.data.session) await supabase.auth.signOut();
     const result = await supabase.auth.signUp({
       email: cleanEmail,
-      password,
+      password: loginCode,
       options: { data: { full_name: cleanName } },
     });
     if (result.error) throw result.error;
@@ -108,7 +115,7 @@ export function registrationError(error: unknown): string {
   const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
   if (/NAME_INVALID/.test(message)) return 'نام و نام خانوادگی را کامل وارد کنید.';
   if (/EMAIL_INVALID|invalid.*email/i.test(message)) return 'ایمیل معتبر وارد کنید.';
-  if (/PASSWORD_SHORT|password.*8/i.test(message)) return 'رمز عبور باید حداقل ۸ نویسه باشد.';
+  if (/CODE_INVALID|password.*6/i.test(message)) return 'کد ورود باید دقیقاً ۶ رقم باشد.';
   if (/already registered|already been registered|user already exists/i.test(message)) return 'این ایمیل قبلاً ثبت شده است؛ از بخش ورود استفاده کنید.';
   if (/Invalid login credentials/i.test(message)) return 'ایمیل یا رمز عبور صحیح نیست.';
   if (/Email not confirmed/i.test(message)) return 'ابتدا ایمیل تأیید را باز کنید و سپس وارد شوید.';

@@ -130,7 +130,7 @@ fi
 
 failed_step="verifying the mandatory learner registration rendered"
 registration_gate=false
-if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'ثبت‌نام و ورود به اپ' "$ui_file"; then
+if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'ساخت حساب و دریافت کد' "$ui_file"; then
   registration_gate=true
   echo 'Android emulator opened MiloMultiApp and rendered its mandatory registration gate.'
 elif grep -Fq 'MILO' "$ui_file" && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
