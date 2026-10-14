@@ -29,6 +29,7 @@ check(/user_id = auth\.uid\(\)/.test(migration), 'learners can only access their
 check(/admin_registered_users/.test(migration) && /is_education_admin/.test(migration), 'the registered-user directory verifies server-side manager authorization');
 check(/education_admins_single_owner_idx/.test(migration), 'the database enforces one operational manager');
 check(/registeredUsers/.test(admin) && /کاربران ثبت‌شده/.test(admin), 'the management UI lists registered learners');
+check(/LinearGradient/.test(admin) && /mobileNav/.test(admin) && /navTextActive/.test(admin), 'the management UI has a polished responsive mobile navigation hierarchy');
 check(/admin_registered_users/.test(adminApi), 'the management client loads the protected directory RPC');
 check(/com\.devicecontrol\.miloadmin/.test(appConfig) && /com\.devicecontrol\.companion/.test(read('app.json')), 'learner and management APKs have separate Android package IDs');
 check(/MiloAdmin\.apk/.test(workflow) && /MiloMultiApp\.apk/.test(workflow), 'CI builds and publishes both standalone APKs');
