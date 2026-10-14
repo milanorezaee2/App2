@@ -19,7 +19,9 @@ check(/full_name/.test(gate) || /fullName/.test(gate), 'registration captures th
 check(/generateLoginCode/.test(gate) && /کد ورود/.test(gate) && /ایمیل/.test(gate), 'registration automatically creates a simple login code');
 check(/getRandomBytesAsync/.test(registration) && /\\d\{6\}/.test(registration), 'login codes are cryptographically random six-digit values');
 check(/color: '#111111'/.test(gate) && /numberFontFamily/.test(gate), 'registration inputs and generated digits are explicitly black');
-check((gate.match(/KeyboardAvoidingView/g) || []).length >= 3 && /behavior="height"/.test(gate), 'registration and login forms dynamically follow the keyboard');
+check((gate.match(/KeyboardAvoidingView/g) || []).length >= 3
+  && (gate.match(/KeyboardAwareScrollView/g) || []).length >= 3
+  && /bottomOffset=\{24\}/.test(gate), 'registration and login forms dynamically follow and scroll above the keyboard');
 check(/EMAIL_CONFIRMATION_ENABLED/.test(registration) && !/ابتدا ایمیل تأیید/.test(registration), 'the learner flow never asks users to confirm email');
 check(/codeConfirmation !== generatedCode/.test(gate), 'the generated code must be entered before app access');
 check(/app_user_profiles/.test(migration) && /ENABLE ROW LEVEL SECURITY/.test(migration), 'registered profiles are protected by RLS');

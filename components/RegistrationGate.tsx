@@ -1,10 +1,10 @@
 import { type PropsWithChildren, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
 import { BookOpenCheck, LogIn, ShieldCheck, UserPlus } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
-import { KeyboardAvoidingView } from '@/components/KeyboardRuntime';
+import { KeyboardAwareScrollView, KeyboardAvoidingView } from '@/components/KeyboardRuntime';
 import { generateLoginCode, getRegisteredSession, loginLearner, registerLearner, registrationError, touchLearnerActivity } from '@/lib/userRegistration';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 
@@ -80,7 +80,14 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   if (checking) return <View style={styles.loading}><ActivityIndicator size="large" color={Colors.primary[600]} /><Text style={styles.loadingText}>در حال بررسی حساب…</Text></View>;
   if (generatedCode) return (
     <KeyboardAvoidingView style={styles.page} behavior="height" enabled>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <KeyboardAwareScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        bottomOffset={24}
+        extraKeyboardSpace={12}
+      >
         <LinearGradient colors={['#EAF4FF', '#FFFFFF']} style={styles.card}>
           <View style={styles.logo}><ShieldCheck size={31} color="#FFFFFF" /></View>
           <Text style={styles.title}>کد ورود شما آماده است</Text>
@@ -113,13 +120,20 @@ export function RegistrationGate({ children }: PropsWithChildren) {
             holdForCode.current = false; setGeneratedCode(''); void inspect();
           }}><Text style={styles.submitText}>{registrationReady ? 'تأیید کد و ورود به اپ' : 'رفتن به صفحه ورود'}</Text></Pressable>
         </LinearGradient>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 
   return (
     <KeyboardAvoidingView style={styles.page} behavior="height" enabled>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <KeyboardAwareScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        bottomOffset={24}
+        extraKeyboardSpace={12}
+      >
         <LinearGradient colors={['#EAF4FF', '#FFFFFF']} style={styles.card}>
         <View style={styles.logo}><BookOpenCheck size={31} color="#FFFFFF" /></View>
         <Text style={styles.eyebrow}>MILO LANGUAGE LEARNING</Text>
@@ -147,7 +161,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
 
         <View style={styles.privacy}><ShieldCheck size={18} color="#16835D" /><Text style={styles.privacyText}>مدیریت فقط اطلاعات حساب، وضعیت فعالیت و پیشرفت آموزشی را می‌بیند؛ پیام‌های خصوصی نمایش داده نمی‌شوند.</Text></View>
         </LinearGradient>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }

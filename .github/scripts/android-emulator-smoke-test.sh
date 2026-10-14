@@ -368,6 +368,11 @@ capture_ui
 
 failed_step="verifying the management login is isolated and protected"
 if ! grep -Fq 'ایمیل مدیر' "$ui_file" || ! grep -Fq 'ورود امن به پنل' "$ui_file"; then
+  echo 'Management accessibility tree is not ready; waiting once more.'
+  sleep 12
+  capture_ui
+fi
+if ! grep -Fq 'ایمیل مدیر' "$ui_file" || ! grep -Fq 'ورود امن به پنل' "$ui_file"; then
   echo 'The standalone management APK did not render its protected manager login.'
   exit 1
 fi

@@ -1,1 +1,6 @@
-export { KeyboardAvoidingView, KeyboardProvider, KeyboardStickyView } from 'react-native-keyboard-controller';
+export {
+  KeyboardAwareScrollView,
+  KeyboardAvoidingView,
+  KeyboardProvider,
+  KeyboardStickyView,
+} from 'react-native-keyboard-controller';

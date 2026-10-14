@@ -60,6 +60,12 @@ export async function generateLoginCode(): Promise<string> {
   return String(100000 + (value % 900000));
 }
 
+function toAuthPassword(loginCode: string): string {
+  // The learner remembers only six digits. Supabase receives a deterministic
+  // strong password that also satisfies projects configured with stricter rules.
+  return `Milo!${loginCode}Aa`;
+}
+
 export async function registerLearner(fullName: string, email: string, loginCode: string): Promise<'ready'> {
   const cleanName = fullName.trim();
   const cleanEmail = email.trim().toLowerCase();
@@ -67,11 +73,12 @@ export async function registerLearner(fullName: string, email: string, loginCode
   if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) throw new Error('EMAIL_INVALID');
   if (!/^\d{6}$/.test(loginCode)) throw new Error('CODE_INVALID');
 
+  const authPassword = toAuthPassword(loginCode);
   const current = await supabase.auth.getSession();
   let user: User | null = null;
   let hasSession = false;
   if (current.data.session && !isPermanentLearner(current.data.session.user)) {
-    const result = await supabase.auth.updateUser({ email: cleanEmail, password: loginCode, data: { full_name: cleanName } });
+    const result = await supabase.auth.updateUser({ email: cleanEmail, password: authPassword, data: { full_name: cleanName } });
     if (result.error) throw result.error;
     user = result.data.user;
     hasSession = true;
@@ -79,7 +86,7 @@ export async function registerLearner(fullName: string, email: string, loginCode
     if (current.data.session) await supabase.auth.signOut();
     const result = await supabase.auth.signUp({
       email: cleanEmail,
-      password: loginCode,
+      password: authPassword,
       options: { data: { full_name: cleanName } },
     });
     if (result.error) throw result.error;
@@ -96,8 +103,18 @@ export async function registerLearner(fullName: string, email: string, loginCode
   return 'ready';
 }
 
-export async function loginLearner(email: string, password: string): Promise<void> {
-  const result = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+export async function loginLearner(email: string, passwordOrCode: string): Promise<void> {
+  const cleanEmail = email.trim().toLowerCase();
+  const isSimpleCode = /^\d{6}$/.test(passwordOrCode);
+  let result = await supabase.auth.signInWithPassword({
+    email: cleanEmail,
+    password: isSimpleCode ? toAuthPassword(passwordOrCode) : passwordOrCode,
+  });
+  // Version 25 briefly stored a raw six-digit password. Keep those test
+  // accounts usable while all new accounts use the hardened representation.
+  if (result.error && isSimpleCode && /Invalid login credentials/i.test(result.error.message)) {
+    result = await supabase.auth.signInWithPassword({ email: cleanEmail, password: passwordOrCode });
+  }
   if (result.error) throw result.error;
   const name = String(result.data.user.user_metadata?.full_name || '').trim();
   if (name) await saveProfile(result.data.user, name);

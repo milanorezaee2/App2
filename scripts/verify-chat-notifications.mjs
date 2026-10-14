@@ -17,7 +17,10 @@ check(pkg.dependencies['expo-notifications'], 'expo-notifications is installed')
 const keyboardRuntime = read('components/KeyboardRuntime.native.tsx');
 const babel = read('babel.config.js');
 check(pkg.dependencies['react-native-keyboard-controller'] && pkg.dependencies['react-native-reanimated'], 'native keyboard animation dependencies are installed');
-check(/KeyboardAvoidingView, KeyboardProvider, KeyboardStickyView/.test(keyboardRuntime)
+check(/KeyboardAwareScrollView/.test(keyboardRuntime)
+  && /KeyboardAvoidingView/.test(keyboardRuntime)
+  && /KeyboardProvider/.test(keyboardRuntime)
+  && /KeyboardStickyView/.test(keyboardRuntime)
   && /react-native-reanimated\/plugin/.test(babel), 'native keyboard controller is wired to the UI-thread animation runtime');
 check(/"expo-notifications"/.test(config) && /"defaultChannel": "milo-chat"/.test(config), 'Android notification plugin and channel are configured');
 check(/KeyboardProvider/.test(layout) && /ChatNotificationBridge/.test(layout), 'keyboard and notification providers mount globally');

@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { ViewProps } from 'react-native';
+import type { ScrollViewProps, ViewProps } from 'react-native';
 
 export function KeyboardProvider(props: React.PropsWithChildren): React.ReactElement;
 export function KeyboardStickyView(
@@ -14,5 +14,12 @@ export function KeyboardAvoidingView(
     enabled?: boolean;
     keyboardVerticalOffset?: number;
     contentContainerStyle?: ViewProps['style'];
+  }>,
+): React.ReactElement;
+export function KeyboardAwareScrollView(
+  props: React.PropsWithChildren<ScrollViewProps & {
+    bottomOffset?: number;
+    enabled?: boolean;
+    extraKeyboardSpace?: number;
   }>,
 ): React.ReactElement;
