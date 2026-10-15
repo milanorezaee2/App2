@@ -12,6 +12,7 @@ on:
       - arena/b2da2695-app1
       - arena/5fd5cd5d-app1
       - arena/9ecb1f7a-app2
+      - arena/8366eeeb-app2
 
 permissions:
   contents: write
@@ -27,7 +28,7 @@ jobs:
     env:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
-      EXPO_PUBLIC_RUSSIAN_ONLY: ${{ (github.event_name == 'workflow_dispatch' && inputs.russian_only) && 'true' || 'false' }}
+      EXPO_PUBLIC_RUSSIAN_ONLY: ${{ ((github.event_name == 'workflow_dispatch' && inputs.russian_only) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[russian-apk]'))) && 'true' || 'false' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
