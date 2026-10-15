@@ -59,15 +59,15 @@ let checks = 0;
 const check = (condition, message) => { assert.ok(condition, message); checks += 1; };
 const disabled = /غیرفعال/;
 
-check(source.paidAI.PAID_AI_ENABLED === false, 'paid AI and cloud speech remain explicitly disabled');
-check(source.onlineAudio.ONLINE_AUDIO_ENABLED === false, 'outbound learner audio is explicitly disabled');
+check(source.paidAI.PAID_AI_ENABLED === false, 'paid AI and cloud transcription remain explicitly disabled');
+check(source.onlineAudio.ONLINE_AUDIO_ENABLED === true, 'participant-to-participant voice messages and calls are explicitly enabled');
+check(source.onlineAudio.requireOnlineAudioEnabled() === undefined, 'the lower-level voice upload gate permits the enabled product decision');
 await assert.rejects(source.speech.evaluateSpokenSentence('file:///private-audio.m4a', 'hello', true), disabled); checks += 1;
 await assert.rejects(source.speech.evaluateSpokenSentence('file:///private-audio.m4a', 'hello', false), disabled); checks += 1;
 await assert.rejects(source.speech.transcribeLearnerSpeech('file:///private-audio.m4a', true), disabled); checks += 1;
 await assert.rejects(source.speech.transcribeLearnerSpeech('file:///private-audio.m4a', false), disabled); checks += 1;
-await assert.rejects(source.conversations.sendVoiceMessage('conversation', 'file:///private-audio.m4a', 4), disabled); checks += 1;
 check(fetchCalls === 0 && globalThis.__identityCalls === 0 && globalThis.__configurationChecks === 0 && globalThis.__supabaseCalls === 0,
-  'blocked online audio exits before fetch, identity/session creation, Supabase configuration, or any server function');
+  'disabled paid-AI speech exits before fetch, identity/session creation, Supabase configuration, or any server function');
 
 const read = file => readFileSync(path.join(root, file), 'utf8');
 const lesson = read('app/course/lesson.tsx');
@@ -77,12 +77,17 @@ check(/if\s*\(!PAID_AI_ENABLED\)[\s\S]*?return;[\s\S]*?requestRecordingPermissio
 check(/disabled=\{!PAID_AI_ENABLED\s*\|\|\s*evaluatingSpeech\}/.test(lesson), 'English lesson record control is disabled by the policy flag');
 check(/if\s*\(!PAID_AI_ENABLED\)[\s\S]*?return;[\s\S]*?requestRecordingPermissionsAsync\(\)/.test(emma), 'Emma voice path blocks before requesting the microphone permission');
 check(/disabled=\{!PAID_AI_ENABLED\s*\|\|\s*thinking\s*\|\|\s*transcribing\}/.test(emma), 'Emma voice control is disabled by the policy flag');
-check(/if\s*\(!ONLINE_AUDIO_ENABLED\)[\s\S]*?return;[\s\S]*?requestRecordingPermissionsAsync\(\)/.test(human), 'human voice-message path blocks before requesting the microphone permission');
-check(/disabled=\{sending\s*\|\|\s*!ONLINE_AUDIO_ENABLED\}/.test(human), 'human voice-message control is disabled by the separate online-audio policy');
-check(/requireOnlineAudioEnabled\(\);\s*const user = await ensureChatIdentity\(\);/.test(read('lib/conversations.ts')), 'lower-level voice upload API enforces the gate before identity or upload work');
-check(/Speech\.speak\(text,\s*\{\s*language:\s*'en-US'/.test(lesson), 'device/platform speech playback remains available');
-check(/!ONLINE_AUDIO_ENABLED[\s\S]*?ONLINE_AUDIO_DISABLED_MESSAGE/.test(human)
-  && /ضبط و ارسال آنلاین صدا فعلاً غیرفعال است/.test(source.onlineAudio.ONLINE_AUDIO_DISABLED_MESSAGE), 'conversation explains that recording and sending are disabled');
+check(/requestRecordingPermissionsAsync\(\)[\s\S]*?prepareToRecordAsync\(\)[\s\S]*?recorder\.record\(\)/.test(human), 'human voice messages request permission and start a real native recording');
+check(/recorder\.stop\(\)[\s\S]*?sendVoiceMessage\(conversationId,\s*recorder\.uri,\s*duration\)/.test(human), 'stopping a recording uploads and sends the real audio file');
+check(/disabled=\{sending\s*\|\|\s*!ONLINE_AUDIO_ENABLED\}/.test(human), 'human voice-message control remains protected by the explicit online-audio policy');
+check(/requireOnlineAudioEnabled\(\);\s*const user = await ensureChatIdentity\(\);/.test(read('lib/conversations.ts')), 'lower-level voice upload API retains its product-policy gate before identity or upload work');
+check(/playResponsiveSpeech\(\{\s*text,\s*locale:\s*'en-US',\s*rate\s*\}\)/.test(lesson), 'device/platform speech playback remains available');
+check(/KeyboardStickyView style=\{styles\.composer\}/.test(human)
+  && /KeyboardStickyView style=\{styles\.composer\}/.test(emma),
+  'both chat composers animate as complete units with the keyboard');
+check(!/Platform\.OS === 'android' \? 'height'/.test(human) && !/Platform\.OS === 'android' \? 'height'/.test(emma),
+  'Android avoids the double keyboard-height subtraction that clipped the composer');
+check(!/marginBottom:\s*100/.test(human) && !/marginBottom:\s*100/.test(emma), 'fixed chat offsets no longer fight keyboard and safe-area movement');
 
 globalThis.fetch = originalFetch;
-console.log(`${checks} checks passed; cloud speech, transcription, human voice-message upload, and microphone access are gated, while local speech playback remains.`);
+console.log(`${checks} checks passed; paid-AI speech stays gated, real participant voice messaging is enabled, and chat composers follow the keyboard dynamically.`);

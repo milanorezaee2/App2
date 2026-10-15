@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { CoursePage } from '@/components/LanguageCourseUI';
 import { GermanCoursePage, GermanCourseButton, germanCourseStyles } from '@/components/GermanCourseUI';
-import { findGermanLesson, germanProgress, findLanguage } from '@/lib/languages/catalog';
+import { findGermanLesson, germanProgress } from '@/lib/languages/catalog';
 import { findRussianLesson, type RussianCourseLesson } from '@/lib/languages/russian';
 import RussianLesson from '@/components/RussianLesson';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
@@ -13,6 +13,7 @@ import { clearGermanSentenceSession, loadGermanSentenceSession, saveGermanSenten
 import type { GermanSentenceStage } from '@/lib/languages/germanSentenceSession';
 import type { LearningLesson } from '@/lib/languages/types';
 import { toPersianDigits as fa } from '@/lib/format';
+import { playResponsiveSpeech, warmSpeech } from '@/lib/responsiveSpeech';
 
 const stages = ['موقعیت', 'جمله‌ها', 'شنیدن', 'جمله‌سازی', 'مکالمه', 'لغات'];
 const PAGE_SIZE = 5;
@@ -95,13 +96,15 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
     return () => { active = false; };
   }, [sessionState, lesson.id, stage, index, finishing]);
 
-  useEffect(() => () => { void Speech.stop(); }, []);
+  useEffect(() => {
+    warmSpeech('de-DE');
+    return () => { void Speech.stop(); };
+  }, []);
   const speak = (text: string) => {
     setError('');
-    void Speech.stop();
-    Speech.speak(text, {
-      language: findLanguage('de')!.speechLocale,
-      rate: .78,
+    playResponsiveSpeech({
+      text,
+      locale: 'de-DE',
       onError: () => setError('پخش انجام نشد. صدای آلمانی دستگاه یا مرورگر را بررسی کنید؛ متن درس همچنان در دسترس است.'),
     });
   };

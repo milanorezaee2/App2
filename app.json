@@ -13,7 +13,8 @@
     },
     "android": {
       "package": "com.devicecontrol.companion",
-      "versionCode": 5,
+      "versionCode": 6,
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
@@ -28,7 +29,41 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withStableLayoutDirection",
       "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#2878DE",
+          "defaultChannel": "milo-chat"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "برای بازکردن قفل برنامه، اجازه استفاده از Face ID را بدهید."
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F5FAFF",
+          "image": "./assets/images/splash-learning-light.png",
+          "imageWidth": 280,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#F5FAFF",
+            "image": "./assets/images/splash-learning-light.png"
+          }
+        }
+      ],
       "expo-web-browser",
       [
         "expo-audio",

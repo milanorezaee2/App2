@@ -26,6 +26,10 @@ export interface StudentRow {
   synced_at: string | null; summary: Record<string, unknown> | null;
 }
 export interface EducationInvite { id: string; label: string; code: string; expires_at: string; claimed_at: string | null }
+export interface RegisteredUser {
+  user_id: string; full_name: string; email: string; platform: string | null;
+  app_version: string | null; registered_at: string; last_seen_at: string;
+}
 const lessonIds = new Set(SENTENCE_LESSONS.map(l => l.id));
 const words = new Set<string>(canonical);
 export function progressMetrics(summary: Record<string, unknown> | null) {
@@ -53,13 +57,19 @@ export async function loadAdminData() {
   const { data: allowed, error: authError } = await db.rpc('is_education_admin');
   if (authError) throw authError;
   if (!allowed) throw new Error('ADMIN_REQUIRED');
-  const [roster, invites] = await Promise.all([
+  const [roster, invites, registered] = await Promise.all([
     db.rpc('education_roster'),
     db.from('education_invites').select('id,label,code,expires_at,claimed_at').order('created_at', { ascending: false }),
+    db.rpc('admin_registered_users'),
   ]);
   if (roster.error) throw roster.error;
   if (invites.error) throw invites.error;
-  return { students: (roster.data || []) as StudentRow[], invites: (invites.data || []) as EducationInvite[] };
+  if (registered.error) throw registered.error;
+  return {
+    students: (roster.data || []) as StudentRow[],
+    invites: (invites.data || []) as EducationInvite[],
+    registeredUsers: (registered.data || []) as RegisteredUser[],
+  };
 }
 export const demoStudents: StudentRow[] = [
   { student_id: 'demo-1', display_name: 'سارا احمدی · نمونه', status: 'active', consent_at: '2026-10-01T10:00:00Z', synced_at: '2026-10-07T08:30:00Z', summary: { completedLessonIds: SENTENCE_LESSONS.slice(0, 24).map(l => l.id), learnedEssential504Words: canonical.slice(0, 68), totalMinutes: 260, currentStreak: 7 } },

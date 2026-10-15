@@ -86,7 +86,7 @@ export default function ReviewHome() {
     const vocabulary = sentence.vocabulary.map((item) => `${item.word} · ${item.meaning}`).join('   ');
     return (
       <View style={styles.root} onTouchStart={timer.interact}>
-        {!!timer.error&&<Text style={{ color: Palette.danger, textAlign: 'right', writingDirection: 'rtl' }}>{timer.error}</Text>}
+        {!!timer.error&&<Text style={{ fontFamily: 'Vazir', color: Palette.danger, textAlign: 'right', writingDirection: 'rtl' }}>{timer.error}</Text>}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerCopy}>
@@ -112,7 +112,7 @@ export default function ReviewHome() {
               <View style={styles.answerArea}>
                 <View style={styles.answerDivider} />
                 <Text style={styles.reviewEn}>{sentence.en}</Text>
-                <Text style={[styles.reviewPronunciation,sentence.pronunciation.startsWith('/ ')&&{writingDirection:'ltr'}]}>{sentence.pronunciation}</Text>
+                <Text style={[styles.reviewPronunciation,sentence.pronunciation.startsWith('/ ')&&{fontFamily:'Inter-ExtraBold',writingDirection:'ltr'}]}>{sentence.pronunciation}</Text>
                 {sentence.pronunciation.startsWith('/ ')&&<Text style={styles.reviewPronunciation}>راهنمای واجی بدون تکیه؛ واژه‌های داخل کروشه آوانویسی نشده‌اند.</Text>}
                 <Pressable style={styles.soundButton} onPress={() => Speech.speak(sentence.en, { language: 'en-US', rate: .78 })}>
                   <Volume2 size={18} color={Colors.primary[400]} />
@@ -143,7 +143,7 @@ export default function ReviewHome() {
 
   return (
     <View style={styles.root} onTouchStart={timer.interact}>
-        {!!timer.error&&<Text style={{ color: Palette.danger, textAlign: 'right', writingDirection: 'rtl' }}>{timer.error}</Text>}
+        {!!timer.error&&<Text style={{ fontFamily: 'Vazir', color: Palette.danger, textAlign: 'right', writingDirection: 'rtl' }}>{timer.error}</Text>}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerCopy}>
@@ -205,12 +205,12 @@ const styles = StyleSheet.create({
   title: { fontFamily: Typography.fontFamily, fontSize: 27, lineHeight: 37, fontWeight: Typography.weights.bold, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
   subtitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: 3 },
   content: { width: '100%', maxWidth: 860, alignSelf: 'center', paddingHorizontal: 20, paddingBottom: 28, gap: Spacing.md },
-  summaryCard: { position: 'relative', overflow: 'hidden', borderRadius: 25, padding: 20, gap: 9, shadowColor: '#25235F', shadowOpacity: .16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
+  summaryCard: { position: 'relative', overflow: 'hidden', marginTop: 60, borderRadius: 25, padding: 20, gap: 9, shadowColor: '#25235F', shadowOpacity: .16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 5 },
   summaryOrb: { position: 'absolute', top: -54, left: -38, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.09)' },
   summaryTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
   brain: { width: 41, height: 41, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.13)', alignItems: 'center', justifyContent: 'center' },
   summaryTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 9, paddingVertical: 6 },
-  summaryTagText: { color: '#E0E1FF', fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
+  summaryTagText: { fontFamily: 'Inter-ExtraBold', color: '#E0E1FF', fontSize: 6, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
   summaryTitle: { alignSelf: 'stretch', fontFamily: Typography.fontFamily, fontSize: 23, lineHeight: 33, fontWeight: Typography.weights.bold, color: '#FFFFFF', textAlign: 'right', writingDirection: 'rtl' },
   summaryDesc: { alignSelf: 'stretch', fontFamily: Typography.fontFamily, fontSize: 12, color: 'rgba(255,255,255,0.78)', textAlign: 'right', writingDirection: 'rtl', lineHeight: 21 },
   summaryActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, marginTop: 7 },
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   revealButtonText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Colors.onColor, writingDirection: 'rtl' },
   answerArea: { width: '100%', alignItems: 'center' },
   answerDivider: { width: '75%', height: 1, backgroundColor: Palette.border, marginVertical: Spacing.lg },
-  reviewEn: { alignSelf: 'stretch', fontSize: 23, lineHeight: 34, fontWeight: '700', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
+  reviewEn: { fontFamily: 'Inter-ExtraBold', alignSelf: 'stretch', fontSize: 21, lineHeight: 34, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   reviewPronunciation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Palette.primaryDark, textAlign: 'center', writingDirection: 'rtl', marginTop: 7 },
   soundButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, padding: Spacing.sm, marginTop: Spacing.sm },
   soundText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.primary, writingDirection: 'rtl' },

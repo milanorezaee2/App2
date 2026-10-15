@@ -33,22 +33,22 @@ import { ENGLISH_ENGINE_BLUEPRINT, getEnglishLevelMetrics } from '@/lib/englishL
 import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel } from '@/components/EnglishUI';
 
 const HomeColors = {
-  canvas: '#F5F3F7',
+  canvas: '#F6FAFF',
   surface: '#FFFFFF',
-  surfaceSoft: '#FBF9F5',
-  ink: '#191A31',
-  text: '#56566D',
-  muted: '#858398',
-  border: '#E7E2EC',
-  accent: '#6654CE',
-  accentDeep: '#40327F',
-  accentSoft: '#F0ECFA',
-  sage: '#66805E',
-  sageSoft: '#EFF4EA',
-  amber: '#9A7133',
-  amberSoft: '#FBF3E3',
-  gold: '#D8B76E',
-  goldSoft: '#F5EBD5',
+  surfaceSoft: '#F2F7FD',
+  ink: '#102A56',
+  text: '#425E80',
+  muted: '#7086A2',
+  border: '#DCE8F7',
+  accent: '#1769D2',
+  accentDeep: '#104A94',
+  accentSoft: '#EAF3FF',
+  sage: '#168451',
+  sageSoft: '#ECF9F2',
+  amber: '#A65C14',
+  amberSoft: '#FFF6E8',
+  gold: '#2878DE',
+  goldSoft: '#EAF3FF',
 } as const;
 
 export default function LearningHome() {
@@ -108,7 +108,7 @@ export default function LearningHome() {
         <View style={styles.page}>
           <View style={styles.header}>
             <View style={styles.brandLockup}>
-              <LinearGradient colors={['#7864DF', '#37306F']} start={{ x: .9, y: 0 }} end={{ x: .1, y: 1 }} style={styles.brandMark}>
+              <LinearGradient colors={['#2878DE', '#1259B5']} start={{ x: .9, y: 0 }} end={{ x: .1, y: 1 }} style={styles.brandMark}>
                 <BookOpenCheck size={20} color="#F9E8B9" strokeWidth={2} />
               </LinearGradient>
               <View style={styles.brandCopy}>
@@ -120,7 +120,7 @@ export default function LearningHome() {
           </View>
 
           <LinearGradient
-            colors={['#171A38', '#29285C', '#45377D']}
+            colors={['#FFFFFF', '#EDF5FF', '#DDEEFF']}
             start={{ x: .95, y: .08 }}
             end={{ x: .04, y: 1 }}
             style={[styles.welcomeBlock, compact && styles.welcomeBlockCompact]}
@@ -147,7 +147,7 @@ export default function LearningHome() {
             </View>
             <View style={[styles.welcomeVisual, compact && styles.welcomeVisualCompact]}>
               <Image source={require('../../assets/english-learning-hero.jpg')} resizeMode="cover" style={styles.welcomeImage} />
-              <LinearGradient colors={['rgba(16,18,43,0.02)', 'rgba(16,18,43,0.35)']} style={styles.welcomeImageShade} />
+              <LinearGradient colors={['rgba(16,42,86,0.00)', 'rgba(16,42,86,0.12)']} style={styles.welcomeImageShade} />
               <View style={styles.welcomeImageStamp}>
                 <Text style={styles.welcomeImageStampMain}>EN</Text>
                 <View style={styles.welcomeImageStampLine} />
@@ -157,7 +157,7 @@ export default function LearningHome() {
           </LinearGradient>
 
           <View style={styles.lessonCard}>
-            <LinearGradient colors={['#D8B76E', '#8C69D8', '#D8B76E']} start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} style={styles.lessonCardAccent} />
+            <LinearGradient colors={['#4D9AF2', '#21A7C0', '#4D9AF2']} start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} style={styles.lessonCardAccent} />
             <View style={styles.lessonMetaRow}>
               <View style={styles.levelTag}>
                 <View style={[styles.levelTagDot, { backgroundColor: currentLevel.color }]} />
@@ -212,7 +212,7 @@ export default function LearningHome() {
                 style={({ pressed }) => [styles.continueButton, pressed && styles.buttonPressed]}
                 onPress={openCurrentLesson}
               >
-                <LinearGradient colors={['#705BD7', '#40347F']} start={{ x: .96, y: 0 }} end={{ x: .04, y: 1 }} style={styles.continueButtonGradient}>
+                <LinearGradient colors={['#2878DE', '#1259B5']} start={{ x: .96, y: 0 }} end={{ x: .04, y: 1 }} style={styles.continueButtonGradient}>
                   <Play size={16} color="#F5E7BC" fill="#F5E7BC" />
                   <Text style={styles.continueButtonText}>{completed ? 'ادامهٔ درس' : 'شروع اولین درس'}</Text>
                   <ArrowLeft size={17} color="#FFFFFF" />
@@ -236,7 +236,7 @@ export default function LearningHome() {
             </View>
           </View>
 
-          <LinearGradient colors={['#1A1D3D', '#2D2B62', '#403879']} start={{ x: .95, y: .05 }} end={{ x: .04, y: 1 }} style={styles.todayCard}>
+          <LinearGradient colors={['#FFFFFF', '#EDF5FF', '#E1F0FF']} start={{ x: .95, y: .05 }} end={{ x: .04, y: 1 }} style={styles.todayCard}>
             <View pointerEvents="none" style={styles.todayGlow} />
             <View style={styles.todayTopRow}>
               <View style={styles.todayIcon}><Clock3 size={18} color={HomeColors.gold} /></View>
@@ -399,7 +399,7 @@ export default function LearningHome() {
             </Pressable>
           </View>
 
-          <LinearGradient colors={['#25214E', '#443571']} start={{ x: .95, y: .1 }} end={{ x: .05, y: 1 }} style={styles.noteCard}>
+          <LinearGradient colors={['#FFFFFF', '#EDF5FF']} start={{ x: .95, y: .1 }} end={{ x: .05, y: 1 }} style={styles.noteCard}>
             <View style={styles.noteIcon}><Sparkles size={16} color={HomeColors.gold} /></View>
             <View style={styles.noteCopy}>
               <Text style={styles.noteTitle}>یادگیری در بافت</Text>
@@ -417,122 +417,122 @@ export default function LearningHome() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: HomeColors.canvas },
   scrollContent: { flexGrow: 1 },
-  page: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 22, paddingTop: 17, paddingBottom: 108, gap: 19 },
+  page: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 12, paddingBottom: 94, gap: 14 },
   header: { minHeight: 58, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   brandLockup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
   brandMark: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(216,183,110,0.4)', shadowColor: '#38306F', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   brandCopy: { gap: 2 },
-  brandEyebrow: { color: '#8C7BB8', fontSize: 8, fontWeight: '900', letterSpacing: 1.45, textAlign: 'right', writingDirection: 'ltr' },
-  headerTitle: { fontFamily: Typography.fontFamily, fontSize: 16, lineHeight: 24, fontWeight: '800', color: HomeColors.ink, textAlign: 'right', writingDirection: 'rtl' },
-  welcomeBlock: { position: 'relative', minHeight: 202, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 18, overflow: 'hidden', padding: 18, borderRadius: 27, borderWidth: 1, borderColor: '#514878', shadowColor: '#211A50', shadowOpacity: 0.2, shadowRadius: 23, shadowOffset: { width: 0, height: 11 }, elevation: 6 },
+  brandEyebrow: { fontFamily: 'Inter-ExtraBold', color: '#8C7BB8', fontSize: 6, fontWeight: '800', letterSpacing: 1.45, textAlign: 'right', writingDirection: 'ltr' },
+  headerTitle: { fontFamily: Typography.fontFamily, fontSize: 16, lineHeight: 24, fontWeight: '400', color: HomeColors.ink, textAlign: 'right', writingDirection: 'rtl' },
+  welcomeBlock: { position: 'relative', minHeight: 202, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 18, overflow: 'hidden', padding: 18, borderRadius: 27, borderWidth: 1, borderColor: '#D4E5FA', shadowColor: '#174B86', shadowOpacity: 0.08, shadowRadius: 23, shadowOffset: { width: 0, height: 11 }, elevation: 6 },
   welcomeBlockCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 15, padding: 16 },
-  welcomeGlowOne: { position: 'absolute', top: -104, right: '18%', width: 270, height: 270, borderRadius: 135, backgroundColor: 'rgba(216,183,110,0.09)' },
-  welcomeGlowTwo: { position: 'absolute', bottom: -142, left: -90, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(130,111,221,0.22)' },
+  welcomeGlowOne: { position: 'absolute', top: -104, right: '18%', width: 270, height: 270, borderRadius: 135, backgroundColor: 'rgba(40,120,222,0.09)' },
+  welcomeGlowTwo: { position: 'absolute', bottom: -142, left: -90, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(33,167,192,0.12)' },
   welcomeCopy: { flex: 1, gap: 7, alignItems: 'stretch', zIndex: 1 },
-  welcomeEyebrowRow: { flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-end', gap: 6, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  welcomeEyebrow: { color: '#E5D7B5', fontSize: 8, fontWeight: '900', letterSpacing: 1.35, textAlign: 'right', writingDirection: 'ltr' },
-  welcomeTitle: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 23, lineHeight: 35, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  welcomeDescription: { fontFamily: Typography.fontFamily, color: '#DAD6EA', fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+  welcomeEyebrowRow: { flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-end', gap: 6, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.82)', borderWidth: 1, borderColor: '#D5E6FA' },
+  welcomeEyebrow: { fontFamily: 'Inter-ExtraBold', color: '#1769D2', fontSize: 6, fontWeight: '800', letterSpacing: 1.35, textAlign: 'right', writingDirection: 'ltr' },
+  welcomeTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 23, lineHeight: 35, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  welcomeDescription: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   welcomeTags: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  welcomeTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  welcomeTagText: { fontFamily: Typography.fontFamily, color: '#F2EFF8', fontSize: 8, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  welcomeTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.82)', borderWidth: 1, borderColor: '#D5E6FA' },
+  welcomeTagText: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 8, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   welcomeVisual: { position: 'relative', width: '36%', maxWidth: 270, height: 164, flexShrink: 0, overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(216,183,110,0.56)', backgroundColor: '#191A34' },
   welcomeVisualCompact: { width: '100%', maxWidth: '100%', height: 145 },
   welcomeImage: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100%' },
   welcomeImageShade: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   welcomeImageStamp: { position: 'absolute', bottom: 9, left: 9, minWidth: 44, alignItems: 'center', paddingHorizontal: 7, paddingVertical: 5, borderRadius: 10, backgroundColor: 'rgba(20,22,48,0.83)', borderWidth: 1, borderColor: 'rgba(216,183,110,0.45)' },
-  welcomeImageStampMain: { color: '#F2D99C', fontSize: 13, fontWeight: '900', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
+  welcomeImageStampMain: { fontFamily: 'Inter-ExtraBold', color: '#F2D99C', fontSize: 11, fontWeight: '800', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
   welcomeImageStampLine: { width: 23, height: 1, backgroundColor: 'rgba(216,183,110,0.8)', marginVertical: 2 },
-  welcomeImageStampSub: { color: '#FFFFFF', fontSize: 6, fontWeight: '800', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },
+  welcomeImageStampSub: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 6, fontWeight: '800', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },
   lessonCard: { position: 'relative', overflow: 'hidden', borderRadius: 25, padding: 18, gap: 15, backgroundColor: HomeColors.surface, borderWidth: 1, borderColor: '#E5DDEB', shadowColor: '#30254E', shadowOpacity: 0.09, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
   lessonCardAccent: { position: 'absolute', top: 0, right: 0, height: 4, width: '46%' },
   lessonMetaRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 4 },
   levelTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, borderRadius: Radius.full, backgroundColor: '#FBF8F0', borderWidth: 1, borderColor: '#EADCB9', paddingHorizontal: 10, paddingVertical: 7 },
 
   levelTagDot: { width: 6, height: 6, borderRadius: 3 },
-  levelTagName: { color: HomeColors.accentDeep, fontSize: 9, fontWeight: '900', textAlign: 'right', writingDirection: 'ltr' },
+  levelTagName: { fontFamily: 'Inter-ExtraBold', color: HomeColors.accentDeep, fontSize: 7, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
   levelTagDivider: { color: '#A89CB3', fontSize: 9, fontWeight: '700' },
-  levelTagText: { fontFamily: Typography.fontFamily, fontSize: 9, fontWeight: '800', textAlign: 'right' },
-  lessonOrder: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 9, textAlign: 'left', writingDirection: 'rtl' },
+  levelTagText: { fontFamily: Typography.fontFamily, fontSize: 9, fontWeight: '400', textAlign: 'right' },
+  lessonOrder: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
   lessonHeading: { gap: 3, alignItems: 'stretch' },
-  lessonEyebrow: { fontFamily: Typography.fontFamily, color: '#A2854B', fontSize: 10, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  lessonTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 24, lineHeight: 36, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  lessonEyebrow: { fontFamily: Typography.fontFamily, color: '#A2854B', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  lessonTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 24, lineHeight: 36, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   lessonSubtitle: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   sentenceCard: { padding: 14, gap: 9, borderRadius: 19, backgroundColor: '#FCFAF6', borderWidth: 1, borderColor: '#ECE4D6' },
   sentenceTopRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   sentenceIcon: { width: 29, height: 29, borderRadius: 10, backgroundColor: HomeColors.goldSoft, borderWidth: 1, borderColor: '#EADCB9', alignItems: 'center', justifyContent: 'center' },
-  sentenceLabel: { flex: 1, fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 10, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  sentenceNumber: { color: HomeColors.muted, fontSize: 8, fontWeight: '800', writingDirection: 'ltr' },
-  sentenceEnglish: { color: HomeColors.ink, fontSize: 18, lineHeight: 29, fontWeight: '700', textAlign: 'left', writingDirection: 'ltr' },
+  sentenceLabel: { flex: 1, fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  sentenceNumber: { fontFamily: 'Inter-ExtraBold', color: HomeColors.muted, fontSize: 6, fontWeight: '800', writingDirection: 'ltr' },
+  sentenceEnglish: { fontFamily: 'Inter-ExtraBold', color: HomeColors.ink, fontSize: 16, lineHeight: 29, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   sentencePersian: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   wordChipRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, paddingTop: 2 },
   wordChip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: Radius.full, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E6DCC7', paddingHorizontal: 9, paddingVertical: 5 },
-  wordChipEn: { color: HomeColors.accentDeep, fontSize: 9, fontWeight: '800', writingDirection: 'ltr' },
+  wordChipEn: { fontFamily: 'Inter-ExtraBold', color: HomeColors.accentDeep, fontSize: 7, fontWeight: '800', writingDirection: 'ltr' },
   wordChipDivider: { color: '#B9A874', fontSize: 9 },
   wordChipFa: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 9, writingDirection: 'rtl' },
   levelProgressBlock: { gap: 7, paddingTop: 12, borderTopWidth: 1, borderTopColor: HomeColors.border },
   levelProgressMeta: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  levelProgressLabel: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 9, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
-  levelProgressValue: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 9, textAlign: 'left', writingDirection: 'rtl' },
+  levelProgressLabel: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 9, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  levelProgressValue: { fontFamily: Typography.numberFontFamily, color: HomeColors.muted, fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
   lessonFooter: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
   continueButton: { minHeight: 50, flex: 1, borderRadius: 16, overflow: 'hidden' },
   continueButtonGradient: { minHeight: 50, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 13 },
-  continueButtonText: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 12, fontWeight: '800', writingDirection: 'rtl' },
+  continueButtonText: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 12, fontWeight: '400', writingDirection: 'rtl' },
   buttonPressed: { opacity: .82, transform: [{ scale: .99 }] },
   lessonCountPill: { minWidth: 68, minHeight: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: HomeColors.goldSoft, borderWidth: 1, borderColor: '#E8D9B5', paddingHorizontal: 8 },
-  lessonCountValue: { color: HomeColors.accentDeep, fontSize: 16, lineHeight: 20, fontWeight: '900' },
-  lessonCountLabel: { fontFamily: Typography.fontFamily, color: HomeColors.accentDeep, fontSize: 8, fontWeight: '700', writingDirection: 'rtl' },
+  lessonCountValue: { fontFamily: Typography.numberFontFamily, color: HomeColors.accentDeep, fontSize: 16, lineHeight: 20, fontWeight: '900' },
+  lessonCountLabel: { fontFamily: Typography.fontFamily, color: HomeColors.accentDeep, fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
   sectionHeading: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   sectionHeader: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   sectionTitleBlock: { alignItems: 'stretch', gap: 2 },
-  sectionEyebrow: { color: '#9B8559', fontSize: 8, fontWeight: '900', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
-  sectionTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 18, lineHeight: 27, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  sectionEyebrow: { fontFamily: 'Inter-ExtraBold', color: '#9B8559', fontSize: 6, fontWeight: '800', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
+  sectionTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 18, lineHeight: 27, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   dailyGoalPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, borderRadius: Radius.full, backgroundColor: HomeColors.goldSoft, borderWidth: 1, borderColor: '#E9DDBF', paddingHorizontal: 10, paddingVertical: 7 },
-  dailyGoalText: { fontFamily: Typography.fontFamily, color: HomeColors.amber, fontSize: 8, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  todayCard: { position: 'relative', overflow: 'hidden', borderRadius: 22, padding: 16, borderWidth: 1, borderColor: '#575087', gap: 12, shadowColor: '#201B4C', shadowOpacity: 0.17, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
-  todayGlow: { position: 'absolute', top: -80, left: -35, width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(216,183,110,0.09)' },
+  dailyGoalText: { fontFamily: Typography.fontFamily, color: HomeColors.amber, fontSize: 8, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  todayCard: { position: 'relative', overflow: 'hidden', borderRadius: 22, padding: 16, borderWidth: 1, borderColor: '#D4E5FA', gap: 12, shadowColor: '#174B86', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  todayGlow: { position: 'absolute', top: -80, left: -35, width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(40,120,222,0.09)' },
   todayTopRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
   todayIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)', alignItems: 'center', justifyContent: 'center' },
   todayCopy: { flex: 1, alignItems: 'stretch', gap: 1 },
-  todayValue: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 23, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
-  todayUnit: { fontSize: 10, fontWeight: '600', color: '#D6D0E9' },
-  todayLabel: { fontFamily: Typography.fontFamily, color: '#D3CEE1', fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
+  todayValue: { fontFamily: Typography.numberFontFamily, color: HomeColors.ink, fontSize: 23, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  todayUnit: { fontSize: 10, fontWeight: '600', color: HomeColors.text },
+  todayLabel: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
   todayPercentPill: { minWidth: 47, minHeight: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: 'rgba(216,183,110,0.14)', borderWidth: 1, borderColor: 'rgba(216,183,110,0.34)' },
-  todayPercentText: { fontFamily: Typography.fontFamily, color: '#F2DDA9', fontSize: 10, fontWeight: '800', writingDirection: 'rtl' },
+  todayPercentText: { fontFamily: Typography.numberFontFamily, color: '#F2DDA9', fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
   todayProgressTrack: { width: '100%' },
   todayFootnote: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)' },
-  todayFootnoteText: { flex: 1, fontFamily: Typography.fontFamily, color: '#E7E3F0', fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
+  todayFootnoteText: { flex: 1, fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
   streakPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, borderRadius: Radius.full, backgroundColor: 'rgba(184,227,213,0.12)', borderWidth: 1, borderColor: 'rgba(184,227,213,0.2)', paddingHorizontal: 8, paddingVertical: 5 },
-  streakText: { fontFamily: Typography.fontFamily, color: '#C4E8D8', fontSize: 8, fontWeight: '800', writingDirection: 'rtl' },
+  streakText: { fontFamily: Typography.fontFamily, color: '#C4E8D8', fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
   pathPanel: { borderRadius: 24, padding: 17, backgroundColor: HomeColors.surface, borderWidth: 1, borderColor: '#E4DCEB', gap: 14, shadowColor: '#30254E', shadowOpacity: 0.065, shadowRadius: 18, shadowOffset: { width: 0, height: 7 }, elevation: 3 },
   panelHeadingRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   panelHeadingText: { flex: 1, alignItems: 'stretch' },
-  panelEyebrow: { color: '#9B8559', fontSize: 8, fontWeight: '900', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
-  panelTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 19, lineHeight: 29, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  panelEyebrow: { fontFamily: 'Inter-ExtraBold', color: '#9B8559', fontSize: 6, fontWeight: '800', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
+  panelTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 19, lineHeight: 29, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   libraryLink: { minHeight: 38, flexDirection: 'row-reverse', alignItems: 'center', gap: 2, paddingHorizontal: 10, borderRadius: 13, backgroundColor: HomeColors.goldSoft, borderWidth: 1, borderColor: '#E9DDBF' },
-  libraryLinkText: { fontFamily: Typography.fontFamily, color: HomeColors.accentDeep, fontSize: 10, fontWeight: '800', writingDirection: 'rtl' },
+  libraryLinkText: { fontFamily: Typography.fontFamily, color: HomeColors.accentDeep, fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
   railWrap: { paddingVertical: 3, paddingHorizontal: 3 },
   currentLevelCard: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 11, borderRadius: 17, backgroundColor: '#FBF9F4', borderWidth: 1, borderColor: '#EAE2D3' },
   levelNumber: { width: 35, height: 35, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  levelNumberText: { fontSize: 14, fontWeight: '900' },
+  levelNumberText: { fontFamily: Typography.numberFontFamily, writingDirection: 'rtl', fontSize: 14, fontWeight: '900' },
   currentLevelCopy: { flex: 1, alignItems: 'stretch', gap: 1 },
-  currentLevelName: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 11, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
+  currentLevelName: { fontFamily: Typography.latinFontFamily, color: HomeColors.ink, fontSize: 9, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
   currentLevelDescription: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 8, textAlign: 'right', writingDirection: 'rtl' },
   currentLevelCount: { alignItems: 'center', minWidth: 45 },
-  levelCountValue: { fontSize: 12, fontWeight: '900', writingDirection: 'rtl' },
+  levelCountValue: { fontFamily: Typography.numberFontFamily, fontSize: 12, fontWeight: '900', writingDirection: 'rtl' },
   levelCountLabel: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 8, writingDirection: 'rtl' },
   mapToggle: { minHeight: 50, flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 11, borderRadius: 15, backgroundColor: '#FAF8F4', borderWidth: 1, borderColor: '#EAE3D6' },
   mapToggleIcon: { width: 31, height: 31, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: HomeColors.goldSoft },
   mapToggleText: { flex: 1, gap: 2 },
-  mapToggleTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 10, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  mapToggleMeta: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 8, textAlign: 'right', writingDirection: 'ltr' },
+  mapToggleTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  mapToggleMeta: { fontFamily: Typography.latinFontFamily, color: HomeColors.muted, fontSize: 6, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
   fullRoadmap: { gap: 8 },
   levelCard: { minHeight: 70, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 11, borderRadius: 16, backgroundColor: HomeColors.surface, borderWidth: 1, borderColor: HomeColors.border, shadowColor: '#30254E', shadowOpacity: 0.035, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
   levelCardActive: { borderColor: '#D6BD81', backgroundColor: '#FCF9F1' },
   levelText: { flex: 1, gap: 2 },
   levelTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  levelTitle: { fontFamily: Typography.fontFamily, flexShrink: 1, color: HomeColors.ink, fontSize: 10, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
-  levelCefr: { fontSize: 8, fontWeight: '800', writingDirection: 'ltr' },
+  levelTitle: { fontFamily: Typography.latinFontFamily, flexShrink: 1, color: HomeColors.ink, fontSize: 8, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
+  levelCefr: { fontFamily: 'Inter-ExtraBold', fontSize: 6, fontWeight: '800', writingDirection: 'ltr' },
   levelDesc: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 8, textAlign: 'right', writingDirection: 'rtl' },
   levelStats: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 8, textAlign: 'right', writingDirection: 'rtl' },
   quickSection: { gap: 12 },
@@ -541,12 +541,12 @@ const styles = StyleSheet.create({
   quickCard: { minHeight: 76, flex: 1, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 18, backgroundColor: HomeColors.surface, borderWidth: 1, borderColor: '#E6DFEA', shadowColor: '#30254E', shadowOpacity: 0.045, shadowRadius: 11, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   quickIcon: { width: 39, height: 39, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(90,80,120,0.08)', alignItems: 'center', justifyContent: 'center' },
   quickCopy: { flex: 1, alignItems: 'stretch', gap: 2 },
-  quickTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 10, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  quickTitle: { fontFamily: Typography.fontFamily, color: HomeColors.ink, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   quickDesc: { fontFamily: Typography.fontFamily, color: HomeColors.muted, fontSize: 8, lineHeight: 15, textAlign: 'right', writingDirection: 'rtl' },
-  noteCard: { position: 'relative', overflow: 'hidden', flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: '#574887' },
+  noteCard: { position: 'relative', overflow: 'hidden', flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: '#D4E5FA' },
   noteIcon: { width: 36, height: 36, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(216,183,110,0.25)', alignItems: 'center', justifyContent: 'center' },
   noteCopy: { flex: 1, alignItems: 'stretch', gap: 2, zIndex: 1 },
-  noteTitle: { fontFamily: Typography.fontFamily, color: '#E7CC91', fontSize: 10, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
-  noteText: { fontFamily: Typography.fontFamily, color: '#E4E0EF', fontSize: 9, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
+  noteTitle: { fontFamily: Typography.fontFamily, color: HomeColors.accent, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  noteText: { fontFamily: Typography.fontFamily, color: HomeColors.text, fontSize: 9, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
   noteOrnament: { position: 'absolute', left: 13, bottom: -6, opacity: 0.8 },
 });

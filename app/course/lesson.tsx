@@ -30,6 +30,7 @@ import { loadSupplement } from '@/lib/englishSupplement/progress';
 import { CORE_LESSON_EVIDENCE, isCoreLessonEvidenceComplete } from '@/lib/englishFoundationEvidence';
 import { useEnglishStudyTimer } from '@/components/useEnglishStudyTimer';
 import { PAID_AI_ENABLED, PAID_AI_DISABLED_MESSAGE } from '@/lib/paidAI';
+import { playResponsiveSpeech, warmSpeech } from '@/lib/responsiveSpeech';
 
 const stages = ENGLISH_ENGINE_STEPS;
 
@@ -94,9 +95,10 @@ export default function SentenceLessonScreen() {
   const vocabulary = getLessonVocabulary(lesson);
   const grammarPatterns = getLessonPatterns(lesson);
 
-  const speak = (text: string, rate = 0.78) => {
-    Speech.stop();
-    Speech.speak(text, { language: 'en-US', rate });
+  useEffect(() => warmSpeech('en-US'), []);
+
+  const speak = (text: string, rate?: number) => {
+    playResponsiveSpeech({ text, locale: 'en-US', rate });
   };
 
   const startSpeechPractice = async () => {
@@ -140,7 +142,7 @@ export default function SentenceLessonScreen() {
     setSentenceIndex(index);
     setSpeechResult(null);
     setSpeechError(null);
-    speak(lesson.sentences[index].en, 0.72);
+    speak(lesson.sentences[index].en);
   };
 
   const next = async () => {
@@ -232,7 +234,7 @@ export default function SentenceLessonScreen() {
                 <Volume2 size={25} color={Colors.onColor} />
               </Pressable>
               <Text style={styles.english}>{current.en}</Text>
-              <Text style={[styles.pronunciation,current.pronunciation.startsWith('/ ')&&{writingDirection:'ltr'}]}>{current.pronunciation}</Text>
+              <Text style={[styles.pronunciation,current.pronunciation.startsWith('/ ')&&{fontFamily:'Inter-ExtraBold',writingDirection:'ltr'}]}>{current.pronunciation}</Text>
               {lesson.order >= 89 && <Text style={styles.hint}>راهنمای واجی آمریکایی از واژه‌نامه؛ بدون تکیه و پیوند گفتار. واژه داخل کروشه آوانویسی نشده است. برای آهنگ جمله به صدا گوش دهید.</Text>}
               <View style={styles.divider} />
               <Text style={styles.persian}>{current.fa}</Text>
@@ -277,7 +279,7 @@ export default function SentenceLessonScreen() {
             <View style={styles.speechPractice}>
               <Text style={styles.speechTitle}>جملهٔ انتخاب‌شده</Text>
               <Text style={styles.speechSentence}>{current.en}</Text>
-              <Pressable accessibilityRole="button" style={styles.recordButton} onPress={() => speak(current.en, 0.72)}>
+              <Pressable accessibilityRole="button" style={styles.recordButton} onPress={() => speak(current.en, 0.5)}>
                 <Volume2 size={18} color={Colors.onColor} /><Text style={styles.recordButtonText}>پخش آهستهٔ نمونه</Text>
               </Pressable>
               <Text style={styles.speechHint}>{recorderState.isRecording ? `در حال ضبط · ${toPersianDigits(Math.max(1, Math.round(recorderState.durationMillis / 1000)))} ثانیه` : evaluatingSpeech ? 'در حال بررسی…' : PAID_AI_ENABLED ? 'در صورت فعال‌بودن سرویس، می‌توانید ضبط و بررسی آنلاین را هم انتخاب کنید.' : 'میکروفن و ارسال آنلاین در حالت بدون هزینه غیرفعال‌اند؛ جمله را با صدای بلند تکرار کنید.'}</Text>
@@ -405,84 +407,85 @@ export default function SentenceLessonScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.canvas },
-  header: { paddingTop: 42, paddingHorizontal: 20, paddingBottom: 15, gap: 14, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
-  headerTop: { width: '100%', maxWidth: 820, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  // Match the German lesson player's 900px canvas and vertical safe area.
+  header: { width: '100%', maxWidth: 900, minHeight: 64, alignSelf: 'center', paddingTop: 12, paddingHorizontal: 15, paddingBottom: 7, gap: 8, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
+  headerTop: { width: '100%', maxWidth: 900, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   headerText: { flex: 1, alignItems: 'flex-end', gap: 2 },
-  headerEyebrow: { color: 'rgba(255,255,255,0.72)', fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
-  headerTitle: { fontFamily: Typography.fontFamily, fontSize: 18, lineHeight: 27, fontWeight: Typography.weights.bold, color: '#FFFFFF', textAlign: 'right', writingDirection: 'rtl' },
-  headerSub: { fontFamily: Typography.fontFamily, fontSize: 10, color: 'rgba(255,255,255,0.78)', textAlign: 'right', writingDirection: 'rtl' },
+  headerEyebrow: { fontFamily: 'Inter-ExtraBold', color: 'rgba(255,255,255,0.72)', fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
+  headerTitle: { fontFamily: Typography.fontFamily, fontSize: 20, lineHeight: 27, fontWeight: '400', color: '#FFFFFF', textAlign: 'right', writingDirection: 'rtl' },
+  headerSub: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '400', color: 'rgba(255,255,255,0.78)', textAlign: 'right', writingDirection: 'rtl' },
   percentBadge: { minWidth: 50, height: 50, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
-  percent: { fontFamily: Typography.fontFamily, fontSize: 14, lineHeight: 18, fontWeight: '800', color: '#FFFFFF', writingDirection: 'rtl' },
-  percentLabel: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.72)', fontSize: 7, writingDirection: 'rtl' },
-  headerBottom: { width: '100%', maxWidth: 820, alignSelf: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
+  percent: { fontFamily: Typography.fontFamily, fontSize: 16, lineHeight: 18, fontWeight: '400', color: '#FFFFFF', writingDirection: 'rtl' },
+  percentLabel: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.72)', fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
+  headerBottom: { width: '100%', maxWidth: 900, alignSelf: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
   headerInfoChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  headerInfoText: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 9, writingDirection: 'rtl' },
-  stepperCard: { width: '94%', maxWidth: 820, alignSelf: 'center', marginTop: 13, padding: 13, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10, shadowColor: '#20264A', shadowOpacity: .04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
+  headerInfoText: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
+  stepperCard: { width: '100%', maxWidth: 900, alignSelf: 'center', marginTop: 12, paddingHorizontal: 20, paddingVertical: 13, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10, shadowColor: '#20264A', shadowOpacity: .04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
   stepperHeading: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  stepperEyebrow: { color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
-  stepperTitle: { fontFamily: Typography.fontFamily, fontSize: 12, lineHeight: 18, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
+  stepperEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
+  stepperTitle: { fontFamily: Typography.fontFamily, fontSize: 14, lineHeight: 18, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
   stepperNow: { alignItems: 'flex-end', gap: 1 },
-  stepperNowEn: { color: Palette.primaryDark, fontSize: 9, fontWeight: '800', writingDirection: 'ltr' },
-  stepperNowFa: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 8, writingDirection: 'rtl' },
+  stepperNowEn: { fontFamily: 'Inter-ExtraBold', color: Palette.primaryDark, fontSize: 9, fontWeight: '800', writingDirection: 'ltr' },
+  stepperNowFa: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
   stepSegments: { flexDirection: 'row-reverse', gap: 4 },
   stepSegment: { flex: 1, height: 5, borderRadius: 999, backgroundColor: Palette.border },
   stepSegmentDone: { backgroundColor: Palette.primary },
   stepSegmentCurrent: { height: 8, marginTop: -1.5, backgroundColor: Palette.teal },
   stepperEnds: { flexDirection: 'row-reverse', justifyContent: 'space-between' },
-  stepperEndText: { color: Palette.muted, fontSize: 8, fontWeight: '700', writingDirection: 'ltr' },
-  content: { width: '100%', maxWidth: 820, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, gap: Spacing.md },
+  stepperEndText: { fontFamily: 'Inter-ExtraBold', color: Palette.muted, fontSize: 8, fontWeight: '800', writingDirection: 'ltr' },
+  content: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 9, paddingBottom: 22, gap: 11 },
   centerStage: { alignItems: 'center', width: '100%' },
   bigIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#DDE2FF', alignItems: 'center', justifyContent: 'center', marginVertical: Spacing.lg },
-  stageEyebrow: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, fontWeight: '700', color: Palette.primary, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  stageTitle: { fontFamily: Typography.fontFamily, fontSize: 25, lineHeight: 36, fontWeight: Typography.weights.bold, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  stageDesc: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 23, marginTop: Spacing.sm },
-  situation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 27, marginTop: Spacing.md },
+  stageEyebrow: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.primary, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  stageTitle: { fontFamily: Typography.fontFamily, fontSize: 27, lineHeight: 36, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  stageDesc: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 23, marginTop: Spacing.sm },
+  situation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 27, marginTop: Spacing.md },
   promiseCard: { width: '100%', borderRadius: Radius.xl, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#DDE2FF', padding: Spacing.lg, marginTop: Spacing.xl },
-  promiseTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
-  promiseText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 23, marginTop: 5 },
+  promiseTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
+  promiseText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 23, marginTop: 5 },
   sentenceStage: { alignItems: 'center', paddingTop: Spacing.lg, width: '100%' },
-  counter: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.muted, marginBottom: Spacing.md, alignSelf: 'flex-end', textAlign: 'right', writingDirection: 'rtl' },
+  counter: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, marginBottom: Spacing.md, alignSelf: 'flex-end', textAlign: 'right', writingDirection: 'rtl' },
   sentenceCard: { width: '100%', borderRadius: Radius.xl, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: Spacing.xl, alignItems: 'center', shadowColor: '#172033', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   soundButton: { width: 54, height: 54, borderRadius: 27, backgroundColor: Palette.primary, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
-  english: { width: '100%', fontSize: 25, lineHeight: 36, fontWeight: '700', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  pronunciation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Palette.primaryDark, textAlign: 'center', writingDirection: 'rtl', marginTop: 8 },
+  english: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 25, lineHeight: 36, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
+  pronunciation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.primaryDark, textAlign: 'center', writingDirection: 'rtl', marginTop: 8 },
   divider: { width: '70%', height: 1, backgroundColor: Palette.border, marginVertical: Spacing.lg },
-  persian: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.lg, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  persian: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.lg + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
   pattern: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', gap: 8, alignSelf: 'flex-end', backgroundColor: Palette.warningSoft, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.full, marginTop: Spacing.md },
-  patternLabel: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.warning, writingDirection: 'rtl' },
-  patternEnglish: { fontSize: Typography.sizes.xs, color: Palette.warning, textAlign: 'right', writingDirection: 'ltr' },
-  hint: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.md },
+  patternLabel: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.warning, writingDirection: 'rtl' },
+  patternEnglish: { fontFamily: 'Inter-ExtraBold', fontSize: Typography.sizes.xs + 2, fontWeight: '800', color: Palette.warning, textAlign: 'right', writingDirection: 'ltr' },
+  hint: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.md },
   listenList: { width: '100%', gap: Spacing.sm, marginTop: Spacing.xl },
   listenRow: { minHeight: 62, borderRadius: Radius.lg, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: Spacing.md, flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.sm },
   listenRowActive: { borderColor: Palette.primary, backgroundColor: Palette.primarySoft },
   listenNumber: { width: 30, height: 30, borderRadius: 15, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  listenNumberText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.primaryDark, writingDirection: 'rtl' },
-  listenEnglish: { flex: 1, fontSize: 15, color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
+  listenNumberText: { fontFamily: Typography.numberFontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.primaryDark, writingDirection: 'rtl' },
+  listenEnglish: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 15, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   speechPractice: { width: '100%', borderRadius: Radius.xl, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: Spacing.lg, alignItems: 'center', marginTop: Spacing.lg, shadowColor: '#172033', shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
-  speechTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md, fontWeight: Typography.weights.bold, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  speechSentence: { width: '100%', fontSize: 19, lineHeight: 28, fontWeight: '700', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr', marginTop: Spacing.sm },
-  speechHint: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 19, marginTop: 6 },
+  speechTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md + 2, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  speechSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 19, lineHeight: 28, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr', marginTop: Spacing.sm },
+  speechHint: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 19, marginTop: 6 },
   recordButton: { minHeight: 48, minWidth: 155, borderRadius: Radius.full, paddingHorizontal: Spacing.lg, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: Spacing.md },
   recordButtonActive: { backgroundColor: Palette.danger },
   recordButtonDisabled: { opacity: .55 },
-  recordButtonText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Colors.onColor, writingDirection: 'rtl' },
+  recordButtonText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Colors.onColor, writingDirection: 'rtl' },
   speechResult: { width: '100%', borderRadius: Radius.lg, backgroundColor: Palette.successSoft, borderWidth: 1, borderColor: '#BBF7D0', padding: Spacing.md, marginTop: Spacing.md },
   scoreRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
-  scoreLabel: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
-  scoreValue: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.lg, fontWeight: Typography.weights.bold, color: Palette.success, writingDirection: 'rtl' },
-  recognizedLabel: { fontFamily: Typography.fontFamily, fontSize: 10, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: Spacing.sm },
-  recognizedText: { fontSize: 15, color: Palette.ink, textAlign: 'right', writingDirection: 'ltr', marginTop: 3 },
-  feedbackText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.success, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.sm },
-  missingWords: { fontSize: 12, color: Palette.warning, textAlign: 'right', writingDirection: 'ltr', marginTop: Spacing.sm },
-  speechError: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.danger, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.sm },
+  scoreLabel: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
+  scoreValue: { fontFamily: Typography.numberFontFamily, fontSize: Typography.sizes.lg + 2, fontWeight: '400', color: Palette.success, writingDirection: 'rtl' },
+  recognizedLabel: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: Spacing.sm },
+  recognizedText: { fontFamily: 'Inter-ExtraBold', fontSize: 15, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr', marginTop: 3 },
+  feedbackText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.success, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.sm },
+  missingWords: { fontFamily: 'Inter-ExtraBold', fontSize: 12, fontWeight: '800', color: Palette.warning, textAlign: 'right', writingDirection: 'ltr', marginTop: Spacing.sm },
+  speechError: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.danger, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.sm },
   shadowTip: { width: '100%', marginTop: Spacing.md, borderRadius: Radius.lg, backgroundColor: Palette.warningSoft, padding: Spacing.md, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  shadowText: { flex: 1, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19 },
+  shadowText: { flex: 1, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19 },
   practiceCard: { width: '100%', minHeight: 230, borderRadius: Radius.xl, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: Spacing.xl, marginTop: Spacing.xl, alignItems: 'center', justifyContent: 'center', shadowColor: '#172033', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  practiceFa: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xl, fontWeight: Typography.weights.bold, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 32 },
+  practiceFa: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xl + 2, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 32 },
   revealButton: { marginTop: Spacing.xl, minHeight: 44, paddingHorizontal: Spacing.xl, borderRadius: Radius.full, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  revealText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Palette.primaryDark, writingDirection: 'rtl' },
+  revealText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.primaryDark, writingDirection: 'rtl' },
   answerBox: { marginTop: Spacing.xl, padding: Spacing.md, borderRadius: Radius.lg, backgroundColor: Palette.successSoft, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  answerText: { flex: 1, fontSize: 18, color: Palette.success, textAlign: 'right', writingDirection: 'ltr' },
+  answerText: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 18, fontWeight: '800', color: Palette.success, textAlign: 'right', writingDirection: 'ltr' },
   dots: { flexDirection: 'row', gap: 8, marginTop: Spacing.lg },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Palette.border },
   dotActive: { width: 24, backgroundColor: Palette.primary },
@@ -490,17 +493,17 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '88%', borderRadius: Radius.xl, padding: Spacing.md, borderWidth: 1 },
   bubblePartner: { alignSelf: 'flex-start', backgroundColor: Palette.surface, borderColor: Palette.border, borderBottomLeftRadius: 5 },
   bubbleLearner: { alignSelf: 'flex-end', backgroundColor: Palette.primarySoft, borderColor: '#DDE2FF', borderBottomRightRadius: 5 },
-  bubbleSpeaker: { fontFamily: Typography.fontFamily, fontSize: 10, color: Palette.primaryDark, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl' },
-  bubbleEn: { fontSize: 16, color: Palette.ink, lineHeight: 23, textAlign: 'right', writingDirection: 'ltr' },
-  bubbleFa: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: 5 },
+  bubbleSpeaker: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '400', color: Palette.primaryDark, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl' },
+  bubbleEn: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', color: Palette.ink, lineHeight: 23, textAlign: 'right', writingDirection: 'ltr' },
+  bubbleFa: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: 5 },
   bubbleSound: { alignSelf: 'flex-end', marginTop: 6 },
   vocabList: { width: '100%', gap: Spacing.sm, marginTop: Spacing.xl },
   vocabCard: { borderRadius: Radius.lg, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: Spacing.md },
   vocabTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  vocabWord: { fontSize: 18, fontWeight: '700', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
-  vocabExample: { fontSize: 13, color: Palette.text, textAlign: 'right', writingDirection: 'ltr', marginTop: 8 },
-  footer: { paddingHorizontal: 18, paddingTop: 11, paddingBottom: 14, backgroundColor: 'rgba(255,255,255,0.96)', borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
-  nextButton: { width: '100%', maxWidth: 820, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  nextText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md, fontWeight: Typography.weights.bold, color: Colors.onColor, writingDirection: 'rtl' },
+  vocabWord: { fontFamily: 'Inter-ExtraBold', fontSize: 18, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
+  vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
+  vocabExample: { fontFamily: 'Inter-ExtraBold', fontSize: 13, fontWeight: '800', color: Palette.text, textAlign: 'right', writingDirection: 'ltr', marginTop: 8 },
+  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 7, paddingBottom: 30, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
+  nextButton: { width: '100%', maxWidth: 900, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  nextText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md + 2, fontWeight: '400', color: Colors.onColor, writingDirection: 'rtl' },
 });

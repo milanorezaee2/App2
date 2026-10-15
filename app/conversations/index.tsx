@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Bot, ChevronLeft, MessageCircle, Mic2, Plus, QrCode, ShieldCheck, Sparkles, UserRound } from 'lucide-react-native';
+import { Bot, ChevronLeft, MessageCircle, Mic2, Plus, QrCode, ShieldCheck, Sparkles, Trash2, UserRound } from 'lucide-react-native';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
-import { listRealContacts, type RealContact } from '@/lib/conversations';
+import { deleteConversationForMe, listRealContacts, type RealContact } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
 import { isSupabaseConfigured } from '@/lib/pairing';
 import { SupabaseSetupNotice } from '@/components/SupabaseSetupNotice';
@@ -15,8 +15,33 @@ export default function ConversationsHome() {
   const [contacts, setContacts] = useState<RealContact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(true);
   const [contactsError, setContactsError] = useState<string | null>(null);
+  const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
 
   const configured = isSupabaseConfigured();
+
+  const confirmDelete = (contact: RealContact) => {
+    Alert.alert(
+      'حذف مخاطب و گفتگو',
+      `گفتگو با «${contact.displayName}» از این دستگاه حذف شود؟ این کار پیام‌ها را برای مخاطب مقابل حذف نمی‌کند.`,
+      [
+        { text: 'انصراف', style: 'cancel' },
+        {
+          text: 'حذف برای من',
+          style: 'destructive',
+          onPress: () => {
+            setDeletingConversationId(contact.conversationId);
+            void deleteConversationForMe(contact.conversationId)
+              .then(() => {
+                setContacts(current => current.filter(item => item.conversationId !== contact.conversationId));
+                setContactsError(null);
+              })
+              .catch(cause => setContactsError(readableSupabaseError(cause)))
+              .finally(() => setDeletingConversationId(null));
+          },
+        },
+      ],
+    );
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -101,6 +126,16 @@ export default function ConversationsHome() {
                   <Text style={styles.realContactName}>{contact.displayName}</Text>
                   <Text style={styles.realContactStatus}>مخاطب واقعی · {contact.englishLevel}</Text>
                 </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`حذف مخاطب و گفتگو با ${contact.displayName}`}
+                  hitSlop={8}
+                  style={styles.deleteContact}
+                  disabled={deletingConversationId === contact.conversationId}
+                  onPress={event => { event.stopPropagation(); confirmDelete(contact); }}
+                >
+                  {deletingConversationId === contact.conversationId ? <ActivityIndicator size="small" color={Colors.error[300]} /> : <Trash2 size={17} color={Colors.error[300]} />}
+                </Pressable>
                 <ChevronLeft size={20} color={Colors.neutral[500]} />
               </Pressable>
             ))}
@@ -142,7 +177,7 @@ export default function ConversationsHome() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.neutral[950] },
-  header: { paddingTop: 56, paddingBottom: Spacing.lg, paddingHorizontal: Spacing.lg, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800] },
+  header: { paddingTop: 12, paddingBottom: Spacing.lg, paddingHorizontal: Spacing.lg, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800] },
   headerTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   headerCopy: { flex: 1, alignItems: 'flex-end' },
   title: { fontFamily: Typography.fontFamily, fontSize: 26, fontWeight: Typography.weights.bold, color: Colors.neutral[0], textAlign: 'right' },
@@ -158,7 +193,7 @@ const styles = StyleSheet.create({
   onlineDot: { position: 'absolute', left: 1, bottom: 3, width: 13, height: 13, borderRadius: 7, backgroundColor: Colors.success[500], borderWidth: 2, borderColor: Colors.neutral[850] },
   contactText: { flex: 1 },
   nameRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  contactName: { fontSize: 19, fontWeight: '700', color: Colors.neutral[50] },
+  contactName: { fontFamily: Typography.latinFontFamily, fontSize: 19, fontWeight: '800', color: Colors.neutral[50], textAlign: 'left', writingDirection: 'ltr' },
   aiBadge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, borderRadius: Radius.full, paddingHorizontal: 7, paddingVertical: 3, backgroundColor: Colors.accent[500] + '15' },
   aiBadgeText: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.accent[300] },
   contactDesc: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[400], textAlign: 'right', lineHeight: 18, marginTop: 3 },
@@ -173,6 +208,7 @@ const styles = StyleSheet.create({
   realContactText: { flex: 1 },
   realContactName: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md, fontWeight: Typography.weights.bold, color: Colors.neutral[100], textAlign: 'right' },
   realContactStatus: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.success[400], textAlign: 'right', marginTop: 3 },
+  deleteContact: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.error[500] + '10', borderWidth: 1, borderColor: Colors.error[500] + '25' },
   addAnother: { minHeight: 44, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.primary[500] + '35', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6 },
   addAnotherText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Colors.primary[300] },
   emptyContacts: { borderRadius: Radius.xl, padding: Spacing.xl, backgroundColor: Colors.neutral[900], borderWidth: 1, borderStyle: 'dashed', borderColor: Colors.neutral[700], alignItems: 'center' },

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView } from '@/components/KeyboardRuntime';
 
 import * as Speech from 'expo-speech';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
-import { Bot, Languages, Lightbulb, Mic, Send, Sparkles, Square, Volume2 } from 'lucide-react-native';
+import { Bot, Languages, Lightbulb, Mic, Send, Sparkles, Square, Trash2, Volume2 } from 'lucide-react-native';
 import { askEmma, getEmmaPracticeContext, type EmmaCorrection, type EmmaPracticeContext } from '@/lib/emma';
-import { loadEmmaHistory, saveEmmaHistory, type EmmaStoredMessage } from '@/lib/emmaHistory';
+import { clearEmmaHistory, loadEmmaHistory, saveEmmaHistory, type EmmaStoredMessage } from '@/lib/emmaHistory';
 import { transcribeLearnerSpeech } from '@/lib/speechPractice';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
@@ -112,8 +113,29 @@ export default function EmmaChat() {
     }
   };
 
+  const confirmClearConversation = () => {
+    Alert.alert(
+      'حذف گفتگوی Emma',
+      'همهٔ پیام‌های ذخیره‌شدهٔ این گفتگو از دستگاه حذف شوند؟',
+      [
+        { text: 'انصراف', style: 'cancel' },
+        {
+          text: 'حذف گفتگو',
+          style: 'destructive',
+          onPress: () => {
+            void clearEmmaHistory().then(() => {
+              setMessages(initialMessages);
+              setCorrection(null);
+              setError(null);
+            }).catch(() => setError('حذف سابقهٔ گفتگو انجام نشد.'));
+          },
+        },
+      ],
+    );
+  };
+
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.root} behavior="height" enabled>
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩🏻‍🏫</Text><View style={styles.online} /></View>
@@ -121,6 +143,9 @@ export default function EmmaChat() {
           <View style={styles.nameRow}><Text style={styles.name}>Emma</Text><Bot size={14} color={Colors.accent[400]} /></View>
           <Text style={styles.status}>هوش مصنوعی آنلاین · فعلاً غیرفعال</Text>
         </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="حذف گفتگوی ذخیره‌شدهٔ Emma" style={styles.deleteButton} onPress={confirmClearConversation}>
+          <Trash2 size={18} color={Colors.error[300]} />
+        </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={PAID_AI_ENABLED ? 'شروع یا پایان گفتار آنلاین Emma' : 'گفتار آنلاین Emma فعلاً غیرفعال است'} accessibilityHint={!PAID_AI_ENABLED ? PAID_AI_DISABLED_MESSAGE : 'با اجازهٔ میکروفن صدا پردازش می‌شود.'} accessibilityState={{ disabled: !PAID_AI_ENABLED || thinking || transcribing }}
           disabled={!PAID_AI_ENABLED || thinking || transcribing}
           style={[styles.voiceCall, recorderState.isRecording && styles.voiceCallActive]}
@@ -134,7 +159,15 @@ export default function EmmaChat() {
         <View style={styles.voiceStatus}><Text style={styles.voiceStatusText}>{recorderState.isRecording ? `در حال شنیدن شما · ${Math.max(1, Math.round(recorderState.durationMillis / 1000))} ثانیه · برای پایان دوباره بزنید` : 'در حال تبدیل صدای شما به متن…'}</Text></View>
       ) : null}
 
-      <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={styles.messageContent} onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.messages}
+        contentContainerStyle={styles.messageContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+      >
         <View style={styles.topicChip}><Sparkles size={13} color={Colors.accent[400]} /><Text style={styles.topicText}>موضوع امروز: {context?.lessonTitleFa || 'درس فعلی شما'}</Text></View>
         {messages.map((message) => (
           <View key={message.id} style={[styles.bubble, message.from === 'learner' ? styles.mine : styles.theirs]}>
@@ -185,7 +218,7 @@ export default function EmmaChat() {
           placeholder="پیام انگلیسی بنویسید…"
           placeholderTextColor={Colors.neutral[600]}
           multiline
-          textAlign="right"
+          textAlign="left"
         />
         <Pressable accessibilityRole="button" accessibilityLabel="ارسال پیام به Emma" accessibilityState={{ disabled: !PAID_AI_ENABLED || !input.trim() || thinking || transcribing || recorderState.isRecording }} style={[styles.send, (!input.trim() || thinking || transcribing || recorderState.isRecording) && styles.sendDisabled]} disabled={!PAID_AI_ENABLED || !input.trim() || thinking || transcribing || recorderState.isRecording} onPress={() => void send()}>
           {thinking || transcribing ? <ActivityIndicator size="small" color={Colors.onColor} /> : <Send size={18} color={Colors.onColor} />}
@@ -197,27 +230,28 @@ export default function EmmaChat() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.neutral[950] },
-  header: { paddingTop: 50, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm, minHeight: 104, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800], flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.sm },
+  header: { paddingTop: 12, paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm, minHeight: 64, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800], flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.sm },
   back: { width: 39, height: 39, borderRadius: Radius.md, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
   avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: Colors.accent[500] + '20', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   avatarEmoji: { fontSize: 27 },
   online: { position: 'absolute', left: 0, bottom: 2, width: 11, height: 11, borderRadius: 6, backgroundColor: Colors.success[500], borderWidth: 2, borderColor: Colors.neutral[900] },
   headerText: { flex: 1 },
   nameRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  name: { fontSize: 18, fontWeight: '700', color: Colors.neutral[100] },
+  name: { fontFamily: Typography.latinFontFamily, fontSize: 18, fontWeight: '800', color: Colors.neutral[100] },
   status: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.success[400], textAlign: 'right', marginTop: 2 },
+  deleteButton: { width: 39, height: 39, borderRadius: Radius.full, backgroundColor: Colors.error[500] + '12', alignItems: 'center', justifyContent: 'center' },
   voiceCall: { width: 39, height: 39, borderRadius: Radius.full, backgroundColor: Colors.primary[500] + '15', alignItems: 'center', justifyContent: 'center' },
   voiceCallActive: { backgroundColor: Colors.error[500] },
   voiceStatus: { minHeight: 34, paddingHorizontal: Spacing.md, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.error[500] + '0D', borderBottomWidth: 1, borderBottomColor: Colors.error[500] + '20' },
   voiceStatusText: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.error[300], textAlign: 'center' },
-  messages: { flex: 1 },
+  messages: { flex: 1, minHeight: 0 },
   messageContent: { padding: Spacing.md, gap: Spacing.sm },
   topicChip: { alignSelf: 'center', borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.accent[500] + '10', flexDirection: 'row-reverse', gap: 5, alignItems: 'center', marginBottom: Spacing.md },
   topicText: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.accent[300] },
   bubble: { maxWidth: '86%', borderRadius: Radius.xl, padding: Spacing.md, borderWidth: 1 },
   theirs: { alignSelf: 'flex-start', backgroundColor: Colors.neutral[850], borderColor: Colors.neutral[700], borderBottomLeftRadius: 5 },
   mine: { alignSelf: 'flex-end', backgroundColor: Colors.primary[600], borderColor: Colors.primary[500], borderBottomRightRadius: 5 },
-  messageText: { fontSize: 16, lineHeight: 23, color: Colors.neutral[50], textAlign: 'left' },
+  messageText: { fontFamily: Typography.latinFontFamily, fontSize: 16, lineHeight: 23, fontWeight: '800', color: Colors.neutral[50], textAlign: 'left', writingDirection: 'ltr' },
   translation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[400], textAlign: 'right', lineHeight: 19, marginTop: 7, paddingTop: 7, borderTopWidth: 1, borderTopColor: Colors.neutral[700] + '80' },
   listen: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, marginTop: 7, alignSelf: 'flex-end' },
   listenText: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.primary[300] },
@@ -225,8 +259,8 @@ const styles = StyleSheet.create({
   thinkingText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[500] },
   correctionCard: { alignSelf: 'stretch', borderRadius: Radius.lg, backgroundColor: Colors.warning[500] + '0D', borderWidth: 1, borderColor: Colors.warning[500] + '25', padding: Spacing.md, marginTop: Spacing.sm },
   correctionTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, fontWeight: Typography.weights.bold, color: Colors.warning[300], textAlign: 'right' },
-  correctionOld: { fontSize: 13, color: Colors.error[300], textDecorationLine: 'line-through', marginTop: 7 },
-  correctionNew: { fontSize: 14, color: Colors.success[300], fontWeight: '600', marginTop: 4 },
+  correctionOld: { fontFamily: Typography.latinFontFamily, fontSize: 13, fontWeight: '800', color: Colors.error[300], textDecorationLine: 'line-through', marginTop: 7, writingDirection: 'ltr' },
+  correctionNew: { fontFamily: Typography.latinFontFamily, fontSize: 14, color: Colors.success[300], fontWeight: '800', marginTop: 4, writingDirection: 'ltr' },
   correctionExplanation: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.neutral[500], textAlign: 'right', lineHeight: 18, marginTop: 6 },
   error: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.error[300], textAlign: 'center', padding: Spacing.sm },
   coachArea: { backgroundColor: Colors.neutral[900], borderTopWidth: 1, borderTopColor: Colors.neutral[800] },
@@ -238,10 +272,10 @@ const styles = StyleSheet.create({
   toolText: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.neutral[500] },
   suggestions: { gap: 7 },
   suggestion: { borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.primary[500] + '45', backgroundColor: Colors.primary[500] + '0C', paddingHorizontal: 11, paddingVertical: 7 },
-  suggestionText: { fontSize: 12, color: Colors.primary[200] },
-  composer: { padding: Spacing.sm, paddingBottom: 18, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 7 },
+  suggestionText: { fontFamily: Typography.latinFontFamily, fontSize: 12, fontWeight: '800', color: Colors.primary[200], writingDirection: 'ltr' },
+  composer: { flexShrink: 0, minHeight: 64, overflow: 'visible', padding: Spacing.sm, paddingBottom: 10, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   helper: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, minHeight: 42, maxHeight: 100, borderRadius: 21, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingVertical: 10, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Colors.neutral[100] },
+  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingTop: 10, paddingBottom: 8, fontFamily: Typography.latinFontFamily, fontSize: Typography.sizes.sm, lineHeight: 22, fontWeight: '800', color: Colors.neutral[100], textAlignVertical: 'center', includeFontPadding: false, writingDirection: 'ltr' },
   send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.accent[500], alignItems: 'center', justifyContent: 'center' },
   sendDisabled: { opacity: .4 },
 });

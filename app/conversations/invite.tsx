@@ -120,7 +120,7 @@ export default function InviteContactScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.neutral[950] },
-  header: { paddingTop: 52, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800], flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.md },
+  header: { paddingTop: 12, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800], flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.md },
   headerText: { flex: 1 },
   title: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.lg, fontWeight: Typography.weights.bold, color: Colors.neutral[100], textAlign: 'right' },
   subtitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[500], textAlign: 'right', marginTop: 2 },
@@ -135,8 +135,8 @@ const styles = StyleSheet.create({
   cardTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xl, fontWeight: Typography.weights.bold, color: Colors.neutral[100], textAlign: 'center' },
   cardDesc: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, color: Colors.neutral[500], textAlign: 'center', lineHeight: 22, marginTop: 6 },
   codeBox: { width: '100%', minHeight: 68, borderRadius: Radius.lg, marginVertical: Spacing.xl, backgroundColor: Colors.neutral[900], borderWidth: 1, borderColor: Colors.primary[500] + '50', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
-  code: { fontSize: 30, fontWeight: '700', letterSpacing: 9, color: Colors.neutral[50] },
-  input: { width: '100%', minHeight: 68, borderRadius: Radius.lg, marginVertical: Spacing.xl, backgroundColor: Colors.neutral[900], borderWidth: 1, borderColor: Colors.accent[500] + '50', fontSize: 30, fontWeight: '700', letterSpacing: 9, color: Colors.neutral[50] },
+  code: { fontFamily: Typography.fontFamily, fontSize: 30, fontWeight: '700', letterSpacing: 9, color: Colors.neutral[50], writingDirection: 'rtl' },
+  input: { width: '100%', minHeight: 68, borderRadius: Radius.lg, marginVertical: Spacing.xl, backgroundColor: Colors.neutral[900], borderWidth: 1, borderColor: Colors.accent[500] + '50', fontFamily: Typography.fontFamily, fontSize: 30, fontWeight: '700', letterSpacing: 9, color: Colors.neutral[50], writingDirection: 'rtl' },
   primary: { width: '100%', minHeight: 50, borderRadius: Radius.lg, backgroundColor: Colors.primary[500], flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8 },
   primaryText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Colors.onColor },
   disabled: { opacity: .4 },

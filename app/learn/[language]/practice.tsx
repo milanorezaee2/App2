@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   reading: {padding:16,gap:12,borderRadius:12,backgroundColor:'#f4f6fa'},
   choice: { borderWidth: 1, borderColor: '#dde3ea', borderRadius: 12, padding: 15 },
   selected: { borderColor: '#6366f1', backgroundColor: '#f4f6fa' },
-  input: { minHeight: 96, borderWidth: 1, borderColor: '#dde3ea', backgroundColor: '#f4f6fa', borderRadius: 12, padding: 16, fontSize: 21, color: '#475569', textAlign: 'left', writingDirection: 'ltr', textAlignVertical: 'top' },
+  input: { fontFamily: 'Inter-ExtraBold', minHeight: 96, borderWidth: 1, borderColor: '#dde3ea', backgroundColor: '#f4f6fa', borderRadius: 12, padding: 16, fontSize: 19, fontWeight: '800', color: '#475569', textAlign: 'left', writingDirection: 'ltr', textAlignVertical: 'top' },
   answerBox: { padding: 18, borderRadius: 12, backgroundColor: '#f4f6fa' },
   tokens: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, ...LtrDirection },
   token: { borderRadius: 10, backgroundColor: '#f4f6fa', padding: 15 },

@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+let count = 0;
+const check = (value, message) => { assert.ok(value, message); count += 1; };
+
+const gate = read('components/RegistrationGate.tsx');
+const registration = read('lib/userRegistration.ts');
+const layout = read('app/_layout.tsx');
+const migration = read('supabase/migrations/202610140002_registered_users_admin.sql');
+const admin = read('app/admin/index.tsx');
+const adminApi = read('lib/educationAdmin.ts');
+const appConfig = read('app.config.js');
+const workflow = read('.github/workflows/android-build.yml');
+
+check(/<RegistrationGate>/.test(layout), 'learner routes are protected by the registration gate');
+check(/signUp/.test(registration) && /signInWithPassword/.test(registration) && /updateUser/.test(registration), 'new, returning, and existing anonymous learners are supported');
+check(/full_name/.test(gate) || /fullName/.test(gate), 'registration captures the learner name');
+check(/generateLoginCode/.test(gate) && /کد ورود/.test(gate) && /ایمیل/.test(gate), 'registration automatically creates a simple login code');
+check(/getRandomBytesAsync/.test(registration) && /\\d\{6\}/.test(registration), 'login codes are cryptographically random six-digit values');
+check(/color: '#111111'/.test(gate) && /numberFontFamily/.test(gate), 'registration inputs and generated digits are explicitly black');
+check((gate.match(/KeyboardAvoidingView/g) || []).length >= 3
+  && (gate.match(/KeyboardAwareScrollView/g) || []).length >= 3
+  && /bottomOffset=\{24\}/.test(gate), 'registration and login forms dynamically follow and scroll above the keyboard');
+check(/EMAIL_CONFIRMATION_ENABLED/.test(registration) && !/ابتدا ایمیل تأیید/.test(registration), 'the learner flow never asks users to confirm email');
+check(/ورود مستقیم به اپ/.test(gate) && /toAuthPassword/.test(registration), 'new learners enter directly while retaining a hardened six-digit login code');
+check(/app_user_profiles/.test(migration) && /ENABLE ROW LEVEL SECURITY/.test(migration), 'registered profiles are protected by RLS');
+check(/user_id = auth\.uid\(\)/.test(migration), 'learners can only access their own profile');
+check(/admin_registered_users/.test(migration) && /is_education_admin/.test(migration), 'the registered-user directory verifies server-side manager authorization');
+check(/education_admins_single_owner_idx/.test(migration), 'the database enforces one operational manager');
+check(/registeredUsers/.test(admin) && /کاربران ثبت‌شده/.test(admin), 'the management UI lists registered learners');
+check(/LinearGradient/.test(admin) && /sidebarMobile/.test(admin) && /mobileNavItem/.test(admin) && /navTextActive/.test(admin), 'the management UI keeps a polished responsive sidebar on mobile');
+check(!/flexDirection:\s*'column'\s*}\]}[^\n]*sidebar/.test(admin), 'the management navigation does not collapse into top tabs');
+check(/sidebarMobile:\{width:90/.test(admin) && /statNumber:\{fontFamily:'Vazir-Bold',fontSize:20/.test(admin) && /borderRadius:15,padding:12,gap:10/.test(admin), 'all management tabs keep a compact mobile density and smaller Vazir numbers');
+check(/admin_registered_users/.test(adminApi), 'the management client loads the protected directory RPC');
+check(/com\.devicecontrol\.miloadmin/.test(appConfig) && /com\.devicecontrol\.companion/.test(read('app.json')), 'learner and management APKs have separate Android package IDs');
+check(/MiloAdmin\.apk/.test(workflow) && /MiloMultiApp\.apk/.test(workflow), 'CI builds and publishes both standalone APKs');
+check(/EXPO_PUBLIC_MILO_ADMIN_APP/.test(read('app/index.tsx')), 'the management APK boots directly into its protected panel');
+check(/پیام‌های خصوصی/.test(gate) && /پیام‌های خصوصی/.test(admin), 'both apps disclose and preserve private-message boundaries');
+console.log(`${count} registration and private management checks passed.`);

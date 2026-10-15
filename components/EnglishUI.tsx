@@ -3,6 +3,7 @@ import { Check } from 'lucide-react-native';
 import { COURSE_LEVELS, type CourseLevelId } from '@/lib/courseContent';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { toPersianDigits } from '@/lib/format';
+import { Typography } from '@/lib/theme';
 
 export const ENGLISH_LEVEL_GRADIENTS: Record<CourseLevelId, [string, string]> = {
   0: ['#6555E9', '#29246F'],
@@ -118,14 +119,14 @@ const styles = StyleSheet.create({
   railNode: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   railNodeActive: { backgroundColor: Palette.primary, borderColor: Palette.primary, shadowColor: Palette.primary, shadowOpacity: 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
   railNodeDone: { backgroundColor: Palette.success, borderColor: Palette.success },
-  railNodeText: { color: Palette.muted, fontSize: 11, fontWeight: '800' },
+  railNodeText: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 11, fontWeight: '800', writingDirection: 'rtl' },
   railNodeTextActive: { color: '#FFFFFF' },
-  railLabel: { maxWidth: 42, color: Palette.muted, fontSize: 8, fontWeight: '700', textAlign: 'center', writingDirection: 'ltr' },
+  railLabel: { fontFamily: 'Inter-ExtraBold', maxWidth: 42, color: Palette.muted, fontSize: 6, fontWeight: '800', textAlign: 'center', writingDirection: 'ltr' },
   railLabelActive: { color: Palette.primaryDark },
   railConnector: { height: 3, flex: 1, borderRadius: 99, backgroundColor: Palette.border, marginTop: 15 },
   railConnectorActive: { backgroundColor: Palette.success },
   sectionHeading: { gap: 3, alignItems: 'flex-end' },
-  sectionEyebrow: { fontFamily: 'Vazirmatn', color: Palette.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },
-  sectionTitle: { fontFamily: 'Vazirmatn', color: Palette.ink, fontSize: 19, lineHeight: 28, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  sectionDetail: { fontFamily: 'Vazirmatn', color: Palette.muted, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+  sectionEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },
+  sectionTitle: { fontFamily: 'Vazir', color: Palette.ink, fontSize: 19, lineHeight: 28, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  sectionDetail: { fontFamily: 'Vazir', color: Palette.muted, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
 });

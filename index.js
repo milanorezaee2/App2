@@ -13,16 +13,15 @@
  */
 import { Alert, I18nManager, Platform } from 'react-native';
 
-// This is a Persian (Farsi) app — its UI is always RTL regardless of the
-// phone's system language. Setting it here, at the very top of the entry file,
-// makes sure it runs before ANY other module so the direction is applied
-// from the very first frame.
+// Keep the native tree deterministic and independent of the phone locale.
+// Persian copy receives explicit RTL styles, while English and German receive
+// explicit LTR styles. Forcing the whole native tree RTL here used to conflict
+// with app/_layout.tsx and could alternate direction after an app restart.
 try {
-  I18nManager.allowRTL(true);
-  I18nManager.forceRTL(true);
-} catch (rtlError) {
-  // Fall through silently — the layout wrapper in app/_layout.tsx also
-  // forces RTL visually via `direction: 'rtl'`.
+  I18nManager.allowRTL(false);
+  I18nManager.forceRTL(false);
+} catch (directionError) {
+  // Explicit per-language styles and the Android manifest remain the fallback.
 }
 
 // On web, `direction: 'rtl'` in StyleSheet is not supported by react-native-web,

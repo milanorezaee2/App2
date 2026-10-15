@@ -187,6 +187,6 @@ function downloadJson(text: string) {
 }
 
 const styles = StyleSheet.create({
-  importInput: { minHeight: 190, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 14, padding: 13, color: Palette.ink, fontSize: 13, lineHeight: 20, textAlign: 'left', writingDirection: 'ltr' },
-  jsonFallback: { minHeight: 140, maxHeight: 260, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 14, padding: 12, color: Palette.ink, fontSize: 10, lineHeight: 16, textAlign: 'left', writingDirection: 'ltr' },
+  importInput: { fontFamily: 'Inter-ExtraBold', minHeight: 190, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 14, padding: 13, color: Palette.ink, fontSize: 11, fontWeight: '800', lineHeight: 20, textAlign: 'left', writingDirection: 'ltr' },
+  jsonFallback: { fontFamily: 'Inter-ExtraBold', minHeight: 140, maxHeight: 260, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 14, padding: 12, color: Palette.ink, fontSize: 8, fontWeight: '800', lineHeight: 16, textAlign: 'left', writingDirection: 'ltr' },
 });
