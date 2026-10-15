@@ -166,7 +166,7 @@ export const RUSSIAN_GRAMMAR_THREADS: readonly RussianGrammarThread[] = [
       B2: 'انتخاب دقیق‌تر حالت در ساختارهای پیچیده و بافت‌های تخصصی.',
     },
     currentA1Status: 'in-context',
-    candidateSentenceIds: ['ru-intro-country', 'ru-intro-city', 'ru-directions-museum', 'ru-directions-ticket'],
+    candidateSentenceIds: ['ru1-21', 'ru1-22', 'ru1-65', 'ru1-67'],
     editorialStatus: 'requires-russian-editor-review',
   },
   {
@@ -195,10 +195,8 @@ export const RUSSIAN_GRAMMAR_THREADS: readonly RussianGrammarThread[] = [
     },
     currentA1Status: 'in-context',
     candidateSentenceIds: [
-      'ru-family-brother', 'ru-family-sister', 'ru-help-sorry',
-      'ru-object-my-desk', 'ru-object-my-bag',
-      'ru-adjective-new-masculine', 'ru-adjective-new-feminine', 'ru-adjective-new-neuter',
-      'ru-adjective-big-house', 'ru-adjective-new-book', 'ru-adjective-new-word',
+      'ru1-54', 'ru1-55', 'ru1-28',
+      'ru1-60',
     ],
     editorialStatus: 'requires-russian-editor-review',
   },

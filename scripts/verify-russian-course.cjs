@@ -42,28 +42,28 @@ const esbuild = require('esbuild');
   const checks = [];
   const check = (label, value) => { assert(value, label); checks.push(label); };
   const sentenceCount = app.RUSSIAN_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
-  const expectedLessonIds = ['ru-cyrillic-basics','ru-greetings','ru-introductions','ru-pronouns-basics','ru-basic-objects','ru-basic-description','ru-basic-questions','ru-numbers-time','ru-cafe','ru-city-directions','ru-shopping','ru-family','ru-daily-routine','ru-help-and-health'];
+  const expectedLessonIds = ['ru-l1-greetings','ru-l1-how-are-you','ru-l1-introductions','ru-l1-polite-words','ru-l1-yes-no-understand','ru-l1-numbers-1-10','ru-l1-numbers-family','ru-l1-objects-this-is','ru-l1-where-is','ru-l1-basic-wants-needs','ru-l2-cafe','ru-l2-shopping','ru-l2-directions','ru-l2-time','ru-l2-days','ru-l2-daily-routine','ru-l2-emergency'];
 
   check('Cyrillic alphabet has 33 unique letters', app.RUSSIAN_ALPHABET.length === 33 && new Set(app.RUSSIAN_ALPHABET).size === 33);
-  check('Russian starter has fourteen sequenced lessons from script to practical help', app.RUSSIAN_LESSONS.length === 14
+  check('Russian starter has seventeen sequenced lessons from greetings to emergencies', app.RUSSIAN_LESSONS.length === 17
     && app.RUSSIAN_LESSONS.map(lesson => lesson.id).join('|') === expectedLessonIds.join('|')
     && app.RUSSIAN_LESSONS.every(lesson => lesson.id.startsWith('ru-') && lesson.title && lesson.situation));
-  check('Russian starter has eighty-four six-sentence records', sentenceCount === 84 && app.RUSSIAN_LESSONS.every(lesson => lesson.sentences.length === 6));
+  check('Russian starter has 136 eight-sentence records', sentenceCount === 136 && app.RUSSIAN_LESSONS.every(lesson => lesson.sentences.length === 8));
   check('Russian roadmap mirrors the English five-level progression without claiming certification', app.RUSSIAN_LEVELS.map(level => level.id).join('|') === '0|1|2|3|4'
     && app.RUSSIAN_LEVELS.length === app.COURSE_LEVELS.length
     && app.RUSSIAN_LEVELS.every((level, index) => level.title && level.description && level.modules.length > 0 && level.id === app.COURSE_LEVELS[index].id));
-  check('Russian Foundation now has seven coherent lessons and Survival follows it', app.RUSSIAN_LESSONS.every((lesson, index) => lesson.order === index + 1 && lesson.subtitle)
-    && app.RUSSIAN_LESSONS.slice(0, 7).every(lesson => lesson.levelId === 0)
-    && app.RUSSIAN_LESSONS.slice(7).every(lesson => lesson.levelId === 1)
-    && app.RUSSIAN_LESSONS.slice(0, 7).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 42
-    && app.RUSSIAN_LESSONS.slice(7).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 42);
+  check('Russian Foundation has ten lessons (Level 1) and Survival has seven (Level 2)', app.RUSSIAN_LESSONS.every((lesson, index) => lesson.order === index + 1 && lesson.subtitle)
+    && app.RUSSIAN_LESSONS.slice(0, 10).every(lesson => lesson.levelId === 0)
+    && app.RUSSIAN_LESSONS.slice(10).every(lesson => lesson.levelId === 1)
+    && app.RUSSIAN_LESSONS.slice(0, 10).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 80
+    && app.RUSSIAN_LESSONS.slice(10).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 56);
   check('unwritten upper Russian levels stay visibly planned and contain no invented lessons', app.RUSSIAN_LEVELS.slice(2).every(level => level.status === 'planned'
     && !app.RUSSIAN_LESSONS.some(lesson => lesson.levelId === level.id)));
   const allRussianIds = app.RUSSIAN_LESSONS.flatMap(lesson => [lesson.id, ...lesson.sentences.map(sentence => sentence.id)]);
   check('Russian lesson and sentence IDs are unique', new Set(allRussianIds).size === allRussianIds.length);
   check('Russian target sentences are Cyrillic and linked to Persian, pronunciation and vocabulary', app.RUSSIAN_LESSONS.every(lesson => lesson.sentences.every(sentence => /[А-Яа-яЁё]/.test(sentence.text)
     && !!sentence.fa && !!sentence.pronunciation && !/[А-Яа-яЁё]/.test(sentence.pronunciation) && sentence.vocabulary.length > 0)));
-  check('every lesson has a dialogue and two valid self-study checks', app.RUSSIAN_LESSONS.every(lesson => lesson.dialogue.length >= 4
+  check('every lesson has a short dialogue and two valid self-study checks', app.RUSSIAN_LESSONS.every(lesson => lesson.dialogue.length >= 3
     && lesson.dialogue.every(line => /[А-Яа-яЁё]/.test(line.text) && !!line.fa)
     && lesson.checks.length === 2 && lesson.checks.every(question => question.choices.length === 3
       && new Set(question.choices).size === 3 && question.correctIndex >= 0 && question.correctIndex < question.choices.length)));
@@ -86,11 +86,11 @@ const esbuild = require('esbuild');
     && app.LANGUAGES.find(language => language.id === 'en').speechLocale === 'en-US'
     && app.LANGUAGES.find(language => language.id === 'de').speechLocale === 'de-DE'
     && app.LANGUAGES.find(language => language.id === 'ru').speechLocale === 'ru-RU');
-  check('Russian lesson count and home route are registered', app.LANGUAGES.find(language => language.id === 'ru').lessonsCount === 14
+  check('Russian lesson count and home route are registered', app.LANGUAGES.find(language => language.id === 'ru').lessonsCount === 17
     && app.LANGUAGES.find(language => language.id === 'ru').home === '/learn/ru'
     && app.russianProgress && typeof app.russianProgress.completeSentenceLesson === 'function');
   check('Russian has independent progress and draft/session storage namespaces', app.RUSSIAN_STUDY_STORAGE_KEY === 'russian_lesson_sessions_v1'
-    && app.RUSSIAN_STUDY_STORAGE_KEY !== 'sentence_course_progress_ru_v1');
+    && app.RUSSIAN_STUDY_STORAGE_KEY !== 'sentence_course_progress_ru_v2');
 
   const memory = new Map();
   global.__russianSupabaseCalls = 0;
@@ -116,10 +116,10 @@ const esbuild = require('esbuild');
   const savedProgress = await app.russianProgress.getCourseProgress();
   check('Russian lesson completion persists under its own progress key and advances', savedProgress.completedLessonIds.includes(firstLesson.id)
     && savedProgress.currentLessonId === app.RUSSIAN_LESSONS[1].id
-    && memory.has('sentence_course_progress_ru_v1')
+    && memory.has('sentence_course_progress_ru_v2')
     && !memory.has('sentence_course_progress_v1')
     && !memory.has('sentence_course_progress_de_v1'));
-  check('Russian completion enrolls only its six sentences in local spaced review', (await app.russianProgress.getDueReviewCards()).length === 6
+  check('Russian completion enrolls only its eight sentences in local spaced review', (await app.russianProgress.getDueReviewCards()).length === 8
     && (await app.russianProgress.getDueReviewCards()).every(card => card.lessonId === firstLesson.id));
   check('Russian completion does not invent study minutes or English vocabulary mastery', savedProgress.totalMinutes === 0
     && savedProgress.learnedEssential504Words.length === 0);
