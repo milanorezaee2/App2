@@ -1,6 +1,7 @@
 import type { LearningLesson, LearningSentence } from './types';
 import { createCourseProgressStore } from '../createCourseProgressStore';
 import { LEVEL1_EXTENSION_LESSONS } from './russianLevel1Extension';
+import { SURVIVAL_EXTENSION_LESSONS } from './russianSurvivalExtension';
 
 /**
  * دورهٔ روسی برای فارسی‌زبان‌ها — طراحی‌شده بر پایهٔ بهترین روش‌های آموزش زبان انگلیسی
@@ -341,7 +342,7 @@ const FOUNDATION_LESSONS: readonly LearningLesson[] = [
   ...LEVEL1_EXTENSION_LESSONS,
 ];
 
-const SURVIVAL_LESSONS: readonly LearningLesson[] = [
+const SURVIVAL_BASE_LESSONS: readonly LearningLesson[] = [
   /* ---------- درس ۱۱ ---------- */
   lesson(
     'ru-l2-cafe',
@@ -542,6 +543,11 @@ const SURVIVAL_LESSONS: readonly LearningLesson[] = [
  *  سطح‌های ۳، ۴ و ۵ در نقشه نمایش داده می‌شوند ولی درس منتشرشده ندارند.
  * ========================================================================= */
 
+const SURVIVAL_LESSONS: readonly LearningLesson[] = [
+  ...SURVIVAL_BASE_LESSONS,
+  ...SURVIVAL_EXTENSION_LESSONS,
+];
+
 const RUSSIAN_STARTER_LESSONS: readonly LearningLesson[] = [
   ...FOUNDATION_LESSONS,
   ...SURVIVAL_LESSONS,
@@ -608,7 +614,7 @@ export const RUSSIAN_LEVELS: readonly RussianCourseLevel[] = [
     id: 1,
     title: 'Survival Russian',
     cefr: 'سطح ۲ · کاربرد روزمره',
-    description: 'کافه، خرید، مسیر، ساعت، روزها، برنامهٔ روزانه و کمک فوری',
+    description: 'زندگی روزمره در شهر: رستوران، خرید، تاکسی و اتوبوس، هتل، تلفن، قرار، داروخانه، گم‌شدن چیزها، دعوت و تاریخ',
     color: '#27A1D6',
     modules: [
       'کافه و رستوران',
@@ -618,6 +624,20 @@ export const RUSSIAN_LEVELS: readonly RussianCourseLevel[] = [
       'روزهای هفته',
       'کارهای روزمره',
       'سلامتی و کمک فوری',
+      'سفارش غذا در رستوران',
+      'پرداخت صورت‌حساب',
+      'لباس، اندازه و پرو',
+      'خرید مواد غذایی',
+      'تاکسی و آدرس',
+      'بلیت و اتوبوس',
+      'هتل و اتاق',
+      'تماس تلفنی',
+      'قرار ملاقات',
+      'داروخانه و دارو',
+      'گم‌شدن چیزها',
+      'برنامهٔ آخر هفته',
+      'دعوت به خانه',
+      'ماه‌ها و تاریخ',
     ],
     status: 'available',
   },
@@ -688,6 +708,20 @@ const RUSSIAN_LESSON_LEVELS: Record<string, { levelId: RussianLevelId; subtitle:
   'ru-l2-days': { levelId: 1, subtitle: 'روزهای هفته و قرار کوتاه' },
   'ru-l2-daily-routine': { levelId: 1, subtitle: 'بیدارشدن، صبحانه، کار، شام و خواب' },
   'ru-l2-emergency': { levelId: 1, subtitle: 'احساس بیماری، داروخانه و درخواست کمک فوری' },
+  'ru-l2-restaurant-order': { levelId: 1, subtitle: 'سفارش غذا، قاشق و چنگال و درخواست نان بیشتر' },
+  'ru-l2-paying-bill': { levelId: 1, subtitle: 'صورت‌حساب، تقسیم پول و باقی‌مانده' },
+  'ru-l2-clothes-sizes': { levelId: 1, subtitle: 'پرو لباس، اندازه، کوچک و بزرگ' },
+  'ru-l2-groceries': { levelId: 1, subtitle: 'خرید نان، شیر، تخم‌مرغ و میوه' },
+  'ru-l2-taxi': { levelId: 1, subtitle: 'تاکسی، آدرس، توقف و مسیر مستقیم' },
+  'ru-l2-bus-tickets': { levelId: 1, subtitle: 'بلیت، ایستگاه و پیاده‌شدن از اتوبوس' },
+  'ru-l2-hotel': { levelId: 1, subtitle: 'اتاق یک‌نفره و دو‌نفره، کلید، صبحانه و آسانسور' },
+  'ru-l2-phone-calls': { levelId: 1, subtitle: 'الو، صدا را نمی‌شنوم، دوباره زنگ بزنید' },
+  'ru-l2-appointments': { levelId: 1, subtitle: 'گذاشتن قرار، تغییر زمان و اطلاع تأخیر' },
+  'ru-l2-pharmacy': { levelId: 1, subtitle: 'خرید دارو، نسخه و نحوهٔ مصرف' },
+  'ru-l2-lost-property': { levelId: 1, subtitle: 'گم‌شدن چیزها و توصیف آن' },
+  'ru-l2-weekend-plans': { levelId: 1, subtitle: 'پیشنهاد دادن، برنامهٔ آخر هفته و قرار' },
+  'ru-l2-invitations': { levelId: 1, subtitle: 'دعوت به خانه، تشکر و نوش جان' },
+  'ru-l2-months-dates': { levelId: 1, subtitle: 'تاریخ امروز، ماه‌ها و قرار در یک ماه' },
 };
 
 export const RUSSIAN_LESSONS: readonly RussianCourseLesson[] = RUSSIAN_STARTER_LESSONS.map((item, index) => {

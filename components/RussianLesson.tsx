@@ -17,6 +17,10 @@ import { Typography } from '@/lib/theme';
 
 const stages = RUSSIAN_LESSON_STAGES;
 
+/** سرعت پخش: معمولی برای شنیدن خودکار و آهسته برای تکرار دقیق‌تر. */
+const NORMAL_SPEECH_RATE = 0.85;
+const SLOW_SPEECH_RATE = 0.5;
+
 export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson }) {
   const router = useRouter();
   const courseLevel = RUSSIAN_LEVELS.find(item => item.id === lesson.levelId) ?? RUSSIAN_LEVELS[0];
@@ -96,14 +100,19 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     void Speech.stop();
     setCompletionError('');
     if (stage === 1 && sentenceIndex < lesson.sentences.length - 1) {
-      setSentenceIndex(value => value + 1);
+      const nextIndex = sentenceIndex + 1;
+      setSentenceIndex(nextIndex);
       setRevealed(false);
+      speak(lesson.sentences[nextIndex].text, NORMAL_SPEECH_RATE);
       return;
     }
     if (stage < stages.length - 1) {
-      setStage(value => value + 1);
+      const nextStage = stage + 1;
+      setStage(nextStage);
       setSentenceIndex(0);
       setRevealed(false);
+      // Entering a sentence stage speaks its first sentence automatically.
+      if (nextStage === 1 || nextStage === 3) speak(lesson.sentences[0].text, NORMAL_SPEECH_RATE);
       return;
     }
     if (!allChecksPassed && !showCheckAnswers) return;
@@ -170,7 +179,11 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
             <Text style={styles.persian}>{current.fa}</Text>
             {current.pattern ? <View style={styles.pattern}><Text style={styles.patternLabel}>الگو</Text><Text style={styles.patternText}>{current.pattern}</Text></View> : null}
           </View>
-          <Text style={styles.hint}>چند بار گوش دهید و جمله را با صدای بلند تکرار کنید.</Text>
+          <View style={styles.replayRow}>
+            <Pressable accessibilityRole="button" accessibilityLabel="پخش آهستهٔ جمله" style={styles.replayButton} onPress={() => speak(current.text, SLOW_SPEECH_RATE)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>آهسته</Text></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="پخش معمولی جمله" style={styles.replayButton} onPress={() => speak(current.text, NORMAL_SPEECH_RATE)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>معمولی</Text></Pressable>
+          </View>
+          <Text style={styles.hint}>جمله به‌صورت خودکار پخش می‌شود. می‌توانید آهسته یا معمولی دوباره بشنوید و با صدای بلند تکرار کنید.</Text>
         </View>}
 
         {stage === 2 && <View style={styles.centerStage}>
@@ -385,6 +398,9 @@ const styles = StyleSheet.create({
   evidenceNote: { fontFamily: Typography.fontFamily, color: Palette.success, fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
   footer: { paddingHorizontal: 18, paddingTop: 11, paddingBottom: 14, backgroundColor: 'rgba(255,255,255,0.96)', borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
   nextButton: { width: '100%', maxWidth: 820, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3, transform: [{ translateY: -30 }] },
+  replayRow: { flexDirection: 'row', gap: 10, justifyContent: 'center', marginTop: 12 },
+  replayButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 18, borderRadius: 14, borderWidth: 1, borderColor: Palette.primary, backgroundColor: '#FFFFFF' },
+  replayText: { fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '400', color: Palette.primary, writingDirection: 'rtl' },
   nextButtonDisabled: { opacity: .45 },
   nextText: { fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '400', color: '#FFFFFF', writingDirection: 'rtl' },
 });
