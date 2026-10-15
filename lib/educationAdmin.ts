@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { isSupabaseConfigured } from './pairing';
+import { SUPABASE_PUBLIC_ANON_KEY, SUPABASE_PUBLIC_URL } from './supabaseConfig';
 import { SENTENCE_LESSONS } from './courseContent';
 import canonical from '../assets/data/essential504.json';
 
@@ -11,7 +12,7 @@ let client: SupabaseClient | null = null;
 export function adminClient() {
   if (!FEATURES.adminPanel) throw new Error('پنل مدیریت فعلاً غیرفعال است.');
   if (!isSupabaseConfigured()) throw new Error('ابتدا اتصال Supabase پروژه را تنظیم کنید.');
-  if (!client) client = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!.trim(), process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!.trim(), {
+  if (!client) client = createClient(SUPABASE_PUBLIC_URL, SUPABASE_PUBLIC_ANON_KEY, {
     auth: { storageKey: 'education-admin-session-v1', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false,
       storage: Platform.OS === 'web' ? {
         getItem: (key) => typeof window === 'undefined' ? null : window.localStorage.getItem(key),

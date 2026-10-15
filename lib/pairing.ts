@@ -10,6 +10,7 @@
 //   4. Sessions expire after PAIRING_TTL_MS; stale rows are cleaned lazily.
 
 import { supabase } from './supabase';
+import { SUPABASE_PUBLIC_ANON_KEY, SUPABASE_PUBLIC_URL } from './supabaseConfig';
 import type { Device } from './types';
 
 export const PAIRING_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -23,8 +24,8 @@ const TEMPLATE_URL_MARKERS = ['placeholder', 'your-project', 'example.com'];
 const TEMPLATE_KEY_MARKERS = ['your-anon-key', 'placeholder-anon-key'];
 
 export function isSupabaseConfigured(): boolean {
-  const url = (process.env.EXPO_PUBLIC_SUPABASE_URL || '').trim();
-  const key = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+  const url = SUPABASE_PUBLIC_URL;
+  const key = SUPABASE_PUBLIC_ANON_KEY;
   if (!url.startsWith('https://')) return false;
   if (TEMPLATE_URL_MARKERS.some((marker) => url.includes(marker))) return false;
   if (!key) return false;

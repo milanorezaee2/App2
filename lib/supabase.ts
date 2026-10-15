@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { SUPABASE_PUBLIC_ANON_KEY, SUPABASE_PUBLIC_URL } from '@/lib/supabaseConfig';
 
 const FALLBACK_URL = 'https://placeholder.supabase.co';
 const FALLBACK_KEY = 'placeholder-anon-key';
 
-const rawUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL || '').trim();
-const rawKey = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+const rawUrl = SUPABASE_PUBLIC_URL;
+const rawKey = SUPABASE_PUBLIC_ANON_KEY;
 
 let supabaseUrl = rawUrl;
 let supabaseAnonKey = rawKey;
