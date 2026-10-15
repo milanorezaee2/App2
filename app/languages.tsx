@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
 import { LANGUAGES } from '@/lib/languages/catalog';
-import { FEATURES } from '@/lib/features';
+import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
 import { SENTENCE_LESSONS } from '@/lib/courseContent';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { toPersianDigits as fa } from '@/lib/format';
@@ -43,7 +43,7 @@ export default function LanguagesHome() {
   useEffect(() => setReady(true), []);
   const compact = !ready || width < 680;
   const tiny = !ready || width < 370;
-  const languages = LANGUAGES.filter(language => language.id !== 'ru' || FEATURES.russianCourse);
+  const languages = LANGUAGES.filter(language => (language.id === 'ru' ? FEATURES.russianCourse : !RUSSIAN_ONLY_BUILD));
 
   return (
     <View style={styles.root}>

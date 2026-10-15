@@ -42,21 +42,21 @@ const esbuild = require('esbuild');
   const checks = [];
   const check = (label, value) => { assert(value, label); checks.push(label); };
   const sentenceCount = app.RUSSIAN_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
-  const expectedLessonIds = ['ru-l1-greetings','ru-l1-how-are-you','ru-l1-introductions','ru-l1-polite-words','ru-l1-yes-no-understand','ru-l1-numbers-1-10','ru-l1-numbers-family','ru-l1-objects-this-is','ru-l1-where-is','ru-l1-basic-wants-needs','ru-l2-cafe','ru-l2-shopping','ru-l2-directions','ru-l2-time','ru-l2-days','ru-l2-daily-routine','ru-l2-emergency'];
+  const expectedLessonIds = ['ru-l1-greetings','ru-l1-how-are-you','ru-l1-introductions','ru-l1-polite-words','ru-l1-yes-no-understand','ru-l1-numbers-1-10','ru-l1-numbers-family','ru-l1-objects-this-is','ru-l1-where-is','ru-l1-basic-wants-needs','ru-l1-colors','ru-l1-food','ru-l1-drinks','ru-l1-likes','ru-l1-weather','ru-l1-time-words','ru-l1-adjectives','ru-l1-numbers-20-100','ru-l1-prices','ru-l1-body-parts','ru-l1-clothes','ru-l1-places','ru-l1-transport','ru-l1-jobs','ru-l1-everyday-verbs','ru-l1-question-words','ru-l1-my-your','ru-l1-we-they','ru-l2-cafe','ru-l2-shopping','ru-l2-directions','ru-l2-time','ru-l2-days','ru-l2-daily-routine','ru-l2-emergency'];
 
   check('Cyrillic alphabet has 33 unique letters', app.RUSSIAN_ALPHABET.length === 33 && new Set(app.RUSSIAN_ALPHABET).size === 33);
-  check('Russian starter has seventeen sequenced lessons from greetings to emergencies', app.RUSSIAN_LESSONS.length === 17
+  check('Russian starter has thirty-five sequenced lessons from greetings to emergencies', app.RUSSIAN_LESSONS.length === 35
     && app.RUSSIAN_LESSONS.map(lesson => lesson.id).join('|') === expectedLessonIds.join('|')
     && app.RUSSIAN_LESSONS.every(lesson => lesson.id.startsWith('ru-') && lesson.title && lesson.situation));
-  check('Russian starter has 136 eight-sentence records', sentenceCount === 136 && app.RUSSIAN_LESSONS.every(lesson => lesson.sentences.length === 8));
+  check('Russian starter has 280 eight-sentence records', sentenceCount === 280 && app.RUSSIAN_LESSONS.every(lesson => lesson.sentences.length === 8));
   check('Russian roadmap mirrors the English five-level progression without claiming certification', app.RUSSIAN_LEVELS.map(level => level.id).join('|') === '0|1|2|3|4'
     && app.RUSSIAN_LEVELS.length === app.COURSE_LEVELS.length
     && app.RUSSIAN_LEVELS.every((level, index) => level.title && level.description && level.modules.length > 0 && level.id === app.COURSE_LEVELS[index].id));
-  check('Russian Foundation has ten lessons (Level 1) and Survival has seven (Level 2)', app.RUSSIAN_LESSONS.every((lesson, index) => lesson.order === index + 1 && lesson.subtitle)
-    && app.RUSSIAN_LESSONS.slice(0, 10).every(lesson => lesson.levelId === 0)
-    && app.RUSSIAN_LESSONS.slice(10).every(lesson => lesson.levelId === 1)
-    && app.RUSSIAN_LESSONS.slice(0, 10).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 80
-    && app.RUSSIAN_LESSONS.slice(10).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 56);
+  check('Russian Foundation has twenty-eight lessons (Level 1) and Survival has seven (Level 2)', app.RUSSIAN_LESSONS.every((lesson, index) => lesson.order === index + 1 && lesson.subtitle)
+    && app.RUSSIAN_LESSONS.slice(0, 28).every(lesson => lesson.levelId === 0)
+    && app.RUSSIAN_LESSONS.slice(28).every(lesson => lesson.levelId === 1)
+    && app.RUSSIAN_LESSONS.slice(0, 28).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 224
+    && app.RUSSIAN_LESSONS.slice(28).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 56);
   check('unwritten upper Russian levels stay visibly planned and contain no invented lessons', app.RUSSIAN_LEVELS.slice(2).every(level => level.status === 'planned'
     && !app.RUSSIAN_LESSONS.some(lesson => lesson.levelId === level.id)));
   const allRussianIds = app.RUSSIAN_LESSONS.flatMap(lesson => [lesson.id, ...lesson.sentences.map(sentence => sentence.id)]);
@@ -86,7 +86,7 @@ const esbuild = require('esbuild');
     && app.LANGUAGES.find(language => language.id === 'en').speechLocale === 'en-US'
     && app.LANGUAGES.find(language => language.id === 'de').speechLocale === 'de-DE'
     && app.LANGUAGES.find(language => language.id === 'ru').speechLocale === 'ru-RU');
-  check('Russian lesson count and home route are registered', app.LANGUAGES.find(language => language.id === 'ru').lessonsCount === 17
+  check('Russian lesson count and home route are registered', app.LANGUAGES.find(language => language.id === 'ru').lessonsCount === 35
     && app.LANGUAGES.find(language => language.id === 'ru').home === '/learn/ru'
     && app.russianProgress && typeof app.russianProgress.completeSentenceLesson === 'function');
   check('Russian has independent progress and draft/session storage namespaces', app.RUSSIAN_STUDY_STORAGE_KEY === 'russian_lesson_sessions_v1'

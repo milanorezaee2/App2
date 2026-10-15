@@ -57,8 +57,8 @@ const esbuild = require('esbuild');
     && curriculum.RUSSIAN_CEFR_POLICY.lessonCompletionMeansMastery === false);
 
   const a1 = curriculum.findRussianCefrBand('A1');
-  check('A1 currently contains seventeen measurable starter units', a1.status === 'starter-only'
-    && a1.units.length === 17 && a1.units.every(unit => unit.status === 'available' && unit.lessonIds.length === 1
+  check('A1 currently contains thirty-five measurable starter units', a1.status === 'starter-only'
+    && a1.units.length === 35 && a1.units.every(unit => unit.status === 'available' && unit.lessonIds.length === 1
       && unit.lessonCheckCount === 2 && unit.independentTransferPrompts === 0));
   check('A1 units point to the original Russian lesson ids and order', a1.units.map(unit => unit.lessonIds[0]).join('|')
     === russian.RUSSIAN_LESSONS.map(lesson => lesson.id).join('|'));
@@ -66,8 +66,8 @@ const esbuild = require('esbuild');
     && band.units.length > 0 && band.units.every(unit => unit.status === 'planned' && unit.lessonIds.length === 0)));
 
   const sourceSentences = russian.RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences);
-  check('sentence curriculum metadata links all 136 current sentences without rewriting their text',
-    sourceSentences.length === 136 && curriculum.RUSSIAN_SENTENCE_CURRICULUM.length === sourceSentences.length
+  check('sentence curriculum metadata links all 280 current sentences without rewriting their text',
+    sourceSentences.length === 280 && curriculum.RUSSIAN_SENTENCE_CURRICULUM.length === sourceSentences.length
       && new Set(curriculum.RUSSIAN_SENTENCE_CURRICULUM.map(entry => entry.sentenceId)).size === sourceSentences.length
       && curriculum.RUSSIAN_SENTENCE_CURRICULUM.every(entry => {
         const source = sourceSentences.find(sentence => sentence.id === entry.sentenceId);

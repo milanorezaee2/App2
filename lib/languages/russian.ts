@@ -1,5 +1,6 @@
 import type { LearningLesson, LearningSentence } from './types';
 import { createCourseProgressStore } from '../createCourseProgressStore';
+import { LEVEL1_EXTENSION_LESSONS } from './russianLevel1Extension';
 
 /**
  * دورهٔ روسی برای فارسی‌زبان‌ها — طراحی‌شده بر پایهٔ بهترین روش‌های آموزش زبان انگلیسی
@@ -53,7 +54,7 @@ const lesson = (
  *  جمله‌ها فوق‌العاده ساده و پرکاربرد؛ دقیقاً به سبک نخستین درس‌های انگلیسی.
  * ========================================================================= */
 
-const FOUNDATION_LESSONS: readonly LearningLesson[] = [
+const FOUNDATION_BASE_LESSONS: readonly LearningLesson[] = [
   /* ---------- درس ۱ ---------- */
   lesson(
     'ru-l1-greetings',
@@ -335,6 +336,11 @@ const FOUNDATION_LESSONS: readonly LearningLesson[] = [
  *  کاربرد بیرون از خانه: کافه، خرید، مسیر، آدرس، زمان، برنامهٔ روزانه.
  * ========================================================================= */
 
+const FOUNDATION_LESSONS: readonly LearningLesson[] = [
+  ...FOUNDATION_BASE_LESSONS,
+  ...LEVEL1_EXTENSION_LESSONS,
+];
+
 const SURVIVAL_LESSONS: readonly LearningLesson[] = [
   /* ---------- درس ۱۱ ---------- */
   lesson(
@@ -564,7 +570,7 @@ export const RUSSIAN_LEVELS: readonly RussianCourseLevel[] = [
     id: 0,
     title: 'Foundation',
     cefr: 'سطح ۱ · شروع از صفر',
-    description: 'سلام، معرفی، کلمه‌های مؤدبانه، بله/نه، عددها ۱-۱۰، خانواده، اشیا و نیازهای پایه',
+    description: 'سلام تا جمله‌های کامل روزمره: معرفی، عددها تا صد، رنگ، غذا، آب‌وهوا، بدن، لباس، شغل، فعل‌های ساده و ضمیرها',
     color: '#6555E9',
     modules: [
       'سلام و خداحافظی',
@@ -577,6 +583,24 @@ export const RUSSIAN_LEVELS: readonly RussianCourseLevel[] = [
       'اشیای ساده',
       'پرسیدن کجا',
       'خواستن و نیاز داشتن',
+      'رنگ‌ها',
+      'غذا',
+      'نوشیدنی',
+      'دوست داشتن',
+      'آب‌وهوا',
+      'امروز، فردا، دیروز',
+      'صفت‌های ساده',
+      'عددهای بیست تا صد',
+      'قیمت‌ها',
+      'اعضای بدن',
+      'لباس',
+      'جاهای شهر',
+      'حمل‌ونقل',
+      'شغل‌ها',
+      'فعل‌های روزمره',
+      'کلمه‌های پرسشی',
+      'مال من و مال تو',
+      'ما، آن‌ها و شما',
     ],
     status: 'available',
   },
@@ -638,6 +662,24 @@ const RUSSIAN_LESSON_LEVELS: Record<string, { levelId: RussianLevelId; subtitle:
   'ru-l1-objects-this-is': { levelId: 0, subtitle: 'این چیست؟ و اشاره به اشیای ساده' },
   'ru-l1-where-is': { levelId: 0, subtitle: 'پرسش «کجا؟» برای مکان‌های ضروری (توالت، مترو، خروجی)' },
   'ru-l1-basic-wants-needs': { levelId: 0, subtitle: 'الگوی «من می‌خواهم / لازم دارم»' },
+  'ru-l1-colors': { levelId: 0, subtitle: 'رنگ‌ها و پرسش «چه رنگی است؟»' },
+  'ru-l1-food': { levelId: 0, subtitle: 'غذاهای اصلی و «من ... می‌خورم»' },
+  'ru-l1-drinks': { levelId: 0, subtitle: 'نوشیدنی‌ها، «نمی‌نوشم» و درخواست مؤدبانه' },
+  'ru-l1-likes': { levelId: 0, subtitle: 'دوست داشتن و خوشم آمدن' },
+  'ru-l1-weather': { levelId: 0, subtitle: 'پرسیدن و توصیف آب‌وهوا' },
+  'ru-l1-time-words': { levelId: 0, subtitle: 'امروز، فردا، دیروز، الان' },
+  'ru-l1-adjectives': { levelId: 0, subtitle: 'صفت‌های ساده: بزرگ، کوچک، خوب، گران' },
+  'ru-l1-numbers-20-100': { levelId: 0, subtitle: 'عددهای بیست تا صد و گفتن سن' },
+  'ru-l1-prices': { levelId: 0, subtitle: 'پرسیدن قیمت، گران و ارزان' },
+  'ru-l1-body-parts': { levelId: 0, subtitle: 'اعضای بدن و گفتن درد' },
+  'ru-l1-clothes': { levelId: 0, subtitle: 'اسم لباس‌ها و «کجاست؟»' },
+  'ru-l1-places': { levelId: 0, subtitle: 'جاهای مهم شهر' },
+  'ru-l1-transport': { levelId: 0, subtitle: 'وسیله‌های حمل‌ونقل و «با ... می‌روم»' },
+  'ru-l1-jobs': { levelId: 0, subtitle: 'گفتن شغل و محل کار' },
+  'ru-l1-everyday-verbs': { levelId: 0, subtitle: 'فعل‌های ساده روزمره با «من»' },
+  'ru-l1-question-words': { levelId: 0, subtitle: 'کی، چرا، چطور، چقدر، کجا، کدام' },
+  'ru-l1-my-your': { levelId: 0, subtitle: 'مال من، مال تو، مال شما' },
+  'ru-l1-we-they': { levelId: 0, subtitle: 'ما، آن‌ها و شما' },
   /* سطح ۲ */
   'ru-l2-cafe': { levelId: 1, subtitle: 'منو، سفارش چای/قهوه و صورت‌حساب' },
   'ru-l2-shopping': { levelId: 1, subtitle: 'قیمت، اندازه، پروکردن و پرداخت' },
