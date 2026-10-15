@@ -42,23 +42,26 @@ const esbuild = require('esbuild');
   const checks = [];
   const check = (label, value) => { assert(value, label); checks.push(label); };
   const sentenceCount = app.RUSSIAN_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
-  const expectedLessonIds = ['ru-l1-greetings','ru-l1-how-are-you','ru-l1-introductions','ru-l1-polite-words','ru-l1-yes-no-understand','ru-l1-numbers-1-10','ru-l1-numbers-family','ru-l1-objects-this-is','ru-l1-where-is','ru-l1-basic-wants-needs','ru-l1-colors','ru-l1-food','ru-l1-drinks','ru-l1-likes','ru-l1-weather','ru-l1-time-words','ru-l1-adjectives','ru-l1-numbers-20-100','ru-l1-prices','ru-l1-body-parts','ru-l1-clothes','ru-l1-places','ru-l1-transport','ru-l1-jobs','ru-l1-everyday-verbs','ru-l1-question-words','ru-l1-my-your','ru-l1-we-they','ru-l2-cafe','ru-l2-shopping','ru-l2-directions','ru-l2-time','ru-l2-days','ru-l2-daily-routine','ru-l2-emergency','ru-l2-restaurant-order','ru-l2-paying-bill','ru-l2-clothes-sizes','ru-l2-groceries','ru-l2-taxi','ru-l2-bus-tickets','ru-l2-hotel','ru-l2-phone-calls','ru-l2-appointments','ru-l2-pharmacy','ru-l2-lost-property','ru-l2-weekend-plans','ru-l2-invitations','ru-l2-months-dates'];
+  const expectedLessonIds = ['ru-l1-greetings','ru-l1-how-are-you','ru-l1-introductions','ru-l1-polite-words','ru-l1-yes-no-understand','ru-l1-numbers-1-10','ru-l1-numbers-family','ru-l1-objects-this-is','ru-l1-where-is','ru-l1-basic-wants-needs','ru-l1-colors','ru-l1-food','ru-l1-drinks','ru-l1-likes','ru-l1-weather','ru-l1-time-words','ru-l1-adjectives','ru-l1-numbers-20-100','ru-l1-prices','ru-l1-body-parts','ru-l1-clothes','ru-l1-places','ru-l1-transport','ru-l1-jobs','ru-l1-everyday-verbs','ru-l1-question-words','ru-l1-my-your','ru-l1-we-they','ru-l2-cafe','ru-l2-shopping','ru-l2-directions','ru-l2-time','ru-l2-days','ru-l2-daily-routine','ru-l2-emergency','ru-l2-restaurant-order','ru-l2-paying-bill','ru-l2-clothes-sizes','ru-l2-groceries','ru-l2-taxi','ru-l2-bus-tickets','ru-l2-hotel','ru-l2-phone-calls','ru-l2-appointments','ru-l2-pharmacy','ru-l2-lost-property','ru-l2-weekend-plans','ru-l2-invitations','ru-l2-months-dates','ru-l3-past-simple','ru-l3-future-simple','ru-l3-plans','ru-l3-appearance','ru-l3-comparisons','ru-l3-advice','ru-l3-likes-opinions','ru-l3-work-study','ru-l3-home','ru-l3-hobbies-sport','ru-l3-travel','ru-l3-conditions','ru-l3-daily-sequence','ru-l3-shopping-return','ru-l3-health-doctor','ru-l3-phone-internet','ru-l3-public-service','ru-l3-weather-seasons','ru-l3-cooking-food','ru-l3-conversation-tools'];
 
   check('Cyrillic alphabet has 33 unique letters', app.RUSSIAN_ALPHABET.length === 33 && new Set(app.RUSSIAN_ALPHABET).size === 33);
-  check('Russian course has forty-nine sequenced lessons (28 Level 1 + 21 Survival)', app.RUSSIAN_LESSONS.length === 49
+  check('Russian course has sixty-nine sequenced lessons (28 Foundation + 21 Survival + 20 Everyday)', app.RUSSIAN_LESSONS.length === 69
     && app.RUSSIAN_LESSONS.map(lesson => lesson.id).join('|') === expectedLessonIds.join('|')
     && app.RUSSIAN_LESSONS.every(lesson => lesson.id.startsWith('ru-') && lesson.title && lesson.situation));
-  check('Russian course has 392 eight-sentence records', sentenceCount === 392 && app.RUSSIAN_LESSONS.every(lesson => lesson.sentences.length === 8));
+  check('Russian course has 552 eight-sentence records', sentenceCount === 552 && app.RUSSIAN_LESSONS.every(lesson => lesson.sentences.length === 8));
   check('Russian roadmap mirrors the English five-level progression without claiming certification', app.RUSSIAN_LEVELS.map(level => level.id).join('|') === '0|1|2|3|4'
     && app.RUSSIAN_LEVELS.length === app.COURSE_LEVELS.length
     && app.RUSSIAN_LEVELS.every((level, index) => level.title && level.description && level.modules.length > 0 && level.id === app.COURSE_LEVELS[index].id));
-  check('Russian Foundation has twenty-eight lessons (Level 1) and Survival has twenty-one (Level 2)', app.RUSSIAN_LESSONS.every((lesson, index) => lesson.order === index + 1 && lesson.subtitle)
+  check('Russian Foundation has twenty-eight lessons, Survival twenty-one and Everyday twenty (levels 1-3)', app.RUSSIAN_LESSONS.every((lesson, index) => lesson.order === index + 1 && lesson.subtitle)
     && app.RUSSIAN_LESSONS.slice(0, 28).every(lesson => lesson.levelId === 0)
-    && app.RUSSIAN_LESSONS.slice(28).every(lesson => lesson.levelId === 1)
+    && app.RUSSIAN_LESSONS.slice(28, 49).every(lesson => lesson.levelId === 1)
+    && app.RUSSIAN_LESSONS.slice(49).every(lesson => lesson.levelId === 2)
     && app.RUSSIAN_LESSONS.slice(0, 28).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 224
-    && app.RUSSIAN_LESSONS.slice(28).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 168);
-  check('unwritten upper Russian levels stay visibly planned and contain no invented lessons', app.RUSSIAN_LEVELS.slice(2).every(level => level.status === 'planned'
-    && !app.RUSSIAN_LESSONS.some(lesson => lesson.levelId === level.id)));
+    && app.RUSSIAN_LESSONS.slice(28, 49).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 168
+    && app.RUSSIAN_LESSONS.slice(49).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 160);
+  check('unwritten upper Russian levels stay visibly planned and contain no invented lessons', app.RUSSIAN_LEVELS.slice(3).every(level => level.status === 'planned'
+    && !app.RUSSIAN_LESSONS.some(lesson => lesson.levelId === level.id))
+    && app.RUSSIAN_LEVELS[2].status === 'available');
   const allRussianIds = app.RUSSIAN_LESSONS.flatMap(lesson => [lesson.id, ...lesson.sentences.map(sentence => sentence.id)]);
   check('Russian lesson and sentence IDs are unique', new Set(allRussianIds).size === allRussianIds.length);
   check('Russian target sentences are Cyrillic and linked to Persian, pronunciation and vocabulary', app.RUSSIAN_LESSONS.every(lesson => lesson.sentences.every(sentence => /[А-Яа-яЁё]/.test(sentence.text)
@@ -86,7 +89,7 @@ const esbuild = require('esbuild');
     && app.LANGUAGES.find(language => language.id === 'en').speechLocale === 'en-US'
     && app.LANGUAGES.find(language => language.id === 'de').speechLocale === 'de-DE'
     && app.LANGUAGES.find(language => language.id === 'ru').speechLocale === 'ru-RU');
-  check('Russian lesson count and home route are registered', app.LANGUAGES.find(language => language.id === 'ru').lessonsCount === 49
+  check('Russian lesson count and home route are registered', app.LANGUAGES.find(language => language.id === 'ru').lessonsCount === 69
     && app.LANGUAGES.find(language => language.id === 'ru').home === '/learn/ru'
     && app.russianProgress && typeof app.russianProgress.completeSentenceLesson === 'function');
   check('Russian has independent progress and draft/session storage namespaces', app.RUSSIAN_STUDY_STORAGE_KEY === 'russian_lesson_sessions_v1'

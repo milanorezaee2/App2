@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   sentenceLabelIcon: { width: 25, height: 25, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   sentenceLabel: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
   sentenceLabelEn: { fontFamily: 'Inter-ExtraBold', marginLeft: 'auto', color: '#CFD2FF', fontSize: 6, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
-  sentenceRussian: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 18, lineHeight: 30, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
+  sentenceRussian: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 18, lineHeight: 30, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
   sentencePersian: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.75)', fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   sentencePronunciation: { fontFamily: Typography.fontFamily, color: '#D5D7FF', fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
   wordChipRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 2 },

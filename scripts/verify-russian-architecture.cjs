@@ -60,18 +60,24 @@ const esbuild = require('esbuild');
   check('A1 currently contains forty-nine measurable starter units', a1.status === 'starter-only'
     && a1.units.length === 49 && a1.units.every(unit => unit.status === 'available' && unit.lessonIds.length === 1
       && unit.lessonCheckCount === 2 && unit.independentTransferPrompts === 0));
-  check('A1 units point to the original Russian lesson ids and order', a1.units.map(unit => unit.lessonIds[0]).join('|')
-    === russian.RUSSIAN_LESSONS.map(lesson => lesson.id).join('|'));
-  check('A2, B1 and B2 are roadmaps with no invented published lessons', curriculum.RUSSIAN_CEFR_BANDS.slice(1).every(band => band.status === 'planned'
+  check('A1 units point to the original Foundation and Survival lesson ids and order', a1.units.map(unit => unit.lessonIds[0]).join('|')
+    === russian.RUSSIAN_LESSONS.filter(lesson => lesson.levelId <= 1).map(lesson => lesson.id).join('|'));
+  const a2 = curriculum.findRussianCefrBand('A2');
+  check('A2 band maps exactly the twenty Everyday lessons as available units', a2.units.length === 20
+    && a2.units.map(unit => unit.lessonIds[0]).join('|') === russian.RUSSIAN_LESSONS.filter(lesson => lesson.levelId === 2).map(lesson => lesson.id).join('|')
+    && a2.units.every(unit => unit.status === 'available' && unit.lessonCheckCount === 2));
+  check('B1 and B2 remain planned roadmaps with no invented published lessons', curriculum.RUSSIAN_CEFR_BANDS.slice(2).every(band => band.status === 'planned'
     && band.units.length > 0 && band.units.every(unit => unit.status === 'planned' && unit.lessonIds.length === 0)));
 
   const sourceSentences = russian.RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences);
-  check('sentence curriculum metadata links all 392 current sentences without rewriting their text',
-    sourceSentences.length === 392 && curriculum.RUSSIAN_SENTENCE_CURRICULUM.length === sourceSentences.length
+  check('sentence curriculum metadata links all 552 current sentences without rewriting their text',
+    sourceSentences.length === 552 && curriculum.RUSSIAN_SENTENCE_CURRICULUM.length === sourceSentences.length
       && new Set(curriculum.RUSSIAN_SENTENCE_CURRICULUM.map(entry => entry.sentenceId)).size === sourceSentences.length
       && curriculum.RUSSIAN_SENTENCE_CURRICULUM.every(entry => {
         const source = sourceSentences.find(sentence => sentence.id === entry.sentenceId);
-        return source && entry.patternFa === (source.pattern ?? null) && entry.cefrLevelId === 'A1';
+        const owner = russian.RUSSIAN_LESSONS.find(lesson => lesson.sentences.some(item => item.id === entry.sentenceId));
+        const expectedCefr = owner && owner.levelId === 2 ? 'A2' : 'A1';
+        return source && entry.patternFa === (source.pattern ?? null) && entry.cefrLevelId === expectedCefr;
       }));
   check('each vocabulary entry is attached to one or more existing sentence examples', curriculum.RUSSIAN_VOCABULARY.length > 0
     && curriculum.RUSSIAN_VOCABULARY.every(entry => entry.examples.length > 0

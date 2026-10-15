@@ -48,18 +48,30 @@ export interface RussianCefrBand {
   units: readonly RussianCurriculumUnit[];
 }
 
-const A1_UNITS: readonly RussianCurriculumUnit[] = RUSSIAN_LESSONS.map(lesson => ({
-  id: `unit-${lesson.id}`,
-  levelId: 'A1',
-  titleFa: lesson.title,
-  outcomeFa: lesson.situation,
-  objectiveId: `objective-${lesson.id}`,
-  status: 'available',
-  lessonIds: [lesson.id],
-  legacyLevelId: lesson.levelId,
-  lessonCheckCount: lesson.checks?.length ?? 0,
-  independentTransferPrompts: 0,
-}));
+function lessonUnit(lesson: (typeof RUSSIAN_LESSONS)[number], levelId: RussianCefrLevel): RussianCurriculumUnit {
+  return {
+    id: `unit-${lesson.id}`,
+    levelId,
+    titleFa: lesson.title,
+    outcomeFa: lesson.situation,
+    objectiveId: `objective-${lesson.id}`,
+    status: 'available',
+    lessonIds: [lesson.id],
+    legacyLevelId: lesson.levelId,
+    lessonCheckCount: lesson.checks?.length ?? 0,
+    independentTransferPrompts: 0,
+  };
+}
+
+// A1 band: Foundation (levels 0) and Survival (level 1) lessons only.
+const A1_UNITS: readonly RussianCurriculumUnit[] = RUSSIAN_LESSONS
+  .filter(lesson => RUSSIAN_LEVEL_TO_CEFR[lesson.levelId] === 'A1')
+  .map(lesson => lessonUnit(lesson, 'A1'));
+
+// A2 band: the Everyday Russian lessons (level 2).
+const A2_UNITS: readonly RussianCurriculumUnit[] = RUSSIAN_LESSONS
+  .filter(lesson => RUSSIAN_LEVEL_TO_CEFR[lesson.levelId] === 'A2')
+  .map(lesson => lessonUnit(lesson, 'A2'));
 
 function plannedUnit(levelId: RussianCefrLevel, id: string, titleFa: string, outcomeFa: string): RussianCurriculumUnit {
   return {
@@ -90,13 +102,8 @@ export const RUSSIAN_CEFR_BANDS: readonly RussianCefrBand[] = [
     titleFa: 'گسترش و ترکیب جمله‌ها',
     goalFa: 'گذشته و آینده، توصیف، مقایسه، درخواست و ارتباط میان جمله‌ها',
     legacyLevelIds: [2],
-    status: 'planned',
-    units: [
-      plannedUnit('A2', 'past-future', 'گذشته و آینده', 'به‌کاربردن زمان‌های گذشته و آینده در جمله‌های روزمره.'),
-      plannedUnit('A2', 'description-comparison', 'توصیف و مقایسه', 'گسترش جمله با توصیف و مقایسهٔ ساده.'),
-      plannedUnit('A2', 'requests', 'درخواست و پاسخ', 'ساخت درخواست‌های روشن و پاسخ‌دادن به آن‌ها.'),
-      plannedUnit('A2', 'sentence-links', 'پیوند جمله‌ها', 'وصل‌کردن جمله‌ها با رابطه‌های معنایی ساده.'),
-    ],
+    status: 'starter-only',
+    units: A2_UNITS,
   },
   {
     id: 'B1',

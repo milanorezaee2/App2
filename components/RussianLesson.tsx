@@ -13,6 +13,7 @@ import { findLanguage } from '@/lib/languages/catalog';
 import { RUSSIAN_LESSONS, RUSSIAN_LEVELS, RUSSIAN_LESSON_STAGES, russianProgress, type RussianCourseLesson } from '@/lib/languages/russian';
 import type { RussianLessonSession } from '@/lib/languages/russianStudyState';
 import { toPersianDigits as fa } from '@/lib/format';
+import { speechTagFor } from '@/lib/speechLanguage';
 import { Typography } from '@/lib/theme';
 
 const stages = RUSSIAN_LESSON_STAGES;
@@ -50,6 +51,11 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
   }, [lesson]);
   const grammarPatterns = lesson.sentences.flatMap(sentence => sentence.pattern ? [{ sentence, pattern: sentence.pattern }] : []);
 
+  // Warm up the device speech engine so the first Russian sentence is not delayed.
+  useEffect(() => {
+    void Speech.getAvailableVoicesAsync().catch(() => undefined);
+  }, []);
+
   useEffect(() => {
     let alive = true;
     completing.current = false;
@@ -82,7 +88,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     setSpeechError('');
     void Speech.stop();
     Speech.speak(text, {
-      language: findLanguage('ru')!.speechLocale,
+      language: speechTagFor(findLanguage('ru')!.speechLocale),
       rate,
       onError: () => setSpeechError('صدای روسی دستگاه در دسترس نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
     });
@@ -344,25 +350,25 @@ const styles = StyleSheet.create({
   counter: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.muted, marginBottom: 12, alignSelf: 'flex-end', textAlign: 'right', writingDirection: 'rtl' },
   sentenceCard: { width: '100%', borderRadius: 22, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 22, alignItems: 'center', shadowColor: '#172033', shadowOpacity: .05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   soundButton: { width: 54, height: 54, borderRadius: 27, backgroundColor: Palette.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
-  russianSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 23, lineHeight: 36, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
-  pronunciation: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.primaryDark, textAlign: 'center', writingDirection: 'rtl', marginTop: 8 },
+  russianSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 23, lineHeight: 36, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
+  pronunciation: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl', marginTop: 8 },
   divider: { width: '70%', height: 1, backgroundColor: Palette.border, marginVertical: 18 },
   persian: { fontFamily: Typography.fontFamily, fontSize: 17, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
   pattern: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', gap: 8, alignSelf: 'flex-end', backgroundColor: Palette.warningSoft, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, marginTop: 14 },
   patternLabel: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.warning, writingDirection: 'rtl' },
-  patternText: { fontFamily: Typography.latinFontFamily, fontSize: 10, fontWeight: '800', color: Palette.warning, textAlign: 'left', writingDirection: 'ltr' },
+  patternText: { fontFamily: Typography.latinFontFamily, fontSize: 10, fontWeight: '800', color: Palette.warning, textAlign: 'right', writingDirection: 'ltr' },
   hint: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: 14 },
   listenList: { width: '100%', gap: 8, marginTop: 20 },
   listenRow: { minHeight: 62, borderRadius: 16, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: 13, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
   listenRowActive: { borderColor: Palette.primary, backgroundColor: Palette.primarySoft },
   listenNumber: { width: 30, height: 30, borderRadius: 15, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   listenNumberText: { fontFamily: Typography.numberFontFamily, fontSize: 11, color: Palette.primaryDark, writingDirection: 'rtl' },
-  listenRussian: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 13, fontWeight: '800', lineHeight: 22, color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  listenRussian: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 13, fontWeight: '800', lineHeight: 22, color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   shadowTip: { width: '100%', marginTop: 18, borderRadius: 14, backgroundColor: Palette.warningSoft, padding: 13, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   shadowText: { flex: 1, fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19 },
   speechPractice: { width: '100%', borderRadius: 22, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 18, alignItems: 'center', marginTop: 18, shadowColor: '#172033', shadowOpacity: .04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
   speechTitle: { fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  speechSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 17, lineHeight: 28, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr', marginTop: 8 },
+  speechSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 17, lineHeight: 28, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr', marginTop: 8 },
   playSlowButton: { minHeight: 48, minWidth: 155, borderRadius: 999, paddingHorizontal: 18, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 14 },
   recordButtonText: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '400', color: '#FFFFFF', writingDirection: 'rtl' },
   speechHint: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 19, marginTop: 8 },
@@ -372,9 +378,9 @@ const styles = StyleSheet.create({
   vocabList: { width: '100%', gap: 9, marginTop: 18 },
   vocabCard: { width: '100%', borderRadius: 16, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 14, gap: 7 },
   vocabTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  vocabWord: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  vocabWord: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
-  vocabExample: { fontFamily: 'Inter-ExtraBold', fontSize: 13, fontWeight: '800', lineHeight: 22, color: Palette.text, textAlign: 'left', writingDirection: 'ltr' },
+  vocabExample: { fontFamily: 'Inter-ExtraBold', fontSize: 13, fontWeight: '800', lineHeight: 22, color: Palette.text, textAlign: 'right', writingDirection: 'ltr' },
   vocabExampleFa: { fontFamily: Typography.fontFamily, fontSize: 11, lineHeight: 19, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
   bubbleSound: { alignSelf: 'flex-end', marginTop: 4, padding: 5 },
   evidenceCard: { width: '100%', marginTop: 20, borderRadius: 20, padding: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 12 },
@@ -385,7 +391,7 @@ const styles = StyleSheet.create({
   choice: { minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, paddingHorizontal: 13, paddingVertical: 11, justifyContent: 'center' },
   choiceSelected: { borderColor: Palette.primary, backgroundColor: Palette.primarySoft },
   choiceCorrect: { borderColor: Palette.success, backgroundColor: Palette.successSoft },
-  choiceRussian: { fontFamily: 'Inter-ExtraBold', fontSize: 12, fontWeight: '800', lineHeight: 21, color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  choiceRussian: { fontFamily: 'Inter-ExtraBold', fontSize: 12, fontWeight: '800', lineHeight: 21, color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   choicePersian: { fontFamily: Typography.fontFamily, fontSize: 13, lineHeight: 21, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
   feedbackBox: { borderRadius: 12, padding: 12, backgroundColor: Palette.surfaceMuted, gap: 5 },
   feedbackTitle: { fontFamily: Typography.fontFamily, color: Palette.success, fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },

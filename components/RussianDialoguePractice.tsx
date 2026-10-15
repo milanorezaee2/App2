@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   bubblePartner: { alignSelf: 'flex-start', borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderBottomLeftRadius: 5 },
   bubbleLearner: { alignSelf: 'flex-end', borderColor: '#DDE2FF', backgroundColor: Palette.primarySoft, borderBottomRightRadius: 5 },
   speaker: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
-  russian: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', lineHeight: 27, color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  russian: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', lineHeight: 27, color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   persian: { fontFamily: Typography.fontFamily, fontSize: 14, lineHeight: 23, color: Palette.text, textAlign: 'right', writingDirection: 'rtl' },
   hint: { fontFamily: Typography.fontFamily, fontSize: 12, lineHeight: 20, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
   soundButton: { alignSelf: 'flex-start', minHeight: 34, flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },

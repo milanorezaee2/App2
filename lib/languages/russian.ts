@@ -2,6 +2,8 @@ import type { LearningLesson, LearningSentence } from './types';
 import { createCourseProgressStore } from '../createCourseProgressStore';
 import { LEVEL1_EXTENSION_LESSONS } from './russianLevel1Extension';
 import { SURVIVAL_EXTENSION_LESSONS } from './russianSurvivalExtension';
+import { EVERYDAY_LESSONS_A } from './russianEverydayPartA';
+import { EVERYDAY_LESSONS_B } from './russianEverydayPartB';
 
 /**
  * دورهٔ روسی برای فارسی‌زبان‌ها — طراحی‌شده بر پایهٔ بهترین روش‌های آموزش زبان انگلیسی
@@ -548,9 +550,15 @@ const SURVIVAL_LESSONS: readonly LearningLesson[] = [
   ...SURVIVAL_EXTENSION_LESSONS,
 ];
 
+const EVERYDAY_LESSONS: readonly LearningLesson[] = [
+  ...EVERYDAY_LESSONS_A,
+  ...EVERYDAY_LESSONS_B,
+];
+
 const RUSSIAN_STARTER_LESSONS: readonly LearningLesson[] = [
   ...FOUNDATION_LESSONS,
   ...SURVIVAL_LESSONS,
+  ...EVERYDAY_LESSONS,
 ];
 
 export type RussianLevelId = 0 | 1 | 2 | 3 | 4;
@@ -645,10 +653,31 @@ export const RUSSIAN_LEVELS: readonly RussianCourseLevel[] = [
     id: 2,
     title: 'Everyday Russian',
     cefr: 'A2',
-    description: 'جمله‌های گسترده‌تر برای زندگی روزمره، گذشته و آیندهٔ ساده، توصیف دقیق‌تر',
+    description: 'گذشته و آینده، قصد و برنامه، توصیف ظاهر، مقایسه، توصیه، نظر، کار، خانه، سفر، شرط، پزشک، تلفن، اداره و گفت‌وگوی روان',
     color: '#19A88B',
-    modules: ['گذشته و آینده', 'توصیف و مقایسه', 'درخواست‌ها', 'داستان کوتاه'],
-    status: 'planned',
+    modules: [
+      'گذشته: کارهای دیروز',
+      'آینده: برنامهٔ فردا',
+      'قصد و برنامه‌ها',
+      'توصیف ظاهر و شخصیت',
+      'مقایسه کردن',
+      'توصیه و پیشنهاد',
+      'نظر و علاقه',
+      'کار و تحصیل',
+      'خانه و خانواده',
+      'سرگرمی و ورزش',
+      'سفر',
+      'اگر و شرط',
+      'ترتیب کارهای روزانه',
+      'خرید و شکایت',
+      'پزشک و علائم',
+      'تلفن و اینترنت',
+      'اداره و خدمات',
+      'فصل‌ها و آب‌وهوا',
+      'آشپزی و غذا',
+      'گفت‌وگوی روان',
+    ],
+    status: 'available',
   },
   {
     id: 3,
@@ -722,6 +751,26 @@ const RUSSIAN_LESSON_LEVELS: Record<string, { levelId: RussianLevelId; subtitle:
   'ru-l2-weekend-plans': { levelId: 1, subtitle: 'پیشنهاد دادن، برنامهٔ آخر هفته و قرار' },
   'ru-l2-invitations': { levelId: 1, subtitle: 'دعوت به خانه، تشکر و نوش جان' },
   'ru-l2-months-dates': { levelId: 1, subtitle: 'تاریخ امروز، ماه‌ها و قرار در یک ماه' },
+  'ru-l3-past-simple': { levelId: 2, subtitle: 'گذشته: دیروز چه کار کردیم و چه بود' },
+  'ru-l3-future-simple': { levelId: 2, subtitle: 'آینده ساده با «бу́ду» و فعل کامل' },
+  'ru-l3-plans': { levelId: 2, subtitle: 'قصد، تصمیم و بایدهای آینده' },
+  'ru-l3-appearance': { levelId: 2, subtitle: 'توصیف قد، موی، چشم و شخصیت' },
+  'ru-l3-comparisons': { levelId: 2, subtitle: 'تفضیلی و عالی: سریع‌تر، بهتر، زیباترین' },
+  'ru-l3-advice': { levelId: 2, subtitle: 'توصیه، هشدار و پیشنهاد مؤدبانه' },
+  'ru-l3-likes-opinions': { levelId: 2, subtitle: 'علاقه، نظر شخصی و موافقت' },
+  'ru-l3-work-study': { levelId: 2, subtitle: 'محل کار، تحصیل و برنامهٔ هفتگی' },
+  'ru-l3-home': { levelId: 2, subtitle: 'آپارتمان، خانواده و محل زندگی' },
+  'ru-l3-hobbies-sport': { levelId: 2, subtitle: 'سرگرمی، ورزش و بازی' },
+  'ru-l3-travel': { levelId: 2, subtitle: 'بلیت، هتل، قطار و برنامهٔ سفر' },
+  'ru-l3-conditions': { levelId: 2, subtitle: 'اگر و شرط، آرزو با бы' },
+  'ru-l3-daily-sequence': { levelId: 2, subtitle: 'اول، بعد، قبل و بعد از کارهای روزانه' },
+  'ru-l3-shopping-return': { levelId: 2, subtitle: 'عوض کردن، پس دادن و پرداخت با کارت' },
+  'ru-l3-health-doctor': { levelId: 2, subtitle: 'علائم، دارو و توصیه‌های پزشک' },
+  'ru-l3-phone-internet': { levelId: 2, subtitle: 'شماره، آنتن، وای‌فای و پیام' },
+  'ru-l3-public-service': { levelId: 2, subtitle: 'صف، فرم، ویزا و حساب بانکی' },
+  'ru-l3-weather-seasons': { levelId: 2, subtitle: 'فصل‌ها، باد، برف و گرما' },
+  'ru-l3-cooking-food': { levelId: 2, subtitle: 'دستور پخت، مواد و میز شام' },
+  'ru-l3-conversation-tools': { levelId: 2, subtitle: 'موافقت، پوزش، بحث و تصمیم مشترک' },
 };
 
 export const RUSSIAN_LESSONS: readonly RussianCourseLesson[] = RUSSIAN_STARTER_LESSONS.map((item, index) => {
