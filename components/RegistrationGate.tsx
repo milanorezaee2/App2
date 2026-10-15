@@ -7,15 +7,18 @@ import { supabase } from '@/lib/supabase';
 import { KeyboardAwareScrollView, KeyboardAvoidingView } from '@/components/KeyboardRuntime';
 import { generateLoginCode, getRegisteredSession, loginLearner, registerLearner, registrationError, touchLearnerActivity } from '@/lib/userRegistration';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
+import { FEATURES } from '@/lib/features';
 
 const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
   || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
+// When the learner login screen is disabled in lib/features.ts, skip the gate entirely.
+const BYPASS_GATE: boolean = IS_ADMIN_APP || !FEATURES.learnerLogin;
 
 type Mode = 'register' | 'login';
 
 export function RegistrationGate({ children }: PropsWithChildren) {
-  const [checking, setChecking] = useState(!IS_ADMIN_APP);
-  const [ready, setReady] = useState(IS_ADMIN_APP);
+  const [checking, setChecking] = useState(!BYPASS_GATE);
+  const [ready, setReady] = useState(BYPASS_GATE);
   const [mode, setMode] = useState<Mode>('register');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,7 +31,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   const holdForCode = useRef(false);
 
   const inspect = useCallback(async () => {
-    if (IS_ADMIN_APP) return;
+    if (BYPASS_GATE) return;
     try {
       const state = await getRegisteredSession();
       const complete = !!state.session && !!state.profile;
@@ -42,7 +45,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    if (IS_ADMIN_APP) return;
+    if (BYPASS_GATE) return;
     void inspect();
     const { data } = supabase.auth.onAuthStateChange(() => { void inspect(); });
     const appState = AppState.addEventListener('change', state => {
@@ -75,7 +78,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
     }
   }
 
-  if (IS_ADMIN_APP || ready) return <>{children}</>;
+  if (BYPASS_GATE || ready) return <>{children}</>;
   if (checking) return <View style={styles.loading}><ActivityIndicator size="large" color={Colors.primary[600]} /><Text style={styles.loadingText}>در حال بررسی حساب…</Text></View>;
   if (generatedCode) return (
     <KeyboardAvoidingView style={styles.page} behavior="height" enabled>
