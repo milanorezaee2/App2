@@ -31,7 +31,7 @@ check(/education_admins_single_owner_idx/.test(migration), 'the database enforce
 check(/registeredUsers/.test(admin) && /کاربران ثبت‌شده/.test(admin), 'the management UI lists registered learners');
 check(/LinearGradient/.test(admin) && /sidebarMobile/.test(admin) && /mobileNavItem/.test(admin) && /navTextActive/.test(admin), 'the management UI keeps a polished responsive sidebar on mobile');
 check(!/flexDirection:\s*'column'\s*}\]}[^\n]*sidebar/.test(admin), 'the management navigation does not collapse into top tabs');
-check(/sidebarMobile:\{width:90/.test(admin) && /statNumber:\{fontFamily:'Vazir-Bold',fontSize:20/.test(admin) && /borderRadius:15,padding:12,gap:10/.test(admin), 'all management tabs keep a compact mobile density and smaller Vazir numbers');
+check(/sidebarMobile:\{width:90/.test(admin) && /statNumber:\{fontFamily:'Vazir-Bold',fontSize:16/.test(admin) && /borderRadius:15,padding:12,gap:10/.test(admin), 'all management tabs keep a compact mobile density and smaller Vazir numbers');
 check(/admin_registered_users/.test(adminApi), 'the management client loads the protected directory RPC');
 check(/com\.devicecontrol\.miloadmin/.test(appConfig) && /com\.devicecontrol\.companion/.test(read('app.json')), 'learner and management APKs have separate Android package IDs');
 check(/MiloAdmin\.apk/.test(workflow) && /MiloMultilang\.apk/.test(workflow), 'CI builds and publishes both standalone APKs');
