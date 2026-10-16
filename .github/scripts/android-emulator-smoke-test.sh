@@ -133,7 +133,7 @@ registration_gate=false
 if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'ساخت حساب و دریافت کد' "$ui_file"; then
   registration_gate=true
   echo 'Android emulator opened MiloMultilang and rendered its mandatory registration gate.'
-elif grep -Fq 'MILO' "$ui_file" && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+elif (grep -Fq 'MILO' "$ui_file" || grep -Fq 'Milo' "$ui_file") && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
   echo 'Android emulator restored an authenticated learner and rendered the language home.'
 else
   echo 'Neither the learner registration gate nor the authenticated language home was found.'
