@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
+import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LifeBuoy, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
+import { ensureSupportConversation } from '@/lib/conversations';
+import { readableSupabaseError } from '@/lib/errors';
+import { isSupabaseConfigured } from '@/lib/pairing';
 import { LANGUAGES } from '@/lib/languages/catalog';
 import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
 import { SENTENCE_LESSONS } from '@/lib/courseContent';
@@ -43,6 +46,16 @@ export default function LanguagesHome() {
   useEffect(() => setReady(true), []);
   const compact = !ready || width < 680;
   const tiny = !ready || width < 370;
+  const [openingSupport, setOpeningSupport] = useState(false);
+  const openSupport = () => {
+    if (openingSupport) return;
+    if (!isSupabaseConfigured()) { Alert.alert('پشتیبانی', 'اتصال پشتیبانی هنوز تنظیم نشده است.'); return; }
+    setOpeningSupport(true);
+    ensureSupportConversation()
+      .then((conversationId) => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId, name: 'پشتیبانی Milo' } } as never))
+      .catch((cause) => Alert.alert('پشتیبانی', readableSupabaseError(cause)))
+      .finally(() => setOpeningSupport(false));
+  };
   const languages = LANGUAGES.filter(language => (language.id === 'ru' ? FEATURES.russianCourse : !RUSSIAN_ONLY_BUILD));
 
   return (
@@ -60,6 +73,9 @@ export default function LanguagesHome() {
               </View>
             </View>
             <View style={styles.headerActions}>
+              <Pressable accessibilityRole="button" accessibilityLabel="گفتگو با پشتیبانی" disabled={openingSupport} style={styles.lockButton} onPress={openSupport}>
+                <LifeBuoy size={17} color="#1769D2" />
+              </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="تنظیم قفل برنامه" style={styles.lockButton} onPress={() => router.push('/app-lock' as never)}>
                 <LockKeyhole size={17} color="#1769D2" />
               </Pressable>
@@ -76,6 +92,7 @@ export default function LanguagesHome() {
             end={{ x: 0.05, y: 1 }}
             style={[styles.hero, compact && styles.heroCompact]}
           >
+            <Image source={require('../assets/images/hero-background.jpg')} resizeMode="cover" style={styles.heroBackground} accessibilityIgnoresInvertColors />
             <View style={styles.heroOrbOne} />
             <View style={styles.heroOrbTwo} />
             <View style={[styles.heroCopy, compact && styles.heroCopyCompact]}>
@@ -222,6 +239,7 @@ const styles = StyleSheet.create({
   brandName: { fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 16, lineHeight: 20, fontWeight: '800', textAlign: 'right', letterSpacing: 2, writingDirection: 'ltr' },
   brandCaption: { fontFamily: 'Inter-ExtraBold', color: '#6680A5', fontSize: 6, fontWeight: '800', letterSpacing: 1.35, writingDirection: 'ltr' },
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
+  heroBackground: { ...StyleSheet.absoluteFillObject, opacity: .55 },
   lockButton: { width: 36, height: 36, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
   statusPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#22A06B' },
