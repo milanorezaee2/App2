@@ -50,13 +50,18 @@ export default function LanguagesHome() {
   useEffect(() => {
     if (welcomeVoicePlayed) return;
     welcomeVoicePlayed = true;
-    try {
-      const player = createAudioPlayer(require('../assets/audio/welcome-voice.wav'));
-      player.volume = 1;
-      player.play();
-    } catch {
-      // Devices without audio playback still show the screen normally.
-    }
+    // Start after the intro chime has fully finished, so the two never overlap.
+    const start = setTimeout(() => {
+      try {
+        const player = createAudioPlayer(require('../assets/audio/welcome-voice.wav'));
+        player.volume = 0.9;
+        player.play();
+        setTimeout(() => player.remove(), 4000);
+      } catch {
+        // Devices without audio playback still show the screen normally.
+      }
+    }, 400);
+    void start;
   }, []);
 
   const openSupport = () => {
