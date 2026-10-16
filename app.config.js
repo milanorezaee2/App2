@@ -18,10 +18,19 @@ module.exports = () => {
       },
     };
   }
+  const learnerLogin = process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true';
+  if (!admin && learnerLogin) {
+    return {
+      ...base,
+      name: 'MiloMultilang Login',
+      android: { ...base.android, package: 'com.devicecontrol.milomultilang' },
+      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.milomultilang' },
+    };
+  }
   if (!admin) return base;
   return {
     ...base,
-    name: 'MiloMultilang Admin',
+    name: 'Milo Admin',
     slug: 'milo-language-admin',
     scheme: 'miloadmin',
     android: {

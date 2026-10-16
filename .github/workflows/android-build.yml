@@ -143,6 +143,26 @@ jobs:
           print('Standalone private management APK verified.')
           PY
 
+      - name: Generate and build the learner login APK
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
+        shell: bash
+        run: |
+          rm -rf android
+          EXPO_PUBLIC_LEARNER_LOGIN=true npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          EXPO_PUBLIC_LEARNER_LOGIN=true ./gradlew assembleRelease --no-daemon
+          cd ..
+          cp android/app/build/outputs/apk/release/app-release.apk MiloMultilang-Login.apk
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile('MiloMultilang-Login.apk') as archive:
+              names = set(archive.namelist())
+          if 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
+              raise SystemExit('Login APK structure validation failed.')
+          print('Learner login APK verified.')
+          PY
+
       - name: Smoke-test both APKs on Android emulator
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         uses: reactivecircus/android-emulator-runner@v2
@@ -171,7 +191,7 @@ jobs:
 
       - name: Confirm both release APKs are ready
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
-        run: test -s MiloMultilang.apk && test -s MiloAdmin.apk
+        run: test -s MiloMultilang.apk && test -s MiloAdmin.apk && (test '${{ env.EXPO_PUBLIC_RUSSIAN_ONLY }}' = 'true' || test -s MiloMultilang-Login.apk)
 
       - name: Publish direct APK downloads
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
@@ -180,10 +200,11 @@ jobs:
           tag_name: milomultilang-android-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           name: "MiloMultilang Android build #${{ github.run_number }}"
-          body: Installable learner and private management Android APKs. Both are signed for sideloading.
+          body: Installable learner (no login), learner (with login) and private management Android APKs. All are signed for sideloading.
           prerelease: true
           files: |
             MiloMultilang.apk
+            MiloMultilang-Login.apk
             MiloAdmin.apk
           fail_on_unmatched_files: true
         env:
@@ -225,6 +246,7 @@ jobs:
           name: Milo-android-apks
           path: |
             MiloMultilang.apk
+            MiloMultilang-Login.apk
             MiloAdmin.apk
           if-no-files-found: error
           retention-days: 7
