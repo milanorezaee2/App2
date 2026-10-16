@@ -10,6 +10,7 @@ import { RUSSIAN_LESSONS, russianProgress } from '@/lib/languages/russian';
 import type { CourseProgress, ReviewRating, SentenceReviewCard } from '@/lib/courseProgress';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
+import { speechTagFor } from '@/lib/speechLanguage';
 
 const ratingOptions: Array<{ id: ReviewRating; label: string; hint: string; color: string }> = [
   { id: 'again', label: 'فراموش کردم', hint: '۱۰ دقیقه', color: Palette.danger },
@@ -89,7 +90,7 @@ export default function RussianReview() {
   const speak = (text: string) => {
     setError('');
     void Speech.stop();
-    Speech.speak(text, { language: 'ru-RU', rate: .78, onError: () => setError('صدای روسی دستگاه در دسترس نیست؛ جمله همچنان برای خواندن نمایش داده می‌شود.') });
+    Speech.speak(text, { language: speechTagFor('ru-RU'), rate: .78, onError: () => setError('صدای روسی دستگاه در دسترس نیست؛ جمله همچنان برای خواندن نمایش داده می‌شود.') });
   };
 
   if (sessionActive && currentContent) {
@@ -184,12 +185,12 @@ const styles = StyleSheet.create({
   revealButtonText: { fontFamily: Typography.fontFamily, fontSize: 13, fontWeight: '400', color: '#FFFFFF', writingDirection: 'rtl' },
   answerArea: { width: '100%', alignItems: 'center' },
   answerDivider: { width: '75%', height: 1, backgroundColor: Palette.border, marginVertical: 18 },
-  reviewRussian: { fontFamily: 'Inter-ExtraBold', alignSelf: 'stretch', fontSize: 21, lineHeight: 34, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
-  reviewPronunciation: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.primaryDark, textAlign: 'center', writingDirection: 'rtl', marginTop: 7 },
+  reviewRussian: { fontFamily: 'Inter-ExtraBold', alignSelf: 'stretch', fontSize: 21, lineHeight: 34, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
+  reviewPronunciation: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl', marginTop: 7 },
   soundButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, padding: 8, marginTop: 8 },
   soundText: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.primary, writingDirection: 'rtl' },
   vocabChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, flexWrap: 'wrap', borderRadius: 15, backgroundColor: Palette.warningSoft, paddingHorizontal: 10, paddingVertical: 7, marginTop: 8 },
-  vocabText: { flexShrink: 1, fontFamily: Typography.fontFamily, fontSize: 10, color: Palette.warning, textAlign: 'center', writingDirection: 'rtl' },
+  vocabText: { flexShrink: 1, fontFamily: Typography.fontFamily, fontSize: 10, color: Palette.warning, textAlign: 'right', writingDirection: 'rtl' },
   ratingArea: { width: '100%', marginTop: 18 },
   ratingTitle: { fontFamily: Typography.fontFamily, fontSize: 13, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', marginBottom: 8 },
   ratingGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },

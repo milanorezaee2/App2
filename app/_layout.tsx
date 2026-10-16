@@ -6,6 +6,7 @@ import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
 import { I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
 import { createAudioPlayer } from 'expo-audio';
 import { Inter_400Regular, Inter_600SemiBold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
@@ -138,7 +139,7 @@ export default function RootLayout() {
       setIntroComplete(true);
       warmSpeech('en-US');
       setTimeout(() => warmSpeech('de-DE'), 350);
-    }, 1650);
+    }, 2200);
     return () => clearTimeout(finish);
   }, [fontsLoaded, fontError]);
 
@@ -146,9 +147,7 @@ export default function RootLayout() {
   if (!introComplete) {
     return (
       <View style={introStyles.root}>
-        <Image source={require('../assets/images/splash-learning-light.png')} resizeMode="contain" style={introStyles.image} />
-        <Text style={introStyles.brand}>MILO</Text>
-        <Text style={introStyles.caption}>LANGUAGE LEARNING</Text>
+        <MiloLogoMotion size="intro" />
         <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
         <StatusBar style="dark" />
       </View>

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-apk_path="MiloMultiApp.apk"
+apk_path="MiloMultilang.apk"
 admin_apk_path="MiloAdmin.apk"
 diag_dir="${RUNNER_TEMP:-/tmp}"
-log_file="$diag_dir/milomultiapp-emulator-smoke.log"
-ui_file="$diag_dir/milomultiapp-emulator-window.xml"
-screenshot_file="$diag_dir/milomultiapp-emulator-screen.png"
-remote_ui_file="/sdcard/milomultiapp-window.xml"
+log_file="$diag_dir/milomultilang-emulator-smoke.log"
+ui_file="$diag_dir/milomultilang-emulator-window.xml"
+screenshot_file="$diag_dir/milomultilang-emulator-screen.png"
+remote_ui_file="/sdcard/milomultilang-window.xml"
 failed_step="smoke-test setup"
 
 mkdir -p "$diag_dir"
@@ -132,8 +132,8 @@ failed_step="verifying the mandatory learner registration rendered"
 registration_gate=false
 if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'ساخت حساب و دریافت کد' "$ui_file"; then
   registration_gate=true
-  echo 'Android emulator opened MiloMultiApp and rendered its mandatory registration gate.'
-elif grep -Fq 'MILO' "$ui_file" && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+  echo 'Android emulator opened MiloMultilang and rendered its mandatory registration gate.'
+elif (grep -Fq 'MILO' "$ui_file" || grep -Fq 'Milo' "$ui_file") && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
   echo 'Android emulator restored an authenticated learner and rendered the language home.'
 else
   echo 'Neither the learner registration gate nor the authenticated language home was found.'
@@ -379,6 +379,28 @@ fi
 if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
   echo 'The management APK incorrectly rendered the learner registration flow.'
   exit 1
+fi
+
+
+login_apk_path="MiloMultilang-Login.apk"
+if [[ -s "$login_apk_path" ]]; then
+  failed_step="installing the learner login APK"
+  adb install -r "$login_apk_path"
+  failed_step="verifying the learner login APK package"
+  adb shell pm path com.devicecontrol.milomultilang
+  adb shell am force-stop com.devicecontrol.milomultilang
+  failed_step="launching the learner login APK"
+  timeout 90s adb shell am start -W -n com.devicecontrol.milomultilang/.MainActivity
+  failed_step="allowing the learner login APK to render"
+  sleep 25
+  capture_ui
+  failed_step="verifying the learner login APK rendered"
+  if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+    echo 'Android emulator launched the learner login APK and rendered its first screen.'
+  else
+    echo 'The learner login APK did not render the registration gate or the language home.'
+    exit 1
+  fi
 fi
 
 echo 'Android emulator verified the standalone management APK and protected manager login.'

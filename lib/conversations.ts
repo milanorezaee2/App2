@@ -2,6 +2,8 @@ import type { RealtimeChannel, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
+import { adminClient } from './educationAdmin';
+import { MANAGEMENT_BUILD } from './features';
 import { readableSupabaseError } from './errors';
 import { requireOnlineAudioEnabled } from './onlineAudioPolicy';
 
@@ -23,6 +25,11 @@ export interface DirectMessage {
   mediaPath: string | null;
   readAt: string | null;
   createdAt: string;
+}
+
+/** Learners use the anonymous/learner session; the manager APK uses the manager session. */
+function chatDb() {
+  return MANAGEMENT_BUILD ? adminClient() : supabase;
 }
 
 export { SUPABASE_NOT_CONFIGURED_MESSAGE, readableSupabaseError } from './errors';
@@ -70,15 +77,21 @@ async function unhideConversationLocally(conversationId: string): Promise<void> 
 }
 
 export async function ensureChatIdentity(displayName = 'زبان‌آموز'): Promise<User> {
-  const { data: sessionData } = await supabase.auth.getSession();
+  const { data: sessionData } = await chatDb().auth.getSession();
+  if (MANAGEMENT_BUILD) {
+    // The manager never gets an anonymous identity and keeps the profile name set by the backend.
+    const managerUser = sessionData.session?.user ?? null;
+    if (!managerUser) throw new Error('ADMIN_REQUIRED');
+    return managerUser;
+  }
   let user = sessionData.session?.user ?? null;
   if (!user) {
-    const { data, error } = await supabase.auth.signInAnonymously();
+    const { data, error } = await chatDb().auth.signInAnonymously();
     if (error || !data.user) throw new Error(readableSupabaseError(error));
     user = data.user;
   }
 
-  const { error: profileError } = await supabase.from('profiles').upsert(
+  const { error: profileError } = await chatDb().from('profiles').upsert(
     { id: user.id, display_name: displayName, last_seen: new Date().toISOString() },
     { onConflict: 'id' },
   );
@@ -86,16 +99,28 @@ export async function ensureChatIdentity(displayName = 'زبان‌آموز'): P
   return user;
 }
 
+/** One private conversation per learner with the manager. Returns the conversation id. */
+export async function ensureSupportConversation(displayName = 'زبان‌آموز'): Promise<string> {
+  await ensureChatIdentity(displayName);
+  const { data, error } = await chatDb().rpc('ensure_support_conversation', { p_display_name: displayName });
+  if (error && /SUPPORT_UNAVAILABLE/.test(String(error.message))) {
+    throw new Error('حساب پشتیبانی هنوز در پایگاه‌داده ثبت نشده است. ایمیل مدیر را در جدول education_admins ثبت کنید.');
+  }
+  if (error || typeof data !== 'string') throw new Error(readableSupabaseError(error));
+  await unhideConversationLocally(data);
+  return data;
+}
+
 export async function createRealContactInvite(displayName = 'زبان‌آموز'): Promise<string> {
   await ensureChatIdentity(displayName);
-  const { data, error } = await supabase.rpc('create_contact_invite', { p_display_name: displayName });
+  const { data, error } = await chatDb().rpc('create_contact_invite', { p_display_name: displayName });
   if (error || typeof data !== 'string') throw new Error(readableSupabaseError(error));
   return data;
 }
 
 export async function claimRealContactInvite(code: string, displayName = 'زبان‌آموز'): Promise<string> {
   await ensureChatIdentity(displayName);
-  const { data, error } = await supabase.rpc('claim_contact_invite', {
+  const { data, error } = await chatDb().rpc('claim_contact_invite', {
     p_code: code.trim(),
     p_display_name: displayName,
   });
@@ -106,7 +131,7 @@ export async function claimRealContactInvite(code: string, displayName = 'زبا
 
 export async function listRealContacts(): Promise<RealContact[]> {
   await ensureChatIdentity();
-  const { data, error } = await supabase
+  const { data, error } = await chatDb()
     .from('learning_contacts')
     .select('conversation_id,created_at,contact_id')
     .order('created_at', { ascending: false });
@@ -118,7 +143,7 @@ export async function listRealContacts(): Promise<RealContact[]> {
   if (!visibleRows.length) return [];
   // contact_id references auth.users, not profiles. Fetch profiles separately;
   // both queries remain subject to the current user's RLS policies.
-  const { data: profiles, error: profilesError } = await supabase
+  const { data: profiles, error: profilesError } = await chatDb()
     .from('profiles')
     .select('id,display_name,avatar_emoji,english_level,last_seen')
     .in('id', Array.from(new Set(visibleRows.map((row) => row.contact_id))));
@@ -146,7 +171,7 @@ export async function deleteConversationForMe(conversationId: string): Promise<'
   await hideConversationLocally(conversationId);
   try {
     const user = await ensureChatIdentity();
-    const { error } = await supabase
+    const { error } = await chatDb()
       .from('learning_contacts')
       .delete()
       .eq('user_id', user.id)
@@ -173,7 +198,7 @@ function mapMessage(row: any): DirectMessage {
 
 export async function listMessages(conversationId: string): Promise<DirectMessage[]> {
   await ensureChatIdentity();
-  const { data, error } = await supabase
+  const { data, error } = await chatDb()
     .from('messages')
     .select('*')
     .eq('conversation_id', conversationId)
@@ -187,7 +212,7 @@ export async function sendTextMessage(conversationId: string, body: string): Pro
   const user = await ensureChatIdentity();
   const clean = body.trim();
   if (!clean) throw new Error('پیام خالی است.');
-  const { data, error } = await supabase
+  const { data, error } = await chatDb()
     .from('messages')
     .insert({ conversation_id: conversationId, sender_id: user.id, message_type: 'text', body: clean })
     .select('*')
@@ -211,12 +236,12 @@ export async function sendVoiceMessage(
 
   const extension = audioUri.toLowerCase().includes('.webm') ? 'webm' : 'm4a';
   const mediaPath = `${conversationId}/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await chatDb().storage
     .from('chat-voice')
     .upload(mediaPath, audio, { contentType: extension === 'webm' ? 'audio/webm' : 'audio/mp4', upsert: false });
   if (uploadError) throw new Error(readableSupabaseError(uploadError));
 
-  const { data, error } = await supabase
+  const { data, error } = await chatDb()
     .from('messages')
     .insert({
       conversation_id: conversationId,
@@ -228,7 +253,7 @@ export async function sendVoiceMessage(
     .select('*')
     .single();
   if (error || !data) {
-    await supabase.storage.from('chat-voice').remove([mediaPath]);
+    await chatDb().storage.from('chat-voice').remove([mediaPath]);
     throw new Error(readableSupabaseError(error));
   }
   return mapMessage(data);
@@ -236,13 +261,13 @@ export async function sendVoiceMessage(
 
 export async function getVoiceMessageUrl(mediaPath: string): Promise<string> {
   await ensureChatIdentity();
-  const { data, error } = await supabase.storage.from('chat-voice').createSignedUrl(mediaPath, 60 * 60);
+  const { data, error } = await chatDb().storage.from('chat-voice').createSignedUrl(mediaPath, 60 * 60);
   if (error || !data?.signedUrl) throw new Error(readableSupabaseError(error));
   return data.signedUrl;
 }
 
 export async function currentChatUserId(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
+  const { data } = await chatDb().auth.getSession();
   return data.session?.user.id ?? null;
 }
 
@@ -250,7 +275,7 @@ export function subscribeToMessages(
   conversationId: string,
   onMessage: (message: DirectMessage) => void,
 ): RealtimeChannel {
-  return supabase
+  return chatDb()
     .channel(`messages:${conversationId}`)
     .on(
       'postgres_changes',
@@ -261,5 +286,5 @@ export function subscribeToMessages(
 }
 
 export async function unsubscribeFromMessages(channel: RealtimeChannel | null): Promise<void> {
-  if (channel) await supabase.removeChannel(channel);
+  if (channel) await chatDb().removeChannel(channel);
 }

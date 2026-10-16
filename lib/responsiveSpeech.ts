@@ -12,19 +12,9 @@ let requestId = 0;
  * engines often need one cold-start request before their first audible phrase.
  */
 export function warmSpeech(locale: SpeechLocale) {
+  // Intentionally silent. The previous warm-up spoke "ready" and "bereit" aloud at startup.
   if (warmedLocales.has(locale)) return;
   warmedLocales.add(locale);
-  void Speech.getAvailableVoicesAsync()
-    .catch(() => [])
-    .then(() => {
-      if (active) return;
-      Speech.speak(locale === 'de-DE' ? 'bereit' : 'ready', {
-        language: locale,
-        rate: 1,
-        volume: 0,
-      });
-    })
-    .catch(() => undefined);
 }
 
 /** First press uses natural 1× speed; the second press of the same phrase uses 0.5×. */

@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { createAudioPlayer } from 'expo-audio';
+import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
+import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LifeBuoy, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
 import { LANGUAGES } from '@/lib/languages/catalog';
-import { FEATURES } from '@/lib/features';
+import { ensureSupportConversation } from '@/lib/conversations';
+import { readableSupabaseError } from '@/lib/errors';
+import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
 import { SENTENCE_LESSONS } from '@/lib/courseContent';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
+
+// The welcome voice plays once per app session, when the main language screen appears.
+let welcomeVoicePlayed = false;
 
 const languageMeta = {
   en: { flag: '🇬🇧', code: 'EN', nativeName: 'English', tint: '#EAF2FF', border: '#CFE0FF' },
@@ -38,12 +45,40 @@ const productFeatures = [
 
 export default function LanguagesHome() {
   const router = useRouter();
+  const [openingSupport, setOpeningSupport] = useState(false);
+
+  useEffect(() => {
+    if (welcomeVoicePlayed) return;
+    welcomeVoicePlayed = true;
+    // Start after the intro chime has fully finished, so the two never overlap.
+    const start = setTimeout(() => {
+      try {
+        const player = createAudioPlayer(require('../assets/audio/welcome-voice.wav'));
+        player.volume = 0.9;
+        player.play();
+        setTimeout(() => player.remove(), 4000);
+      } catch {
+        // Devices without audio playback still show the screen normally.
+      }
+    }, 400);
+    void start;
+  }, []);
+
+  const openSupport = () => {
+    if (openingSupport) return;
+    setOpeningSupport(true);
+    ensureSupportConversation()
+      .then((conversationId) => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId, name: 'پشتیبانی Milo' } } as never))
+      .catch((cause) => Alert.alert('پشتیبانی', readableSupabaseError(cause)))
+      .finally(() => setOpeningSupport(false));
+  };
+
   const { width } = useWindowDimensions();
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
   const compact = !ready || width < 680;
   const tiny = !ready || width < 370;
-  const languages = LANGUAGES.filter(language => language.id !== 'ru' || FEATURES.russianCourse);
+  const languages = LANGUAGES.filter(language => (language.id === 'ru' ? FEATURES.russianCourse : !RUSSIAN_ONLY_BUILD));
 
   return (
     <View style={styles.root}>
@@ -51,15 +86,12 @@ export default function LanguagesHome() {
         <View style={[styles.page, compact && styles.pageCompact]}>
           <View style={styles.header}>
             <View style={styles.brand}>
-              <View style={styles.brandIcon}>
-                <BookOpenCheck size={19} color="#FFFFFF" strokeWidth={2.4} />
-              </View>
-              <View>
-                <Text style={styles.brandName}>MILO</Text>
-                <Text style={styles.brandCaption}>LANGUAGE LEARNING</Text>
-              </View>
+              <MiloLogoMotion size="header" play={false} />
             </View>
             <View style={styles.headerActions}>
+              <Pressable accessibilityRole="button" accessibilityLabel="گفتگو با پشتیبانی" disabled={openingSupport} style={styles.lockButton} onPress={openSupport}>
+                <LifeBuoy size={17} color="#1769D2" />
+              </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="تنظیم قفل برنامه" style={styles.lockButton} onPress={() => router.push('/app-lock' as never)}>
                 <LockKeyhole size={17} color="#1769D2" />
               </Pressable>
@@ -76,6 +108,7 @@ export default function LanguagesHome() {
             end={{ x: 0.05, y: 1 }}
             style={[styles.hero, compact && styles.heroCompact]}
           >
+            <Image source={require('../assets/images/hero-background.jpg')} resizeMode="cover" style={styles.heroBackground} accessibilityIgnoresInvertColors />
             <View style={styles.heroOrbOne} />
             <View style={styles.heroOrbTwo} />
             <View style={[styles.heroCopy, compact && styles.heroCopyCompact]}>
@@ -143,7 +176,7 @@ export default function LanguagesHome() {
                   >
                     <Text style={styles.flag}>{meta.flag}</Text>
                     <View style={styles.languageIdentity}>
-                      <Text style={styles.languageCode}>{meta.code}</Text>
+                      <Text style={styles.languageCode} numberOfLines={1}>{meta.code}</Text>
                       <Text style={styles.languageName} numberOfLines={1}>{meta.nativeName}</Text>
                     </View>
                     <View style={styles.languageArrow}><ArrowLeft size={14} color="#1769D2" strokeWidth={2.5} /></View>
@@ -222,6 +255,7 @@ const styles = StyleSheet.create({
   brandName: { fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 16, lineHeight: 20, fontWeight: '800', textAlign: 'right', letterSpacing: 2, writingDirection: 'ltr' },
   brandCaption: { fontFamily: 'Inter-ExtraBold', color: '#6680A5', fontSize: 6, fontWeight: '800', letterSpacing: 1.35, writingDirection: 'ltr' },
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
+  heroBackground: { ...StyleSheet.absoluteFillObject, opacity: .55 },
   lockButton: { width: 36, height: 36, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
   statusPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#22A06B' },
@@ -267,7 +301,7 @@ const styles = StyleSheet.create({
   languageCardTiny: { minHeight: 84, paddingHorizontal: 7, paddingVertical: 9, borderRadius: 15 },
   flag: { fontSize: 27, lineHeight: 33 },
   languageIdentity: { alignItems: 'center', gap: 0 },
-  languageCode: { fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 12, lineHeight: 17, fontWeight: '800', letterSpacing: 1.2, writingDirection: 'ltr' },
+  languageCode: { flexShrink: 0, textAlign: 'center', fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 12, lineHeight: 17, fontWeight: '800', letterSpacing: 1.2, writingDirection: 'ltr' },
   languageName: { fontFamily: 'Inter-ExtraBold', color: '#6680A5', fontSize: 7, lineHeight: 12, fontWeight: '800', writingDirection: 'ltr' },
   languageArrow: { position: 'absolute', left: 8, bottom: 8, width: 23, height: 23, borderRadius: 8, backgroundColor: 'rgba(255,255,255,.8)', alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: .82, transform: [{ scale: .98 }] },

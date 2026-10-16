@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { isSupabaseConfigured } from './pairing';
+import { SUPABASE_PUBLIC_ANON_KEY, SUPABASE_PUBLIC_URL } from './supabaseConfig';
 import { SENTENCE_LESSONS } from './courseContent';
 import canonical from '../assets/data/essential504.json';
 
@@ -11,7 +12,7 @@ let client: SupabaseClient | null = null;
 export function adminClient() {
   if (!FEATURES.adminPanel) throw new Error('پنل مدیریت فعلاً غیرفعال است.');
   if (!isSupabaseConfigured()) throw new Error('ابتدا اتصال Supabase پروژه را تنظیم کنید.');
-  if (!client) client = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL!.trim(), process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!.trim(), {
+  if (!client) client = createClient(SUPABASE_PUBLIC_URL, SUPABASE_PUBLIC_ANON_KEY, {
     auth: { storageKey: 'education-admin-session-v1', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false,
       storage: Platform.OS === 'web' ? {
         getItem: (key) => typeof window === 'undefined' ? null : window.localStorage.getItem(key),
@@ -47,6 +48,8 @@ export function educationError(error: unknown): string {
   if (/NAME_INVALID/.test(text)) return 'نامی بین ۱ تا ۸۰ نویسه بنویسید.';
   if (/Invalid login credentials/.test(text)) return 'ایمیل یا رمز ورود درست نیست.';
   if (/schema cache|does not exist/.test(text)) return 'راه‌اندازی پایگاه‌داده پنل هنوز کامل نیست؛ راهنمای EDUCATION-ADMIN را اجرا کنید.';
+  if (/SELF_DELETE/.test(text)) return 'مدیر نمی‌تواند حساب خودش را حذف کند.';
+  if (/ADMIN_ACCOUNT/.test(text)) return 'حساب مدیر از این بخش قابل حذف نیست.';
   if (/ADMIN_REQUIRED|permission denied|row-level security/.test(text)) return 'این حساب اجازه انجام این کار را ندارد.';
   if (/CONSENT_REQUIRED/.test(text)) return 'اشتراک پیشرفت فقط با رضایت شما انجام می‌شود.';
   if (/AUTH_REQUIRED|JWT|session/i.test(text)) return 'نشست ورود معتبر نیست؛ دوباره وارد شوید.';
@@ -71,6 +74,17 @@ export async function loadAdminData() {
     registeredUsers: (registered.data || []) as RegisteredUser[],
   };
 }
+/** Permanently deletes a learner account through the manager-only Edge Function. */
+export async function deleteRegisteredUser(userId: string): Promise<void> {
+  const { data, error } = await adminClient().functions.invoke('admin-delete-user', { body: { userId } });
+  if (error) {
+    const context = (error as { context?: { json?: () => Promise<unknown> } }).context;
+    const payload = (await context?.json?.().catch(() => null)) as { code?: string } | null;
+    throw new Error(payload?.code || error.message);
+  }
+  if (data && typeof data === 'object' && 'error' in data) throw new Error(String((data as { code?: string }).code || 'DELETE_FAILED'));
+}
+
 export const demoStudents: StudentRow[] = [
   { student_id: 'demo-1', display_name: 'سارا احمدی · نمونه', status: 'active', consent_at: '2026-10-01T10:00:00Z', synced_at: '2026-10-07T08:30:00Z', summary: { completedLessonIds: SENTENCE_LESSONS.slice(0, 24).map(l => l.id), learnedEssential504Words: canonical.slice(0, 68), totalMinutes: 260, currentStreak: 7 } },
   { student_id: 'demo-2', display_name: 'علی رضایی · نمونه', status: 'active', consent_at: '2026-10-02T10:00:00Z', synced_at: '2026-10-06T11:20:00Z', summary: { completedLessonIds: SENTENCE_LESSONS.slice(0, 9).map(l => l.id), learnedEssential504Words: canonical.slice(0, 24), totalMinutes: 95, currentStreak: 3 } },

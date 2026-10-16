@@ -108,7 +108,7 @@ function UnlockScreen({ config, onUnlock }: { config: AppLockConfig; onUnlock: (
   return (
     <View style={styles.root}>
       <View style={styles.logo}><LockKeyhole size={34} color={Colors.primary[300]} /></View>
-      <Text style={styles.title}>MiloMultiApp قفل است</Text>
+      <Text style={styles.title}>MiloMultilang قفل است</Text>
       <Text style={styles.description}>برای محافظت از درس‌ها و گفتگوهای خصوصی، هویت خود را تأیید کنید.</Text>
 
       {config.patternEnabled ? (

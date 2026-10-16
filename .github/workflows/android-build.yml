@@ -1,12 +1,18 @@
-name: Build MiloMultiApp Android APK
+name: Build MiloMultilang Android APK
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      russian_only:
+        description: 'Build only the Russian learner APK (MiloRussian.apk) and publish it as a release'
+        type: boolean
+        default: false
   push:
     branches:
       - arena/b2da2695-app1
       - arena/5fd5cd5d-app1
       - arena/9ecb1f7a-app2
+      - arena/8366eeeb-app2
 
 permissions:
   contents: write
@@ -22,6 +28,8 @@ jobs:
     env:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+      EXPO_PUBLIC_RUSSIAN_ONLY: ${{ ((github.event_name == 'workflow_dispatch' && inputs.russian_only) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[russian-apk]'))) && 'true' || 'false' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -114,9 +122,10 @@ jobs:
               raise SystemExit('Standalone JS bundle is missing; refusing to publish an APK that needs Metro.')
           print('Standalone learner APK verified.')
           PY
-          cp android/app/build/outputs/apk/release/app-release.apk MiloMultiApp.apk
+          cp android/app/build/outputs/apk/release/app-release.apk MiloMultilang.apk
 
       - name: Generate and build the private management APK
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
           rm -rf android
@@ -135,7 +144,28 @@ jobs:
           print('Standalone private management APK verified.')
           PY
 
+      - name: Generate and build the learner login APK
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
+        shell: bash
+        run: |
+          rm -rf android
+          EXPO_PUBLIC_LEARNER_LOGIN=true npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          EXPO_PUBLIC_LEARNER_LOGIN=true ./gradlew assembleRelease --no-daemon
+          cd ..
+          cp android/app/build/outputs/apk/release/app-release.apk MiloMultilang-Login.apk
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile('MiloMultilang-Login.apk') as archive:
+              names = set(archive.namelist())
+          if 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
+              raise SystemExit('Login APK structure validation failed.')
+          print('Learner login APK verified.')
+          PY
+
       - name: Smoke-test both APKs on Android emulator
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -154,38 +184,70 @@ jobs:
         with:
           name: android-emulator-smoke-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/milomultiapp-emulator-smoke.log
-            ${{ runner.temp }}/milomultiapp-emulator-window.xml
-            ${{ runner.temp }}/milomultiapp-emulator-screen.png
+            ${{ runner.temp }}/milomultilang-emulator-smoke.log
+            ${{ runner.temp }}/milomultilang-emulator-window.xml
+            ${{ runner.temp }}/milomultilang-emulator-screen.png
           if-no-files-found: warn
           retention-days: 3
 
       - name: Confirm both release APKs are ready
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
-        run: test -s MiloMultiApp.apk && test -s MiloAdmin.apk
+        run: test -s MiloMultilang.apk && test -s MiloAdmin.apk && (test '${{ env.EXPO_PUBLIC_RUSSIAN_ONLY }}' = 'true' || test -s MiloMultilang-Login.apk)
 
       - name: Publish direct APK downloads
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: milomultiapp-android-${{ github.run_number }}
+          tag_name: milomultilang-android-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          name: "MiloMultiApp Android build #${{ github.run_number }}"
-          body: Installable learner and private management Android APKs. Both are signed for sideloading.
+          name: "MiloMultilang Android build #${{ github.run_number }}"
+          body: Installable learner (no login), learner (with login) and private management Android APKs. All are signed for sideloading.
           prerelease: true
           files: |
-            MiloMultiApp.apk
+            MiloMultilang.apk
+            MiloMultilang-Login.apk
             MiloAdmin.apk
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      - name: Name and publish the Russian-only APK
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY == 'true' }}
+        run: |
+          cp MiloMultilang.apk MiloRussian.apk
+          test -s MiloRussian.apk
+
+      - name: Publish Russian-only APK release
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: milo-russian-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: "Milo Russian APK #${{ github.run_number }}"
+          body: "Russian-only learner APK (Milo Russian). Sideload on Android."
+          prerelease: true
+          files: MiloRussian.apk
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Upload Russian-only APK artifact
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Milo-russian-apk
+          path: MiloRussian.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload APK artifacts
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: Milo-android-apks
           path: |
-            MiloMultiApp.apk
+            MiloMultilang.apk
+            MiloMultilang-Login.apk
             MiloAdmin.apk
           if-no-files-found: error
           retention-days: 7
