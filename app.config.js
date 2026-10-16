@@ -21,7 +21,7 @@ module.exports = () => {
   if (!admin) return base;
   return {
     ...base,
-    name: 'Milo Admin',
+    name: 'MiloMultilang Admin',
     slug: 'milo-language-admin',
     scheme: 'miloadmin',
     android: {

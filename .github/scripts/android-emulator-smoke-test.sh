@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-apk_path="MiloMultiApp.apk"
+apk_path="MiloMultilang.apk"
 admin_apk_path="MiloAdmin.apk"
 diag_dir="${RUNNER_TEMP:-/tmp}"
-log_file="$diag_dir/milomultiapp-emulator-smoke.log"
-ui_file="$diag_dir/milomultiapp-emulator-window.xml"
-screenshot_file="$diag_dir/milomultiapp-emulator-screen.png"
-remote_ui_file="/sdcard/milomultiapp-window.xml"
+log_file="$diag_dir/milomultilang-emulator-smoke.log"
+ui_file="$diag_dir/milomultilang-emulator-window.xml"
+screenshot_file="$diag_dir/milomultilang-emulator-screen.png"
+remote_ui_file="/sdcard/milomultilang-window.xml"
 failed_step="smoke-test setup"
 
 mkdir -p "$diag_dir"
@@ -132,7 +132,7 @@ failed_step="verifying the mandatory learner registration rendered"
 registration_gate=false
 if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'ساخت حساب و دریافت کد' "$ui_file"; then
   registration_gate=true
-  echo 'Android emulator opened MiloMultiApp and rendered its mandatory registration gate.'
+  echo 'Android emulator opened MiloMultilang and rendered its mandatory registration gate.'
 elif grep -Fq 'MILO' "$ui_file" && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
   echo 'Android emulator restored an authenticated learner and rendered the language home.'
 else

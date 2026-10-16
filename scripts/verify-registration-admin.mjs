@@ -34,7 +34,7 @@ check(!/flexDirection:\s*'column'\s*}\]}[^\n]*sidebar/.test(admin), 'the managem
 check(/sidebarMobile:\{width:90/.test(admin) && /statNumber:\{fontFamily:'Vazir-Bold',fontSize:20/.test(admin) && /borderRadius:15,padding:12,gap:10/.test(admin), 'all management tabs keep a compact mobile density and smaller Vazir numbers');
 check(/admin_registered_users/.test(adminApi), 'the management client loads the protected directory RPC');
 check(/com\.devicecontrol\.miloadmin/.test(appConfig) && /com\.devicecontrol\.companion/.test(read('app.json')), 'learner and management APKs have separate Android package IDs');
-check(/MiloAdmin\.apk/.test(workflow) && /MiloMultiApp\.apk/.test(workflow), 'CI builds and publishes both standalone APKs');
+check(/MiloAdmin\.apk/.test(workflow) && /MiloMultilang\.apk/.test(workflow), 'CI builds and publishes both standalone APKs');
 check(/EXPO_PUBLIC_MILO_ADMIN_APP/.test(read('app/index.tsx')), 'the management APK boots directly into its protected panel');
 check(/پیام‌های خصوصی/.test(gate) && /پیام‌های خصوصی/.test(admin), 'both apps disclose and preserve private-message boundaries');
 console.log(`${count} registration and private management checks passed.`);

@@ -104,7 +104,7 @@ export async function authenticateWithDeviceLock(): Promise<boolean> {
     throw new Error('ابتدا قفل صفحهٔ اصلی گوشی را در تنظیمات دستگاه فعال کنید.');
   }
   const result = await LocalAuthentication.authenticateAsync({
-    promptMessage: 'بازکردن قفل MiloMultiApp',
+    promptMessage: 'بازکردن قفل MiloMultilang',
     cancelLabel: 'انصراف',
     fallbackLabel: 'استفاده از قفل اصلی گوشی',
     disableDeviceFallback: false,
