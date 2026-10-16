@@ -13,6 +13,7 @@ on:
       - arena/5fd5cd5d-app1
       - arena/9ecb1f7a-app2
       - arena/8366eeeb-app2
+      - arena/8290df12-app2
 
 permissions:
   contents: write
