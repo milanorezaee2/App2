@@ -40,4 +40,9 @@ check(/پیام‌های خصوصی/.test(gate) && /پیام‌های خصوصی
 check(/learnerLogin: process\.env\.EXPO_PUBLIC_LEARNER_LOGIN === 'true'/.test(read('lib/features.ts')), 'learner login is a build-time switch that defaults to off');
 check(/MiloMultilang-Login\.apk/.test(workflow) && /EXPO_PUBLIC_LEARNER_LOGIN=true/.test(workflow), 'CI builds and publishes the learner login APK');
 check(/com\.devicecontrol\.milomultilang/.test(appConfig) && /name: 'Milo Admin'/.test(appConfig), 'login APK uses its own package and the admin keeps the name Milo Admin');
+check(/CREATE OR REPLACE FUNCTION public\.ensure_support_conversation/.test(read('supabase/migrations/202610160001_support_chat_and_user_admin.sql')) && /singleton_key = 1/.test(read('supabase/migrations/202610160001_support_chat_and_user_admin.sql')), 'support chat is one private conversation with the single manager');
+check(/is_education_admin/.test(read('supabase/functions/admin-delete-user/index.ts')) && /deleteUser\(/.test(read('supabase/functions/admin-delete-user/index.ts')), 'account deletion is manager-only and runs on the server');
+check(/ensureSupportConversation/.test(read('app/conversations/index.tsx')) && /گفتگو با پشتیبانی Milo/.test(read('app/conversations/index.tsx')), 'learner app exposes the support chat');
+check(/deleteRegisteredUser/.test(read('app/admin/index.tsx')) && /downloadRegisteredUsers/.test(read('app/admin/index.tsx')) && /tab === 'support'/.test(read('app/admin/index.tsx')), 'manager app can delete users, export users, and open support chats');
+check(/MANAGEMENT_BUILD \? adminClient\(\) : supabase/.test(read('lib/conversations.ts')), 'the manager APK sends chat as the manager, not an anonymous learner');
 console.log(`${count} registration and private management checks passed.`);
