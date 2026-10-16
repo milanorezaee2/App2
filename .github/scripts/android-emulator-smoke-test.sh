@@ -357,6 +357,26 @@ timeout 30s adb exec-out screencap -p > "$screenshot_file"
 echo 'Android emulator verified both complete chat composers and their side buttons with the keyboard open.'
 fi
 
+failed_step="installing the no-login learner APK"
+adb install -r "MiloMultiApp-NoLogin.apk"
+adb shell am force-stop com.devicecontrol.companion
+
+failed_step="launching the no-login learner app"
+timeout 90s adb shell am start -W -n com.devicecontrol.companion/.MainActivity
+sleep 20
+capture_ui
+
+failed_step="verifying the no-login build skips the registration gate"
+if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
+  echo 'The no-login APK incorrectly rendered the learner registration gate.'
+  exit 1
+fi
+if ! grep -Fq 'MILO' "$ui_file"; then
+  echo 'The no-login APK did not reach the language entry screen.'
+  exit 1
+fi
+echo 'No-login APK opened straight into the language app without the registration gate.'
+
 failed_step="installing the private management APK"
 adb install -r "$admin_apk_path"
 adb shell am force-stop com.devicecontrol.miloadmin

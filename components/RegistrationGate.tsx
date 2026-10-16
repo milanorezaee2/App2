@@ -10,12 +10,16 @@ import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 
 const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
   || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
+// The optional no-login build variant opens straight into the language app
+// with an anonymous learner session; chat and courses stay fully local+cloud
+// under RLS, and personal sync simply skips anonymous sessions.
+const SKIP_REGISTRATION = process.env.EXPO_PUBLIC_SKIP_REGISTRATION === 'true';
 
 type Mode = 'register' | 'login';
 
 export function RegistrationGate({ children }: PropsWithChildren) {
-  const [checking, setChecking] = useState(!IS_ADMIN_APP);
-  const [ready, setReady] = useState(IS_ADMIN_APP);
+  const [checking, setChecking] = useState(!IS_ADMIN_APP && !SKIP_REGISTRATION);
+  const [ready, setReady] = useState(IS_ADMIN_APP || SKIP_REGISTRATION);
   const [mode, setMode] = useState<Mode>('register');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,7 +32,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   const holdForCode = useRef(false);
 
   const inspect = useCallback(async () => {
-    if (IS_ADMIN_APP) return;
+    if (IS_ADMIN_APP || SKIP_REGISTRATION) return;
     try {
       const state = await getRegisteredSession();
       const complete = !!state.session && !!state.profile;
@@ -42,7 +46,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    if (IS_ADMIN_APP) return;
+    if (IS_ADMIN_APP || SKIP_REGISTRATION) return;
     void inspect();
     const { data } = supabase.auth.onAuthStateChange(() => { void inspect(); });
     const appState = AppState.addEventListener('change', state => {
@@ -75,7 +79,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
     }
   }
 
-  if (IS_ADMIN_APP || ready) return <>{children}</>;
+  if (IS_ADMIN_APP || SKIP_REGISTRATION || ready) return <>{children}</>;
   if (checking) return <View style={styles.loading}><ActivityIndicator size="large" color={Colors.primary[600]} /><Text style={styles.loadingText}>در حال بررسی حساب…</Text></View>;
   if (generatedCode) return (
     <KeyboardAvoidingView style={styles.page} behavior="height" enabled>

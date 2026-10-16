@@ -7,6 +7,7 @@ on:
       - arena/b2da2695-app1
       - arena/5fd5cd5d-app1
       - arena/9ecb1f7a-app2
+      - arena/3c9d83a3-app2
 
 permissions:
   contents: write
@@ -18,7 +19,7 @@ concurrency:
 jobs:
   build-android-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
@@ -116,6 +117,27 @@ jobs:
           PY
           cp android/app/build/outputs/apk/release/app-release.apk MiloMultiApp.apk
 
+      - name: Generate and build the no-login learner APK
+        shell: bash
+        run: |
+          rm -rf android
+          EXPO_PUBLIC_SKIP_REGISTRATION=true npx expo prebuild --platform android --no-install
+          cd android
+          chmod +x gradlew
+          EXPO_PUBLIC_SKIP_REGISTRATION=true ./gradlew assembleRelease --no-daemon
+          cd ..
+          cp android/app/build/outputs/apk/release/app-release.apk MiloMultiApp-NoLogin.apk
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile('MiloMultiApp-NoLogin.apk') as archive:
+              names = set(archive.namelist())
+          if 'AndroidManifest.xml' not in names or not any(name.endswith('classes.dex') for name in names):
+              raise SystemExit('No-login APK structure validation failed.')
+          if 'assets/index.android.bundle' not in names:
+              raise SystemExit('Standalone JS bundle is missing in the no-login APK.')
+          print('Standalone no-login learner APK verified.')
+          PY
+
       - name: Generate and build the private management APK
         shell: bash
         run: |
@@ -162,7 +184,7 @@ jobs:
 
       - name: Confirm both release APKs are ready
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
-        run: test -s MiloMultiApp.apk && test -s MiloAdmin.apk
+        run: test -s MiloMultiApp.apk && test -s MiloMultiApp-NoLogin.apk && test -s MiloAdmin.apk
 
       - name: Publish direct APK downloads
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
@@ -171,10 +193,11 @@ jobs:
           tag_name: milomultiapp-android-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           name: "MiloMultiApp Android build #${{ github.run_number }}"
-          body: Installable learner and private management Android APKs. Both are signed for sideloading.
+          body: Installable Android APKs, signed for sideloading. MiloMultiApp.apk requires learner login; MiloMultiApp-NoLogin.apk opens straight into the language app; MiloAdmin.apk is the private management build.
           prerelease: true
           files: |
             MiloMultiApp.apk
+            MiloMultiApp-NoLogin.apk
             MiloAdmin.apk
           fail_on_unmatched_files: true
         env:
@@ -186,6 +209,7 @@ jobs:
           name: Milo-android-apks
           path: |
             MiloMultiApp.apk
+            MiloMultiApp-NoLogin.apk
             MiloAdmin.apk
           if-no-files-found: error
           retention-days: 7
