@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 type WebhookPayload = {
   type: 'INSERT' | 'UPDATE' | 'DELETE';
-  table: 'messages' | 'learning_contacts';
+  table: 'messages' | 'learning_contacts' | 'app_user_profiles';
   schema: 'public';
   record: Record<string, unknown>;
 };
@@ -55,6 +55,16 @@ Deno.serve(async request => {
     conversationId = String(payload.record.conversation_id || '') || null;
     title = 'درخواست مخاطب تأیید شد';
     body = 'یک گفتگوی خصوصی جدید برای شما فعال شد.';
+  } else if (payload.table === 'app_user_profiles') {
+    // New learner registration: alert every education manager, even when the admin app is closed.
+    const { data: managers, error: managerError } = await admin
+      .from('education_admins')
+      .select('user_id');
+    if (managerError) return json({ error: managerError.message }, 500);
+    recipientIds = (managers || []).map(manager => manager.user_id);
+    const name = String(payload.record.full_name || 'کاربر جدید').slice(0, 80);
+    title = 'ثبت‌نام کاربر جدید';
+    body = `${name} در میلو ثبت‌نام کرد.`;
   } else {
     return json({ skipped: true });
   }
@@ -75,7 +85,7 @@ Deno.serve(async request => {
     channelId: 'milo-chat',
     data: conversationId
       ? { conversationId, route: `/conversations/human/${conversationId}` }
-      : { route: '/conversations' },
+      : { route: payload.table === 'app_user_profiles' ? '/admin' : '/conversations' },
   }));
   if (!messages.length) return json({ delivered: 0 });
 

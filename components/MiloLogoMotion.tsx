@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BookOpenCheck } from 'lucide-react-native';
 
 const LETTERS = ['M', 'i', 'l', 'o'];
+const SUBTITLE = 'MULTI LANGUAGE';
 
 type Props = {
   /** `intro` is the large startup logo; `header` is the compact in-app logo. */
@@ -24,6 +25,9 @@ export function MiloLogoMotion({ size = 'intro', play = true, onDone }: Props) {
   const sheen = useRef(new Animated.Value(0)).current;
   const letters = useRef(LETTERS.map(() => new Animated.Value(play ? 0 : 1))).current;
   const tagline = useRef(new Animated.Value(play ? 0 : 1)).current;
+  // Measured so the small subtitle spans exactly the same width as the word "Milo".
+  const [wordWidth, setWordWidth] = useState(0);
+  const [subtitleNatural, setSubtitleNatural] = useState(0);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
 
@@ -43,10 +47,12 @@ export function MiloLogoMotion({ size = 'intro', play = true, onDone }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const subtitleSpacing = wordWidth > 0 && subtitleNatural > 0 ? Math.max(0, (wordWidth - subtitleNatural) / (SUBTITLE.length - 1)) : 0;
+
   const sheenX = sheen.interpolate({ inputRange: [0, 1], outputRange: [-markSize, markSize * 1.6] });
 
   return (
-    <View accessibilityRole="image" accessibilityLabel="Milo" style={[styles.wrap, isIntro ? styles.wrapIntro : styles.wrapHeader]}>
+    <View accessibilityRole="image" accessibilityLabel="MiloMultiLanguage" style={[styles.wrap, isIntro ? styles.wrapIntro : styles.wrapHeader]}>
       <Animated.View style={{ opacity: mark, transform: [{ scale: mark.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }) }] }}>
         <LinearGradient
           colors={['#2F8BFF', '#1769D2', '#0B3E8F']}
@@ -68,7 +74,7 @@ export function MiloLogoMotion({ size = 'intro', play = true, onDone }: Props) {
           />
         </LinearGradient>
       </Animated.View>
-      <View style={styles.word}>
+      <View style={styles.word} onLayout={event => setWordWidth(event.nativeEvent.layout.width)}>
         {LETTERS.map((letter, index) => (
           <Animated.Text
             key={index}
@@ -82,7 +88,21 @@ export function MiloLogoMotion({ size = 'intro', play = true, onDone }: Props) {
           </Animated.Text>
         ))}
       </View>
-      {isIntro && <Animated.Text style={[styles.tagline, { opacity: tagline }]}>LANGUAGE LEARNING</Animated.Text>}
+      {isIntro && (
+        <Animated.View style={{ width: wordWidth || undefined, opacity: tagline, alignItems: 'center' }}>
+          <Text style={[styles.tagline, { letterSpacing: subtitleSpacing, marginRight: -subtitleSpacing }]}>{SUBTITLE}</Text>
+        </Animated.View>
+      )}
+      {isIntro && (
+        <Text
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+          onLayout={event => setSubtitleNatural(event.nativeEvent.layout.width)}
+          style={[styles.tagline, styles.measureOnly]}
+        >
+          {SUBTITLE}
+        </Text>
+      )}
     </View>
   );
 }
@@ -93,5 +113,6 @@ const styles = StyleSheet.create({
   wrapHeader: { flexDirection: 'row', gap: 10 },
   word: { flexDirection: 'row', direction: 'ltr', alignItems: 'center' },
   letter: { fontFamily: 'Inter-ExtraBold', color: '#102A56', letterSpacing: 1.5, writingDirection: 'ltr' },
-  tagline: { fontFamily: 'Inter-ExtraBold', fontSize: 9, color: '#6882A6', letterSpacing: 2.4, writingDirection: 'ltr' },
+  tagline: { fontFamily: 'Inter-ExtraBold', fontSize: 10, color: '#6882A6', writingDirection: 'ltr', textAlign: 'center' },
+  measureOnly: { position: 'absolute', opacity: 0, letterSpacing: 0 },
 });

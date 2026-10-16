@@ -8,6 +8,7 @@ import { BookOpen, Users, Ticket, LayoutDashboard, ShieldCheck, LogOut, ArrowUpL
 import { adminClient, deleteRegisteredUser, loadAdminData, demoStudents, educationError, progressMetrics, type StudentRow, type EducationInvite, type RegisteredUser } from '@/lib/educationAdmin';
 import { listRealContacts, type RealContact } from '@/lib/conversations';
 import { downloadRegisteredUsers } from '@/lib/userExport';
+import { registerAdminPushToken } from '@/lib/adminPush';
 import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
 import { toPersianDigits as fa } from '@/lib/format';
 
@@ -88,6 +89,7 @@ function EducationAdmin() {
       try {
         const { data } = await adminClient().auth.getSession();
         if (!data.session) return;
+        void registerAdminPushToken();
         const result = await loadAdminData();
         if (mounted) { setStudents(result.students); setInvites(result.invites); setRegisteredUsers(result.registeredUsers); setMode('live'); }
       } catch { /* Login remains available if the migration is not installed. */ }
@@ -97,6 +99,7 @@ function EducationAdmin() {
   const login = () => task(async () => {
     const { error } = await adminClient().auth.signInWithPassword({ email: email.trim(), password });
     if (error) throw error;
+    void registerAdminPushToken();
     try { await refresh(); setMode('live'); setPassword(''); }
     catch (e) { await adminClient().auth.signOut(); throw e; }
   });

@@ -1,6 +1,6 @@
 const base = require('./app.json').expo;
 
-module.exports = () => {
+const build = () => {
   const admin = process.env.MILO_ADMIN_APP === 'true' || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
   if (process.env.EXPO_PUBLIC_RUSSIAN_ONLY === 'true' && !admin) {
     return {
@@ -46,5 +46,17 @@ module.exports = () => {
       ...base.extra,
       appRole: 'admin',
     },
+  };
+};
+
+// EAS project id comes from the EAS_PROJECT_ID env (set in CI from a repo variable),
+// which Expo push tokens require. Without it, push registration is skipped.
+module.exports = () => {
+  const config = build();
+  const projectId = process.env.EAS_PROJECT_ID || process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+  if (!projectId) return config;
+  return {
+    ...config,
+    extra: { ...config.extra, eas: { ...(config.extra?.eas || {}), projectId } },
   };
 };
