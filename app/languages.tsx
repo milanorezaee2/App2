@@ -1,14 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { createAudioPlayer } from 'expo-audio';
+import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
+import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LifeBuoy, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
 import { LANGUAGES } from '@/lib/languages/catalog';
+import { ensureSupportConversation } from '@/lib/conversations';
+import { readableSupabaseError } from '@/lib/errors';
 import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
 import { SENTENCE_LESSONS } from '@/lib/courseContent';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
+
+// The welcome voice plays once per app session, when the main language screen appears.
+let welcomeVoicePlayed = false;
 
 const languageMeta = {
   en: { flag: '🇬🇧', code: 'EN', nativeName: 'English', tint: '#EAF2FF', border: '#CFE0FF' },
@@ -38,6 +45,29 @@ const productFeatures = [
 
 export default function LanguagesHome() {
   const router = useRouter();
+  const [openingSupport, setOpeningSupport] = useState(false);
+
+  useEffect(() => {
+    if (welcomeVoicePlayed) return;
+    welcomeVoicePlayed = true;
+    try {
+      const player = createAudioPlayer(require('../assets/audio/welcome-voice.wav'));
+      player.volume = 1;
+      player.play();
+    } catch {
+      // Devices without audio playback still show the screen normally.
+    }
+  }, []);
+
+  const openSupport = () => {
+    if (openingSupport) return;
+    setOpeningSupport(true);
+    ensureSupportConversation()
+      .then((conversationId) => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId, name: 'پشتیبانی Milo' } } as never))
+      .catch((cause) => Alert.alert('پشتیبانی', readableSupabaseError(cause)))
+      .finally(() => setOpeningSupport(false));
+  };
+
   const { width } = useWindowDimensions();
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
@@ -51,15 +81,12 @@ export default function LanguagesHome() {
         <View style={[styles.page, compact && styles.pageCompact]}>
           <View style={styles.header}>
             <View style={styles.brand}>
-              <View style={styles.brandIcon}>
-                <BookOpenCheck size={19} color="#FFFFFF" strokeWidth={2.4} />
-              </View>
-              <View>
-                <Text style={styles.brandName}>MILO</Text>
-                <Text style={styles.brandCaption}>LANGUAGE LEARNING</Text>
-              </View>
+              <MiloLogoMotion size="header" play={false} />
             </View>
             <View style={styles.headerActions}>
+              <Pressable accessibilityRole="button" accessibilityLabel="گفتگو با پشتیبانی" disabled={openingSupport} style={styles.lockButton} onPress={openSupport}>
+                <LifeBuoy size={17} color="#1769D2" />
+              </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="تنظیم قفل برنامه" style={styles.lockButton} onPress={() => router.push('/app-lock' as never)}>
                 <LockKeyhole size={17} color="#1769D2" />
               </Pressable>

@@ -45,4 +45,7 @@ check(/deleteRegisteredUser/.test(read('app/admin/index.tsx')) && /downloadRegis
 check(/MANAGEMENT_BUILD \? adminClient\(\) : supabase/.test(read('lib/conversations.ts')), 'the manager APK sends chat as the manager, not an anonymous learner');
 check(/Intentionally silent/.test(read('lib/responsiveSpeech.ts')) && !/Speech\.speak\(locale/.test(read('lib/responsiveSpeech.ts')), 'startup warm-up never speaks words aloud');
 check(/welcome-chime\.wav/.test(read('app/_layout.tsx')), 'the original startup sound is kept');
+check(/ensureSupportConversation/.test(read('app/languages.tsx')) && /ensureSupportConversation/.test(read('app/conversations/index.tsx')), 'learners reach the manager through the support button');
+check(/MiloLogoMotion/.test(read('app/_layout.tsx')) && /MiloLogoMotion/.test(read('app/languages.tsx')), 'the Milo logo motion is used in the intro and the home header');
+check(/welcome-voice\.wav/.test(read('app/languages.tsx')) && /welcome-chime\.wav/.test(read('app/_layout.tsx')), 'Welcome plays on the main screen and the startup sound is kept');
 console.log(`${count} registration and private management checks passed.`);
