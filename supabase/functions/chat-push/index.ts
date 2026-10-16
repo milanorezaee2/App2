@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 type WebhookPayload = {
   type: 'INSERT' | 'UPDATE' | 'DELETE';
-  table: 'messages' | 'learning_contacts';
+  table: 'messages' | 'learning_contacts' | 'app_user_profiles';
   schema: 'public';
   record: Record<string, unknown>;
 };
@@ -31,6 +31,7 @@ Deno.serve(async request => {
   let title = 'میلو';
   let body = 'رویداد جدید در گفتگو';
   let conversationId: string | null = null;
+  let pushData: { conversationId?: string; route: string } | null = null;
 
   if (payload.table === 'messages') {
     conversationId = String(payload.record.conversation_id || '');
@@ -48,6 +49,7 @@ Deno.serve(async request => {
     body = voice
       ? 'یک پیام صوتی جدید دریافت کردید.'
       : String(payload.record.body || 'یک پیام جدید دریافت کردید.').slice(0, 120);
+    pushData = { conversationId, route: `/conversations/human/${conversationId}` };
   } else if (payload.table === 'learning_contacts') {
     const userId = String(payload.record.user_id || '');
     if (!userId) return json({ error: 'Invalid contact payload' }, 400);
@@ -55,6 +57,20 @@ Deno.serve(async request => {
     conversationId = String(payload.record.conversation_id || '') || null;
     title = 'درخواست مخاطب تأیید شد';
     body = 'یک گفتگوی خصوصی جدید برای شما فعال شد.';
+    pushData = conversationId
+      ? { conversationId, route: `/conversations/human/${conversationId}` }
+      : { route: '/conversations' };
+  } else if (payload.table === 'app_user_profiles') {
+    // New learner registration: alert the single education manager so the
+    // admin phone learns about sign-ups while it is closed or offline.
+    const { data: admins, error: adminError } = await admin
+      .from('education_admins')
+      .select('user_id');
+    if (adminError) return json({ error: adminError.message }, 500);
+    recipientIds = (admins || []).map(row => String(row.user_id));
+    title = 'ثبت‌نام کاربر جدید در اپ زبان';
+    body = `${String(payload.record.full_name || '').trim()} با ایمیل ${String(payload.record.email || '').trim()} در اپ ثبت‌نام کرد.`;
+    pushData = { route: '/admin' };
   } else {
     return json({ skipped: true });
   }
@@ -73,9 +89,7 @@ Deno.serve(async request => {
     body,
     priority: 'high',
     channelId: 'milo-chat',
-    data: conversationId
-      ? { conversationId, route: `/conversations/human/${conversationId}` }
-      : { route: '/conversations' },
+    data: pushData || { route: '/conversations' },
   }));
   if (!messages.length) return json({ delivered: 0 });
 

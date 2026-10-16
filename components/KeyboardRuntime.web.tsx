@@ -9,6 +9,10 @@ export function KeyboardStickyView({ children, ...props }: React.PropsWithChildr
   return <View {...props}>{children}</View>;
 }
 
+export function KeyboardCompensationView({ children, ...props }: React.PropsWithChildren<ViewProps>) {
+  return <View {...props}>{children}</View>;
+}
+
 export function KeyboardAvoidingView({ children, ...props }: React.PropsWithChildren<ViewProps & { behavior?: string; enabled?: boolean }>) {
   const { behavior: _behavior, enabled: _enabled, ...viewProps } = props;
   return <View {...viewProps}>{children}</View>;

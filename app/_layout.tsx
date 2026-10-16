@@ -7,7 +7,7 @@ import Constants from 'expo-constants';
 import { I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
-import { createAudioPlayer } from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { Inter_400Regular, Inter_600SemiBold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
 import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_700Bold, Vazirmatn_900Black } from '@expo-google-fonts/vazirmatn';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
@@ -49,8 +49,59 @@ stableInput.defaultProps = {
 SplashScreen.preventAutoHideAsync();
 
 let startupChimePlayed = false;
+// Keep in sync with the generated length of assets/audio/welcome-chime.wav
+// (scripts/generate-welcome-chime.mjs). The React intro and the chime start
+// and finish together, and the player is released only after the tail fades.
+const STARTUP_CHIME_MS = 2200;
 const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
   || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
+
+// The caption is measured against the brand line so "MULTI LANGUAGE" always
+// renders exactly as wide as "MILO", on every font scale and platform.
+const CAPTION_TEXT = 'MULTI LANGUAGE';
+const CAPTION_BASE_SIZE = 10;
+const CAPTION_BASE_TRACK = 3.2;
+
+function StartupIntro() {
+  const [brandWidth, setBrandWidth] = useState(0);
+  const [measureWidth, setMeasureWidth] = useState(0);
+  const scale = brandWidth > 0 && measureWidth > 0 ? brandWidth / measureWidth : 0;
+  return (
+    <View style={introStyles.root}>
+      <Image source={require('../assets/images/splash-learning-light.png')} resizeMode="contain" style={introStyles.image} />
+      <Text
+        style={introStyles.brand}
+        onLayout={(event) => setBrandWidth(event.nativeEvent.layout.width)}
+      >
+        MILO
+      </Text>
+      {/* Off-flow measurer: gives the natural width of the caption at a known
+          base size so the visible caption can be scaled to the brand width. */}
+      <Text
+        style={[introStyles.caption, { fontSize: CAPTION_BASE_SIZE, letterSpacing: CAPTION_BASE_TRACK, opacity: 0, position: 'absolute' }]}
+        onLayout={(event) => setMeasureWidth(event.nativeEvent.layout.width)}
+        pointerEvents="none"
+      >
+        {CAPTION_TEXT}
+      </Text>
+      <Text
+        style={[
+          introStyles.caption,
+          {
+            fontSize: CAPTION_BASE_SIZE * (scale || 1),
+            letterSpacing: CAPTION_BASE_TRACK * (scale || 1),
+            lineHeight: Math.ceil(CAPTION_BASE_SIZE * (scale || 1) * 1.45),
+            opacity: scale ? 1 : 0,
+          },
+        ]}
+      >
+        {CAPTION_TEXT}
+      </Text>
+      <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
+      <StatusBar style="dark" />
+    </View>
+  );
+}
 
 function RuntimeGate() {
   const pathname = usePathname();
@@ -122,37 +173,38 @@ export default function RootLayout() {
       return;
     }
 
-    // The React splash and the 1.65-second chime start and finish together.
-    // It follows the native splash seamlessly, so there is no dark flash.
+    // The React splash and the chime start and finish together, following the
+    // native splash seamlessly so there is no dark flash. The chime ducks any
+    // other audio instead of fighting it, plays once to its faded tail, and is
+    // released only after it ends — no click, no overlap, no second playback.
     startupChimePlayed = true;
     let player: ReturnType<typeof createAudioPlayer> | null = null;
-    try {
-      player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
-      player.volume = 0.28;
-      player.play();
-    } catch {
-      // A device without playback support still receives the same visual intro.
-    }
+    void (async () => {
+      try {
+        await setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'duckOthers' });
+      } catch {
+        // Playback still proceeds with the platform default audio mode.
+      }
+      try {
+        player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
+        player.volume = 0.6;
+        player.play();
+      } catch {
+        // A device without playback support still receives the same visual intro.
+      }
+    })();
     const finish = setTimeout(() => {
-      player?.remove();
+      try { player?.remove(); } catch { /* already released */ }
       setIntroComplete(true);
       warmSpeech('en-US');
       setTimeout(() => warmSpeech('de-DE'), 350);
-    }, 1650);
+    }, STARTUP_CHIME_MS);
     return () => clearTimeout(finish);
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return null;
   if (!introComplete) {
-    return (
-      <View style={introStyles.root}>
-        <Image source={require('../assets/images/splash-learning-light.png')} resizeMode="contain" style={introStyles.image} />
-        <Text style={introStyles.brand}>MILO</Text>
-        <Text style={introStyles.caption}>LANGUAGE LEARNING</Text>
-        <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
-        <StatusBar style="dark" />
-      </View>
-    );
+    return <StartupIntro />;
   }
 
   return (
@@ -163,7 +215,9 @@ export default function RootLayout() {
           <AppLockGate>
             <RegistrationGate>
               {!IS_ADMIN_APP && <RuntimeGate />}
-              {!IS_ADMIN_APP && <ChatNotificationBridge />}
+              {/* Both builds register push tokens: the manager APK must receive
+                  registration/message alerts while it is closed or offline. */}
+              <ChatNotificationBridge />
               <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
                 <Stack.Screen name="index" />
                 <Stack.Screen name="admin/index" />

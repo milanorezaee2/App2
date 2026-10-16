@@ -8,6 +8,7 @@ export function KeyboardStickyView(
     enabled?: boolean;
   }>,
 ): React.ReactElement;
+export function KeyboardCompensationView(props: React.PropsWithChildren<ViewProps>): React.ReactElement;
 export function KeyboardAvoidingView(
   props: React.PropsWithChildren<ViewProps & {
     behavior?: 'height' | 'position' | 'padding' | 'translate-with-padding';

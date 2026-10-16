@@ -10,8 +10,11 @@ const config = read('app.json');
 const bridge = read('components/ChatNotificationBridge.tsx');
 const notifications = read('lib/chatNotifications.ts');
 const migration = read('supabase/migrations/202610140001_chat_push_notifications.sql');
+const offlinePush = read('supabase/migrations/202610160001_offline_push_triggers.sql');
 const edge = read('supabase/functions/chat-push/index.ts');
 const layout = read('app/_layout.tsx');
+const humanChat = read('app/conversations/human/[conversationId].tsx');
+const emmaChat = read('app/conversations/emma.tsx');
 
 check(pkg.dependencies['expo-notifications'], 'expo-notifications is installed');
 const keyboardRuntime = read('components/KeyboardRuntime.native.tsx');
@@ -33,5 +36,24 @@ check(/ENABLE ROW LEVEL SECURITY/.test(migration) && /user_id = auth\.uid\(\)/.t
 check(/conversation_members/.test(edge) && /chat_push_tokens/.test(edge), 'server push resolves only conversation recipients');
 check(/exp\.host\/--\/api\/v2\/push\/send/.test(edge), 'server push uses Expo delivery');
 check(/CHAT_WEBHOOK_SECRET/.test(edge), 'database webhook endpoint requires a dedicated secret');
+
+// Offline delivery: database triggers push through Expo even when the
+// receiving app (learner or manager) is closed or the admin is offline.
+check(/CREATE TRIGGER chat_push_on_message/.test(offlinePush) && /AFTER INSERT ON public\.messages/.test(offlinePush), 'new messages trigger server push');
+check(/CREATE TRIGGER chat_push_on_registration/.test(offlinePush) && /AFTER INSERT ON public\.app_user_profiles/.test(offlinePush), 'new registrations trigger server push');
+check(/education_admins/.test(offlinePush) && /chat_push_tokens/.test(offlinePush), 'registration push resolves manager tokens server-side');
+check(/http_post/.test(offlinePush) && /exp\.host\/--\/api\/v2\/push\/send/.test(offlinePush), 'triggers deliver through the Expo push service');
+check(/SECURITY DEFINER/.test(offlinePush), 'push trigger bypasses RLS safely as owner');
+check(/app_user_profiles/.test(edge) && /route: '\/admin'/.test(edge), 'edge webhook also routes registrations to the manager panel');
+
+// Both builds register push tokens; the manager APK waits for manager login.
+check(!/!IS_ADMIN_APP && <ChatNotificationBridge/.test(layout), 'notification bridge mounts in learner and admin builds');
+check(/requireSession/.test(notifications) && /adminClient\(\)/.test(notifications), 'manager session registers its own push tokens');
+check(/pushCoversThisDevice/.test(notifications), 'foreground realtime skips alerts already covered by push');
+
+// The composer stack rides fully above the keyboard on every Android version.
+check(/KeyboardCompensationView/.test(humanChat) && !/KeyboardAvoidingView/.test(humanChat), 'human chat composer uses keyboard compensation');
+check(/KeyboardCompensationView/.test(emmaChat) && !/KeyboardAvoidingView/.test(emmaChat), 'Emma composer uses keyboard compensation');
+check(/closedWindowHeight/.test(keyboardRuntime) && /useReanimatedKeyboardAnimation/.test(keyboardRuntime), 'compensation subtracts system resize to avoid double avoidance');
 
 console.log(`${checks} chat notification and dynamic keyboard checks passed.`);

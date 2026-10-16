@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { KeyboardAvoidingView } from '@/components/KeyboardRuntime';
+import { KeyboardCompensationView } from '@/components/KeyboardRuntime';
 
 import * as Speech from 'expo-speech';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
@@ -135,7 +135,7 @@ export default function EmmaChat() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior="height" enabled>
+    <View style={styles.root}>
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><Text style={styles.avatarEmoji}>👩🏻‍🏫</Text><View style={styles.online} /></View>
@@ -165,7 +165,6 @@ export default function EmmaChat() {
         contentContainerStyle={styles.messageContent}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
         <View style={styles.topicChip}><Sparkles size={13} color={Colors.accent[400]} /><Text style={styles.topicText}>موضوع امروز: {context?.lessonTitleFa || 'درس فعلی شما'}</Text></View>
@@ -192,6 +191,7 @@ export default function EmmaChat() {
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
+      <KeyboardCompensationView>
       <View style={styles.coachArea}>
         <Pressable accessibilityRole="button" accessibilityLabel="باز و بسته‌کردن پیشنهادهای خصوصی Emma" accessibilityState={{ expanded: showTools }} style={styles.coachToggle} onPress={() => setShowTools((value) => !value)}>
           <Sparkles size={15} color={Colors.warning[400]} />
@@ -224,7 +224,8 @@ export default function EmmaChat() {
           {thinking || transcribing ? <ActivityIndicator size="small" color={Colors.onColor} /> : <Send size={18} color={Colors.onColor} />}
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardCompensationView>
+    </View>
   );
 }
 

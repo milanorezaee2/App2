@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { KeyboardAvoidingView } from '@/components/KeyboardRuntime';
+import { KeyboardCompensationView } from '@/components/KeyboardRuntime';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   RecordingPresets,
@@ -200,7 +200,7 @@ export default function HumanConversationScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior="height" enabled>
+    <View style={styles.root}>
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><UserRound size={22} color={Colors.primary[300]} /></View>
@@ -232,7 +232,6 @@ export default function HumanConversationScreen() {
           contentContainerStyle={styles.messageContent}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
           <View style={styles.privateNote}><ShieldCheck size={14} color={Colors.success[400]} /><Text style={styles.privateText}>فقط شما و این مخاطب پیام‌ها را می‌بینید.</Text></View>
@@ -250,6 +249,10 @@ export default function HumanConversationScreen() {
         </ScrollView>
       )}
 
+      {/* The whole composer stack rides exactly on top of the keyboard: the
+          wrapper pads only the keyboard height the system did not already
+          absorb, on every Android version and on iOS. */}
+      <KeyboardCompensationView>
       {showCoach ? (
         <View style={styles.coach}>
           <View style={styles.coachTitleRow}><Sparkles size={15} color={Colors.warning[400]} /><Text style={styles.coachTitle}>دستیار خصوصی — چیزی خودکار ارسال نمی‌شود</Text></View>
@@ -291,7 +294,8 @@ export default function HumanConversationScreen() {
           </Pressable>
         )}
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardCompensationView>
+    </View>
   );
 }
 

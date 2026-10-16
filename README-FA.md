@@ -28,6 +28,9 @@
 
 - مسیر اصلی انگلیسی: ۱۷۴ درس/۳٬۸۶۲ جمله؛ Foundation: ۱۰/۵۰۰، Survival: ۱۹/۹۵۰، Everyday English: ۲۰/۱٬۰۰۰، Communication English: ۱۵/۷۵۰ (هر درس ۵۰ نمونه)، و Advanced English: ۱۱۰/۶۶۲. واژگان یکتای Survival برابر ۱٬۳۱۲، Everyday برابر ۱٬۷۷۴ و Communication برابر ۱٬۴۱۰ مدخل/عبارت پیوندخورده است. این مرحله شش درس Communication و ۳۰۰ جمله افزود و ۹ درس قبلی را با شناسه و ترتیب نسبی حفظ کرد؛ Foundation، Survival، Everyday و Advanced تغییر نکردند. گزارش فارسی بازبینی دوره و برنامهٔ مرحله‌ای: `docs/ENGLISH-CURRICULUM-REBUILD-REPORT-FA.md`؛ گزارش جزئی Communication: `docs/COMMUNICATION-ENGLISH-50-EXAMPLES-REPORT-FA.md`. جزئیات Everyday: `docs/EVERYDAY-ENGLISH-EXPANSION-REPORT-FA.md` و Survival: `docs/ENGLISH-SURVIVAL-50-EXAMPLES-REPORT-FA.md`. پوشش مرجع ۵۰۴ واژه حفظ شده است.
 - مرور فاصله‌دار، تمرین تلفظ و Emma متنی/صوتی
+- پوش سرورسمت برای پیام‌ها، پذیرش مخاطب و ثبت‌نام کاربر جدید حتی وقتی اپ بسته است یا مدیر آفلاین است (migration `202610160001_offline_push_triggers` و ثبت توکن پوش در هر دو بیلد learner و admin)
+- کادر گفتگو با جبران پویای ارتفاع کیبورد همیشه کامل بالای کیبورد می‌نشیند (اندروید ۱۵+ edge-to-edge و iOS)
+- انیمیشن ورود: «MILO» بالا و «MULTI LANGUAGE» پایین دقیقاً هم‌عرض خط بالا؛ چیم خوش‌آمد استریوی تازه بدون تداخل و با پایان نرم
 - مخاطبان واقعی، پیام متنی و پیام صوتی خصوصی
 - ترجمه، اصلاح و پیشنهاد پاسخ خصوصی قبل از ارسال
 - تماس صوتی زنده WebRTC با TURN
