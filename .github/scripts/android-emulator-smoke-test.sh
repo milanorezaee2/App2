@@ -381,4 +381,26 @@ if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
   exit 1
 fi
 
+
+login_apk_path="MiloMultilang-Login.apk"
+if [[ -s "$login_apk_path" ]]; then
+  failed_step="installing the learner login APK"
+  adb install -r "$login_apk_path"
+  failed_step="verifying the learner login APK package"
+  adb shell pm path com.devicecontrol.milomultilang
+  adb shell am force-stop com.devicecontrol.milomultilang
+  failed_step="launching the learner login APK"
+  timeout 90s adb shell am start -W -n com.devicecontrol.milomultilang/.MainActivity
+  failed_step="allowing the learner login APK to render"
+  sleep 25
+  capture_ui
+  failed_step="verifying the learner login APK rendered"
+  if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+    echo 'Android emulator launched the learner login APK and rendered its first screen.'
+  else
+    echo 'The learner login APK did not render the registration gate or the language home.'
+    exit 1
+  fi
+fi
+
 echo 'Android emulator verified the standalone management APK and protected manager login.'
