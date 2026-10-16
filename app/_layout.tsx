@@ -7,7 +7,6 @@ import Constants from 'expo-constants';
 import { I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
-import { createAudioPlayer } from 'expo-audio';
 import { Inter_400Regular, Inter_600SemiBold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
 import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_700Bold, Vazirmatn_900Black } from '@expo-google-fonts/vazirmatn';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
@@ -124,17 +123,9 @@ export default function RootLayout() {
 
     // The React splash and the 1.65-second chime start and finish together.
     // It follows the native splash seamlessly, so there is no dark flash.
+    // No startup sound here: the welcome voice plays on the first learning screen after entry.
     startupChimePlayed = true;
-    let player: ReturnType<typeof createAudioPlayer> | null = null;
-    try {
-      player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
-      player.volume = 0.28;
-      player.play();
-    } catch {
-      // A device without playback support still receives the same visual intro.
-    }
     const finish = setTimeout(() => {
-      player?.remove();
       setIntroComplete(true);
       warmSpeech('en-US');
       setTimeout(() => warmSpeech('de-DE'), 350);
