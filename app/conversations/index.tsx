@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Bot, ChevronLeft, MessageCircle, Mic2, Plus, QrCode, ShieldCheck, Sparkles, Trash2, UserRound } from 'lucide-react-native';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
-import { deleteConversationForMe, ensureSupportConversation, listRealContacts, type RealContact } from '@/lib/conversations';
+import { deleteConversationForMe, listRealContacts, type RealContact } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
 import { isSupabaseConfigured } from '@/lib/pairing';
 import { SupabaseSetupNotice } from '@/components/SupabaseSetupNotice';
@@ -18,16 +18,6 @@ export default function ConversationsHome() {
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
 
   const configured = isSupabaseConfigured();
-  const [openingSupport, setOpeningSupport] = useState(false);
-
-  const openSupport = () => {
-    if (openingSupport) return;
-    setOpeningSupport(true);
-    ensureSupportConversation()
-      .then((conversationId) => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId, name: 'پشتیبانی Milo' } } as never))
-      .catch((cause) => setContactsError(readableSupabaseError(cause)))
-      .finally(() => setOpeningSupport(false));
-  };
 
   const confirmDelete = (contact: RealContact) => {
     Alert.alert(
@@ -93,12 +83,6 @@ export default function ConversationsHome() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {configured && (
-          <Pressable accessibilityRole="button" style={styles.inviteButton} disabled={openingSupport} onPress={openSupport}>
-            <MessageCircle size={17} color={Colors.primary[300]} />
-            <Text style={styles.addAnotherText}>{openingSupport ? 'در حال باز کردن...' : 'گفتگو با پشتیبانی Milo'}</Text>
-          </Pressable>
-        )}
         <Text style={styles.sectionLabel}>مربی همیشگی شما</Text>
         <Pressable style={styles.emmaCard} onPress={() => router.push('/conversations/emma' as never)}>
           <View style={styles.avatarWrap}>

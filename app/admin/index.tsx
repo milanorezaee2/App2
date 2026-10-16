@@ -4,18 +4,16 @@ import { useRouter, Redirect } from 'expo-router';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FEATURES } from '@/lib/features';
-import { BookOpen, Users, Ticket, LayoutDashboard, ShieldCheck, LogOut, ArrowUpLeft, Search, RefreshCw, GraduationCap, Trash2, Download, MessageCircle } from 'lucide-react-native';
+import { BookOpen, Users, Ticket, LayoutDashboard, ShieldCheck, LogOut, ArrowUpLeft, Search, RefreshCw, GraduationCap, Trash2, Download } from 'lucide-react-native';
 import { adminClient, deleteRegisteredUser, loadAdminData, demoStudents, educationError, progressMetrics, type StudentRow, type EducationInvite, type RegisteredUser } from '@/lib/educationAdmin';
-import { listRealContacts, type RealContact } from '@/lib/conversations';
 import { downloadRegisteredUsers } from '@/lib/userExport';
 import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
 import { toPersianDigits as fa } from '@/lib/format';
 
-type Tab = 'overview' | 'registered' | 'support' | 'students' | 'invites' | 'content';
+type Tab = 'overview' | 'registered' | 'students' | 'invites' | 'content';
 const tabs = [
   { id: 'overview' as Tab, title: 'نمای کلی', icon: LayoutDashboard },
   { id: 'registered' as Tab, title: 'کاربران ثبت‌شده', icon: Users },
-  { id: 'support' as Tab, title: 'پشتیبانی', icon: MessageCircle },
   { id: 'students' as Tab, title: 'زبان‌آموزان', icon: Users },
   { id: 'invites' as Tab, title: 'دعوت‌نامه‌ها', icon: Ticket },
   { id: 'content' as Tab, title: 'محتوای آموزشی', icon: BookOpen },
@@ -44,11 +42,6 @@ function EducationAdmin() {
   const visible = rows.filter(r => r.display_name.includes(search.trim()) && (filter === 'all' || r.status === filter));
   const active = rows.filter(r => r.status === 'active');
   const synced = active.filter(r => r.summary);
-  const [supportContacts, setSupportContacts] = useState<RealContact[]>([]);
-  useEffect(() => {
-    if (tab !== 'support' || mode !== 'live') return;
-    listRealContacts().then(setSupportContacts).catch(cause => setError(educationError(cause)));
-  }, [tab, mode]);
   const avg = synced.length ? Math.round(synced.reduce((n,r) => n + progressMetrics(r.summary).percent, 0) / synced.length) : 0;
 
   function confirmDeleteUser(user: RegisteredUser) {
@@ -184,17 +177,6 @@ function EducationAdmin() {
             }), true, demo)}
           </View>}
         </>}
-        {tab === 'support' && <View style={s.card}>
-          <View style={s.sectionHead}><Text style={s.cardTitle}>گفتگوی پشتیبانی</Text><Text style={s.small}>{fa(supportContacts.length)} گفتگو</Text></View>
-          <Text style={s.subtitle}>زبان‌آموزان از بخش پشتیبانی اپ زبان به شما پیام می‌دهند. هر گفتگو خصوصی و بین شما و همان زبان‌آموز است.</Text>
-          {demo && <View style={s.empty}><Text style={s.small}>در حالت نمونه گفتگوی واقعی نمایش داده نمی‌شود.</Text></View>}
-          {!demo && !supportContacts.length && <View style={s.empty}><MessageCircle size={34} color="#1769D2" /><Text style={s.cardTitle}>هنوز پیامی از زبان‌آموزان نیست</Text></View>}
-          {!demo && supportContacts.map(contact => <Pressable accessibilityRole="button" key={contact.conversationId} onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)} style={s.studentRow}>
-            <View style={[s.avatar, {backgroundColor:'#eef0ff'}]}><Text style={s.avatarText}>{contact.displayName.slice(0,1)}</Text></View>
-            <View style={{flex:1,minWidth:115}}><Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>آخرین فعالیت: {dates(contact.lastSeen)}</Text></View>
-            <ArrowUpLeft size={18} color="#1769D2" />
-          </Pressable>)}
-        </View>}
         {tab === 'invites' && <View style={s.card}>
           <Text style={s.cardTitle}>دعوت آموزشی جدید</Text><Text style={s.subtitle}>دعوت یک‌بارمصرف با اعتبار ۷ روز. این کد با کد دعوت مکالمه فرق دارد.</Text>
           <TextInput accessibilityLabel="عنوان دعوت" placeholder="مثلاً: کلاس عصر — سارا" maxLength={80} value={label} onChangeText={setLabel} style={s.input} />

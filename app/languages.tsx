@@ -1,85 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { createAudioPlayer } from 'expo-audio';
+import { useEffect, useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LifeBuoy, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
-import { ensureSupportConversation } from '@/lib/conversations';
-import { readableSupabaseError } from '@/lib/errors';
-import { isSupabaseConfigured } from '@/lib/pairing';
+import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
 import { LANGUAGES } from '@/lib/languages/catalog';
 import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
 import { SENTENCE_LESSONS } from '@/lib/courseContent';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
-
-// The welcome intro runs once per app session, on the first screen after entry.
-let welcomeIntroPlayed = false;
-
-function WelcomeIntro({ onDone }: { onDone: () => void }) {
-  const mark = useRef(new Animated.Value(0)).current;
-  const sheen = useRef(new Animated.Value(0)).current;
-  const fade = useRef(new Animated.Value(1)).current;
-  const letters = useRef(['M', 'i', 'l', 'o'].map(() => new Animated.Value(0))).current;
-
-  useEffect(() => {
-    let player: ReturnType<typeof createAudioPlayer> | null = null;
-    try {
-      player = createAudioPlayer(require('../assets/audio/welcome-voice.wav'));
-      player.volume = 1;
-      player.play();
-    } catch {
-      // Devices without audio playback still get the visual logo motion.
-    }
-    const sequence = Animated.sequence([
-      Animated.spring(mark, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }),
-      Animated.parallel([
-        Animated.timing(sheen, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.stagger(110, letters.map(value => Animated.spring(value, { toValue: 1, friction: 7, tension: 90, useNativeDriver: true }))),
-      ]),
-      Animated.delay(1000),
-      Animated.timing(fade, { toValue: 0, duration: 500, useNativeDriver: true }),
-    ]);
-    sequence.start(({ finished }) => { if (finished) onDone(); });
-    const hardStop = setTimeout(onDone, 4200);
-    return () => {
-      sequence.stop();
-      clearTimeout(hardStop);
-      try { player?.remove(); } catch { /* already released */ }
-    };
-    // Runs once on mount by design.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const markScale = mark.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
-  const sheenX = sheen.interpolate({ inputRange: [0, 1], outputRange: [-130, 130] });
-
-  return (
-    <Animated.View pointerEvents="none" style={[introStyles.root, { opacity: fade }]}>
-      <Animated.View style={{ opacity: mark, transform: [{ scale: markScale }] }}>
-        <LinearGradient colors={['#2F8BFF', '#1769D2', '#0B3E8F']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={introStyles.mark}>
-          <BookOpenCheck size={38} color="#FFFFFF" strokeWidth={2.4} />
-          <Animated.View style={[introStyles.sheen, { transform: [{ translateX: sheenX }, { rotate: '18deg' }] }]} />
-        </LinearGradient>
-      </Animated.View>
-      <View style={introStyles.wordRow}>
-        {letters.map((value, index) => (
-          <Animated.Text
-            key={index}
-            style={[introStyles.letter, {
-              opacity: value,
-              transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }],
-            }]}
-          >
-            {['M', 'i', 'l', 'o'][index]}
-          </Animated.Text>
-        ))}
-      </View>
-      <Text style={introStyles.tagline}>LANGUAGE LEARNING</Text>
-    </Animated.View>
-  );
-}
 
 const languageMeta = {
   en: { flag: '🇬🇧', code: 'EN', nativeName: 'English', tint: '#EAF2FF', border: '#CFE0FF' },
@@ -109,26 +38,11 @@ const productFeatures = [
 
 export default function LanguagesHome() {
   const router = useRouter();
-  const [showIntro, setShowIntro] = useState(() => {
-    if (welcomeIntroPlayed) return false;
-    welcomeIntroPlayed = true;
-    return true;
-  });
   const { width } = useWindowDimensions();
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
   const compact = !ready || width < 680;
   const tiny = !ready || width < 370;
-  const [openingSupport, setOpeningSupport] = useState(false);
-  const openSupport = () => {
-    if (openingSupport) return;
-    if (!isSupabaseConfigured()) { Alert.alert('پشتیبانی', 'اتصال پشتیبانی هنوز تنظیم نشده است.'); return; }
-    setOpeningSupport(true);
-    ensureSupportConversation()
-      .then((conversationId) => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId, name: 'پشتیبانی Milo' } } as never))
-      .catch((cause) => Alert.alert('پشتیبانی', readableSupabaseError(cause)))
-      .finally(() => setOpeningSupport(false));
-  };
   const languages = LANGUAGES.filter(language => (language.id === 'ru' ? FEATURES.russianCourse : !RUSSIAN_ONLY_BUILD));
 
   return (
@@ -146,9 +60,6 @@ export default function LanguagesHome() {
               </View>
             </View>
             <View style={styles.headerActions}>
-              <Pressable accessibilityRole="button" accessibilityLabel="گفتگو با پشتیبانی" disabled={openingSupport} style={styles.lockButton} onPress={openSupport}>
-                <LifeBuoy size={17} color="#1769D2" />
-              </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="تنظیم قفل برنامه" style={styles.lockButton} onPress={() => router.push('/app-lock' as never)}>
                 <LockKeyhole size={17} color="#1769D2" />
               </Pressable>
@@ -297,7 +208,6 @@ export default function LanguagesHome() {
           </View>
         </View>
       </ScrollView>
-      {showIntro && <WelcomeIntro onDone={() => setShowIntro(false)} />}
     </View>
   );
 }
@@ -393,13 +303,4 @@ const styles = StyleSheet.create({
   footer: { paddingVertical: 8, alignItems: 'center', gap: 5 },
   footerText: { fontFamily: 'Vazir', color: '#627B9B', fontSize: 11, lineHeight: 20, textAlign: 'center', writingDirection: 'rtl' },
   footerBrand: { fontFamily: 'Inter-ExtraBold', color: '#A0B2C9', fontSize: 6, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
-});
-
-const introStyles = StyleSheet.create({
-  root: { ...StyleSheet.absoluteFillObject, zIndex: 50, backgroundColor: '#F5FAFF', alignItems: 'center', justifyContent: 'center', gap: 18 },
-  mark: { width: 96, height: 96, borderRadius: 30, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', shadowColor: '#1769D2', shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
-  sheen: { position: 'absolute', top: -30, bottom: -30, width: 26, backgroundColor: 'rgba(255,255,255,0.38)' },
-  wordRow: { flexDirection: 'row', direction: 'ltr', alignItems: 'center' },
-  letter: { fontFamily: 'Inter-ExtraBold', fontSize: 40, color: '#102A56', letterSpacing: 2, writingDirection: 'ltr' },
-  tagline: { fontFamily: 'Inter-ExtraBold', fontSize: 9, color: '#6882A6', letterSpacing: 2.4, writingDirection: 'ltr' },
 });

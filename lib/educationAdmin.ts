@@ -50,7 +50,6 @@ export function educationError(error: unknown): string {
   if (/schema cache|does not exist/.test(text)) return 'راه‌اندازی پایگاه‌داده پنل هنوز کامل نیست؛ راهنمای EDUCATION-ADMIN را اجرا کنید.';
   if (/SELF_DELETE/.test(text)) return 'مدیر نمی‌تواند حساب خودش را حذف کند.';
   if (/ADMIN_ACCOUNT/.test(text)) return 'حساب مدیر از این بخش قابل حذف نیست.';
-  if (/SUPPORT_UNAVAILABLE/.test(text)) return 'حساب پشتیبانی هنوز تنظیم نشده است.';
   if (/ADMIN_REQUIRED|permission denied|row-level security/.test(text)) return 'این حساب اجازه انجام این کار را ندارد.';
   if (/CONSENT_REQUIRED/.test(text)) return 'اشتراک پیشرفت فقط با رضایت شما انجام می‌شود.';
   if (/AUTH_REQUIRED|JWT|session/i.test(text)) return 'نشست ورود معتبر نیست؛ دوباره وارد شوید.';

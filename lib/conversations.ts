@@ -99,15 +99,6 @@ export async function ensureChatIdentity(displayName = 'زبان‌آموز'): P
   return user;
 }
 
-/** One private conversation per learner with the manager. Returns the conversation id. */
-export async function ensureSupportConversation(displayName = 'زبان‌آموز'): Promise<string> {
-  await ensureChatIdentity(displayName);
-  const { data, error } = await chatDb().rpc('ensure_support_conversation', { p_display_name: displayName });
-  if (error || typeof data !== 'string') throw new Error(readableSupabaseError(error));
-  await unhideConversationLocally(data);
-  return data;
-}
-
 export async function createRealContactInvite(displayName = 'زبان‌آموز'): Promise<string> {
   await ensureChatIdentity(displayName);
   const { data, error } = await chatDb().rpc('create_contact_invite', { p_display_name: displayName });
