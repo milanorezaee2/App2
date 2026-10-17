@@ -140,29 +140,52 @@ export default function RootLayout() {
     } catch {
       // A device without playback support still receives the same visual intro.
     }
-    const finish = setTimeout(() => {
+    const finishChime = setTimeout(() => {
       player?.remove();
       setChimeComplete(true);
     }, 1650);
-    return () => clearTimeout(finish);
+    // Some Android emulators disable native animations. Keep the complete
+    // brand visible for several seconds, then release startup even if the
+    // Animated callback never fires.
+    const finishIntroFallback = setTimeout(() => {
+      player?.remove();
+      setIntroLogoComplete(true);
+      setChimeComplete(true);
+    }, 4000);
+    return () => {
+      clearTimeout(finishChime);
+      clearTimeout(finishIntroFallback);
+    };
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
     if (introComplete || !fontsLoaded || !introLogoComplete || !chimeComplete) return;
+    const finishIntro = () => {
+      setIntroComplete(true);
+      warmSpeech('en-US');
+      setTimeout(() => warmSpeech('de-DE'), 350);
+      setTimeout(() => warmSpeech('ru-RU'), 700);
+    };
     const fade = Animated.timing(introOpacity, {
       toValue: 0,
       duration: 220,
       easing: Easing.out(Easing.quad),
       useNativeDriver: true,
     });
-    fade.start(({ finished }) => {
-      if (!finished) return;
-      setIntroComplete(true);
-      warmSpeech('en-US');
-      setTimeout(() => warmSpeech('de-DE'), 350);
-      setTimeout(() => warmSpeech('ru-RU'), 700);
-    });
-    return () => fade.stop();
+    let completed = false;
+    const completeOnce = () => {
+      if (completed) return;
+      completed = true;
+      finishIntro();
+    };
+    fade.start(({ finished }) => { if (finished) completeOnce(); });
+    // Keep the native fade where supported, but never strand the app on its
+    // logo if the platform suppresses animation completion callbacks.
+    const fadeFallback = setTimeout(completeOnce, 500);
+    return () => {
+      clearTimeout(fadeFallback);
+      fade.stop();
+    };
   }, [chimeComplete, fontsLoaded, introComplete, introLogoComplete, introOpacity]);
 
   if (!fontsLoaded && !fontError) return null;
