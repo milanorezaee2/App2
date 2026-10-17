@@ -194,6 +194,15 @@ jobs:
           ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
 
+      - name: Verify phone-control services and permissions are absent
+        shell: bash
+        run: |
+          files=(MiloMultilang.apk)
+          if [[ "$EXPO_PUBLIC_RUSSIAN_ONLY" != "true" ]]; then
+            files+=(MiloMultilang-Login.apk MiloAdmin.apk)
+          fi
+          node scripts/verify-no-device-control.mjs "${files[@]}"
+
       - name: Verify all release APKs use the same signer for this build
         shell: bash
         run: |
@@ -250,7 +259,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: "MiloMultilang Android build #${{ github.run_number }}"
           body: |
-            Installable learner (no login), learner (with login) and private management Android APKs.
+            Learner (no login), learner (with login) and private management APKs. Phone pairing, remote control, accessibility control and screen sharing are removed; learning content is unchanged.
             If this run used temporary signing, uninstall the previous app before installation and repeat this for future builds; local unsynced data may be lost.
           prerelease: true
           files: |

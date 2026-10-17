@@ -7,7 +7,7 @@ import {
   createRealContactInvite,
   SUPABASE_NOT_CONFIGURED_MESSAGE,
 } from '@/lib/conversations';
-import { isSupabaseConfigured } from '@/lib/pairing';
+import { isSupabaseConfigured } from '@/lib/supabaseConfig';
 import { SupabaseSetupNotice } from '@/components/SupabaseSetupNotice';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { toPersianDigits } from '@/lib/format';

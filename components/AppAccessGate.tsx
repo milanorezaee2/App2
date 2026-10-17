@@ -3,7 +3,7 @@ import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from '
 import { ShieldX, RefreshCw } from 'lucide-react-native';
 import { MANAGEMENT_BUILD } from '@/lib/features';
 import { fetchAppAccess, loadCachedAppAccess, type AppAccessState } from '@/lib/appAccess';
-import { isSupabaseConfigured } from '@/lib/pairing';
+import { isSupabaseConfigured } from '@/lib/supabaseConfig';
 import { supabase } from '@/lib/supabase';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 

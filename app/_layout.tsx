@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Stack, usePathname } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
@@ -18,10 +18,7 @@ import { AppAccessGate } from '@/components/AppAccessGate';
 import { AppUpdateGate } from '@/components/AppUpdateGate';
 import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
 import { RegistrationGate } from '@/components/RegistrationGate';
-import { getPairingState, isOnboardingComplete } from '@/lib/storage';
-import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
-import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
 
 // Android native mirroring is disabled in withStableLayoutDirection. Persian
@@ -57,40 +54,7 @@ const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
 const IS_LEARNER_LOGIN_APP = Constants.expoConfig?.extra?.learnerLogin === true
   || process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true';
 
-function RuntimeGate() {
-  const pathname = usePathname();
-  // The multi-language learning app never mounts the legacy device runtime.
-  if (!pathname.startsWith('/agent') && !pathname.startsWith('/permissions')) return null;
-  return <CompanionRuntime />;
-}
-
-function CompanionRuntime() {
-  const pathname = usePathname();
-  const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    Promise.all([getPairingState(), isOnboardingComplete()])
-      .then(([pairing, complete]) => {
-        setDeviceId(pairing?.deviceId ?? null);
-        setEnabled(!!pairing && complete && isSupabaseConfigured());
-      })
-      .catch(() => {
-        setDeviceId(null);
-        setEnabled(false);
-      });
-  }, [pathname]);
-
-  // Runs invisibly while the user studies: heartbeat, device status and
-  // supported commands continue without exposing a complicated control UI.
-  useRealAgent(deviceId, enabled);
-  return null;
-}
-
-/**
- * Phone-2 companion only. There is no role chooser and no controller route in
- * this APK; it always boots into the companion connection screen.
- */
+/** Learner and manager APKs share the same protected application shell. */
 export default function RootLayout() {
   useFrameworkReady();
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
@@ -214,13 +178,10 @@ export default function RootLayout() {
             <AppUpdateGate>
               <AppAccessGate>
                 <RegistrationGate>
-                  {!IS_ADMIN_APP && <RuntimeGate />}
                   <ChatNotificationBridge />
                   <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
                     <Stack.Screen name="index" />
                     <Stack.Screen name="admin/index" />
-                    <Stack.Screen name="agent" />
-                    <Stack.Screen name="permissions" />
                     <Stack.Screen name="app-lock" />
                     <Stack.Screen name="lang/index" />
                     <Stack.Screen name="+not-found" />

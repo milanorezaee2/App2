@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
-import { isSupabaseConfigured } from '@/lib/pairing';
+import { isSupabaseConfigured } from '@/lib/supabaseConfig';
 import { MANAGEMENT_BUILD } from '@/lib/features';
 import { startChatNotifications } from '@/lib/chatNotifications';
 

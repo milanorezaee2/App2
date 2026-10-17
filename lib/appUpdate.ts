@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Application from 'expo-application';
 import { Platform } from 'react-native';
-import { isSupabaseConfigured } from './pairing';
+import { isSupabaseConfigured } from './supabaseConfig';
 import { supabase } from './supabase';
 
 export const RELEASE_TARGETS = [

@@ -2,7 +2,7 @@ import { FEATURES } from './features';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { isSupabaseConfigured } from './pairing';
+import { isSupabaseConfigured } from './supabaseConfig';
 import { SUPABASE_PUBLIC_ANON_KEY, SUPABASE_PUBLIC_URL } from './supabaseConfig';
 import { SENTENCE_LESSONS } from './courseContent';
 import canonical from '../assets/data/essential504.json';

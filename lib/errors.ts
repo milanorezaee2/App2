@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from './pairing';
+import { isSupabaseConfigured } from './supabaseConfig';
 
 /**
  * Shared Persian wording for the "no Supabase project configured yet" state.

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Milo MultiLanguage",
     "slug": "companion-english",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "companionenglish",
@@ -13,13 +13,22 @@
     },
     "android": {
       "package": "com.devicecontrol.companion",
-      "versionCode": 7,
+      "versionCode": 8,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECORD_AUDIO"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.BIND_ACCESSIBILITY_SERVICE",
+        "android.permission.CAMERA",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -31,6 +40,7 @@
       "expo-router",
       "./plugins/withStableLayoutDirection",
       "./plugins/withStableAndroidReleaseSigning",
+      "./plugins/withRemoveScreenCaptureService",
       "expo-font",
       [
         "expo-notifications",
@@ -73,8 +83,6 @@
         }
       ],
       "@config-plugins/react-native-webrtc",
-      "./plugins/withMediaProjectionService",
-      "./plugins/withCompanionAccessibility",
       [
         "expo-build-properties",
         {

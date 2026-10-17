@@ -14,7 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { Cloud, LockKeyhole, Mail, RefreshCw, ShieldCheck, Smartphone, UserRound, X } from 'lucide-react-native';
 import { PageNavigation } from '@/components/PageNavigation';
-import { isSupabaseConfigured } from '@/lib/pairing';
+import { isSupabaseConfigured } from '@/lib/supabaseConfig';
 import { syncPersonalLearningData } from '@/lib/personalLearningSync';
 import { supabase } from '@/lib/supabase';
 import { Typography } from '@/lib/theme';
