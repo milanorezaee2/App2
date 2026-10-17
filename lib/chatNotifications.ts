@@ -2,62 +2,101 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { RealtimeChannel, SupabaseClient, Subscription, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { ensureChatIdentity } from './conversations';
+import { MANAGEMENT_BUILD } from './features';
+import { adminClient } from './educationAdmin';
 
 export const CHAT_NOTIFICATION_CHANNEL = 'milo-chat';
+const PERMISSION_ASKED_KEY = 'milo_chat_notification_permission_asked_v1';
 
+// Foreground alerts are rendered as a quiet in-app banner by the bridge.
+// Background/quit alerts use the OS channel and the sound in the server payload.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
+    shouldShowBanner: false,
+    shouldShowList: false,
+    shouldPlaySound: false,
     shouldSetBadge: true,
   }),
 });
 
-async function scheduleChatNotification(
-  title: string,
-  body: string,
-  conversationId?: string,
-): Promise<void> {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      sound: 'default',
-      data: conversationId ? { conversationId, route: `/conversations/human/${conversationId}` } : { route: '/conversations' },
-    },
-    trigger: null,
-  });
+export type ChatNotificationOptions = { requireSession?: boolean };
+
+export async function requestChatNotificationPermissionOnce(): Promise<boolean> {
+  if (Platform.OS === 'web' || !Device.isDevice) return false;
+  const current = await Notifications.getPermissionsAsync();
+  if (current.granted) return true;
+  if (current.canAskAgain === false) return false;
+
+  const alreadyAsked = await AsyncStorage.getItem(PERMISSION_ASKED_KEY);
+  if (alreadyAsked === 'true') return false;
+  await AsyncStorage.setItem(PERMISSION_ASKED_KEY, 'true');
+  const requested = await Notifications.requestPermissionsAsync();
+  return requested.granted;
 }
 
-async function registerPushToken(userId: string): Promise<void> {
-  if (!Device.isDevice || Platform.OS === 'web') return;
+function notificationClient(): SupabaseClient {
+  return MANAGEMENT_BUILD ? adminClient() : supabase;
+}
+
+async function registerPushToken(client: SupabaseClient, userId: string): Promise<boolean> {
+  if (!Device.isDevice || Platform.OS === 'web') return false;
   try {
     const projectId = Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
-    const token = (await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined)).data;
-    if (!token) return;
-    await supabase.from('chat_push_tokens').upsert({
+    if (!projectId) return false;
+    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    if (!token) return false;
+    const { error } = await client.from('chat_push_tokens').upsert({
       user_id: userId,
       expo_push_token: token,
       platform: Platform.OS,
       device_name: Device.deviceName ?? null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,expo_push_token' });
+    return !error;
   } catch {
-    // Realtime/local alerts remain active if this build has no EAS project id yet.
+    return false;
   }
 }
 
-export async function startChatNotifications(): Promise<() => Promise<void>> {
+async function resolveNotificationUser(client: SupabaseClient, requireSession: boolean): Promise<User | null> {
+  const { data } = await client.auth.getSession();
+  if (data.session?.user) return data.session.user;
+  if (requireSession || MANAGEMENT_BUILD) return null;
+  return ensureChatIdentity();
+}
+
+async function scheduleQuietFallback(
+  title: string,
+  body: string,
+  eventId: string,
+  conversationId?: string,
+): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      data: {
+        eventId,
+        ...(conversationId ? { conversationId, route: `/conversations/human/${conversationId}` } : { route: '/conversations' }),
+      },
+    },
+    trigger: null,
+  });
+}
+
+export async function startChatNotifications(
+  options: ChatNotificationOptions = {},
+): Promise<() => Promise<void>> {
   if (Platform.OS === 'web' || !Device.isDevice) return async () => undefined;
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHAT_NOTIFICATION_CHANNEL, {
       name: 'پیام‌ها و درخواست‌های چت',
-      description: 'پیام متنی، پیام صوتی و درخواست مخاطب',
+      description: 'پیام‌ها و درخواست‌های پشتیبانی',
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 180, 100, 180],
       lightColor: '#2878DE',
@@ -66,45 +105,82 @@ export async function startChatNotifications(): Promise<() => Promise<void>> {
       showBadge: true,
     });
   }
+  if (!(await requestChatNotificationPermissionOnce())) return async () => undefined;
 
-  const existing = await Notifications.getPermissionsAsync();
-  const permission = existing.granted ? existing : await Notifications.requestPermissionsAsync();
-  if (!permission.granted) return async () => undefined;
+  const client = notificationClient();
+  const channels: RealtimeChannel[] = [];
+  const authSubscriptions: Subscription[] = [];
+  let activeUserId: string | null = null;
+  let pushCoversThisDevice = false;
+  let stopped = false;
 
-  const user = await ensureChatIdentity();
-  await registerPushToken(user.id);
+  const clearChannels = async () => {
+    const oldChannels = channels.splice(0);
+    await Promise.all(oldChannels.map(async channel => {
+      try { await client.removeChannel(channel); } catch { /* cleanup is best effort */ }
+    }));
+  };
 
-  const messageChannel = supabase
-    .channel(`chat-notifications:messages:${user.id}`)
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-      const row = payload.new as { sender_id?: string; conversation_id?: string; message_type?: string; body?: string | null };
-      if (!row.conversation_id || row.sender_id === user.id) return;
-      const voice = row.message_type === 'voice';
-      void scheduleChatNotification(
-        voice ? 'پیام صوتی جدید' : 'پیام جدید',
-        voice ? 'یک پیام صوتی جدید دریافت کردید.' : (row.body?.trim().slice(0, 120) || 'یک پیام جدید دریافت کردید.'),
-        row.conversation_id,
-      );
-    })
-    .subscribe();
+  const activate = async () => {
+    if (stopped) return;
+    const user = await resolveNotificationUser(client, options.requireSession ?? false);
+    if (stopped) return;
+    if (!user) {
+      activeUserId = null;
+      pushCoversThisDevice = false;
+      await clearChannels();
+      return;
+    }
+    if (activeUserId === user.id) return;
+    await clearChannels();
+    activeUserId = user.id;
+    pushCoversThisDevice = await registerPushToken(client, user.id);
 
-  const contactChannel = supabase
-    .channel(`chat-notifications:contacts:${user.id}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'learning_contacts', filter: `user_id=eq.${user.id}` },
-      payload => {
+    const messageChannel = client
+      .channel(`chat-notifications:messages:${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        const row = payload.new as {
+          id?: string; sender_id?: string; conversation_id?: string; message_type?: string;
+        };
+        if (!row.id || !row.conversation_id || row.sender_id === user.id || pushCoversThisDevice) return;
+        void scheduleQuietFallback(
+          row.message_type === 'voice' ? 'پیام صوتی تازه' : 'پیام تازه',
+          'برای دیدن پیام، گفتگو را باز کنید.',
+          `message:${row.id}:${user.id}`,
+          row.conversation_id,
+        );
+      })
+      .subscribe();
+    channels.push(messageChannel);
+
+    const contactChannel = client
+      .channel(`chat-notifications:contacts:${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'learning_contacts', filter: `user_id=eq.${user.id}`,
+      }, payload => {
         const row = payload.new as { conversation_id?: string };
-        void scheduleChatNotification('درخواست مخاطب تأیید شد', 'یک گفتگوی خصوصی جدید برای شما فعال شد.', row.conversation_id);
-      },
-    )
-    .subscribe();
+        if (!row.conversation_id || pushCoversThisDevice) return;
+        const eventId = MANAGEMENT_BUILD
+          ? `support-request:${row.conversation_id}:${user.id}`
+          : `contact:${row.conversation_id}:${user.id}`;
+        void scheduleQuietFallback(
+          MANAGEMENT_BUILD ? 'درخواست چت تازه' : 'گفتگوی تازه',
+          MANAGEMENT_BUILD ? 'یک زبان‌آموز درخواست پشتیبانی دارد.' : 'یک گفتگوی تازه برای شما فعال شد.',
+          eventId,
+          row.conversation_id,
+        );
+      })
+      .subscribe();
+    channels.push(contactChannel);
+  };
+
+  const authChange = client.auth.onAuthStateChange(() => { void activate(); }).data.subscription;
+  authSubscriptions.push(authChange);
+  await activate();
 
   return async () => {
-    await Promise.all([removeChannel(messageChannel), removeChannel(contactChannel)]);
+    stopped = true;
+    for (const subscription of authSubscriptions) subscription.unsubscribe();
+    await clearChannels();
   };
-}
-
-async function removeChannel(channel: RealtimeChannel): Promise<void> {
-  try { await supabase.removeChannel(channel); } catch { /* cleanup is best effort */ }
 }
