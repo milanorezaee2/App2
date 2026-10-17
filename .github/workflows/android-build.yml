@@ -7,6 +7,10 @@ on:
         description: 'Build only the Russian learner APK (MiloRussian.apk) and publish it as a release'
         type: boolean
         default: false
+      publish_release:
+        description: 'Publish the built APK files to a GitHub Release (requires stable signing secrets)'
+        type: boolean
+        default: false
   push:
     branches:
       - arena/b2da2695-app1
@@ -104,6 +108,14 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
+      - name: Configure stable learner APK signing
+        run: node scripts/configure-android-release-signing.mjs
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+
       - name: Build standalone release APK
         working-directory: android
         run: |
@@ -131,6 +143,7 @@ jobs:
         run: |
           rm -rf android
           MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true npx expo prebuild --platform android --no-install
+          node scripts/configure-android-release-signing.mjs
           cd android
           chmod +x gradlew
           MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true ./gradlew assembleRelease --no-daemon
@@ -144,6 +157,11 @@ jobs:
               raise SystemExit('Management APK structure validation failed.')
           print('Standalone private management APK verified.')
           PY
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
 
       - name: Generate and build the learner login APK
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
@@ -151,6 +169,7 @@ jobs:
         run: |
           rm -rf android
           EXPO_PUBLIC_LEARNER_LOGIN=true npx expo prebuild --platform android --no-install
+          node scripts/configure-android-release-signing.mjs
           cd android
           chmod +x gradlew
           EXPO_PUBLIC_LEARNER_LOGIN=true ./gradlew assembleRelease --no-daemon
@@ -164,6 +183,29 @@ jobs:
               raise SystemExit('Login APK structure validation failed.')
           print('Learner login APK verified.')
           PY
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+
+      - name: Verify all release APKs use the same stable signer
+        shell: bash
+        run: |
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          files=(MiloMultilang.apk)
+          if [[ "$EXPO_PUBLIC_RUSSIAN_ONLY" != "true" ]]; then
+            files+=(MiloMultilang-Login.apk MiloAdmin.apk)
+          fi
+          expected=""
+          for apk in "${files[@]}"; do
+            "$APKSIGNER" verify "$apk"
+            fingerprint="$("$APKSIGNER" verify --print-certs "$apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print $2; exit}')"
+            [[ -n "$fingerprint" ]] || { echo "Signer fingerprint missing for $apk"; exit 1; }
+            if [[ -z "$expected" ]]; then expected="$fingerprint"; fi
+            [[ "$fingerprint" == "$expected" ]] || { echo "APK signing identities differ; refusing to publish."; exit 1; }
+          done
+          echo "Verified ${#files[@]} APK(s) with the same stable signing certificate."
 
       - name: Smoke-test both APKs on Android emulator
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
@@ -192,11 +234,11 @@ jobs:
           retention-days: 3
 
       - name: Confirm both release APKs are ready
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' && ((github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]')) || (github.event_name == 'workflow_dispatch' && inputs.publish_release)) }}
         run: test -s MiloMultilang.apk && test -s MiloAdmin.apk && (test '${{ env.EXPO_PUBLIC_RUSSIAN_ONLY }}' = 'true' || test -s MiloMultilang-Login.apk)
 
       - name: Publish direct APK downloads
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' && ((github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]')) || (github.event_name == 'workflow_dispatch' && inputs.publish_release)) }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: milomultilang-android-${{ github.run_number }}

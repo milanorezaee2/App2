@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
-import { I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Easing, I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
@@ -14,6 +14,8 @@ import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_700Bold, Vazirmatn
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';
+import { AppAccessGate } from '@/components/AppAccessGate';
+import { AppUpdateGate } from '@/components/AppUpdateGate';
 import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
 import { RegistrationGate } from '@/components/RegistrationGate';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
@@ -90,6 +92,9 @@ function CompanionRuntime() {
 export default function RootLayout() {
   useFrameworkReady();
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
+  const [introLogoComplete, setIntroLogoComplete] = useState(Platform.OS === 'web');
+  const [chimeComplete, setChimeComplete] = useState(Platform.OS === 'web');
+  const introOpacity = useRef(new Animated.Value(1)).current;
   const [fontsLoaded, fontError] = useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
     // offline and independent of each Android manufacturer's system fonts.
@@ -119,12 +124,13 @@ export default function RootLayout() {
       return;
     }
     if (startupChimePlayed) {
-      setIntroComplete(true);
+      setIntroLogoComplete(true);
+      setChimeComplete(true);
       return;
     }
 
-    // The React splash and the 1.65-second chime start and finish together.
-    // It follows the native splash seamlessly, so there is no dark flash.
+    // Keep the complete brand visible until both its animation and the short
+    // startup chime finish; the logo is never replaced mid-word.
     startupChimePlayed = true;
     let player: ReturnType<typeof createAudioPlayer> | null = null;
     try {
@@ -136,21 +142,37 @@ export default function RootLayout() {
     }
     const finish = setTimeout(() => {
       player?.remove();
+      setChimeComplete(true);
+    }, 1650);
+    return () => clearTimeout(finish);
+  }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    if (introComplete || !fontsLoaded || !introLogoComplete || !chimeComplete) return;
+    const fade = Animated.timing(introOpacity, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    });
+    fade.start(({ finished }) => {
+      if (!finished) return;
       setIntroComplete(true);
       warmSpeech('en-US');
       setTimeout(() => warmSpeech('de-DE'), 350);
-    }, 2200);
-    return () => clearTimeout(finish);
-  }, [fontsLoaded, fontError]);
+      setTimeout(() => warmSpeech('ru-RU'), 700);
+    });
+    return () => fade.stop();
+  }, [chimeComplete, fontsLoaded, introComplete, introLogoComplete, introOpacity]);
 
   if (!fontsLoaded && !fontError) return null;
   if (!introComplete) {
     return (
-      <View style={introStyles.root}>
-        <MiloLogoMotion size="intro" />
+      <Animated.View style={[introStyles.root, { opacity: introOpacity }]}>
+        <MiloLogoMotion size="intro" onDone={() => setIntroLogoComplete(true)} />
         <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
         <StatusBar style="dark" />
-      </View>
+      </Animated.View>
     );
   }
 
@@ -160,19 +182,23 @@ export default function RootLayout() {
       <ErrorBoundary>
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <AppLockGate>
-            <RegistrationGate>
-              {!IS_ADMIN_APP && <RuntimeGate />}
-              <ChatNotificationBridge />
-              <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-                <Stack.Screen name="index" />
-                <Stack.Screen name="admin/index" />
-                <Stack.Screen name="agent" />
-                <Stack.Screen name="permissions" />
-                <Stack.Screen name="app-lock" />
-                <Stack.Screen name="lang/index" />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-            </RegistrationGate>
+            <AppUpdateGate>
+              <AppAccessGate>
+                <RegistrationGate>
+                  {!IS_ADMIN_APP && <RuntimeGate />}
+                  <ChatNotificationBridge />
+                  <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="admin/index" />
+                    <Stack.Screen name="agent" />
+                    <Stack.Screen name="permissions" />
+                    <Stack.Screen name="app-lock" />
+                    <Stack.Screen name="lang/index" />
+                    <Stack.Screen name="+not-found" />
+                  </Stack>
+                </RegistrationGate>
+              </AppAccessGate>
+            </AppUpdateGate>
           </AppLockGate>
           <StatusBar style="dark" />
         </SafeAreaView>
