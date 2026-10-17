@@ -25,6 +25,7 @@ const build = () => {
       name: 'Milo MultiLanguage Login',
       android: { ...base.android, package: 'com.devicecontrol.milomultilang' },
       ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.milomultilang' },
+      extra: { ...base.extra, learnerLogin: true },
     };
   }
   if (!admin) return base;

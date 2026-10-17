@@ -54,6 +54,8 @@ SplashScreen.preventAutoHideAsync();
 let startupChimePlayed = false;
 const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
   || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
+const IS_LEARNER_LOGIN_APP = Constants.expoConfig?.extra?.learnerLogin === true
+  || process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true';
 
 function RuntimeGate() {
   const pathname = usePathname();
@@ -92,7 +94,9 @@ function CompanionRuntime() {
 export default function RootLayout() {
   useFrameworkReady();
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
-  const [introLogoComplete, setIntroLogoComplete] = useState(Platform.OS === 'web');
+  // The login variant keeps the full brand static during startup. This avoids
+  // animation callback stalls on emulator while still displaying the full name.
+  const [introLogoComplete, setIntroLogoComplete] = useState(Platform.OS === 'web' || IS_LEARNER_LOGIN_APP);
   const [chimeComplete, setChimeComplete] = useState(Platform.OS === 'web');
   const introOpacity = useRef(new Animated.Value(1)).current;
   const [fontsLoaded, fontError] = useFonts({
@@ -123,22 +127,24 @@ export default function RootLayout() {
       setIntroComplete(true);
       return;
     }
-    if (startupChimePlayed) {
+    if (startupChimePlayed && !IS_LEARNER_LOGIN_APP) {
       setIntroLogoComplete(true);
       setChimeComplete(true);
       return;
     }
 
-    // Keep the complete brand visible until both its animation and the short
-    // startup chime finish; the logo is never replaced mid-word.
-    startupChimePlayed = true;
+    // Keep the complete brand visible until the short intro interval finishes;
+    // the login build uses a static wordmark instead of animation callbacks.
     let player: ReturnType<typeof createAudioPlayer> | null = null;
-    try {
-      player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
-      player.volume = 0.28;
-      player.play();
-    } catch {
-      // A device without playback support still receives the same visual intro.
+    if (!startupChimePlayed) {
+      startupChimePlayed = true;
+      try {
+        player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
+        player.volume = 0.28;
+        player.play();
+      } catch {
+        // A device without playback support still receives the same visual intro.
+      }
     }
     const finishChime = setTimeout(() => {
       player?.remove();
@@ -192,7 +198,7 @@ export default function RootLayout() {
   if (!introComplete) {
     return (
       <Animated.View style={[introStyles.root, { opacity: introOpacity }]}>
-        <MiloLogoMotion size="intro" onDone={() => setIntroLogoComplete(true)} />
+        <MiloLogoMotion size="intro" play={!IS_LEARNER_LOGIN_APP} onDone={() => setIntroLogoComplete(true)} />
         <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
         <StatusBar style="dark" />
       </Animated.View>
