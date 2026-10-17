@@ -84,13 +84,27 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (!fontsLoaded && !fontError) return;
-    void SplashScreen.hideAsync();
-
     if (Platform.OS === 'web') {
+      void SplashScreen.hideAsync();
       setIntroComplete(true);
       return;
     }
+
+    // The management APK must not depend on font loading, audio playback, or
+    // native animation callbacks to leave its startup screen. Render a static
+    // brand briefly, then let the normal app shell open with system fonts if
+    // custom fonts are still loading.
+    if (IS_ADMIN_APP) {
+      void SplashScreen.hideAsync();
+      const finishAdminIntro = setTimeout(() => {
+        setIntroLogoComplete(true);
+        setChimeComplete(true);
+      }, 700);
+      return () => clearTimeout(finishAdminIntro);
+    }
+
+    if (!fontsLoaded && !fontError) return;
+    void SplashScreen.hideAsync();
     if (startupChimePlayed && !IS_LEARNER_LOGIN_APP) {
       setIntroLogoComplete(true);
       setChimeComplete(true);
@@ -129,7 +143,7 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    if (introComplete || !fontsLoaded || !introLogoComplete || !chimeComplete) return;
+    if (introComplete || (!fontsLoaded && !fontError && !IS_ADMIN_APP) || !introLogoComplete || !chimeComplete) return;
     const finishIntro = () => {
       setIntroComplete(true);
       warmSpeech('en-US');
@@ -156,13 +170,13 @@ export default function RootLayout() {
       clearTimeout(fadeFallback);
       fade.stop();
     };
-  }, [chimeComplete, fontsLoaded, introComplete, introLogoComplete, introOpacity]);
+  }, [chimeComplete, fontError, fontsLoaded, introComplete, introLogoComplete, introOpacity]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!fontsLoaded && !fontError && !IS_ADMIN_APP) return null;
   if (!introComplete) {
     return (
       <Animated.View style={[introStyles.root, { opacity: introOpacity }]}>
-        <MiloLogoMotion size="intro" play={!IS_LEARNER_LOGIN_APP} onDone={() => setIntroLogoComplete(true)} />
+        <MiloLogoMotion size="intro" play={!IS_LEARNER_LOGIN_APP && !IS_ADMIN_APP} onDone={() => setIntroLogoComplete(true)} />
         <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
         <StatusBar style="dark" />
       </Animated.View>
