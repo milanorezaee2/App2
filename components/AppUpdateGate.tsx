@@ -87,7 +87,7 @@ export function AppUpdateGate({ children }: { children: ReactNode }) {
             <RefreshCw size={16} color={Colors.primary[300]} />
             <Text style={styles.retryText}>بررسی دوباره بعد از نصب</Text>
           </Pressable>
-          <Text style={styles.systemNote}>Android برای نصب APK اجازهٔ کاربر را می‌خواهد. فایل را دانلود و نصب کنید؛ سپس برنامه را دوباره باز کنید.</Text>
+          <Text style={styles.systemNote}>Android برای نصب APK اجازهٔ کاربر را می‌خواهد. اگر کلید این ساخت موقت باشد، پیش از نصب نسخهٔ تازه باید برنامهٔ قبلی را حذف کنید؛ ممکن است دادهٔ محلی پاک شود.</Text>
           {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
           {!checked && <ActivityIndicator color={Colors.primary[400]} />}
         </View>

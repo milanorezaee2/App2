@@ -7,8 +7,12 @@ on:
         description: 'Build only the Russian learner APK (MiloRussian.apk) and publish it as a release'
         type: boolean
         default: false
+      temporary_signing:
+        description: 'Use a one-run signing key; each future release must be reinstalled (no signing secrets needed)'
+        type: boolean
+        default: true
       publish_release:
-        description: 'Publish the built APK files to a GitHub Release (requires stable signing secrets)'
+        description: 'Publish the built APK files to a GitHub Release'
         type: boolean
         default: false
   push:
@@ -34,6 +38,7 @@ jobs:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
       EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+      ANDROID_TEMPORARY_SIGNING: ${{ github.event_name == 'workflow_dispatch' && inputs.temporary_signing && 'true' || 'false' }}
       EXPO_PUBLIC_RUSSIAN_ONLY: ${{ ((github.event_name == 'workflow_dispatch' && inputs.russian_only) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[russian-apk]'))) && 'true' || 'false' }}
     steps:
       - name: Check out repository
@@ -108,7 +113,7 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Configure stable learner APK signing
+      - name: Configure Android release signing
         run: node scripts/configure-android-release-signing.mjs
         env:
           ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
@@ -189,7 +194,7 @@ jobs:
           ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
 
-      - name: Verify all release APKs use the same stable signer
+      - name: Verify all release APKs use the same signer for this build
         shell: bash
         run: |
           APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
@@ -244,7 +249,9 @@ jobs:
           tag_name: milomultilang-android-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           name: "MiloMultilang Android build #${{ github.run_number }}"
-          body: Installable learner (no login), learner (with login) and private management Android APKs. All are signed for sideloading.
+          body: |
+            Installable learner (no login), learner (with login) and private management Android APKs.
+            If this run used temporary signing, uninstall the previous app before installation and repeat this for future builds; local unsynced data may be lost.
           prerelease: true
           files: |
             MiloMultilang.apk
@@ -267,7 +274,7 @@ jobs:
           tag_name: milo-russian-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           name: "Milo Russian APK #${{ github.run_number }}"
-          body: "Russian-only learner APK (Milo Russian). Sideload on Android."
+          body: "Russian-only learner APK (Milo Russian). If signed with a temporary key, uninstall the previous app before installation; local unsynced data may be lost."
           prerelease: true
           files: MiloRussian.apk
           fail_on_unmatched_files: true

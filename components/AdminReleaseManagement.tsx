@@ -98,7 +98,7 @@ export function AdminReleaseManagement({ demo }: { demo: boolean }) {
         <ShieldAlert size={20} color="#9A5A09" />
         <Text style={styles.infoText}>ابتدا APK امضاشده و منتشرشده را بسازید. بعد لینک مستقیم همان فایل و نسخهٔ داخل APK را ثبت کنید. فعال‌کردن «اجباری» صفحه‌های اپ را تا نصب نسخهٔ حداقل قفل می‌کند.</Text>
       </View>
-      <Text style={styles.androidNote}>Android نصب بی‌صدا را اجازه نمی‌دهد؛ کاربر باید نصب را در پنجرهٔ سیستمی تأیید کند. APK جدید نیز باید با کلید امضای پایدار همین برنامه ساخته شود.</Text>
+      <Text style={styles.androidNote}>Android نصب بی‌صدا را اجازه نمی‌دهد؛ کاربر باید نصب را در پنجرهٔ سیستمی تأیید کند. اگر APK با کلید موقت ساخته شده باشد، برای نصب هر نسخهٔ تازه باید نسخهٔ قبلی حذف شود و دادهٔ محلی ممکن است پاک شود.</Text>
       {demo && <Text style={styles.demo}>در پیش‌نمایش، تنظیمات واقعی ذخیره نمی‌شوند.</Text>}
       {loading && <ActivityIndicator color="#1769D2" />}
       {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
