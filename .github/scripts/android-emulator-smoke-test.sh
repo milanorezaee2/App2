@@ -395,9 +395,24 @@ if [[ -s "$login_apk_path" ]]; then
   sleep 25
   capture_ui
   failed_step="verifying the learner login APK rendered"
-  if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'هر روز، یک قدم' "$ui_file"; then
-    echo 'Android emulator launched the learner login APK and rendered its first screen.'
-  else
+  # Same tolerance as the management check above: on a loaded hosted emulator the
+  # accessibility tree can still be empty while the first screen is animating, so
+  # re-dump before deciding the login variant failed to render.
+  login_rendered=false
+  for login_attempt in 1 2 3; do
+    if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+      login_rendered=true
+      echo 'Android emulator launched the learner login APK and rendered its first screen.'
+      break
+    fi
+    if [[ "$login_attempt" == 3 ]]; then
+      break
+    fi
+    echo 'Learner login accessibility tree is not ready; waiting once more.'
+    sleep 20
+    capture_ui
+  done
+  if [[ "$login_rendered" != true ]]; then
     echo 'The learner login APK did not render the registration gate or the language home.'
     exit 1
   fi

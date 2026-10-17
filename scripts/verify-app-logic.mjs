@@ -81,7 +81,7 @@ async function bundle(entry, env = {}) {
               'export const useFonts = () => [true, null];',
               'export const SplashScreen = { preventAutoHideAsync() {}, hideAsync() {} };',
             ].join('\n'),
-            namespace: 'noop',
+            loader: 'js',
           }));
         },
       },
