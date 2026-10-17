@@ -1,8 +1,370 @@
--- Dashboard SQL Editor copy/paste version of migration 202610170001.
+-- Dashboard SQL Editor copy/paste package for chat/support push notifications.
+-- First run the existing base schema in supabase/SETUP-COPY-PASTE-ONCE.sql.
+-- This file then applies the current education-admin, token, profile, support
+-- chat, and offline queue migrations in dependency order.
 -- Before Run: choose a unique long random value, uncomment the vault.create_secret
--- statement below, and replace its placeholder. Use the same value for
--- CHAT_WEBHOOK_SECRET in Supabase Edge Function Secrets. Never commit that value.
+-- statement in migration 202610170001 below, and replace its placeholder. Use
+-- the same value for CHAT_WEBHOOK_SECRET in Supabase Edge Function Secrets.
+-- Never commit an actual secret to the repository.
 
+
+-- ================= COPY FROM supabase/migrations/202610070001_education_admin.sql =================
+-- Educational management only. No device, message, or contact policies are changed.
+-- Prerequisite: learning_progress (SETUP-PRODUCTION.sql).
+BEGIN;
+CREATE TABLE IF NOT EXISTS public.education_admins (
+  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name text NOT NULL CHECK (length(btrim(display_name)) BETWEEN 1 AND 80)
+);
+ALTER TABLE public.education_admins ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.education_admins FROM anon, authenticated;
+GRANT SELECT ON public.education_admins TO authenticated;
+DROP POLICY IF EXISTS education_admin_self ON public.education_admins;
+CREATE POLICY education_admin_self ON public.education_admins FOR SELECT TO authenticated
+USING (user_id = auth.uid());
+
+CREATE OR REPLACE FUNCTION public.is_education_admin()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+ SELECT EXISTS (SELECT 1 FROM public.education_admins WHERE user_id = auth.uid());
+$$;
+REVOKE ALL ON FUNCTION public.is_education_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_education_admin() TO authenticated;
+
+CREATE TABLE IF NOT EXISTS public.education_invites (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ admin_id uuid NOT NULL DEFAULT auth.uid() REFERENCES public.education_admins(user_id) ON DELETE CASCADE,
+ label text NOT NULL CHECK (length(btrim(label)) BETWEEN 1 AND 80),
+ code uuid NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+ expires_at timestamptz NOT NULL DEFAULT (now() + interval '7 days'),
+ claimed_at timestamptz,
+ created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.education_invites ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.education_invites FROM anon, authenticated;
+GRANT SELECT, DELETE ON public.education_invites TO authenticated;
+GRANT INSERT (label) ON public.education_invites TO authenticated;
+DROP POLICY IF EXISTS education_invites_owner ON public.education_invites;
+CREATE POLICY education_invites_owner ON public.education_invites FOR ALL TO authenticated
+USING (admin_id = auth.uid() AND public.is_education_admin())
+WITH CHECK (admin_id = auth.uid() AND public.is_education_admin());
+
+CREATE TABLE IF NOT EXISTS public.education_enrollments (
+ admin_id uuid NOT NULL REFERENCES public.education_admins(user_id) ON DELETE CASCADE,
+ student_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+ display_name text NOT NULL CHECK (length(btrim(display_name)) BETWEEN 1 AND 80),
+ status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused')),
+ consent_version text NOT NULL DEFAULT 'education-v1',
+ consent_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY (admin_id, student_id),
+ CHECK (admin_id <> student_id)
+);
+ALTER TABLE public.education_enrollments ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.education_enrollments FROM anon, authenticated;
+GRANT SELECT, DELETE ON public.education_enrollments TO authenticated;
+GRANT UPDATE (status) ON public.education_enrollments TO authenticated;
+DROP POLICY IF EXISTS education_enrollment_read ON public.education_enrollments;
+CREATE POLICY education_enrollment_read ON public.education_enrollments FOR SELECT TO authenticated
+USING (student_id = auth.uid() OR (admin_id = auth.uid() AND public.is_education_admin()));
+DROP POLICY IF EXISTS education_enrollment_update ON public.education_enrollments;
+CREATE POLICY education_enrollment_update ON public.education_enrollments FOR UPDATE TO authenticated
+USING (admin_id = auth.uid() AND public.is_education_admin())
+WITH CHECK (admin_id = auth.uid() AND public.is_education_admin());
+DROP POLICY IF EXISTS education_enrollment_delete ON public.education_enrollments;
+CREATE POLICY education_enrollment_delete ON public.education_enrollments FOR DELETE TO authenticated
+USING (student_id = auth.uid() OR (admin_id = auth.uid() AND public.is_education_admin()));
+
+-- Allows the learner to see the manager's name BEFORE consenting. No roster is exposed.
+CREATE OR REPLACE FUNCTION public.preview_education_invite(p_code uuid)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE manager_name text;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'AUTH_REQUIRED'; END IF;
+ SELECT a.display_name INTO manager_name FROM public.education_invites i
+ JOIN public.education_admins a ON a.user_id = i.admin_id
+ WHERE i.code = p_code AND i.claimed_at IS NULL AND i.expires_at > now();
+ IF manager_name IS NULL THEN RAISE EXCEPTION 'INVITE_INVALID'; END IF;
+ RETURN manager_name;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.accept_education_invite(p_code uuid, p_name text, p_consent boolean)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE invitation public.education_invites;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'AUTH_REQUIRED'; END IF;
+ IF p_consent IS DISTINCT FROM true THEN RAISE EXCEPTION 'CONSENT_REQUIRED'; END IF;
+ IF p_name IS NULL OR length(btrim(p_name)) NOT BETWEEN 1 AND 80 THEN RAISE EXCEPTION 'NAME_INVALID'; END IF;
+ SELECT * INTO invitation FROM public.education_invites WHERE code = p_code FOR UPDATE;
+ IF NOT FOUND OR invitation.claimed_at IS NOT NULL OR invitation.expires_at <= now() THEN RAISE EXCEPTION 'INVITE_INVALID'; END IF;
+ IF invitation.admin_id = auth.uid() THEN RAISE EXCEPTION 'SELF_INVITE'; END IF;
+ INSERT INTO public.education_enrollments(admin_id,student_id,display_name)
+ VALUES (invitation.admin_id,auth.uid(),btrim(p_name));
+ UPDATE public.education_invites SET claimed_at = now() WHERE id = invitation.id;
+END;
+$$;
+
+-- Only a narrow educational summary; never grants admins access to whole progress rows,
+-- private conversations, profiles, device tables, or other managers' students.
+CREATE OR REPLACE FUNCTION public.education_roster()
+RETURNS TABLE(student_id uuid, display_name text, status text, consent_at timestamptz, synced_at timestamptz, summary jsonb)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+ IF NOT public.is_education_admin() THEN RAISE EXCEPTION 'ADMIN_REQUIRED'; END IF;
+ RETURN QUERY SELECT e.student_id,e.display_name,e.status,e.consent_at,
+ CASE WHEN e.status = 'active' THEN p.updated_at END,
+ CASE WHEN e.status = 'active' AND p.user_id IS NOT NULL THEN jsonb_build_object(
+ 'completedLessonIds',p.progress->'completedLessonIds',
+ 'learnedEssential504Words',p.progress->'learnedEssential504Words',
+ 'totalMinutes',p.progress->'totalMinutes',
+ 'currentStreak',p.progress->'currentStreak') END
+ FROM public.education_enrollments e LEFT JOIN public.learning_progress p ON p.user_id = e.student_id
+ WHERE e.admin_id = auth.uid() ORDER BY e.consent_at DESC;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.preview_education_invite(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.accept_education_invite(uuid,text,boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.education_roster() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.preview_education_invite(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.accept_education_invite(uuid,text,boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.education_roster() TO authenticated;
+COMMIT;
+
+-- ================= COPY FROM supabase/migrations/202610070002_education_disabled_default.sql =================
+-- Default-off switch for the educational admin backend.
+-- Does not disable students' ability to withdraw previous consent.
+BEGIN;
+CREATE TABLE IF NOT EXISTS public.education_feature_settings (
+ id boolean PRIMARY KEY DEFAULT true CHECK (id),
+ management_enabled boolean NOT NULL DEFAULT false
+);
+ALTER TABLE public.education_feature_settings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.education_feature_settings FROM PUBLIC, anon, authenticated;
+INSERT INTO public.education_feature_settings(id,management_enabled) VALUES (true,false)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION public.education_management_enabled()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+ SELECT COALESCE((SELECT management_enabled FROM public.education_feature_settings WHERE id),false);
+$$;
+REVOKE ALL ON FUNCTION public.education_management_enabled() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.education_management_enabled() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.is_education_admin()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
+ SELECT public.education_management_enabled() AND EXISTS (
+ SELECT 1 FROM public.education_admins WHERE user_id = auth.uid());
+$$;
+REVOKE ALL ON FUNCTION public.is_education_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_education_admin() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.preview_education_invite(p_code uuid)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE manager_name text;
+BEGIN
+ IF NOT public.education_management_enabled() THEN RAISE EXCEPTION 'EDUCATION_DISABLED'; END IF;
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'AUTH_REQUIRED'; END IF;
+ SELECT a.display_name INTO manager_name FROM public.education_invites i
+ JOIN public.education_admins a ON a.user_id = i.admin_id
+ WHERE i.code = p_code AND i.claimed_at IS NULL AND i.expires_at > now();
+ IF manager_name IS NULL THEN RAISE EXCEPTION 'INVITE_INVALID'; END IF;
+ RETURN manager_name;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.accept_education_invite(p_code uuid, p_name text, p_consent boolean)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE invitation public.education_invites;
+BEGIN
+ IF NOT public.education_management_enabled() THEN RAISE EXCEPTION 'EDUCATION_DISABLED'; END IF;
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'AUTH_REQUIRED'; END IF;
+ IF p_consent IS DISTINCT FROM true THEN RAISE EXCEPTION 'CONSENT_REQUIRED'; END IF;
+ IF p_name IS NULL OR length(btrim(p_name)) NOT BETWEEN 1 AND 80 THEN RAISE EXCEPTION 'NAME_INVALID'; END IF;
+ SELECT * INTO invitation FROM public.education_invites WHERE code = p_code FOR UPDATE;
+ IF NOT FOUND OR invitation.claimed_at IS NOT NULL OR invitation.expires_at <= now() THEN RAISE EXCEPTION 'INVITE_INVALID'; END IF;
+ IF invitation.admin_id = auth.uid() THEN RAISE EXCEPTION 'SELF_INVITE'; END IF;
+ INSERT INTO public.education_enrollments(admin_id,student_id,display_name)
+ VALUES (invitation.admin_id,auth.uid(),btrim(p_name));
+ UPDATE public.education_invites SET claimed_at = now() WHERE id = invitation.id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.preview_education_invite(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.accept_education_invite(uuid,text,boolean) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.preview_education_invite(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.accept_education_invite(uuid,text,boolean) TO authenticated;
+COMMIT;
+
+-- ================= COPY FROM supabase/migrations/202610140001_chat_push_notifications.sql =================
+-- Device registrations used by the chat notification Edge Function.
+CREATE TABLE IF NOT EXISTS public.chat_push_tokens (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  expo_push_token text NOT NULL CHECK (expo_push_token ~ '^ExponentPushToken|^ExpoPushToken'),
+  platform text NOT NULL CHECK (platform IN ('android', 'ios')),
+  device_name text,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, expo_push_token)
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_push_tokens_user ON public.chat_push_tokens(user_id);
+ALTER TABLE public.chat_push_tokens ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS chat_push_tokens_read_self ON public.chat_push_tokens;
+CREATE POLICY chat_push_tokens_read_self ON public.chat_push_tokens
+FOR SELECT TO authenticated USING (user_id = auth.uid());
+DROP POLICY IF EXISTS chat_push_tokens_insert_self ON public.chat_push_tokens;
+CREATE POLICY chat_push_tokens_insert_self ON public.chat_push_tokens
+FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS chat_push_tokens_update_self ON public.chat_push_tokens;
+CREATE POLICY chat_push_tokens_update_self ON public.chat_push_tokens
+FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS chat_push_tokens_delete_self ON public.chat_push_tokens;
+CREATE POLICY chat_push_tokens_delete_self ON public.chat_push_tokens
+FOR DELETE TO authenticated USING (user_id = auth.uid());
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.chat_push_tokens TO authenticated;
+
+-- The foreground/background realtime bridge listens for accepted contacts.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'learning_contacts'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.learning_contacts;
+  END IF;
+END $$;
+
+-- ================= COPY FROM supabase/migrations/202610140002_registered_users_admin.sql =================
+-- Registered learner directory for the single-owner management application.
+-- Profiles contain account/operational metadata only; private messages are never exposed.
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS public.app_user_profiles (
+  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name text NOT NULL CHECK (length(btrim(full_name)) BETWEEN 2 AND 80),
+  email text NOT NULL CHECK (length(btrim(email)) BETWEEN 3 AND 254),
+  platform text CHECK (platform IN ('android', 'ios', 'web')),
+  app_version text,
+  registered_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS app_user_profiles_last_seen_idx
+  ON public.app_user_profiles(last_seen_at DESC);
+
+ALTER TABLE public.app_user_profiles ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.app_user_profiles FROM anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.app_user_profiles TO authenticated;
+
+DROP POLICY IF EXISTS app_user_profiles_read_self ON public.app_user_profiles;
+CREATE POLICY app_user_profiles_read_self ON public.app_user_profiles
+FOR SELECT TO authenticated USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS app_user_profiles_insert_self ON public.app_user_profiles;
+CREATE POLICY app_user_profiles_insert_self ON public.app_user_profiles
+FOR INSERT TO authenticated WITH CHECK (
+  user_id = auth.uid()
+  AND lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+);
+
+DROP POLICY IF EXISTS app_user_profiles_update_self ON public.app_user_profiles;
+CREATE POLICY app_user_profiles_update_self ON public.app_user_profiles
+FOR UPDATE TO authenticated USING (user_id = auth.uid())
+WITH CHECK (
+  user_id = auth.uid()
+  AND lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+);
+
+CREATE OR REPLACE FUNCTION public.admin_registered_users()
+RETURNS TABLE(
+  user_id uuid,
+  full_name text,
+  email text,
+  platform text,
+  app_version text,
+  registered_at timestamptz,
+  last_seen_at timestamptz
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF NOT public.is_education_admin() THEN RAISE EXCEPTION 'ADMIN_REQUIRED'; END IF;
+  RETURN QUERY
+  SELECT p.user_id, p.full_name, p.email, p.platform, p.app_version,
+         p.registered_at, p.last_seen_at
+  FROM public.app_user_profiles p
+  ORDER BY p.registered_at DESC;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.admin_registered_users() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_registered_users() TO authenticated;
+
+-- Exactly one operational manager may exist. The migration intentionally fails
+-- if production already contains multiple managers so ownership is resolved explicitly.
+ALTER TABLE public.education_admins
+  ADD COLUMN IF NOT EXISTS singleton_key smallint NOT NULL DEFAULT 1 CHECK (singleton_key = 1);
+CREATE UNIQUE INDEX IF NOT EXISTS education_admins_single_owner_idx
+  ON public.education_admins(singleton_key);
+
+COMMIT;
+
+-- ================= COPY FROM supabase/migrations/202610160001_support_chat_and_user_admin.sql =================
+-- Learner support chat with the single manager account.
+-- Each learner gets one private one-to-one conversation with the manager.
+-- Reuses the existing conversations, conversation_members, learning_contacts,
+-- and messages tables, so the existing RLS rules keep the chat private.
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.ensure_support_conversation(p_display_name text DEFAULT 'زبان‌آموز')
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  caller_id uuid := auth.uid();
+  manager_id uuid;
+  existing_conversation uuid;
+  new_conversation_id uuid;
+BEGIN
+  IF caller_id IS NULL THEN RAISE EXCEPTION 'Authentication required'; END IF;
+
+  SELECT user_id INTO manager_id FROM public.education_admins
+  WHERE singleton_key = 1 LIMIT 1;
+  IF manager_id IS NULL THEN RAISE EXCEPTION 'SUPPORT_UNAVAILABLE'; END IF;
+  IF manager_id = caller_id THEN RAISE EXCEPTION 'SUPPORT_SELF'; END IF;
+
+  SELECT conversation_id INTO existing_conversation FROM public.learning_contacts
+  WHERE user_id = caller_id AND contact_id = manager_id;
+  IF existing_conversation IS NOT NULL THEN RETURN existing_conversation; END IF;
+
+  INSERT INTO public.profiles (id, display_name, last_seen)
+  VALUES (caller_id, COALESCE(NULLIF(btrim(p_display_name), ''), 'زبان‌آموز'), now())
+  ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, last_seen = now();
+
+  INSERT INTO public.profiles (id, display_name, last_seen)
+  VALUES (manager_id, 'پشتیبانی Milo', now())
+  ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.conversations DEFAULT VALUES RETURNING id INTO new_conversation_id;
+  INSERT INTO public.conversation_members (conversation_id, user_id)
+  VALUES (new_conversation_id, manager_id), (new_conversation_id, caller_id);
+  INSERT INTO public.learning_contacts (user_id, contact_id, conversation_id)
+  VALUES
+    (manager_id, caller_id, new_conversation_id),
+    (caller_id, manager_id, new_conversation_id);
+
+  RETURN new_conversation_id;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.ensure_support_conversation(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ensure_support_conversation(text) TO authenticated;
+
+COMMIT;
+
+-- ================= COPY FROM supabase/migrations/202610170001_offline_chat_push_queue.sql =================
 -- Durable, deduplicated chat push outbox. Messages and support requests are
 -- enqueued in the same transaction as their source event; a pg_cron wake-up
 -- calls the Edge Function even if every app instance is closed.
