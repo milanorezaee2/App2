@@ -12,8 +12,9 @@
 2. محتوای کامل `supabase/SETUP-COPY-PASTE-ONCE.sql` را اجرا کنید (اگر جداول پایه هنوز ساخته نشده‌اند).
 3. محتوای کامل `supabase/SETUP-CHAT-PUSH-ONCE.sql` را در یک Query دیگر اجرا کنید.
    - این بسته، migrationهای فعلی مدیر/پروفایل/توکن/گفتگوی پشتیبانی و صف اعلان را به‌ترتیب اجرا می‌کند.
-   - برای پروژه‌ای که migrationهای فعلی را قبلاً اجرا کرده، دستورها با `IF NOT EXISTS`/`CREATE OR REPLACE` نوشته شده‌اند و قابل اجرای دوباره‌اند.
-   - بسته به جدول‌های فعلی `conversations`, `conversation_members`, `learning_contacts`, `messages`, `profiles`, `education_admins`, `app_user_profiles` و `chat_push_tokens` متکی است؛ اگر یکی از جدول‌های پایه وجود نداشته باشد، SQL عمداً با خطای روشن متوقف می‌شود.
+   - برای پروژه‌ای که migrationهای فعلی را قبلاً اجرا کرده، بسته برای اجرای دوباره آماده شده است.
+   - اگر اجرای قبلی خطای `42P13` داد و گفت نوع خروجی `admin_registered_users()` قابل تغییر نیست، نسخهٔ تازهٔ همین فایل حالا آن تابع را داخل تراکنش بازسازی می‌کند؛ دستور `DROP FUNCTION ... CASCADE` را جداگانه اجرا نکنید.
+   - این بسته جدول‌های `education_admins`, `app_user_profiles`, `chat_push_tokens`, `support_requests` و `chat_push_queue` را می‌سازد؛ جدول‌های پایهٔ `conversations`, `conversation_members`, `learning_contacts`, `messages`, `profiles` و `learning_progress` باید از قبل وجود داشته باشند. اگر یکی از جدول‌های پایه نباشد، SQL عمداً با خطای روشن متوقف می‌شود.
 4. حساب مدیر را طبق `docs/EDUCATION-ADMIN.md` در `education_admins` ثبت کنید و مدیریت آموزشی را در صورت نیاز فعال کنید.
 
 جدول تازهٔ `support_requests` برای وضعیت `open`/`resolved` هر گفتگوی خصوصی مدیر و زبان‌آموز است. صف `chat_push_queue` فقط شناسهٔ رویداد، گیرنده، عنوان و متن عمومی/نام فرستنده را نگه می‌دارد؛ متن کامل پیام هرگز در صف یا اعلان کپی نمی‌شود.

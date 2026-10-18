@@ -280,6 +280,10 @@ WITH CHECK (
   AND lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
 );
 
+-- Older projects may have the same RPC name with a different OUT-row shape.
+-- PostgreSQL cannot change a RETURNS TABLE shape with CREATE OR REPLACE; drop and
+-- recreate it inside this migration transaction so the change remains atomic.
+DROP FUNCTION IF EXISTS public.admin_registered_users();
 CREATE OR REPLACE FUNCTION public.admin_registered_users()
 RETURNS TABLE(
   user_id uuid,
@@ -822,5 +826,35 @@ CREATE TRIGGER chat_push_enqueue_contact
   FOR EACH ROW
   EXECUTE FUNCTION public.enqueue_contact_push();
 
+COMMIT;
+
+
+-- ===== Source migration: supabase/migrations/202610180002_admin_registered_users_return_shape.sql =====
+
+-- Compatibility fix for existing installations with a different RPC row shape.
+BEGIN;
+DROP FUNCTION IF EXISTS public.admin_registered_users();
+CREATE FUNCTION public.admin_registered_users()
+RETURNS TABLE(
+  user_id uuid,
+  full_name text,
+  email text,
+  platform text,
+  app_version text,
+  registered_at timestamptz,
+  last_seen_at timestamptz
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF NOT public.is_education_admin() THEN RAISE EXCEPTION 'ADMIN_REQUIRED'; END IF;
+  RETURN QUERY
+  SELECT p.user_id, p.full_name, p.email, p.platform, p.app_version,
+         p.registered_at, p.last_seen_at
+  FROM public.app_user_profiles p
+  ORDER BY p.registered_at DESC;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.admin_registered_users() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_registered_users() TO authenticated;
 COMMIT;
 
