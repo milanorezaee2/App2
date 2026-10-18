@@ -1,10 +1,10 @@
 const { withAppBuildGradle } = require('@expo/config-plugins');
 
-/** Use one owner-controlled keystore for every published APK variant. */
-module.exports = function withStableAndroidReleaseSigning(config) {
+/** Configure release APKs to use the one-run keystore created in CI. */
+module.exports = function withAndroidReleaseSigning(config) {
   return withAppBuildGradle(config, config => {
     if (config.modResults.language !== 'groovy') {
-      throw new Error('Stable Android signing currently expects the generated Groovy app/build.gradle file.');
+      throw new Error('Android release signing expects the generated Groovy app/build.gradle file.');
     }
     let contents = config.modResults.contents;
     const signingStart = contents.indexOf('    signingConfigs {');
@@ -15,9 +15,9 @@ module.exports = function withStableAndroidReleaseSigning(config) {
       '        release {',
       '            storeFile file("release-key.p12")',
       '            storeType "PKCS12"',
-      '            storePassword findProperty("ANDROID_RELEASE_STORE_PASSWORD") ?: ""',
-      '            keyAlias findProperty("ANDROID_RELEASE_KEY_ALIAS") ?: ""',
-      '            keyPassword findProperty("ANDROID_RELEASE_KEY_PASSWORD") ?: ""',
+      '            storePassword findProperty("ANDROID_EPHEMERAL_STORE_PASSWORD") ?: ""',
+      '            keyAlias findProperty("ANDROID_EPHEMERAL_KEY_ALIAS") ?: ""',
+      '            keyPassword findProperty("ANDROID_EPHEMERAL_KEY_PASSWORD") ?: ""',
       '        }',
     ].join('\n');
     contents = `${contents.slice(0, signingEnd)}\n${releaseConfig}${contents.slice(signingEnd)}`;

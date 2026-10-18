@@ -39,7 +39,7 @@
     "plugins": [
       "expo-router",
       "./plugins/withStableLayoutDirection",
-      "./plugins/withStableAndroidReleaseSigning",
+      "./plugins/withAndroidReleaseSigning",
       "./plugins/withRemoveScreenCaptureService",
       "expo-font",
       [

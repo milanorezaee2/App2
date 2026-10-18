@@ -7,10 +7,6 @@ on:
         description: 'Build only the Russian learner APK (MiloRussian.apk) and publish it as a release'
         type: boolean
         default: false
-      temporary_signing:
-        description: 'Use a one-run signing key; each future release must be reinstalled (no signing secrets needed)'
-        type: boolean
-        default: true
       publish_release:
         description: 'Publish the built APK files to a GitHub Release'
         type: boolean
@@ -38,7 +34,6 @@ jobs:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
       EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
-      ANDROID_TEMPORARY_SIGNING: ${{ github.event_name == 'workflow_dispatch' && inputs.temporary_signing && 'true' || 'false' }}
       EXPO_PUBLIC_RUSSIAN_ONLY: ${{ ((github.event_name == 'workflow_dispatch' && inputs.russian_only) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[russian-apk]'))) && 'true' || 'false' }}
     steps:
       - name: Check out repository
@@ -116,13 +111,8 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Configure Android release signing
+      - name: Configure one-run Android release signing
         run: node scripts/configure-android-release-signing.mjs
-        env:
-          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
-          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
-          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
-          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
 
       - name: Build standalone release APK
         working-directory: android
@@ -165,11 +155,6 @@ jobs:
               raise SystemExit('Management APK structure validation failed.')
           print('Standalone private management APK verified.')
           PY
-        env:
-          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
-          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
-          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
-          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
 
       - name: Generate and build the learner login APK
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
@@ -191,11 +176,6 @@ jobs:
               raise SystemExit('Login APK structure validation failed.')
           print('Learner login APK verified.')
           PY
-        env:
-          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
-          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
-          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
-          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
 
       - name: Verify phone-control services and permissions are absent
         shell: bash
@@ -222,7 +202,7 @@ jobs:
             if [[ -z "$expected" ]]; then expected="$fingerprint"; fi
             [[ "$fingerprint" == "$expected" ]] || { echo "APK signing identities differ; refusing to publish."; exit 1; }
           done
-          echo "Verified ${#files[@]} APK(s) with the same stable signing certificate."
+          echo "Verified ${#files[@]} APK(s) with the same one-run signing certificate."
 
       - name: Smoke-test both APKs on Android emulator
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
@@ -264,7 +244,7 @@ jobs:
           body: |
             Learner (no login), learner (with login) and private management APKs. Phone pairing, remote control, accessibility control and screen sharing are removed; learning content is unchanged.
             In-app update notices and forced-update controls are temporarily disabled; install future APK releases manually.
-            If this run used temporary signing, uninstall the previous app before installation and repeat this for future builds; local unsynced data may be lost.
+            Every GitHub Actions build uses a one-run signing key. Uninstall the previous app before installing a later build; local unsynced data may be lost.
           prerelease: true
           files: |
             MiloMultilang.apk
@@ -287,7 +267,7 @@ jobs:
           tag_name: milo-russian-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           name: "Milo Russian APK #${{ github.run_number }}"
-          body: "Russian-only learner APK (Milo Russian). If signed with a temporary key, uninstall the previous app before installation; local unsynced data may be lost."
+          body: "Russian-only learner APK (Milo Russian), signed with a one-run key. Uninstall the previous app before installation; local unsynced data may be lost."
           prerelease: true
           files: MiloRussian.apk
           fail_on_unmatched_files: true
