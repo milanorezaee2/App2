@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FEATURES } from '@/lib/features';
 import { BookOpen, Users, Ticket, LayoutDashboard, ShieldCheck, LogOut, ArrowUpLeft, Search, RefreshCw, GraduationCap, Trash2, Download, MessageCircle } from 'lucide-react-native';
 import { adminClient, deleteRegisteredUser, loadAdminData, demoStudents, educationError, progressMetrics, type StudentRow, type EducationInvite, type RegisteredUser } from '@/lib/educationAdmin';
-import { listRealContacts, type RealContact } from '@/lib/conversations';
+import { listRealContacts, listSupportRequestStatuses, updateSupportRequestStatus, type RealContact, type SupportRequestStatus } from '@/lib/conversations';
 import { downloadRegisteredUsers } from '@/lib/userExport';
 import { registerAdminPushToken } from '@/lib/adminPush';
 import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
@@ -46,9 +46,18 @@ function EducationAdmin() {
   const active = rows.filter(r => r.status === 'active');
   const synced = active.filter(r => r.summary);
   const [supportContacts, setSupportContacts] = useState<RealContact[]>([]);
+  const [supportStatuses, setSupportStatuses] = useState<Record<string, SupportRequestStatus>>({});
   useEffect(() => {
     if (tab !== 'support' || mode !== 'live') return;
-    listRealContacts().then(setSupportContacts).catch(cause => setError(educationError(cause)));
+    let active = true;
+    Promise.all([listRealContacts(), listSupportRequestStatuses()])
+      .then(([contacts, statuses]) => {
+        if (!active) return;
+        setSupportContacts(contacts);
+        setSupportStatuses(statuses);
+      })
+      .catch(cause => { if (active) setError(educationError(cause)); });
+    return () => { active = false; };
   }, [tab, mode]);
   const avg = synced.length ? Math.round(synced.reduce((n,r) => n + progressMetrics(r.summary).percent, 0) / synced.length) : 0;
 
@@ -192,11 +201,30 @@ function EducationAdmin() {
           <Text style={s.subtitle}>زبان‌آموزان از بخش پشتیبانی اپ زبان به شما پیام می‌دهند. هر گفتگو خصوصی و بین شما و همان زبان‌آموز است.</Text>
           {demo && <View style={s.empty}><Text style={s.small}>در حالت نمونه گفتگوی واقعی نمایش داده نمی‌شود.</Text></View>}
           {!demo && !supportContacts.length && <View style={s.empty}><MessageCircle size={34} color="#1769D2" /><Text style={s.cardTitle}>هنوز پیامی از زبان‌آموزان نیست</Text></View>}
-          {!demo && supportContacts.map(contact => <Pressable accessibilityRole="button" key={contact.conversationId} onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)} style={s.studentRow}>
-            <View style={[s.avatar, {backgroundColor:'#eef0ff'}]}><Text style={s.avatarText}>{contact.displayName.slice(0,1)}</Text></View>
-            <View style={{flex:1,minWidth:115}}><Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>آخرین فعالیت: {dates(contact.lastSeen)}</Text></View>
-            <ArrowUpLeft size={18} color="#1769D2" />
-          </Pressable>)}
+          {!demo && supportContacts.map(contact => {
+            const status = supportStatuses[contact.conversationId] || 'open';
+            const nextStatus: SupportRequestStatus = status === 'open' ? 'resolved' : 'open';
+            return <View key={contact.conversationId} style={s.studentRow}>
+              <Pressable accessibilityRole="button" style={{ flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }} onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)}>
+                <View style={[s.avatar, {backgroundColor:'#eef0ff'}]}><Text style={s.avatarText}>{contact.displayName.slice(0,1)}</Text></View>
+                <View style={{flex:1,minWidth:80}}><Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>آخرین فعالیت: {dates(contact.lastSeen)}</Text></View>
+                <ArrowUpLeft size={18} color="#1769D2" />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={status === 'open' ? `بستن درخواست پشتیبانی ${contact.displayName}` : `بازکردن دوباره درخواست پشتیبانی ${contact.displayName}`}
+                disabled={busy}
+                onPress={() => void task(async () => {
+                  await updateSupportRequestStatus(contact.conversationId, nextStatus);
+                  setSupportStatuses(current => ({ ...current, [contact.conversationId]: nextStatus }));
+                  setNotice(nextStatus === 'resolved' ? 'درخواست پاسخ‌داده‌شده شد؛ زبان‌آموز اعلان می‌گیرد.' : 'درخواست دوباره باز شد؛ زبان‌آموز اعلان می‌گیرد.');
+                })}
+                style={{ paddingHorizontal: 9, paddingVertical: 6, borderRadius: 8, backgroundColor: status === 'resolved' ? '#E8F6EF' : '#EAF3FF', opacity: busy ? .55 : 1 }}
+              >
+                <Text style={[s.small, { color: status === 'resolved' ? '#178055' : '#1769D2' }]}>{status === 'resolved' ? 'پاسخ‌داده‌شده' : 'باز'}</Text>
+              </Pressable>
+            </View>;
+          })}
         </View>}
         {tab === 'invites' && <View style={s.card}>
           <Text style={s.cardTitle}>دعوت آموزشی جدید</Text><Text style={s.subtitle}>دعوت یک‌بارمصرف با اعتبار ۷ روز. این کد با کد دعوت مکالمه فرق دارد.</Text>
