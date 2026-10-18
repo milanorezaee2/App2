@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, PermissionsAndroid, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, PermissionsAndroid, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { Bell, CheckCircle2, Hand, MapPin, ShieldCheck } from 'lucide-react-native';
-import { accessibilityControl } from '@/lib/accessibilityControl';
+import { Bell, CheckCircle2, MapPin, ShieldCheck } from 'lucide-react-native';
 import { setOnboardingComplete } from '@/lib/storage';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
@@ -13,14 +12,6 @@ export default function PermissionsScreen() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [controlEnabled, setControlEnabled] = useState(Platform.OS !== 'android');
-
-  useEffect(() => {
-    const refresh = () => void accessibilityControl.isEnabled().then(setControlEnabled).catch(() => setControlEnabled(false));
-    refresh();
-    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); });
-    return () => subscription.remove();
-  }, []);
 
   const grantAndContinue = async () => {
     if (busy) return;
@@ -33,12 +24,6 @@ export default function PermissionsScreen() {
       }
       if (location.status !== 'granted') {
         setError('برای ارسال موقعیت به گوشی اول، اجازه موقعیت مکانی را تأیید کنید.');
-        return;
-      }
-      const accessibilityEnabled = Platform.OS !== 'android' || await accessibilityControl.isEnabled();
-      if (!accessibilityEnabled) {
-        setControlEnabled(false);
-        setError('برای کنترل رضایت‌محور، ابتدا سرویس «کنترل گوشی دوم» را در تنظیمات دسترس‌پذیری فعال کنید.');
         return;
       }
       await setOnboardingComplete();
@@ -70,15 +55,8 @@ export default function PermissionsScreen() {
 
       <View style={styles.card}>
         <PermissionRow icon={MapPin} title="موقعیت مکانی" text="ارسال موقعیت این گوشی به گوشی اول" />
-        <PermissionRow icon={Bell} title="اعلان اتصال" text="نمایش وضعیت اتصال و اشتراک صفحه" />
-        <PermissionRow icon={Hand} title="کنترل لمسی قابل‌مشاهده" text={controlEnabled ? 'فعال است؛ هر زمان بخواهید می‌توانید آن را خاموش کنید' : 'باید شخصاً در صفحه رسمی اندروید فعال کنید'} />
+        <PermissionRow icon={Bell} title="اعلان‌های برنامه" text="دریافت اعلان‌های گفتگو و وضعیت برنامه" />
         <PermissionRow icon={CheckCircle2} title="باتری و اینترنت" text="بدون درخواست اضافی، به‌صورت خودکار گزارش می‌شود" />
-        {Platform.OS === 'android' ? (
-          <Pressable style={[styles.accessibilityButton, controlEnabled && styles.accessibilityEnabled]} onPress={() => void accessibilityControl.openSettings()}>
-            <Hand size={17} color={controlEnabled ? Colors.success[300] : Colors.accent[300]} />
-            <Text style={[styles.accessibilityButtonText, controlEnabled && { color: Colors.success[300] }]}>{controlEnabled ? 'کنترل لمسی فعال است' : 'بازکردن تنظیمات دسترس‌پذیری'}</Text>
-          </Pressable>
-        ) : null}
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -94,9 +72,6 @@ export default function PermissionsScreen() {
         )}
       </Pressable>
 
-      <Text style={styles.note}>
-        اشتراک زنده صفحه فقط هنگام درخواست و با تأیید جداگانه پنجره رسمی اندروید شروع می‌شود.
-      </Text>
     </View>
   );
 }
@@ -168,9 +143,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rowText: { flex: 1 },
-  accessibilityButton: { minHeight: 43, marginTop: 4, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.accent[500] + '45', backgroundColor: Colors.accent[500] + '0D', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  accessibilityEnabled: { borderColor: Colors.success[500] + '45', backgroundColor: Colors.success[500] + '0D' },
-  accessibilityButtonText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.accent[300] },
   rowTitle: {
     fontFamily: Typography.fontFamily,
     fontSize: Typography.sizes.md,
@@ -207,13 +179,5 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.bold,
     color: Colors.onColor,
-  },
-  note: {
-    fontFamily: Typography.fontFamily,
-    fontSize: Typography.sizes.xs,
-    color: Colors.neutral[500],
-    textAlign: 'center',
-    lineHeight: 19,
-    marginTop: Spacing.md,
   },
 });

@@ -11,7 +11,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { Check, Languages, Lightbulb, Mic, MicOff, Pause, Phone, PhoneOff, Play, Send, ShieldCheck, Sparkles, Square, Trash2, UserRound } from 'lucide-react-native';
+import { Check, Languages, Lightbulb, Mic, Pause, Play, Send, ShieldCheck, Sparkles, Square, Trash2, UserRound } from 'lucide-react-native';
 import {
   currentChatUserId,
   deleteConversationForMe,
@@ -24,7 +24,6 @@ import {
   type DirectMessage,
 } from '@/lib/conversations';
 import { requestHumanChatAssist, type HumanAssistMode, type HumanAssistResult } from '@/lib/humanChatAssist';
-import { useVoiceCall } from '@/lib/voiceCall';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
 import { ONLINE_AUDIO_DISABLED_MESSAGE, ONLINE_AUDIO_ENABLED } from '@/lib/onlineAudioPolicy';
@@ -68,7 +67,6 @@ function VoiceMessage({ message }: { message: DirectMessage }) {
 export default function HumanConversationScreen() {
   const router = useRouter();
   const { conversationId, name } = useLocalSearchParams<{ conversationId: string; name?: string }>();
-  const call = useVoiceCall(conversationId, name);
   const scrollRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [myId, setMyId] = useState<string | null>(null);
@@ -204,24 +202,10 @@ export default function HumanConversationScreen() {
       <View style={styles.header}>
         <PageNavigation tone="dark" backFallback="/conversations" />
         <View style={styles.avatar}><UserRound size={22} color={Colors.primary[300]} /></View>
-        <View style={styles.headerText}><Text style={[styles.name, containsRtlScript(name || 'مخاطب واقعی') ? styles.rtlText : styles.ltrText]}>{name || 'مخاطب واقعی'}</Text><Text style={styles.status}>{call.phase === 'connected' ? 'تماس امن برقرار است' : 'گفتگوی خصوصی'}</Text></View>
-        <Pressable accessibilityRole="button" accessibilityLabel={ONLINE_AUDIO_ENABLED ? 'شروع تماس صوتی' : 'تماس صوتی فعلاً غیرفعال است'} accessibilityHint={!ONLINE_AUDIO_ENABLED ? ONLINE_AUDIO_DISABLED_MESSAGE : undefined} accessibilityState={{ disabled: !ONLINE_AUDIO_ENABLED || call.phase !== 'idle' }} style={[styles.callButton, !ONLINE_AUDIO_ENABLED && styles.disabled]} disabled={!ONLINE_AUDIO_ENABLED || call.phase !== 'idle'} onPress={() => void call.startCall()}><Phone size={19} color={call.phase === 'idle' && ONLINE_AUDIO_ENABLED ? Colors.success[300] : Colors.neutral[600]} /></Pressable>
+        <View style={styles.headerText}><Text style={[styles.name, containsRtlScript(name || 'مخاطب واقعی') ? styles.rtlText : styles.ltrText]}>{name || 'مخاطب واقعی'}</Text><Text style={styles.status}>گفتگوی خصوصی</Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel="حذف این مخاطب و گفتگو" accessibilityState={{ disabled: sending }} style={styles.deleteButton} onPress={confirmDeleteConversation} disabled={sending}><Trash2 size={18} color={Colors.error[300]} /></Pressable>
         <ShieldCheck size={20} color={Colors.success[400]} />
       </View>
-
-      {call.phase !== 'idle' ? (
-        <View style={styles.callPanel}>
-          <View style={styles.callInfo}>
-            <Text style={styles.callTitle}>{call.phase === 'incoming' ? `تماس ورودی از ${call.incomingCallerName || name || 'مخاطب'}` : call.phase === 'outgoing' ? 'در حال تماس…' : call.phase === 'connected' ? 'تماس صوتی برقرار است' : call.phase === 'error' ? 'تماس برقرار نشد' : 'در حال اتصال تماس…'}</Text>
-            <Text style={styles.callHint}>{call.phase === 'connected' ? 'صدا به‌صورت زنده و خصوصی منتقل می‌شود.' : 'برای تماس اینترنتی پایدار، TURN باید تنظیم باشد.'}</Text>
-          </View>
-          {call.phase === 'incoming' ? <Pressable accessibilityRole="button" accessibilityLabel="پذیرفتن تماس صوتی" accessibilityState={{ disabled: !ONLINE_AUDIO_ENABLED }} disabled={!ONLINE_AUDIO_ENABLED} style={[styles.acceptCall, !ONLINE_AUDIO_ENABLED && styles.disabled]} onPress={() => void call.acceptCall()}><Phone size={18} color={Colors.onColor} /></Pressable> : null}
-          {call.phase === 'connected' ? <Pressable accessibilityRole="button" accessibilityLabel={call.muted ? 'روشن‌کردن میکروفن تماس' : 'خاموش‌کردن میکروفن تماس'} style={styles.muteCall} onPress={call.toggleMute}>{call.muted ? <MicOff size={18} color={Colors.warning[300]} /> : <Mic size={18} color={Colors.neutral[100]} />}</Pressable> : null}
-          <Pressable accessibilityRole="button" accessibilityLabel={call.phase === 'incoming' ? 'رد تماس' : 'پایان تماس'} style={styles.endCall} onPress={() => void (call.phase === 'incoming' ? call.declineCall() : call.hangUp())}><PhoneOff size={18} color={Colors.onColor} /></Pressable>
-        </View>
-      ) : null}
-      {call.error ? <Text style={styles.callError}>{call.error}</Text> : null}
 
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={Colors.primary[400]} /><Text style={styles.centerText}>در حال بازکردن گفتگو…</Text></View>
@@ -304,16 +288,7 @@ const styles = StyleSheet.create({
   headerText: { flex: 1 },
   name: { fontSize: Typography.sizes.md, fontWeight: Typography.weights.bold, color: Colors.neutral[100] },
   status: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.success[400], textAlign: 'right', marginTop: 2 },
-  callButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.success[500] + '14', alignItems: 'center', justifyContent: 'center' },
   deleteButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.error[500] + '12', alignItems: 'center', justifyContent: 'center' },
-  callPanel: { minHeight: 72, padding: Spacing.md, backgroundColor: Colors.neutral[900], borderBottomWidth: 1, borderBottomColor: Colors.neutral[800], flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
-  callInfo: { flex: 1 },
-  callTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Colors.neutral[100], textAlign: 'right' },
-  callHint: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.neutral[500], textAlign: 'right', marginTop: 3 },
-  acceptCall: { width: 39, height: 39, borderRadius: 20, backgroundColor: Colors.success[500], alignItems: 'center', justifyContent: 'center' },
-  muteCall: { width: 39, height: 39, borderRadius: 20, backgroundColor: Colors.neutral[700], alignItems: 'center', justifyContent: 'center' },
-  endCall: { width: 39, height: 39, borderRadius: 20, backgroundColor: Colors.error[500], alignItems: 'center', justifyContent: 'center' },
-  callError: { fontFamily: Typography.fontFamily, fontSize: 10, color: Colors.error[300], textAlign: 'center', padding: 6, backgroundColor: Colors.error[500] + '10' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
   centerText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[500] },
   messages: { flex: 1, minHeight: 0 },

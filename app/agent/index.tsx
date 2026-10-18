@@ -20,8 +20,6 @@ import {
   RefreshCw,
   ShieldCheck,
   Send,
-  ScreenShare,
-  Square,
   GraduationCap,
 } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radius, RtlDirection } from '@/lib/theme';
@@ -30,7 +28,6 @@ import { toPersianDigits } from '@/lib/format';
 import { checkPairingStatus, markOffline, isSupabaseConfigured } from '@/lib/pairing';
 import { getPairingState, clearPairingState, clearDeviceId, type PairingState } from '@/lib/storage';
 import { useRealAgent, getAgentIdentity, type AgentSnapshot } from '@/lib/useRealAgent';
-import { useScreenBroadcaster } from '@/lib/liveScreen';
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null || bytes <= 0) return 'نامشخص';
@@ -100,15 +97,13 @@ export default function AgentHomeScreen() {
 
   // Real reporting loop — only when paired
   const agent = useRealAgent(pairing?.deviceId ?? null, !!pairing && configured);
-  const liveScreen = useScreenBroadcaster(pairing?.deviceId ?? null);
 
   const disconnect = useCallback(async () => {
-    await liveScreen.stop();
     if (pairing) await markOffline(pairing.deviceId);
     await clearPairingState();
     await clearDeviceId();
     setPairing(null);
-  }, [liveScreen.stop, pairing]);
+  }, [pairing]);
 
   if (checking) {
     return (
@@ -231,41 +226,6 @@ export default function AgentHomeScreen() {
             </Pressable>
           </View>
         )}
-
-        {/* Explicit, visible screen sharing. Android asks for consent on every session. */}
-        <View style={styles.liveCard}>
-          <View style={styles.liveCardHeader}>
-            <View style={styles.liveCardIcon}>
-              <ScreenShare size={21} color={Colors.primary[300]} strokeWidth={2.2} />
-            </View>
-            <View style={styles.liveCardText}>
-              <Text style={styles.liveCardTitle}>نمایش زنده صفحه برای گوشی اول</Text>
-              <Text style={styles.liveCardDesc}>
-                {liveScreen.phase === 'connected'
-                  ? 'تصویر صفحه اکنون در گوشی اول نمایش داده می‌شود.'
-                  : liveScreen.phase === 'waiting'
-                    ? 'منتظر باز شدن صفحه کنترل زنده در گوشی اول…'
-                    : liveScreen.phase === 'requesting'
-                      ? 'در حال دریافت اجازه اندروید…'
-                      : 'اشتراک فقط با تأیید شما شروع می‌شود و همیشه اعلان فعال دارد.'}
-              </Text>
-            </View>
-          </View>
-
-          {liveScreen.error && <Text style={styles.liveError}>{liveScreen.error}</Text>}
-
-          {liveScreen.phase === 'idle' || liveScreen.phase === 'error' ? (
-            <Pressable style={styles.liveStartBtn} onPress={() => void liveScreen.start()}>
-              <ScreenShare size={18} color={Colors.onColor} strokeWidth={2.2} />
-              <Text style={styles.liveStartText}>شروع اشتراک صفحه</Text>
-            </Pressable>
-          ) : (
-            <Pressable style={styles.liveStopBtn} onPress={() => void liveScreen.stop()}>
-              <Square size={17} color={Colors.error[300]} fill={Colors.error[300]} strokeWidth={2} />
-              <Text style={styles.liveStopText}>توقف اشتراک صفحه</Text>
-            </Pressable>
-          )}
-        </View>
 
         {/* info grid */}
         <View style={styles.gridTitleRow}>
@@ -523,78 +483,6 @@ const styles = StyleSheet.create({
     color: Colors.neutral[400],
     textAlign: 'right',
     marginTop: 3,
-  },
-
-  liveCard: {
-    backgroundColor: Colors.primary[500] + '12',
-    borderWidth: 1.5,
-    borderColor: Colors.primary[500] + '55',
-    borderRadius: Radius.xl,
-    padding: Spacing.lg,
-    marginBottom: Spacing.xl,
-    gap: Spacing.md,
-  },
-  liveCardHeader: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: Spacing.sm },
-  liveCardIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primary[500] + '22',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  liveCardText: { flex: 1, gap: 4 },
-  liveCardTitle: {
-    fontFamily: Typography.fontFamily,
-    fontSize: Typography.sizes.md,
-    fontWeight: Typography.weights.bold,
-    color: Colors.neutral[0],
-    textAlign: 'right',
-  },
-  liveCardDesc: {
-    fontFamily: Typography.fontFamily,
-    fontSize: Typography.sizes.xs,
-    color: Colors.neutral[300],
-    textAlign: 'right',
-    lineHeight: 19,
-  },
-  liveError: {
-    fontFamily: Typography.fontFamily,
-    fontSize: Typography.sizes.xs,
-    color: Colors.error[300],
-    textAlign: 'right',
-  },
-  liveStartBtn: {
-    minHeight: 46,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.primary[500],
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  liveStartText: {
-    fontFamily: Typography.fontFamily,
-    fontSize: Typography.sizes.md,
-    fontWeight: Typography.weights.bold,
-    color: Colors.onColor,
-  },
-  liveStopBtn: {
-    minHeight: 46,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.error[500] + '66',
-    backgroundColor: Colors.error[500] + '12',
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  liveStopText: {
-    fontFamily: Typography.fontFamily,
-    fontSize: Typography.sizes.md,
-    fontWeight: Typography.weights.bold,
-    color: Colors.error[300],
   },
 
   gridTitleRow: {

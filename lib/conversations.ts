@@ -271,6 +271,36 @@ export async function currentChatUserId(): Promise<string | null> {
   return data.session?.user.id ?? null;
 }
 
+export type SupportRequestStatus = 'open' | 'resolved';
+
+export async function listSupportRequestStatuses(): Promise<Record<string, SupportRequestStatus>> {
+  await ensureChatIdentity();
+  const { data, error } = await chatDb()
+    .from('support_requests')
+    .select('conversation_id,status');
+  if (error) throw new Error(readableSupabaseError(error));
+  return Object.fromEntries((data || []).map(row => [
+    row.conversation_id,
+    row.status === 'resolved' ? 'resolved' : 'open',
+  ]));
+}
+
+export async function updateSupportRequestStatus(
+  conversationId: string,
+  status: SupportRequestStatus,
+): Promise<void> {
+  const user = await ensureChatIdentity();
+  if (!MANAGEMENT_BUILD) throw new Error('ADMIN_REQUIRED');
+  const { data, error } = await chatDb()
+    .from('support_requests')
+    .update({ status })
+    .eq('conversation_id', conversationId)
+    .eq('manager_id', user.id)
+    .select('conversation_id');
+  if (error) throw new Error(readableSupabaseError(error));
+  if (!data?.length) throw new Error('درخواست پشتیبانی پیدا نشد یا دسترسی کافی نیست.');
+}
+
 export function subscribeToMessages(
   conversationId: string,
   onMessage: (message: DirectMessage) => void,

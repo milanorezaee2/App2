@@ -1,6 +1,8 @@
-# Manager user tools: setup
+# Manager support chat and user tools: setup
 
-The support chat was removed. The manager user tools remain.
+The private learner-to-manager support chat remains enabled. Its offline Expo
+push, one-time SQL, webhook and Android permission setup is documented in
+`docs/CHAT-PUSH-SETUP-FA.md`. The manager user tools below remain available.
 
 ## Permanent user deletion (Edge Function)
 
@@ -16,10 +18,7 @@ also removes the learner's learning-contact links, conversation memberships, and
 - Each user row has a **حذف** button. Confirmation is required, and the manager cannot delete their own account or other manager accounts.
 - **دانلود فهرست** exports account metadata as CSV: name, email, platform, app version, and activity dates. Private messages and learning progress are not included.
 
-## Optional cleanup in Supabase
+## Keep the support-chat RPC
 
-If the earlier support migration was applied, you can remove its function:
-
-```sql
-drop function if exists public.ensure_support_conversation(text);
-```
+Do not drop `public.ensure_support_conversation(text)`: the learner support
+button uses it to create/reuse the private conversation and support request.

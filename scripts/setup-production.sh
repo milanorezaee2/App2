@@ -25,14 +25,13 @@ echo "Applying the idempotent production database migration..."
 "${SUPABASE[@]}" db push
 
 echo "Deploying authenticated Edge Functions..."
-for fn in emma-chat speech-evaluate human-chat-assist turn-credentials; do
+for fn in emma-chat speech-evaluate human-chat-assist; do
   "${SUPABASE[@]}" functions deploy "$fn"
 done
 # Database webhooks authenticate with CHAT_WEBHOOK_SECRET instead of a user JWT.
 "${SUPABASE[@]}" functions deploy chat-push --no-verify-jwt
 
-echo "Production backend setup finished. TURN provider secrets can be added later with:"
-echo "npx supabase secrets set METERED_DOMAIN=YOUR_DOMAIN METERED_SECRET_KEY=YOUR_SECRET"
+echo "Production backend setup finished."
 echo
 echo "For push delivery while the app is closed, set a strong webhook secret:"
 echo "  npx supabase secrets set CHAT_WEBHOOK_SECRET=YOUR_RANDOM_SECRET"
