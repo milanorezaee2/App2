@@ -14,6 +14,8 @@ on:
       - arena/9ecb1f7a-app2
       - arena/8366eeeb-app2
       - arena/8290df12-app2
+      # Temporary trigger for this session's APK build; removed before the PR.
+      - arena/d8da8b41-app2
 
 permissions:
   contents: write
