@@ -9,7 +9,6 @@ import {
   type ChatNotificationEvent,
 } from '@/lib/chatNotifications';
 import { MANAGEMENT_BUILD } from '@/lib/features';
-import { hasManagerSession } from '@/lib/educationAdmin';
 import {
   clearChatUnreadCount,
   getChatUnreadCount,
@@ -35,45 +34,8 @@ export function ChatNotificationBridge() {
   const seenEventIds = useRef(new Set<string>());
   const handledResponseIds = useRef(new Set<string>());
   const foregroundEventRef = useRef<(event: ChatNotificationEvent) => void>(() => undefined);
-  const openTargetRef = useRef<(conversationId: string | null, route: string | undefined) => void>(() => undefined);
 
   currentConversationRef.current = isHumanConversation ? conversationId : null;
-  openTargetRef.current = (targetConversationId, route) => {
-    const openConversation = () => {
-      if (!targetConversationId) return;
-      router.push({
-        pathname: '/conversations/human/[conversationId]',
-        params: { conversationId: targetConversationId },
-      } as never);
-    };
-    // The standalone management APK must never land on the learner chat
-    // screens: alerts without a specific conversation open the management
-    // panel, and a conversation alert opens only with a valid manager session.
-    // Without one, the management login is shown first instead of ADMIN_REQUIRED.
-    if (MANAGEMENT_BUILD) {
-      if (!targetConversationId) {
-        router.push('/admin' as never);
-        return;
-      }
-      void hasManagerSession().then(hasSession => {
-        if (!hasSession) {
-          router.push('/admin' as never);
-          return;
-        }
-        openConversation();
-      });
-      return;
-    }
-    if (targetConversationId) {
-      openConversation();
-      return;
-    }
-    if (route === '/admin') {
-      router.push('/admin' as never);
-      return;
-    }
-    router.push('/conversations' as never);
-  };
   foregroundEventRef.current = event => {
     const stableId = event.eventId.trim();
     if (!stableId || seenEventIds.current.has(stableId)) return;
@@ -117,11 +79,19 @@ export function ChatNotificationBridge() {
       void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
       const data = response.notification.request.content.data;
       const targetConversationId = typeof data.conversationId === 'string' ? data.conversationId : null;
-      const targetRoute = typeof data.route === 'string' ? data.route : undefined;
       setBanner(null);
       if (timerRef.current) clearTimeout(timerRef.current);
       void clearChatUnreadCount().then(() => Notifications.setBadgeCountAsync(0).catch(() => undefined));
-      openTargetRef.current(targetConversationId, targetRoute);
+      if (targetConversationId) {
+        router.push({
+          pathname: '/conversations/human/[conversationId]',
+          params: { conversationId: targetConversationId },
+        } as never);
+      } else if (data.route === '/admin') {
+        router.push('/admin' as never);
+      } else {
+        router.push('/conversations' as never);
+      }
     };
 
     const receivedSubscription = Notifications.addNotificationReceivedListener(notification => {
@@ -173,12 +143,20 @@ export function ChatNotificationBridge() {
 
   const openBanner = () => {
     if (!banner) return;
-    const targetConversationId = banner.conversationId ?? null;
-    const targetRoute = banner.route;
+    const targetConversationId = banner.conversationId;
     setBanner(null);
     if (timerRef.current) clearTimeout(timerRef.current);
     void clearChatUnreadCount().then(() => Notifications.setBadgeCountAsync(0).catch(() => undefined));
-    openTargetRef.current(targetConversationId, targetRoute);
+    if (targetConversationId) {
+      router.push({
+        pathname: '/conversations/human/[conversationId]',
+        params: { conversationId: targetConversationId },
+      } as never);
+    } else if (banner.route === '/admin') {
+      router.push('/admin' as never);
+    } else {
+      router.push('/conversations' as never);
+    }
   };
 
   return banner ? (

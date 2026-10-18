@@ -22,15 +22,6 @@ export function adminClient() {
   });
   return client;
 }
-/** True when the standalone management APK holds a valid signed-in manager session. */
-export async function hasManagerSession(): Promise<boolean> {
-  try {
-    const { data } = await adminClient().auth.getSession();
-    return !!data.session;
-  } catch {
-    return false;
-  }
-}
 export interface StudentRow {
   student_id: string; display_name: string; status: 'active' | 'paused'; consent_at: string;
   synced_at: string | null; summary: Record<string, unknown> | null;

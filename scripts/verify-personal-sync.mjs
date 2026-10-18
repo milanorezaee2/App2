@@ -173,7 +173,6 @@ globalThis.__germanStore = { progress: { completedLessonIds: ['de-local'], curre
 globalThis.__pronunciationMarks = {
   en: { 'en-th': { mark: 'practiced', updatedAt: iso(2) } },
   de: { 'de-ch': { mark: 'review', updatedAt: iso(3) } },
-  ru: {},
 };
 globalThis.__mergePronunciation = (language, remote) => {
   const local = globalThis.__pronunciationMarks[language];

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
-import { BookOpen, BookOpenCheck, MessageCircle, RefreshCw, Volume2 } from 'lucide-react-native';
+import { BookOpen, BookOpenCheck, RefreshCw, Volume2 } from 'lucide-react-native';
 import { Radius, Typography } from '@/lib/theme';
 import { GermanPalette as Palette } from '@/components/germanTheme';
 
@@ -8,7 +8,6 @@ const items = [
   { path: '/learn/de', label: 'یادگیری', icon: BookOpen },
   { path: '/learn/de/library', label: 'کتابخانه', icon: BookOpenCheck },
   { path: '/learn/de/pronunciation', label: 'تلفظ', icon: Volume2 },
-  { path: '/conversations', label: 'مکالمه', icon: MessageCircle },
   { path: '/learn/de/reviews', label: 'مرور', icon: RefreshCw },
 ] as const;
 

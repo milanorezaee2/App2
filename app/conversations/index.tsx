@@ -1,29 +1,16 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Bot, ChevronLeft, MessageCircle, Mic2, Plus, QrCode, ShieldCheck, Sparkles, Trash2, UserRound } from 'lucide-react-native';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
 import { deleteConversationForMe, ensureSupportConversation, listRealContacts, type RealContact } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
-import { MANAGEMENT_BUILD } from '@/lib/features';
 import { isSupabaseConfigured } from '@/lib/pairing';
 import { SupabaseSetupNotice } from '@/components/SupabaseSetupNotice';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 
-/**
- * The standalone management APK never shows the learner conversations list:
- * cold starts, notification replays and stale restores land on `/conversations`
- * with no manager session and could only fail with ADMIN_REQUIRED. The redirect
- * runs before any contacts request, and only for MANAGEMENT_BUILD so the
- * learner app keeps its own routes.
- */
 export default function ConversationsHome() {
-  if (MANAGEMENT_BUILD) return <Redirect href={'/admin' as never} />;
-  return <ConversationsListScreen />;
-}
-
-function ConversationsListScreen() {
   const router = useRouter();
   const [contacts, setContacts] = useState<RealContact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(true);

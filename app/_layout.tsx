@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -90,8 +90,6 @@ function CompanionRuntime() {
 export default function RootLayout() {
   useFrameworkReady();
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
-  const [logoRevealed, setLogoRevealed] = useState(Platform.OS === 'web');
-  const chimeRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
   const [fontsLoaded, fontError] = useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
     // offline and independent of each Android manufacturer's system fonts.
@@ -121,49 +119,35 @@ export default function RootLayout() {
       return;
     }
     if (startupChimePlayed) {
-      setLogoRevealed(true);
       setIntroComplete(true);
       return;
     }
 
-    // The React splash and the 1.65-second chime start together and cover the
-    // same warm-up window. It follows the native splash seamlessly, so there is
-    // no dark flash.
+    // The React splash and the 1.65-second chime start and finish together.
+    // It follows the native splash seamlessly, so there is no dark flash.
     startupChimePlayed = true;
+    let player: ReturnType<typeof createAudioPlayer> | null = null;
     try {
-      chimeRef.current = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
-      chimeRef.current.volume = 0.28;
-      chimeRef.current.play();
+      player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
+      player.volume = 0.28;
+      player.play();
     } catch {
       // A device without playback support still receives the same visual intro.
     }
-    // Safety net: if the reveal animation somehow stalls, the app must still
-    // move on to the first page instead of hanging on the splash.
-    const fallback = setTimeout(() => setLogoRevealed(true), 5200);
-    return () => clearTimeout(fallback);
-  }, [fontsLoaded, fontError]);
-
-  // The startup phrase is never cut off: the first page waits for the complete
-  // MiloMultiLanguage reveal (MiloLogoMotion onDone) plus a short hold so the
-  // finished phrase stays on screen before the app continues.
-  useEffect(() => {
-    if (!logoRevealed || introComplete) return;
-    const hold = setTimeout(() => {
-      chimeRef.current?.remove();
-      chimeRef.current = null;
+    const finish = setTimeout(() => {
+      player?.remove();
       setIntroComplete(true);
       warmSpeech('en-US');
       setTimeout(() => warmSpeech('de-DE'), 350);
-      setTimeout(() => warmSpeech('ru-RU'), 700);
-    }, 800);
-    return () => clearTimeout(hold);
-  }, [logoRevealed, introComplete]);
+    }, 2200);
+    return () => clearTimeout(finish);
+  }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return null;
   if (!introComplete) {
     return (
       <View style={introStyles.root}>
-        <MiloLogoMotion size="intro" onDone={() => setLogoRevealed(true)} />
+        <MiloLogoMotion size="intro" />
         <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
         <StatusBar style="dark" />
       </View>

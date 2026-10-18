@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "MiloMultiLanguage",
+    "name": "MiloMultilang",
     "slug": "companion-english",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -27,13 +27,12 @@
     },
     "plugins": [
       "expo-router",
-      "./plugins/withFreshTaskLaunch",
       "./plugins/withStableLayoutDirection",
       "expo-font",
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification-icon.png",
+          "icon": "./assets/images/icon.png",
           "color": "#2878DE",
           "defaultChannel": "milo-chat"
         }
