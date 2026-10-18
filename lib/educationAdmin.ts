@@ -52,7 +52,6 @@ export function educationError(error: unknown): string {
   if (/SELF_DELETE/.test(text)) return 'مدیر نمی‌تواند حساب خودش را حذف کند.';
   if (/ADMIN_ACCOUNT|ADMIN_ACCESS_CONTROL_FORBIDDEN/.test(text)) return 'حساب مدیر را نمی‌توان از این بخش مسدود کرد یا حذف کرد.';
   if (/SELF_ACCESS_CONTROL_FORBIDDEN/.test(text)) return 'مدیر نمی‌تواند دسترسی حساب خودش را تغییر دهد.';
-  if (/APP_VERSION_INVALID|MINIMUM_VERSION_EXCEEDS_LATEST|APK_URL_INVALID|APP_PACKAGE_INVALID|FORCE_UPDATE_NEEDS_RELEASE/.test(text)) return 'اطلاعات نسخه یا لینک APK معتبر نیست؛ نسخه و فایل مخصوص همین برنامه را بررسی کنید.';
   if (/ADMIN_REQUIRED|permission denied|row-level security/.test(text)) return 'این حساب اجازه انجام این کار را ندارد.';
   if (/CONSENT_REQUIRED/.test(text)) return 'اشتراک پیشرفت فقط با رضایت شما انجام می‌شود.';
   if (/AUTH_REQUIRED|JWT|session/i.test(text)) return 'نشست ورود معتبر نیست؛ دوباره وارد شوید.';

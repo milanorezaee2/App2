@@ -53,6 +53,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Validate app access and deferred update removal
+        run: npm run validate:app-access
+
       - name: Load and validate public Supabase app settings
         shell: bash
         run: |
@@ -260,6 +263,7 @@ jobs:
           name: "MiloMultilang Android build #${{ github.run_number }}"
           body: |
             Learner (no login), learner (with login) and private management APKs. Phone pairing, remote control, accessibility control and screen sharing are removed; learning content is unchanged.
+            In-app update notices and forced-update controls are temporarily disabled; install future APK releases manually.
             If this run used temporary signing, uninstall the previous app before installation and repeat this for future builds; local unsynced data may be lost.
           prerelease: true
           files: |

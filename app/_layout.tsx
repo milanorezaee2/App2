@@ -15,7 +15,6 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';
 import { AppAccessGate } from '@/components/AppAccessGate';
-import { AppUpdateGate } from '@/components/AppUpdateGate';
 import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
 import { RegistrationGate } from '@/components/RegistrationGate';
 import { RtlDirection } from '@/lib/theme';
@@ -189,20 +188,18 @@ export default function RootLayout() {
       <ErrorBoundary>
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <AppLockGate>
-            <AppUpdateGate>
-              <AppAccessGate>
-                <RegistrationGate>
-                  <ChatNotificationBridge />
-                  <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="admin/index" />
-                    <Stack.Screen name="app-lock" />
-                    <Stack.Screen name="lang/index" />
-                    <Stack.Screen name="+not-found" />
-                  </Stack>
-                </RegistrationGate>
-              </AppAccessGate>
-            </AppUpdateGate>
+            <AppAccessGate>
+              <RegistrationGate>
+                <ChatNotificationBridge />
+                <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="admin/index" />
+                  <Stack.Screen name="app-lock" />
+                  <Stack.Screen name="lang/index" />
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+              </RegistrationGate>
+            </AppAccessGate>
           </AppLockGate>
           <StatusBar style="dark" />
         </SafeAreaView>

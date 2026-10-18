@@ -37,7 +37,7 @@ const build = () => {
     android: {
       ...base.android,
       package: 'com.devicecontrol.miloadmin',
-      versionCode: 4,
+      versionCode: 5,
     },
     ios: {
       ...base.ios,
