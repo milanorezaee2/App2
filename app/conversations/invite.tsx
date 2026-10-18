@@ -96,6 +96,7 @@ export default function InviteContactScreen() {
               <Copy size={18} color={Colors.neutral[500]} />
             </View>
             <Pressable style={[styles.primary, !inviteCode && styles.disabled]} disabled={!inviteCode} onPress={() => void shareInvite()}><Send size={18} color={Colors.onColor} /><Text style={styles.primaryText}>ارسال کد دعوت</Text></Pressable>
+            {inviteCode && !busy ? <Pressable style={styles.retry} onPress={() => void createInvite()}><RefreshCw size={15} color={Colors.primary[300]} /><Text style={styles.retryText}>ساخت کد دعوت برای مخاطب دیگر</Text></Pressable> : null}
             {!inviteCode && !busy ? <Pressable style={styles.retry} onPress={() => void createInvite()}><RefreshCw size={15} color={Colors.primary[300]} /><Text style={styles.retryText}>تلاش دوباره</Text></Pressable> : null}
           </View>
         ) : (

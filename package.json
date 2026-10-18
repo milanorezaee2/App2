@@ -28,6 +28,7 @@
     "validate:typography": "node scripts/verify-typography-stability.mjs",
     "validate:chat-notifications": "node scripts/verify-chat-notifications.mjs",
     "validate:registration-admin": "node scripts/verify-registration-admin.mjs",
+    "validate:requested-updates": "node scripts/verify-requested-updates.mjs",
     "validate:backup": "node scripts/verify-english-backup.mjs",
     "validate:a11y": "node scripts/verify-accessibility-static.mjs",
     "validate:pronunciation": "node scripts/verify-pronunciation-course.mjs",

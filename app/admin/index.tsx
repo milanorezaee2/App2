@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FEATURES } from '@/lib/features';
 import { BookOpen, Users, Ticket, LayoutDashboard, ShieldCheck, LogOut, ArrowUpLeft, Search, RefreshCw, GraduationCap, Trash2, Download, MessageCircle } from 'lucide-react-native';
 import { adminClient, deleteRegisteredUser, loadAdminData, demoStudents, educationError, progressMetrics, type StudentRow, type EducationInvite, type RegisteredUser } from '@/lib/educationAdmin';
-import { listRealContacts, listSupportRequestStatuses, updateSupportRequestStatus, type RealContact, type SupportRequestStatus } from '@/lib/conversations';
+import { listRealContacts, listSupportRequestStatuses, loadAdminChatModeration, setChatConversationDeleted, setChatUserBlocked, updateSupportRequestStatus, type RealContact, type SupportRequestStatus } from '@/lib/conversations';
 import { downloadRegisteredUsers } from '@/lib/userExport';
 import { registerAdminPushToken } from '@/lib/adminPush';
 import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
@@ -47,14 +47,23 @@ function EducationAdmin() {
   const synced = active.filter(r => r.summary);
   const [supportContacts, setSupportContacts] = useState<RealContact[]>([]);
   const [supportStatuses, setSupportStatuses] = useState<Record<string, SupportRequestStatus>>({});
+  const [chatBlockedUsers, setChatBlockedUsers] = useState<Record<string, boolean>>({});
+  const [deletedChats, setDeletedChats] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (tab !== 'support' || mode !== 'live') return;
     let active = true;
-    Promise.all([listRealContacts(), listSupportRequestStatuses()])
-      .then(([contacts, statuses]) => {
+    Promise.all([listRealContacts(true), listSupportRequestStatuses()])
+      .then(async ([contacts, statuses]) => {
         if (!active) return;
         setSupportContacts(contacts);
         setSupportStatuses(statuses);
+        const moderation = await loadAdminChatModeration(
+          contacts.map(contact => contact.id),
+          contacts.map(contact => contact.conversationId),
+        );
+        if (!active) return;
+        setChatBlockedUsers(moderation.blockedUsers);
+        setDeletedChats(moderation.deletedConversations);
       })
       .catch(cause => { if (active) setError(educationError(cause)); });
     return () => { active = false; };
@@ -83,6 +92,32 @@ function EducationAdmin() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function confirmConversationDeletion(contact: RealContact) {
+    const alreadyDeleted = Boolean(deletedChats[contact.conversationId]);
+    if (alreadyDeleted) {
+      void task(async () => {
+        await setChatConversationDeleted(contact.conversationId, false);
+        setDeletedChats(current => ({ ...current, [contact.conversationId]: false }));
+        setNotice('گفتگو بازیابی شد.');
+      });
+      return;
+    }
+    const message = `گفتگوی «${contact.displayName}» برای هر دو طرف پنهان شود؟ این حذف نرم است و مدیر می‌تواند گفتگو را بازیابی کند.`;
+    const remove = () => void task(async () => {
+      await setChatConversationDeleted(contact.conversationId, true);
+      setDeletedChats(current => ({ ...current, [contact.conversationId]: true }));
+      setNotice('گفتگو برای طرفین پنهان شد و قابل‌بازیابی است.');
+    });
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(message)) remove();
+      return;
+    }
+    Alert.alert('حذف نرم گفتگو', message, [
+      { text: 'انصراف', style: 'cancel' },
+      { text: 'پنهان‌کردن گفتگو', style: 'destructive', onPress: remove },
+    ]);
   }
 
   async function refresh() {
@@ -204,11 +239,13 @@ function EducationAdmin() {
           {!demo && supportContacts.map(contact => {
             const status = supportStatuses[contact.conversationId] || 'open';
             const nextStatus: SupportRequestStatus = status === 'open' ? 'resolved' : 'open';
-            return <View key={contact.conversationId} style={s.studentRow}>
-              <Pressable accessibilityRole="button" style={{ flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }} onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)}>
+            const isBlocked = Boolean(chatBlockedUsers[contact.id]);
+            const isDeleted = Boolean(deletedChats[contact.conversationId]);
+            return <View key={contact.conversationId} style={[s.studentRow, isDeleted && { opacity: .65 }]}>
+              <Pressable accessibilityRole="button" disabled={isDeleted} style={{ flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }} onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)}>
                 <View style={[s.avatar, {backgroundColor:'#eef0ff'}]}><Text style={s.avatarText}>{contact.displayName.slice(0,1)}</Text></View>
-                <View style={{flex:1,minWidth:80}}><Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>آخرین فعالیت: {dates(contact.lastSeen)}</Text></View>
-                <ArrowUpLeft size={18} color="#1769D2" />
+                <View style={{flex:1,minWidth:80}}><Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>{isBlocked ? 'دسترسی چت مسدود است' : isDeleted ? 'گفتگو پنهان شده' : `آخرین فعالیت: ${dates(contact.lastSeen)}`}</Text></View>
+                {!isDeleted && <ArrowUpLeft size={18} color="#1769D2" />}
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -223,6 +260,24 @@ function EducationAdmin() {
               >
                 <Text style={[s.small, { color: status === 'resolved' ? '#178055' : '#1769D2' }]}>{status === 'resolved' ? 'پاسخ‌داده‌شده' : 'باز'}</Text>
               </Pressable>
+              <View style={{ width: '100%', flexDirection: 'row-reverse', justifyContent: 'flex-start', gap: 8, marginTop: 8 }}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={() => void task(async () => {
+                    await setChatUserBlocked(contact.id, !isBlocked);
+                    setChatBlockedUsers(current => ({ ...current, [contact.id]: !isBlocked }));
+                    setNotice(isBlocked ? 'دسترسی گفتگو برای این کاربر مجاز شد.' : 'دسترسی گفتگو برای این کاربر مسدود شد.');
+                  })}
+                  style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: isBlocked ? '#E8F6EF' : '#FFF1E8' }}
+                ><Text style={[s.small, { color: isBlocked ? '#178055' : '#B34B22' }]}>{isBlocked ? 'اجازهٔ دسترسی' : 'مسدودکردن چت'}</Text></Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={() => confirmConversationDeletion(contact)}
+                  style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: isDeleted ? '#E8F6EF' : '#FFF0F0' }}
+                ><Text style={[s.small, { color: isDeleted ? '#178055' : '#B42336' }]}>{isDeleted ? 'بازیابی گفتگو' : 'حذف گفتگو'}</Text></Pressable>
+              </View>
             </View>;
           })}
         </View>}

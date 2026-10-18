@@ -39,7 +39,7 @@ check(/EXPO_PUBLIC_MILO_ADMIN_APP/.test(read('app/index.tsx')), 'the management 
 check(/پیام‌های خصوصی/.test(gate) && /پیام‌های خصوصی/.test(admin), 'both apps disclose and preserve private-message boundaries');
 check(/learnerLogin: process\.env\.EXPO_PUBLIC_LEARNER_LOGIN === 'true'/.test(read('lib/features.ts')), 'learner login is a build-time switch that defaults to off');
 check(/MiloMultilang-Login\.apk/.test(workflow) && /EXPO_PUBLIC_LEARNER_LOGIN=true/.test(workflow), 'CI builds and publishes the learner login APK');
-check(/com\.devicecontrol\.milomultilang/.test(appConfig) && /name: 'Milo Admin'/.test(appConfig), 'login APK uses its own package and the admin keeps the name Milo Admin');
+check(/com\.devicecontrol\.milomultilang/.test(appConfig) && /name: 'MiloMultiLanguage Admin'/.test(appConfig), 'login APK keeps its own package and management branding includes MiloMultiLanguage');
 check(/is_education_admin/.test(read('supabase/functions/admin-delete-user/index.ts')) && /deleteUser\(/.test(read('supabase/functions/admin-delete-user/index.ts')), 'account deletion is manager-only and runs on the server');
 check(/deleteRegisteredUser/.test(read('app/admin/index.tsx')) && /downloadRegisteredUsers/.test(read('app/admin/index.tsx')), 'manager app can delete users and export users');
 check(/MANAGEMENT_BUILD \? adminClient\(\) : supabase/.test(read('lib/conversations.ts')), 'the manager APK sends chat as the manager, not an anonymous learner');

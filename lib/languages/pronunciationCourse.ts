@@ -1,4 +1,4 @@
-export type PronunciationLanguage = 'en' | 'de';
+export type PronunciationLanguage = 'en' | 'de' | 'ru';
 
 export interface PronunciationExample {
   text: string;
@@ -23,6 +23,51 @@ export interface PronunciationUnit {
  * phonetic transcriptions or claims that a single accent is the only valid one.
  */
 export const PRONUNCIATION_COURSES: Record<PronunciationLanguage, readonly PronunciationUnit[]> = {
+  ru: [
+    {
+      id: 'ru-vowels-a-o',
+      title: 'واکه‌های а و о',
+      focusFa: 'تکیه می‌تواند کیفیت واکهٔ ناآکسان را تغییر دهد.',
+      explanationFa: 'در روسی، واکهٔ بی‌تکیه ممکن است کوتاه‌تر و کم‌رنگ‌تر شنیده شود. نمونه‌ها را با صدای دستگاه گوش کنید و به جای حدس از روی نوشتار، شکل شنیداری واژه را تمرین کنید.',
+      examples: [
+        { text: 'мама', meaningFa: 'مادر', focusFa: 'دو а را روشن و جدا ادا کنید' },
+        { text: 'вода', meaningFa: 'آب', focusFa: 'تکیهٔ پایانی را بشنوید' },
+        { text: 'молоко', meaningFa: 'شیر', focusFa: 'تکیه روی واکهٔ پایانی است' },
+      ],
+      practiceFa: 'ابتدا واژه را گوش کنید، سپس با سرعت آرام و عادی تکرار کنید.',
+      practiceText: 'Мама пьёт воду.',
+      practiceMeaningFa: 'مامان آب می‌نوشد.',
+    },
+    {
+      id: 'ru-soft-hard',
+      title: 'همخوان نرم و سخت',
+      focusFa: 'در بسیاری از جفت‌ها، نرم‌شدن همخوان معنی را عوض می‌کند.',
+      explanationFa: 'در روسی، جایگاه زبان و واکهٔ پس از همخوان بر نرم یا سخت شنیده‌شدن آن اثر می‌گذارد. به تفاوت جفت‌ها گوش کنید؛ این تمرین فقط نمونهٔ شنیداری است، نه ارزیابی تلفظ.',
+      examples: [
+        { text: 'брат', meaningFa: 'برادر', focusFa: 'б سخت' },
+        { text: 'брать', meaningFa: 'گرفتن', focusFa: 'т پایانی نرم' },
+        { text: 'угол', meaningFa: 'گوشه', focusFa: 'л سخت' },
+        { text: 'уголь', meaningFa: 'زغال‌سنگ', focusFa: 'л نرم' },
+      ],
+      practiceFa: 'به پایان واژه گوش دهید و تفاوت جفت را آرام تکرار کنید.',
+      practiceText: 'Мой брат хочет брать книгу.',
+      practiceMeaningFa: 'برادرم می‌خواهد کتاب را بردارد.',
+    },
+    {
+      id: 'ru-stress-rhythm',
+      title: 'تکیه و آهنگ جمله',
+      focusFa: 'جای تکیه را از نمونهٔ صوتی یاد بگیرید؛ آن را با حروف فارسی حدس نزنید.',
+      explanationFa: 'تکیه در روسی واژگانی است و می‌تواند روی بخش‌های متفاوت قرار بگیرد. جمله را به‌صورت یک عبارت طبیعی گوش کنید و واژهٔ پرسشی را روشن‌تر ادا کنید.',
+      examples: [
+        { text: 'спасибо', meaningFa: 'ممنون', focusFa: 'تکیه روی بخش دوم' },
+        { text: 'хорошо', meaningFa: 'خوب', focusFa: 'تکیه روی بخش پایانی' },
+        { text: 'Как дела?', meaningFa: 'حالت چطور است؟', focusFa: 'پرسش کوتاه و روان' },
+      ],
+      practiceFa: 'یک‌بار گوش کنید، سپس جمله را با مکث طبیعی و آهنگ پرسشی تکرار کنید.',
+      practiceText: 'Как дела? Спасибо, хорошо.',
+      practiceMeaningFa: 'حالت چطور است؟ ممنون، خوبم.',
+    },
+  ],
   en: [
     {
       id: 'en-vowels-ship-sheep',
@@ -299,5 +344,5 @@ export const PRONUNCIATION_COURSES: Record<PronunciationLanguage, readonly Pronu
 };
 
 export function isPronunciationLanguage(value: string | undefined): value is PronunciationLanguage {
-  return value === 'en' || value === 'de';
+  return value === 'en' || value === 'de' || value === 'ru';
 }

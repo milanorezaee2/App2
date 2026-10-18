@@ -123,8 +123,8 @@ export default function RootLayout() {
       return;
     }
 
-    // The React splash and the 1.65-second chime start and finish together.
-    // It follows the native splash seamlessly, so there is no dark flash.
+    // Keep the full MiloMultiLanguage identity visible through its complete
+    // animation before revealing the first screen; no startup state is reset.
     startupChimePlayed = true;
     let player: ReturnType<typeof createAudioPlayer> | null = null;
     try {
@@ -139,7 +139,7 @@ export default function RootLayout() {
       setIntroComplete(true);
       warmSpeech('en-US');
       setTimeout(() => warmSpeech('de-DE'), 350);
-    }, 2200);
+    }, 3400);
     return () => clearTimeout(finish);
   }, [fontsLoaded, fontError]);
 

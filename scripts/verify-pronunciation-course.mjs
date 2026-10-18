@@ -39,6 +39,8 @@ for (const language of ['en', 'de']) {
   verify(new Set(units.map(unit => unit.id)).size === units.length, `${language} unit IDs are unique`);
   verify(units.every(unit => unit.title && unit.explanationFa && unit.practiceFa && unit.practiceText && unit.examples.length >= 2), `${language} units include instruction, examples and a practice sentence`);
 }
+verify(PRONUNCIATION_COURSES.ru.length >= 3, 'Russian has a focused pronunciation course without altering its core lesson catalog');
+verify(PRONUNCIATION_COURSES.ru.every(unit => unit.examples.length >= 2 && unit.practiceText), 'Russian pronunciation units include TTS-ready practice examples');
 verify(PRONUNCIATION_COURSES.en.some(unit => /thin و this/.test(unit.title)), 'English course teaches the two TH sounds');
 verify(PRONUNCIATION_COURSES.en.some(unit => /s و ed/.test(unit.title)), 'English course teaches common suffix pronunciations');
 verify(PRONUNCIATION_COURSES.de.some(unit => /Umlaut/.test(unit.title)), 'German course teaches umlaut articulation');
@@ -49,13 +51,16 @@ await storage.clear();
 const englishKey = app.progress.PRONUNCIATION_PROGRESS_KEYS.en;
 const enUnit = PRONUNCIATION_COURSES.en[0];
 const deUnit = PRONUNCIATION_COURSES.de[0];
+const ruUnit = PRONUNCIATION_COURSES.ru[0];
 verify(Object.keys(await app.progress.loadPronunciationMarks('en')).length === 0, 'missing English local marks start empty');
 verify(Object.keys(await app.progress.loadPronunciationMarks('de')).length === 0, 'missing German local marks start empty');
 await app.progress.savePronunciationMark('en', enUnit.id, 'practiced');
 await app.progress.savePronunciationMark('de', deUnit.id, 'review');
+await app.progress.savePronunciationMark('ru', ruUnit.id, 'practiced');
 verify((await app.progress.loadPronunciationMarks('en'))[enUnit.id]?.mark === 'practiced', 'English self-review status persists locally');
 verify((await app.progress.loadPronunciationMarks('de'))[deUnit.id]?.mark === 'review', 'German self-review status persists locally');
-verify(Object.keys(await app.progress.loadPronunciationMarks('en')).length === 1, 'English and German progress remain separate');
+verify((await app.progress.loadPronunciationMarks('ru'))[ruUnit.id]?.mark === 'practiced', 'Russian pronunciation progress persists locally');
+verify(Object.keys(await app.progress.loadPronunciationMarks('en')).length === 1, 'English, German and Russian progress remain separate');
 await app.progress.savePronunciationMark('en', enUnit.id, null);
 verify((await app.progress.loadPronunciationMarks('en'))[enUnit.id]?.mark === null, 'cleared marks persist as cross-device tombstones');
 
@@ -75,5 +80,8 @@ verify(readFileSync(path.join(root, 'app/lang/index.tsx'), 'utf8').includes("'/l
 verify(readFileSync(path.join(root, 'components/GermanSentenceHome.tsx'), 'utf8').includes("'/learn/de/pronunciation'"), 'German home links to its pronunciation course');
 verify(readFileSync(path.join(root, 'components/AppBottomNav.tsx'), 'utf8').includes("'/learn/en/pronunciation'"), 'English navigation includes the pronunciation course');
 verify(readFileSync(path.join(root, 'components/GermanBottomNav.tsx'), 'utf8').includes("'/learn/de/pronunciation'"), 'German navigation includes the pronunciation course');
+verify(readFileSync(path.join(root, 'components/RussianBottomNav.tsx'), 'utf8').includes("'/learn/ru/pronunciation'"), 'Russian navigation includes pronunciation');
+verify(readFileSync(path.join(root, 'components/RussianBottomNav.tsx'), 'utf8').includes("'/conversations'"), 'Russian navigation opens real contact conversations');
+verify(readFileSync(path.join(root, 'components/GermanBottomNav.tsx'), 'utf8').includes("'/conversations'"), 'German navigation opens real contact conversations');
 
-console.log(`${checks} checks passed; English/German pronunciation lessons, backward-compatible self-review storage, navigation and speech privacy verified.`);
+console.log(`${checks} checks passed; English/German/Russian pronunciation lessons, durable self-review storage, language navigation and speech privacy verified.`);

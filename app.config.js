@@ -5,7 +5,7 @@ const build = () => {
   if (process.env.EXPO_PUBLIC_RUSSIAN_ONLY === 'true' && !admin) {
     return {
       ...base,
-      name: 'Milo Russian',
+      name: 'MiloMultiLanguage Russian',
       slug: 'milo-russian',
       scheme: 'milorussian',
       android: {
@@ -22,7 +22,7 @@ const build = () => {
   if (!admin && learnerLogin) {
     return {
       ...base,
-      name: 'MiloMultilang Login',
+      name: 'MiloMultiLanguage Login',
       android: { ...base.android, package: 'com.devicecontrol.milomultilang' },
       ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.milomultilang' },
     };
@@ -30,7 +30,7 @@ const build = () => {
   if (!admin) return base;
   return {
     ...base,
-    name: 'Milo Admin',
+    name: 'MiloMultiLanguage Admin',
     slug: 'milo-language-admin',
     scheme: 'miloadmin',
     android: {
