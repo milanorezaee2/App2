@@ -15,7 +15,6 @@ import * as Speech from 'expo-speech';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import { supabase } from './supabase';
 import type { RemoteCommand } from './types';
-import { accessibilityControl } from './accessibilityControl';
 
 export const AGENT_REPORT_INTERVAL = 45000; // 45s
 
@@ -156,33 +155,6 @@ export function useRealAgent(deviceId: string | null, running: boolean): RealAge
           '';
         if (text) setIncomingMessage(text);
         return 'پیام روی گوشی دوم نمایش داده شد';
-      }
-      case 'tap': {
-        const x = Number(cmd.parameters?.x);
-        const y = Number(cmd.parameters?.y);
-        if (!Number.isFinite(x) || !Number.isFinite(y)) return 'مختصات لمس معتبر نیست';
-        if (!(await accessibilityControl.isEnabled())) return 'سرویس کنترل لمسی توسط کاربر فعال نشده است';
-        await accessibilityControl.tap(x, y);
-        return `لمس در مختصات ${Math.round(x)}, ${Math.round(y)} انجام شد`;
-      }
-      case 'swipe': {
-        const x1 = Number(cmd.parameters?.x1);
-        const y1 = Number(cmd.parameters?.y1);
-        const x2 = Number(cmd.parameters?.x2);
-        const y2 = Number(cmd.parameters?.y2);
-        const duration = Number(cmd.parameters?.durationMs ?? 350);
-        if (![x1, y1, x2, y2, duration].every(Number.isFinite)) return 'مختصات حرکت معتبر نیست';
-        if (!(await accessibilityControl.isEnabled())) return 'سرویس کنترل لمسی توسط کاربر فعال نشده است';
-        await accessibilityControl.swipe(x1, y1, x2, y2, Math.max(80, Math.min(2000, duration)));
-        return 'حرکت لمسی انجام شد';
-      }
-      case 'back':
-      case 'home':
-      case 'recents':
-      case 'notifications': {
-        if (!(await accessibilityControl.isEnabled())) return 'سرویس کنترل لمسی توسط کاربر فعال نشده است';
-        await accessibilityControl.globalAction(cmd.command_type);
-        return 'دستور پیمایش اندروید انجام شد';
       }
       case 'scan': {
         return 'اسکن انجام شد — مورد مشکوکی یافت نشد';

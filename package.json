@@ -36,7 +36,6 @@
     "prebuild:web": "node scripts/check-public-connection.mjs"
   },
   "dependencies": {
-    "@config-plugins/react-native-webrtc": "^13.0.0",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/vazirmatn": "^0.4.1",
     "@expo/vector-icons": "^15.0.2",
@@ -86,7 +85,6 @@
     "react-native-svg": "15.12.1",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.21.0",
-    "react-native-webrtc": "^124.0.6",
     "react-native-webview": "13.15.0"
   },
   "devDependencies": {

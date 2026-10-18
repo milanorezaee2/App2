@@ -53,12 +53,12 @@
 
 ## قدم ۵ (اختیاری) — Emma با هوش مصنوعی واقعی
 
-کد دعوت و چت و تماس صوتی به این قدم نیازی ندارند. فقط برای Emma واقعی لازم است:
+کد دعوت، گفت‌وگوی متنی و پیام‌های صوتی به این قدم نیازی ندارند. فقط برای Emma واقعی لازم است:
 
 1. منوی چپ: **Edge Functions** → **Create function**.
 2. نامش را `emma-chat` بگذار و محتوای `supabase/functions/emma-chat/index.ts` را
-   داخلش پیست کن و Deploy کن. همین کار را برای `speech-evaluate` و
-   `human-chat-assist` و `turn-credentials` تکرار کن.
+   داخلش پیست کن. همین کار را برای `speech-evaluate` و
+   `human-chat-assist` تکرار کن.
 3. در **Project Settings → Edge Functions → Secrets** این‌ها را اضافه کن:
    `OPENAI_API_KEY`، `OPENAI_MODEL`، `OPENAI_TRANSCRIBE_MODEL`
    (کلید AI را هرگز داخل اپ یا Git نگذار.)

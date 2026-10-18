@@ -16,8 +16,6 @@
       "versionCode": 6,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECORD_AUDIO"
       ]
@@ -71,9 +69,6 @@
           "microphonePermission": "برای تمرین تلفظ جمله‌ها، اجازه استفاده از میکروفن را بدهید."
         }
       ],
-      "@config-plugins/react-native-webrtc",
-      "./plugins/withMediaProjectionService",
-      "./plugins/withCompanionAccessibility",
       [
         "expo-build-properties",
         {
