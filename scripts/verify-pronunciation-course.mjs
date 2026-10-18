@@ -33,7 +33,7 @@ let checks = 0;
 const verify = (condition, message) => { check(condition, message); checks += 1; };
 
 const { PRONUNCIATION_COURSES } = app.course;
-for (const language of ['en', 'de', 'ru']) {
+for (const language of ['en', 'de']) {
   const units = PRONUNCIATION_COURSES[language];
   verify(units.length >= 8, `${language} has a structured multi-lesson pronunciation course`);
   verify(new Set(units.map(unit => unit.id)).size === units.length, `${language} unit IDs are unique`);
@@ -43,25 +43,19 @@ verify(PRONUNCIATION_COURSES.en.some(unit => /thin و this/.test(unit.title)), '
 verify(PRONUNCIATION_COURSES.en.some(unit => /s و ed/.test(unit.title)), 'English course teaches common suffix pronunciations');
 verify(PRONUNCIATION_COURSES.de.some(unit => /Umlaut/.test(unit.title)), 'German course teaches umlaut articulation');
 verify(PRONUNCIATION_COURSES.de.some(unit => /ich و Bach/.test(unit.title)), 'German course contrasts both common CH sounds');
-verify(PRONUNCIATION_COURSES.ru.some(unit => /ы/.test(unit.title)) && PRONUNCIATION_COURSES.ru.some(unit => /تکیه/.test(unit.title)), 'Russian course teaches its distinct vowel and lexical stress');
 
 const storage = app.mockAsyncStorage;
 await storage.clear();
 const englishKey = app.progress.PRONUNCIATION_PROGRESS_KEYS.en;
 const enUnit = PRONUNCIATION_COURSES.en[0];
 const deUnit = PRONUNCIATION_COURSES.de[0];
-const ruUnit = PRONUNCIATION_COURSES.ru[0];
 verify(Object.keys(await app.progress.loadPronunciationMarks('en')).length === 0, 'missing English local marks start empty');
 verify(Object.keys(await app.progress.loadPronunciationMarks('de')).length === 0, 'missing German local marks start empty');
 await app.progress.savePronunciationMark('en', enUnit.id, 'practiced');
 await app.progress.savePronunciationMark('de', deUnit.id, 'review');
-await app.progress.savePronunciationMark('ru', ruUnit.id, 'practiced');
 verify((await app.progress.loadPronunciationMarks('en'))[enUnit.id]?.mark === 'practiced', 'English self-review status persists locally');
 verify((await app.progress.loadPronunciationMarks('de'))[deUnit.id]?.mark === 'review', 'German self-review status persists locally');
-verify((await app.progress.loadPronunciationMarks('ru'))[ruUnit.id]?.mark === 'practiced', 'Russian self-review status persists locally');
-verify(Object.keys(await app.progress.loadPronunciationMarks('en')).length === 1
-  && app.progress.PRONUNCIATION_PROGRESS_KEYS.en !== app.progress.PRONUNCIATION_PROGRESS_KEYS.de
-  && app.progress.PRONUNCIATION_PROGRESS_KEYS.ru !== app.progress.PRONUNCIATION_PROGRESS_KEYS.de, 'English, German and Russian progress remain separate');
+verify(Object.keys(await app.progress.loadPronunciationMarks('en')).length === 1, 'English and German progress remain separate');
 await app.progress.savePronunciationMark('en', enUnit.id, null);
 verify((await app.progress.loadPronunciationMarks('en'))[enUnit.id]?.mark === null, 'cleared marks persist as cross-device tombstones');
 
@@ -81,8 +75,5 @@ verify(readFileSync(path.join(root, 'app/lang/index.tsx'), 'utf8').includes("'/l
 verify(readFileSync(path.join(root, 'components/GermanSentenceHome.tsx'), 'utf8').includes("'/learn/de/pronunciation'"), 'German home links to its pronunciation course');
 verify(readFileSync(path.join(root, 'components/AppBottomNav.tsx'), 'utf8').includes("'/learn/en/pronunciation'"), 'English navigation includes the pronunciation course');
 verify(readFileSync(path.join(root, 'components/GermanBottomNav.tsx'), 'utf8').includes("'/learn/de/pronunciation'"), 'German navigation includes the pronunciation course');
-const russianNav = readFileSync(path.join(root, 'components/RussianBottomNav.tsx'), 'utf8');
-verify(russianNav.includes("'/learn/ru/pronunciation'") && russianNav.includes("'/conversations'"), 'Russian navigation exposes pronunciation and real conversations');
-verify(/flexDirection: 'row-reverse'/.test(russianNav), 'Russian bottom navigation is visually aligned right-to-left');
 
-console.log(`${checks} checks passed; English/German/Russian pronunciation, separate self-review storage, RTL navigation, conversations and speech privacy verified.`);
+console.log(`${checks} checks passed; English/German pronunciation lessons, backward-compatible self-review storage, navigation and speech privacy verified.`);

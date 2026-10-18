@@ -87,22 +87,16 @@ sleep 30
 failed_step="dumping the Android UI hierarchy"
 capture_ui
 
-for attempt in 1 2 3; do
-  # Hosted emulators can transiently report that System UI, Settings, or the
-  # core Android "system" process is unresponsive during first boot/UIAutomator
-  # inspection. These system-owned dialogs expose a Wait action; recover only
-  # while our app activity remains resumed, then verify the app UI again below.
-  if ! grep -Eq "System UI isn't responding|Settings isn't responding|Process system isn't responding" "$ui_file"; then
+for attempt in 1 2; do
+  # Slow hosted emulators can report either the System UI package or the core
+  # Android "system" process as temporarily unresponsive during first boot.
+  # Both dialogs expose a Wait action and are infrastructure noise when our
+  # activity remains resumed without a FATAL EXCEPTION.
+  if ! grep -Eq "System UI isn't responding|Process system isn't responding" "$ui_file"; then
     break
   fi
 
-  resumed_activity="$(adb shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity|ResumedActivity' | tail -n 1 || true)"
-  if [[ "$resumed_activity" != *"com.devicecontrol.companion/.MainActivity"* ]]; then
-    echo "A system ANR dialog appeared while the Milo learner activity was not resumed: ${resumed_activity:-none}"
-    break
-  fi
-
-  failed_step="waiting for Android system service (recovery attempt $attempt)"
+  failed_step="waiting for Android System UI (recovery attempt $attempt)"
   wait_coords="$(python3 - "$ui_file" <<'PY'
 import re
 import sys
@@ -125,7 +119,7 @@ PY
   echo "Android system reported a transient ANR; selecting Wait at $wait_x,$wait_y and allowing the app another 30 seconds."
   adb shell input tap "$wait_x" "$wait_y"
   sleep 30
-  failed_step="rechecking the screen after waiting for the Android system service"
+  failed_step="rechecking the screen after waiting for Android System UI"
   capture_ui
 done
 

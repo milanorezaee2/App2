@@ -12,8 +12,6 @@ ios/
 # native
 *.orig.*
 *.jks
-.private-signing/
-.android-release-signing-backup.txt
 *.p8
 *.p12
 *.key

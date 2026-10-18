@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
-import { Animated, Easing, I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
@@ -14,10 +14,12 @@ import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_700Bold, Vazirmatn
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';
-import { AppAccessGate } from '@/components/AppAccessGate';
 import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
 import { RegistrationGate } from '@/components/RegistrationGate';
+import { getPairingState, isOnboardingComplete } from '@/lib/storage';
+import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
+import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
 
 // Android native mirroring is disabled in withStableLayoutDirection. Persian
@@ -50,18 +52,44 @@ SplashScreen.preventAutoHideAsync();
 let startupChimePlayed = false;
 const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
   || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
-const IS_LEARNER_LOGIN_APP = Constants.expoConfig?.extra?.learnerLogin === true
-  || process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true';
 
-/** Learner and manager APKs share the same protected application shell. */
+function RuntimeGate() {
+  const pathname = usePathname();
+  // The multi-language learning app never mounts the legacy device runtime.
+  if (!pathname.startsWith('/agent') && !pathname.startsWith('/permissions')) return null;
+  return <CompanionRuntime />;
+}
+
+function CompanionRuntime() {
+  const pathname = usePathname();
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    Promise.all([getPairingState(), isOnboardingComplete()])
+      .then(([pairing, complete]) => {
+        setDeviceId(pairing?.deviceId ?? null);
+        setEnabled(!!pairing && complete && isSupabaseConfigured());
+      })
+      .catch(() => {
+        setDeviceId(null);
+        setEnabled(false);
+      });
+  }, [pathname]);
+
+  // Runs invisibly while the user studies: heartbeat, device status and
+  // supported commands continue without exposing a complicated control UI.
+  useRealAgent(deviceId, enabled);
+  return null;
+}
+
+/**
+ * Phone-2 companion only. There is no role chooser and no controller route in
+ * this APK; it always boots into the companion connection screen.
+ */
 export default function RootLayout() {
   useFrameworkReady();
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
-  // The login variant keeps the full brand static during startup. This avoids
-  // animation callback stalls on emulator while still displaying the full name.
-  const [introLogoComplete, setIntroLogoComplete] = useState(Platform.OS === 'web' || IS_LEARNER_LOGIN_APP);
-  const [chimeComplete, setChimeComplete] = useState(Platform.OS === 'web');
-  const introOpacity = useRef(new Animated.Value(1)).current;
   const [fontsLoaded, fontError] = useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
     // offline and independent of each Android manufacturer's system fonts.
@@ -83,102 +111,46 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    if (!fontsLoaded && !fontError) return;
+    void SplashScreen.hideAsync();
+
     if (Platform.OS === 'web') {
-      void SplashScreen.hideAsync();
+      setIntroComplete(true);
+      return;
+    }
+    if (startupChimePlayed) {
       setIntroComplete(true);
       return;
     }
 
-    // The management APK must not depend on font loading, audio playback, or
-    // native animation callbacks to leave its startup screen. Render a static
-    // brand briefly, then let the normal app shell open with system fonts if
-    // custom fonts are still loading.
-    if (IS_ADMIN_APP) {
-      void SplashScreen.hideAsync();
-      const finishAdminIntro = setTimeout(() => {
-        setIntroLogoComplete(true);
-        setChimeComplete(true);
-      }, 700);
-      return () => clearTimeout(finishAdminIntro);
-    }
-
-    if (!fontsLoaded && !fontError) return;
-    void SplashScreen.hideAsync();
-    if (startupChimePlayed && !IS_LEARNER_LOGIN_APP) {
-      setIntroLogoComplete(true);
-      setChimeComplete(true);
-      return;
-    }
-
-    // Keep the complete brand visible until the short intro interval finishes;
-    // the login build uses a static wordmark instead of animation callbacks.
+    // The React splash and the 1.65-second chime start and finish together.
+    // It follows the native splash seamlessly, so there is no dark flash.
+    startupChimePlayed = true;
     let player: ReturnType<typeof createAudioPlayer> | null = null;
-    if (!startupChimePlayed) {
-      startupChimePlayed = true;
-      try {
-        player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
-        player.volume = 0.28;
-        player.play();
-      } catch {
-        // A device without playback support still receives the same visual intro.
-      }
+    try {
+      player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
+      player.volume = 0.28;
+      player.play();
+    } catch {
+      // A device without playback support still receives the same visual intro.
     }
-    const finishChime = setTimeout(() => {
+    const finish = setTimeout(() => {
       player?.remove();
-      setChimeComplete(true);
-    }, 1650);
-    // Some Android emulators disable native animations. Keep the complete
-    // brand visible for several seconds, then release startup even if the
-    // Animated callback never fires.
-    const finishIntroFallback = setTimeout(() => {
-      player?.remove();
-      setIntroLogoComplete(true);
-      setChimeComplete(true);
-    }, 4000);
-    return () => {
-      clearTimeout(finishChime);
-      clearTimeout(finishIntroFallback);
-    };
-  }, [fontsLoaded, fontError]);
-
-  useEffect(() => {
-    if (introComplete || (!fontsLoaded && !fontError && !IS_ADMIN_APP) || !introLogoComplete || !chimeComplete) return;
-    const finishIntro = () => {
       setIntroComplete(true);
       warmSpeech('en-US');
       setTimeout(() => warmSpeech('de-DE'), 350);
-      setTimeout(() => warmSpeech('ru-RU'), 700);
-    };
-    const fade = Animated.timing(introOpacity, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    });
-    let completed = false;
-    const completeOnce = () => {
-      if (completed) return;
-      completed = true;
-      finishIntro();
-    };
-    fade.start(({ finished }) => { if (finished) completeOnce(); });
-    // Keep the native fade where supported, but never strand the app on its
-    // logo if the platform suppresses animation completion callbacks.
-    const fadeFallback = setTimeout(completeOnce, 500);
-    return () => {
-      clearTimeout(fadeFallback);
-      fade.stop();
-    };
-  }, [chimeComplete, fontError, fontsLoaded, introComplete, introLogoComplete, introOpacity]);
+    }, 2200);
+    return () => clearTimeout(finish);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError && !IS_ADMIN_APP) return null;
+  if (!fontsLoaded && !fontError) return null;
   if (!introComplete) {
     return (
-      <Animated.View style={[introStyles.root, { opacity: introOpacity }]}>
-        <MiloLogoMotion size="intro" play={!IS_LEARNER_LOGIN_APP && !IS_ADMIN_APP} onDone={() => setIntroLogoComplete(true)} />
+      <View style={introStyles.root}>
+        <MiloLogoMotion size="intro" />
         <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
         <StatusBar style="dark" />
-      </Animated.View>
+      </View>
     );
   }
 
@@ -188,18 +160,19 @@ export default function RootLayout() {
       <ErrorBoundary>
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <AppLockGate>
-            <AppAccessGate>
-              <RegistrationGate>
-                <ChatNotificationBridge />
-                <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-                  <Stack.Screen name="index" />
-                  <Stack.Screen name="admin/index" />
-                  <Stack.Screen name="app-lock" />
-                  <Stack.Screen name="lang/index" />
-                  <Stack.Screen name="+not-found" />
-                </Stack>
-              </RegistrationGate>
-            </AppAccessGate>
+            <RegistrationGate>
+              {!IS_ADMIN_APP && <RuntimeGate />}
+              {!IS_ADMIN_APP && <ChatNotificationBridge />}
+              <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+                <Stack.Screen name="index" />
+                <Stack.Screen name="admin/index" />
+                <Stack.Screen name="agent" />
+                <Stack.Screen name="permissions" />
+                <Stack.Screen name="app-lock" />
+                <Stack.Screen name="lang/index" />
+                <Stack.Screen name="+not-found" />
+              </Stack>
+            </RegistrationGate>
           </AppLockGate>
           <StatusBar style="dark" />
         </SafeAreaView>

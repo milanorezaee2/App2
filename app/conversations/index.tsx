@@ -6,7 +6,7 @@ import { AppBottomNav } from '@/components/AppBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
 import { deleteConversationForMe, ensureSupportConversation, listRealContacts, type RealContact } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
-import { isSupabaseConfigured } from '@/lib/supabaseConfig';
+import { isSupabaseConfigured } from '@/lib/pairing';
 import { SupabaseSetupNotice } from '@/components/SupabaseSetupNotice';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 

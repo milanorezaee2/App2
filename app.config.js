@@ -22,10 +22,9 @@ const build = () => {
   if (!admin && learnerLogin) {
     return {
       ...base,
-      name: 'Milo MultiLanguage Login',
+      name: 'MiloMultilang Login',
       android: { ...base.android, package: 'com.devicecontrol.milomultilang' },
       ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.milomultilang' },
-      extra: { ...base.extra, learnerLogin: true },
     };
   }
   if (!admin) return base;
@@ -37,7 +36,7 @@ const build = () => {
     android: {
       ...base.android,
       package: 'com.devicecontrol.miloadmin',
-      versionCode: 5,
+      versionCode: 1,
     },
     ios: {
       ...base.ios,

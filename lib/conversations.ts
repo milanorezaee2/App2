@@ -14,7 +14,6 @@ export interface RealContact {
   avatarEmoji: string;
   englishLevel: string;
   lastSeen: string | null;
-  supportStatus?: 'open' | 'resolved';
 }
 
 export interface DirectMessage {

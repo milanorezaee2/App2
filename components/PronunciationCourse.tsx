@@ -8,7 +8,6 @@ import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw, Volume2 } from 'lucide
 import { useRouter } from 'expo-router';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { GermanBottomNav } from '@/components/GermanBottomNav';
-import { RussianBottomNav } from '@/components/RussianBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
 import { toPersianDigits as fa } from '@/lib/format';
 import {
@@ -55,22 +54,6 @@ const THEMES = {
     locale: 'de-DE',
     languageFa: 'آلمانی',
     brand: 'DEUTSCH · AUSSPRACHE',
-  },
-  ru: {
-    accent: '#5A53D6',
-    accentDark: '#302A84',
-    soft: '#EEEDFF',
-    canvas: '#F5F4FA',
-    surface: '#FFFFFF',
-    ink: '#211E48',
-    text: '#514E70',
-    muted: '#8581A1',
-    border: '#E2E0F2',
-    gold: '#E0CB82',
-    home: '/learn/ru',
-    locale: 'ru-RU',
-    languageFa: 'روسی',
-    brand: 'РУССКИЙ · ПРОИЗНОШЕНИЕ',
   },
 } as const;
 
@@ -372,7 +355,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
           onPress={next}
         />
       </View>
-      {language === 'de' ? <GermanBottomNav /> : language === 'ru' ? <RussianBottomNav /> : <AppBottomNav />}
+      {language === 'de' ? <GermanBottomNav /> : <AppBottomNav />}
     </View>
   );
 }

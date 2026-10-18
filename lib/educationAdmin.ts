@@ -2,7 +2,7 @@ import { FEATURES } from './features';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { isSupabaseConfigured } from './supabaseConfig';
+import { isSupabaseConfigured } from './pairing';
 import { SUPABASE_PUBLIC_ANON_KEY, SUPABASE_PUBLIC_URL } from './supabaseConfig';
 import { SENTENCE_LESSONS } from './courseContent';
 import canonical from '../assets/data/essential504.json';
@@ -30,7 +30,6 @@ export interface EducationInvite { id: string; label: string; code: string; expi
 export interface RegisteredUser {
   user_id: string; full_name: string; email: string; platform: string | null;
   app_version: string | null; registered_at: string; last_seen_at: string;
-  access_blocked: boolean; access_reason: string | null;
 }
 const lessonIds = new Set(SENTENCE_LESSONS.map(l => l.id));
 const words = new Set<string>(canonical);
@@ -50,8 +49,7 @@ export function educationError(error: unknown): string {
   if (/Invalid login credentials/.test(text)) return 'ایمیل یا رمز ورود درست نیست.';
   if (/schema cache|does not exist/.test(text)) return 'راه‌اندازی پایگاه‌داده پنل هنوز کامل نیست؛ راهنمای EDUCATION-ADMIN را اجرا کنید.';
   if (/SELF_DELETE/.test(text)) return 'مدیر نمی‌تواند حساب خودش را حذف کند.';
-  if (/ADMIN_ACCOUNT|ADMIN_ACCESS_CONTROL_FORBIDDEN/.test(text)) return 'حساب مدیر را نمی‌توان از این بخش مسدود کرد یا حذف کرد.';
-  if (/SELF_ACCESS_CONTROL_FORBIDDEN/.test(text)) return 'مدیر نمی‌تواند دسترسی حساب خودش را تغییر دهد.';
+  if (/ADMIN_ACCOUNT/.test(text)) return 'حساب مدیر از این بخش قابل حذف نیست.';
   if (/ADMIN_REQUIRED|permission denied|row-level security/.test(text)) return 'این حساب اجازه انجام این کار را ندارد.';
   if (/CONSENT_REQUIRED/.test(text)) return 'اشتراک پیشرفت فقط با رضایت شما انجام می‌شود.';
   if (/AUTH_REQUIRED|JWT|session/i.test(text)) return 'نشست ورود معتبر نیست؛ دوباره وارد شوید.';
@@ -77,15 +75,6 @@ export async function loadAdminData() {
   };
 }
 /** Permanently deletes a learner account through the manager-only Edge Function. */
-export async function setRegisteredUserAccess(userId: string, blocked: boolean): Promise<void> {
-  const { error } = await adminClient().rpc('admin_set_app_user_access', {
-    p_user_id: userId,
-    p_blocked: blocked,
-    p_reason: blocked ? 'دسترسی توسط مدیر برنامه متوقف شده است.' : null,
-  });
-  if (error) throw error;
-}
-
 export async function deleteRegisteredUser(userId: string): Promise<void> {
   const { data, error } = await adminClient().functions.invoke('admin-delete-user', { body: { userId } });
   if (error) {

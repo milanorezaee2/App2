@@ -1,6 +1,4 @@
-import { RUSSIAN_PRONUNCIATION_UNITS } from './russianPronunciation';
-
-export type PronunciationLanguage = 'en' | 'de' | 'ru';
+export type PronunciationLanguage = 'en' | 'de';
 
 export interface PronunciationExample {
   text: string;
@@ -298,9 +296,8 @@ export const PRONUNCIATION_COURSES: Record<PronunciationLanguage, readonly Pronu
       practiceMeaningFa: 'فردا وقت دارید؟',
     },
   ],
-  ru: RUSSIAN_PRONUNCIATION_UNITS,
 };
 
 export function isPronunciationLanguage(value: string | undefined): value is PronunciationLanguage {
-  return value === 'en' || value === 'de' || value === 'ru';
+  return value === 'en' || value === 'de';
 }

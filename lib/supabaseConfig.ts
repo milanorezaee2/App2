@@ -15,15 +15,3 @@ export const SUPABASE_PUBLIC_URL = (
 export const SUPABASE_PUBLIC_ANON_KEY = (
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || saved.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
 ).trim();
-
-const TEMPLATE_URL_MARKERS = ['placeholder', 'your-project', 'example.com'];
-const TEMPLATE_KEY_MARKERS = ['your-anon-key', 'placeholder-anon-key'];
-
-/** True only when both public app connection values are real project settings. */
-export function isSupabaseConfigured(): boolean {
-  if (!SUPABASE_PUBLIC_URL.startsWith('https://')) return false;
-  if (TEMPLATE_URL_MARKERS.some(marker => SUPABASE_PUBLIC_URL.includes(marker))) return false;
-  if (!SUPABASE_PUBLIC_ANON_KEY) return false;
-  if (TEMPLATE_KEY_MARKERS.some(marker => SUPABASE_PUBLIC_ANON_KEY.includes(marker))) return false;
-  return true;
-}
