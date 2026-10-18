@@ -1,6 +1,6 @@
 import * as Speech from 'expo-speech';
 
-type SpeechLocale = 'en-US' | 'de-DE';
+type SpeechLocale = 'en-US' | 'de-DE' | 'ru-RU';
 
 const warmedLocales = new Set<SpeechLocale>();
 const playCounts = new Map<string, number>();
