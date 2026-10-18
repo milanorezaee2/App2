@@ -48,7 +48,17 @@ function EducationAdmin() {
   const [supportContacts, setSupportContacts] = useState<RealContact[]>([]);
   useEffect(() => {
     if (tab !== 'support' || mode !== 'live') return;
-    listRealContacts().then(setSupportContacts).catch(cause => setError(educationError(cause)));
+    Promise.all([
+      listRealContacts(),
+      adminClient().from('support_chat_requests').select('conversation_id,status'),
+    ]).then(([contacts, requests]) => {
+      if (requests.error) throw requests.error;
+      const statusByConversation = new Map((requests.data || []).map(row => [row.conversation_id, row.status]));
+      setSupportContacts(contacts.map(contact => ({
+        ...contact,
+        supportStatus: statusByConversation.get(contact.conversationId) === 'resolved' ? 'resolved' : 'open',
+      })));
+    }).catch(cause => setError(educationError(cause)));
   }, [tab, mode]);
   const avg = synced.length ? Math.round(synced.reduce((n,r) => n + progressMetrics(r.summary).percent, 0) / synced.length) : 0;
 
@@ -192,11 +202,26 @@ function EducationAdmin() {
           <Text style={s.subtitle}>زبان‌آموزان از بخش پشتیبانی اپ زبان به شما پیام می‌دهند. هر گفتگو خصوصی و بین شما و همان زبان‌آموز است.</Text>
           {demo && <View style={s.empty}><Text style={s.small}>در حالت نمونه گفتگوی واقعی نمایش داده نمی‌شود.</Text></View>}
           {!demo && !supportContacts.length && <View style={s.empty}><MessageCircle size={34} color="#1769D2" /><Text style={s.cardTitle}>هنوز پیامی از زبان‌آموزان نیست</Text></View>}
-          {!demo && supportContacts.map(contact => <Pressable accessibilityRole="button" key={contact.conversationId} onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)} style={s.studentRow}>
+          {!demo && supportContacts.map(contact => <View key={contact.conversationId} style={s.studentRow}>
             <View style={[s.avatar, {backgroundColor:'#eef0ff'}]}><Text style={s.avatarText}>{contact.displayName.slice(0,1)}</Text></View>
-            <View style={{flex:1,minWidth:115}}><Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>آخرین فعالیت: {dates(contact.lastSeen)}</Text></View>
-            <ArrowUpLeft size={18} color="#1769D2" />
-          </Pressable>)}
+            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)} style={{flex:1,minWidth:115}}>
+              <Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>آخرین فعالیت: {dates(contact.lastSeen)}</Text>
+            </Pressable>
+            <Text style={s.badge}>{contact.supportStatus === 'resolved' ? 'رسیدگی‌شده' : 'باز'}</Text>
+            {button(contact.supportStatus === 'resolved' ? 'بازگشایی' : 'بستن درخواست', () => void task(async () => {
+              const nextStatus = contact.supportStatus === 'resolved' ? 'open' : 'resolved';
+              const { error } = await adminClient().rpc('set_support_chat_status', {
+                p_conversation_id: contact.conversationId,
+                p_status: nextStatus,
+              });
+              if (error) throw error;
+              setSupportContacts(current => current.map(row => row.conversationId === contact.conversationId
+                ? { ...row, supportStatus: nextStatus } : row));
+            }), true, demo)}
+            <Pressable accessibilityRole="button" accessibilityLabel="بازکردن گفتگو" onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)}>
+              <ArrowUpLeft size={18} color="#1769D2" />
+            </Pressable>
+          </View>)}
         </View>}
         {tab === 'invites' && <View style={s.card}>
           <Text style={s.cardTitle}>دعوت آموزشی جدید</Text><Text style={s.subtitle}>دعوت یک‌بارمصرف با اعتبار ۷ روز. این کد با کد دعوت مکالمه فرق دارد.</Text>

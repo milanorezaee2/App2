@@ -3,7 +3,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { adminClient } from './educationAdmin';
-import { CHAT_NOTIFICATION_CHANNEL } from './chatNotifications';
+import { CHAT_NOTIFICATION_CHANNEL, requestChatNotificationPermissionOnce } from './chatNotifications';
 
 /**
  * Registers the education-admin device for offline push alerts (new learner
@@ -30,9 +30,7 @@ export async function registerAdminPushToken(): Promise<void> {
       });
     }
 
-    const existing = await Notifications.getPermissionsAsync();
-    const permission = existing.granted ? existing : await Notifications.requestPermissionsAsync();
-    if (!permission.granted) return;
+    if (!(await requestChatNotificationPermissionOnce())) return;
 
     const projectId = Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
     if (!projectId) return;
