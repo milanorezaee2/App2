@@ -195,6 +195,18 @@ jobs:
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
         run: test -s MiloMultilang.apk && test -s MiloAdmin.apk && (test '${{ env.EXPO_PUBLIC_RUSSIAN_ONLY }}' = 'true' || test -s MiloMultilang-Login.apk)
 
+      - name: Upload APK artifacts
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Milo-android-apks
+          path: |
+            MiloMultilang.apk
+            MiloMultilang-Login.apk
+            MiloAdmin.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Publish direct APK downloads
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
         uses: softprops/action-gh-release@v2
@@ -238,17 +250,5 @@ jobs:
         with:
           name: Milo-russian-apk
           path: MiloRussian.apk
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Upload APK artifacts
-        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: Milo-android-apks
-          path: |
-            MiloMultilang.apk
-            MiloMultilang-Login.apk
-            MiloAdmin.apk
           if-no-files-found: error
           retention-days: 7
