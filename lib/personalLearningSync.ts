@@ -202,13 +202,16 @@ async function performSync(): Promise<PersonalSyncResult> {
 
     const cloudEnglishMarks = remotePronunciationProgress.en ?? {};
     const cloudGermanMarks = remotePronunciationProgress.de ?? {};
+    const cloudRussianMarks = remotePronunciationProgress.ru ?? {};
     const mergedEnglishMarks: PronunciationMarks = await mergeRemotePronunciationMarks('en', cloudEnglishMarks);
     const mergedGermanMarks: PronunciationMarks = await mergeRemotePronunciationMarks('de', cloudGermanMarks);
+    const mergedRussianMarks: PronunciationMarks = await mergeRemotePronunciationMarks('ru', cloudRussianMarks);
     const mergedLanguages = { ...remoteLanguageProgress, en: mergedEnglish, de: mergedGerman };
     const mergedPronunciation = {
       ...remotePronunciationProgress,
       en: mergedEnglishMarks,
       de: mergedGermanMarks,
+      ru: mergedRussianMarks,
     };
 
     const needsWrite = !row
@@ -223,6 +226,7 @@ async function performSync(): Promise<PersonalSyncResult> {
       mergedGermanCourse.updatedAt,
       ...Object.values(mergedEnglishMarks).map(mark => mark?.updatedAt),
       ...Object.values(mergedGermanMarks).map(mark => mark?.updatedAt),
+      ...Object.values(mergedRussianMarks).map(mark => mark?.updatedAt),
     );
     const patch = {
       language_progress: mergedLanguages,
