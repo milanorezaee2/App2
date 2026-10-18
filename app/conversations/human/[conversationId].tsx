@@ -24,6 +24,8 @@ import {
   type DirectMessage,
 } from '@/lib/conversations';
 import { requestHumanChatAssist, type HumanAssistMode, type HumanAssistResult } from '@/lib/humanChatAssist';
+import { hasManagerSession } from '@/lib/educationAdmin';
+import { MANAGEMENT_BUILD } from '@/lib/features';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
 import { ONLINE_AUDIO_DISABLED_MESSAGE, ONLINE_AUDIO_ENABLED } from '@/lib/onlineAudioPolicy';
@@ -86,17 +88,36 @@ export default function HumanConversationScreen() {
 
   useEffect(() => {
     let active = true;
+    let redirected = false;
     let channel: ReturnType<typeof subscribeToMessages> | null = null;
-    Promise.all([listMessages(conversationId), currentChatUserId()])
-      .then(([rows, userId]) => {
+    void (async () => {
+      try {
+        // The standalone management APK may only open a specific conversation
+        // with a signed-in manager. Without a valid session (cold start from a
+        // notification or a stale deep link) show the management login first —
+        // never the learner chat page with an ADMIN_REQUIRED failure.
+        if (MANAGEMENT_BUILD && !(await hasManagerSession())) {
+          if (active) { redirected = true; router.replace('/admin' as never); }
+          return;
+        }
+        const [rows, userId] = await Promise.all([listMessages(conversationId), currentChatUserId()]);
         if (!active) return;
         setMessages(rows);
         setMyId(userId);
         channel = subscribeToMessages(conversationId, addMessage);
         setError(null);
-      })
-      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'گفتگو باز نشد.'); })
-      .finally(() => { if (active) setLoading(false); });
+      } catch (cause) {
+        if (!active) return;
+        if (MANAGEMENT_BUILD && cause instanceof Error && cause.message === 'ADMIN_REQUIRED') {
+          redirected = true;
+          router.replace('/admin' as never);
+          return;
+        }
+        setError(cause instanceof Error ? cause.message : 'گفتگو باز نشد.');
+      } finally {
+        if (active && !redirected) setLoading(false);
+      }
+    })();
     return () => {
       active = false;
       void unsubscribeFromMessages(channel);

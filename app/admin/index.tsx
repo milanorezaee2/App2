@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { useRouter, Redirect } from 'expo-router';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FEATURES } from '@/lib/features';
+import { FEATURES, MANAGEMENT_BUILD } from '@/lib/features';
 import { BookOpen, Users, Ticket, LayoutDashboard, ShieldCheck, LogOut, ArrowUpLeft, Search, RefreshCw, GraduationCap, Trash2, Download, MessageCircle } from 'lucide-react-native';
 import { adminClient, deleteRegisteredUser, loadAdminData, demoStudents, educationError, progressMetrics, type StudentRow, type EducationInvite, type RegisteredUser } from '@/lib/educationAdmin';
 import { listRealContacts, listSupportRequestStatuses, updateSupportRequestStatus, type RealContact, type SupportRequestStatus } from '@/lib/conversations';
@@ -134,7 +134,7 @@ function EducationAdmin() {
         {button('ورود امن به پنل', login, false, !email.trim() || !password)}
         {button('مشاهده پیش‌نمایش با داده‌های نمونه', () => { setError(''); setMode('demo'); }, true)}
         <Text style={s.small}>حساب عادی یا ناشناس دسترسی مدیریتی ندارد. ساخت اولین مدیر از Supabase و طبق راهنمای EDUCATION-ADMIN انجام می‌شود.</Text>
-        {button('بازگشت به آموزش', () => router.replace('/lang'), true)}
+        {!MANAGEMENT_BUILD && button('بازگشت به آموزش', () => router.replace('/lang'), true)}
       </View>
     </ScrollView>
   );
