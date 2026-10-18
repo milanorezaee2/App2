@@ -4,9 +4,10 @@ import { useRouter, Redirect } from 'expo-router';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FEATURES, MANAGEMENT_BUILD } from '@/lib/features';
-import { BookOpen, Users, Ticket, LayoutDashboard, ShieldCheck, LogOut, ArrowUpLeft, Search, RefreshCw, GraduationCap, Trash2, Download, MessageCircle } from 'lucide-react-native';
+import { BookOpen, Users, Ticket, LayoutDashboard, ShieldCheck, LogOut, ArrowUpLeft, Search, RefreshCw, GraduationCap, Trash2, Download, MessageCircle, Ban, UserCheck } from 'lucide-react-native';
 import { adminClient, deleteRegisteredUser, loadAdminData, demoStudents, educationError, progressMetrics, type StudentRow, type EducationInvite, type RegisteredUser } from '@/lib/educationAdmin';
-import { listRealContacts, listSupportRequestStatuses, updateSupportRequestStatus, type RealContact, type SupportRequestStatus } from '@/lib/conversations';
+import { deleteConversationForMe, listRealContacts, listSupportRequestStatuses, updateSupportRequestStatus, type RealContact, type SupportRequestStatus } from '@/lib/conversations';
+import { loadAccessBlocks, setUserAccessBlocked, type AccessBlock } from '@/lib/adminAccess';
 import { downloadRegisteredUsers } from '@/lib/userExport';
 import { registerAdminPushToken } from '@/lib/adminPush';
 import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
@@ -47,6 +48,12 @@ function EducationAdmin() {
   const synced = active.filter(r => r.summary);
   const [supportContacts, setSupportContacts] = useState<RealContact[]>([]);
   const [supportStatuses, setSupportStatuses] = useState<Record<string, SupportRequestStatus>>({});
+  const [accessBlocks, setAccessBlocks] = useState<Record<string, AccessBlock>>({});
+  useEffect(() => {
+    let active = true;
+    loadAccessBlocks().then(blocks => { if (active) setAccessBlocks(blocks); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
     if (tab !== 'support' || mode !== 'live') return;
     let active = true;
@@ -83,6 +90,31 @@ function EducationAdmin() {
     } finally {
       setBusy(false);
     }
+  }
+  function toggleAccess(userId: string, name: string, blocked: boolean) {
+    void task(async () => {
+      const blocks = await setUserAccessBlocked(userId, name, blocked);
+      setAccessBlocks(blocks);
+      setNotice(blocked ? `دسترسی «${name}» بلاک شد.` : `دسترسی «${name}» دوباره مجاز شد.`);
+    });
+  }
+  function confirmDeleteChat(contact: RealContact) {
+    const message = `گفتگوی «${contact.displayName}» از فهرست شما حذف شود؟ پیام‌های ذخیره‌شده برای همین دستگاه پاک می‌شود و قابل بازگشت نیست.`;
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(message)) void removeChat(contact);
+      return;
+    }
+    Alert.alert('حذف گفتگو', message, [
+      { text: 'انصراف', style: 'cancel' },
+      { text: 'حذف گفتگو', style: 'destructive', onPress: () => { void removeChat(contact); } },
+    ]);
+  }
+  async function removeChat(contact: RealContact) {
+    await task(async () => {
+      const result = await deleteConversationForMe(contact.conversationId);
+      setSupportContacts(current => current.filter(item => item.conversationId !== contact.conversationId));
+      setNotice(result === 'deleted' ? 'گفتگو حذف شد.' : 'گفتگو از فهرست شما پنهان شد.');
+    });
   }
 
   async function refresh() {
@@ -168,6 +200,8 @@ function EducationAdmin() {
             <View style={{flex:1,minWidth:115}}><Text style={s.studentName}>{user.full_name}</Text><Text style={s.emailText}>{user.email}</Text></View>
             <View><Text style={s.small}>ثبت‌نام: {dates(user.registered_at)}</Text><Text style={s.small}>آخرین فعالیت: {dates(user.last_seen_at)}</Text></View>
             <Text style={s.badge}>{user.platform || 'نامشخص'} · {user.app_version || '—'}</Text>
+            {!!accessBlocks[user.user_id] && <Text style={[s.badge, { backgroundColor:'#FDECEC', color:'#B42318' }]}>بلاک‌شده</Text>}
+            <Pressable accessibilityRole="button" accessibilityLabel={accessBlocks[user.user_id] ? `اجازهٔ دسترسی دوباره به ${user.full_name}` : `بلاک دسترسی ${user.full_name}`} disabled={demo || busy} onPress={() => toggleAccess(user.user_id, user.full_name, !accessBlocks[user.user_id])} style={[s.blockBtn, !!accessBlocks[user.user_id] && s.blockBtnActive, (demo || busy) && {opacity:.45}]}>{accessBlocks[user.user_id] ? <UserCheck size={15} color="#178055" /> : <Ban size={15} color="#B54708" />}<Text style={[s.blockText, !!accessBlocks[user.user_id] && { color:'#178055' }]}>{accessBlocks[user.user_id] ? 'اجازهٔ دسترسی' : 'بلاک'}</Text></Pressable>
             <Pressable accessibilityRole="button" disabled={demo || busy} onPress={() => confirmDeleteUser(user)} style={[s.deleteBtn, (demo || busy) && {opacity:.45}]}><Trash2 size={16} color="#B42318" /><Text style={s.deleteText}>حذف</Text></Pressable>
           </View>)}
         </View>}
@@ -207,7 +241,7 @@ function EducationAdmin() {
             return <View key={contact.conversationId} style={s.studentRow}>
               <Pressable accessibilityRole="button" style={{ flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }} onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)}>
                 <View style={[s.avatar, {backgroundColor:'#eef0ff'}]}><Text style={s.avatarText}>{contact.displayName.slice(0,1)}</Text></View>
-                <View style={{flex:1,minWidth:80}}><Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>آخرین فعالیت: {dates(contact.lastSeen)}</Text></View>
+                <View style={{flex:1,minWidth:80}}><Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>آخرین فعالیت: {dates(contact.lastSeen)}</Text>{!!accessBlocks[contact.id] && <Text style={[s.badge, { marginTop:3, alignSelf:'flex-start', backgroundColor:'#FDECEC', color:'#B42318' }]}>بلاک‌شده</Text>}</View>
                 <ArrowUpLeft size={18} color="#1769D2" />
               </Pressable>
               <Pressable
@@ -223,6 +257,17 @@ function EducationAdmin() {
               >
                 <Text style={[s.small, { color: status === 'resolved' ? '#178055' : '#1769D2' }]}>{status === 'resolved' ? 'پاسخ‌داده‌شده' : 'باز'}</Text>
               </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={accessBlocks[contact.id] ? `اجازهٔ دسترسی دوباره به ${contact.displayName}` : `بلاک دسترسی ${contact.displayName}`}
+                disabled={busy}
+                onPress={() => toggleAccess(contact.id, contact.displayName, !accessBlocks[contact.id])}
+                style={[s.blockBtn, !!accessBlocks[contact.id] && s.blockBtnActive, busy && {opacity:.45}]}
+              >
+                {accessBlocks[contact.id] ? <UserCheck size={15} color="#178055" /> : <Ban size={15} color="#B54708" />}
+                <Text style={[s.blockText, !!accessBlocks[contact.id] && { color:'#178055' }]}>{accessBlocks[contact.id] ? 'اجازهٔ دسترسی' : 'بلاک'}</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={`حذف گفتگوی ${contact.displayName}`} disabled={busy} onPress={() => confirmDeleteChat(contact)} style={[s.deleteBtn, busy && {opacity:.45}]}><Trash2 size={15} color="#B42318" /><Text style={s.deleteText}>حذف چت</Text></Pressable>
             </View>;
           })}
         </View>}
@@ -241,6 +286,6 @@ function EducationAdmin() {
     </View>
   </View>;
 }
-const s=StyleSheet.create({
+const s=StyleSheet.create({blockBtn:{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:9,paddingVertical:7,borderRadius:8,borderWidth:1,borderColor:'#F0D0B8',backgroundColor:'#FFF7ED'},blockBtnActive:{borderColor:'#BFE8D4',backgroundColor:'#E8F6EF'},blockText:{fontFamily:'Vazir-Bold',fontSize:9,color:'#B54708'},
  root:{flex:1,backgroundColor:'#F4F8FD'},ghostBtn:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:12,paddingVertical:9,borderRadius:12,backgroundColor:'#EAF4FF'},actionText:{fontFamily:'Vazir-Bold',fontSize:13,color:'#1769D2'},deleteBtn:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:10,paddingVertical:8,borderRadius:10,backgroundColor:'#FDECEC'},deleteText:{fontFamily:'Vazir-Bold',fontSize:12,color:'#B42318'},shell:{flex:1,flexDirection:'row-reverse'},content:{flex:1},sidebar:{width:268,backgroundColor:'#FFFFFF',padding:22,gap:20,borderLeftWidth:1,borderColor:'#DDE9F7',shadowColor:'#1D4E89',shadowOpacity:.07,shadowRadius:16,shadowOffset:{width:-4,height:0},elevation:3},sidebarMobile:{width:90,paddingHorizontal:6,paddingVertical:10,gap:7,borderLeftWidth:1},brand:{flexDirection:'row-reverse',gap:11,alignItems:'center'},brandMobile:{flexDirection:'column',gap:6,justifyContent:'center'},brandTitle:{fontFamily:'Vazir-Bold',fontSize:15,color:'#102A56'},mobileBrandTitle:{fontFamily:'Vazir-Bold',fontSize:10,color:'#102A56',textAlign:'center'},logo:{width:50,height:50,borderRadius:16,backgroundColor:'#1769D2',alignItems:'center',justifyContent:'center',shadowColor:'#1769D2',shadowOpacity:.22,shadowRadius:10,shadowOffset:{width:0,height:5},elevation:4},logoMobile:{width:36,height:36,borderRadius:11},navLabel:{fontFamily:'Vazir',fontSize:11,color:'#98a3b2',textAlign:'right'},navLabelMobile:{textAlign:'center',fontSize:8,marginTop:1},navList:{gap:8},navListMobile:{gap:6},navItem:{flexDirection:'row-reverse',alignItems:'center',gap:11,minHeight:48,paddingHorizontal:14,paddingVertical:11,borderRadius:14},navActive:{backgroundColor:'#EAF3FF',borderWidth:1,borderColor:'#C9DFFF'},navText:{fontFamily:'Vazir-Medium',fontSize:13,color:'#64748B'},navTextActive:{fontFamily:'Vazir-Bold',color:'#1769D2'},mobileNavItem:{minHeight:57,paddingHorizontal:3,paddingVertical:5,flexDirection:'column',justifyContent:'center',gap:3},mobileNavText:{fontFamily:'Vazir',fontSize:8,lineHeight:13,textAlign:'center'},mobileLogout:{minHeight:49,paddingHorizontal:3,paddingVertical:5,flexDirection:'column',justifyContent:'center',gap:3,borderTopWidth:1,borderColor:'#E3ECF7',borderRadius:12},privacy:{backgroundColor:'#F2F7FD',padding:17,gap:10,borderRadius:16,alignItems:'flex-end'},main:{padding:32,gap:20,maxWidth:1280,width:'100%',alignSelf:'center'},mainMobile:{paddingHorizontal:8,paddingVertical:9,gap:8},header:{flexDirection:'row-reverse',justifyContent:'space-between',alignItems:'center',gap:16,flexWrap:'wrap',borderRadius:24,borderWidth:1,borderColor:'#D7E7FA',padding:22,shadowColor:'#2D6FB7',shadowOpacity:.08,shadowRadius:16,shadowOffset:{width:0,height:7},elevation:3},headerMobile:{padding:10,borderRadius:14,gap:7},eyebrow:{fontFamily:'Vazir',fontSize:9,color:'#8190a2',textAlign:'right',marginBottom:8},title:{fontFamily:'Vazir-Bold',fontSize:18,color:'#102A56',textAlign:'right'},titleMobile:{fontSize:15,lineHeight:24},subtitle:{fontFamily:'Vazir',fontSize:10,color:'#6c7c8e',textAlign:'right',lineHeight:19},pill:{flexDirection:'row-reverse',alignItems:'center',gap:8,backgroundColor:'#fff',borderRadius:18,padding:8},pillMobile:{paddingHorizontal:7,paddingVertical:5},dot:{width:7,height:7,borderRadius:4,backgroundColor:'#1769D2'},pillText:{fontFamily:'Vazir',fontSize:9,color:'#334E68'},demoBanner:{fontFamily:'Vazir',fontSize:9,lineHeight:17,color:'#8b641c',backgroundColor:'#fff5dc',padding:9,borderRadius:10,textAlign:'right'},stats:{flexDirection:'row-reverse',flexWrap:'wrap',gap:8},stat:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#DDE9F7',padding:11,borderRadius:14,flex:1,minWidth:110,gap:4,shadowColor:'#2D6FB7',shadowOpacity:.06,shadowRadius:12,shadowOffset:{width:0,height:5},elevation:2},statLabel:{fontFamily:'Vazir',fontSize:10,color:'#788697',textAlign:'right'},statNumber:{fontFamily:'Vazir-Bold',fontSize:16,color:'#102A56',textAlign:'right'},small:{fontFamily:'Vazir',fontSize:9,color:'#7d8c9e',textAlign:'right',lineHeight:16},hero:{backgroundColor:'#123E76',padding:14,borderRadius:15,flexDirection:'row-reverse',alignItems:'center',flexWrap:'wrap',gap:10},heroTitle:{fontFamily:'Vazir-Bold',fontSize:14,color:'#fff',fontWeight:'700',textAlign:'right',marginBottom:5},heroText:{fontFamily:'Vazir',fontSize:9,color:'#D9E9FF',textAlign:'right',lineHeight:18},card:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#DDE9F7',borderRadius:15,padding:12,gap:10,shadowColor:'#2D6FB7',shadowOpacity:.055,shadowRadius:14,shadowOffset:{width:0,height:6},elevation:2},cardTitle:{fontFamily:'Vazir-Bold',fontSize:12,color:'#1E293B',textAlign:'right'},sectionHead:{flexDirection:'row-reverse',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:7},toolbar:{flexDirection:'row-reverse',flexWrap:'wrap',gap:7,alignItems:'center'},search:{flex:1,minWidth:125,flexDirection:'row-reverse',alignItems:'center',gap:6,backgroundColor:'#f5f7fa',borderRadius:8,paddingHorizontal:8},searchInput:{flex:1,fontFamily:'Vazir',fontSize:9,textAlign:'right',padding:8,color:'#1E293B'},filters:{flexDirection:'row-reverse',gap:4},filter:{paddingHorizontal:9,paddingVertical:5,borderRadius:8},studentRow:{flexDirection:'row-reverse',alignItems:'center',gap:8,paddingVertical:11,borderTopWidth:1,borderColor:'#edf1f5',flexWrap:'wrap'},avatar:{width:34,height:34,borderRadius:11,alignItems:'center',justifyContent:'center'},avatarText:{fontFamily:'Vazir-Bold',fontSize:14,color:'#2878DE'},studentName:{fontFamily:'Vazir-Bold',fontSize:10,color:'#123E76',textAlign:'right'},badge:{fontFamily:'Vazir',fontSize:9,color:'#1769D2',backgroundColor:'#EAF3FF',paddingVertical:4,paddingHorizontal:8,borderRadius:7,overflow:'hidden'},track:{height:5,backgroundColor:'#edf2f6',borderRadius:5,marginTop:8,overflow:'hidden',alignItems:'flex-end'},fill:{height:5,backgroundColor:'#2878DE',borderRadius:5},button:{backgroundColor:'#1769D2',minHeight:38,paddingHorizontal:13,paddingVertical:9,borderRadius:10,alignItems:'center',justifyContent:'center'},secondary:{backgroundColor:'#f0f4f7'},buttonText:{fontFamily:'Vazir-Bold',color:'#fff',fontSize:9,fontWeight:'700'},input:{fontFamily:'Vazir',fontSize:10,color:'#1E293B',backgroundColor:'#f7f9fb',borderWidth:1,borderColor:'#dce5ed',borderRadius:9,padding:10,textAlign:'right'},ltr:{textAlign:'left'},emailText:{fontFamily:'Vazir',fontSize:9,fontWeight:'700',color:'#7d8c9e',textAlign:'left',writingDirection:'ltr'},label:{fontFamily:'Vazir',fontSize:10,color:'#52667c',textAlign:'right'},loginPage:{flexGrow:1,backgroundColor:'#F2F7FD',alignItems:'center',justifyContent:'center',padding:24},loginCard:{backgroundColor:'#FFFFFF',padding:30,borderRadius:28,width:'100%',maxWidth:520,gap:16,borderWidth:1,borderColor:'#D7E7FA',shadowColor:'#2D6FB7',shadowOpacity:.12,shadowRadius:22,shadowOffset:{width:0,height:10},elevation:5},error:{fontFamily:'Vazir',color:'#aa3030',backgroundColor:'#fff0f0',padding:14,borderRadius:10,textAlign:'right',lineHeight:24},notice:{fontFamily:'Vazir',color:'#1259B5',backgroundColor:'#EAF3FF',padding:14,textAlign:'right',borderRadius:10},empty:{alignItems:'center',padding:18,gap:9},emptyText:{fontFamily:'Vazir',fontSize:9,color:'#8090a1',padding:14,textAlign:'center'},detail:{fontFamily:'Vazir',color:'#1259B5',fontSize:10,textAlign:'right',lineHeight:20},inviteRow:{borderTopWidth:1,borderColor:'#e7edf4',paddingTop:11,gap:8},code:{fontFamily:'Vazir-Bold',fontSize:10,color:'#285b86',textAlign:'left',padding:8,backgroundColor:'#f3f7fb',borderRadius:7},contentRow:{flexDirection:'row-reverse',alignItems:'center',gap:10,paddingVertical:11,borderTopWidth:1,borderColor:'#eef2f5'},levelDot:{width:8,height:27,borderRadius:4},footer:{flexDirection:'row-reverse',alignItems:'center',justifyContent:'center',gap:8},
 });
