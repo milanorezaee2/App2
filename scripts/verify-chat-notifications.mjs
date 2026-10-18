@@ -47,6 +47,9 @@ check(/CREATE TABLE IF NOT EXISTS public\.chat_push_queue/.test(outbox)
   && /event_key text NOT NULL UNIQUE/.test(outbox), 'the outbox is durable and dedupes by stable event key');
 check(/CREATE TRIGGER chat_push_enqueue_message/.test(outbox)
   && /CREATE TRIGGER chat_push_enqueue_support_request/.test(outbox), 'message and first-request database triggers enqueue events');
+check(/SELECT cm\.user_id[\s\S]*?cm\.conversation_id = NEW\.conversation_id[\s\S]*?cm\.user_id <> NEW\.sender_id/.test(outbox)
+  && /'support-request:'[\s\S]*?NEW\.manager_id[\s\S]*?NEW\.learner_id/.test(outbox), 'database source triggers target the other conversation member and manager on learner request');
+check(/'support-status:'[\s\S]*?NEW\.learner_id[\s\S]*?NEW\.manager_id/.test(outbox), 'database status-change trigger routes alerts back to the learner');
 check(/CREATE TRIGGER chat_push_enqueue_support_status/.test(outbox)
   && /status_event_id/.test(outbox), 'status changes receive a stable event identity');
 check(/CREATE TRIGGER chat_push_enqueue_contact/.test(outbox), 'accepted-contact notification behavior is preserved alongside support-specific alerts');
