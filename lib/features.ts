@@ -13,8 +13,10 @@ export const FEATURES = Object.freeze({
    * Learner login/registration screen. Temporarily OFF: the app opens directly.
    * Set to true to restore the registration gate (code is kept intact).
    */
-  // Build-time switch: EXPO_PUBLIC_LEARNER_LOGIN=true builds the login version for learners.
-  learnerLogin: process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true',
+  // Read from Expo extra so release APKs keep the login identity at runtime;
+  // Metro does not reliably preserve arbitrary build-shell environment flags.
+  learnerLogin: Constants.expoConfig?.extra?.learnerLogin === true
+    || process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true',
   adminPanel: educationAdminEnabled,
   educationEnrollment: educationAdminEnabled,
   // Roadmap modules are not implemented yet. Enabling a boolean cannot build them.

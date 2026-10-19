@@ -26,6 +26,7 @@ const build = () => {
       slug: 'milomultilanguage-login',
       android: { ...base.android, package: 'com.devicecontrol.milomultilang' },
       ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.milomultilang' },
+      extra: { ...base.extra, learnerLogin: true },
     };
   }
   if (!admin) {
@@ -35,6 +36,7 @@ const build = () => {
       slug: 'mml',
       android: { ...base.android, package: 'com.devicecontrol.mml' },
       ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.mml' },
+      extra: { ...base.extra, learnerLogin: false },
     };
   }
   return {
