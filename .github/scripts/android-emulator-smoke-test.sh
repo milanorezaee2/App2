@@ -89,7 +89,7 @@ failed_step="clearing Android logcat"
 adb logcat -c
 
 failed_step="launching the main activity"
-timeout 90s adb shell am start -W -n com.devicecontrol.companion/.MainActivity
+timeout 90s adb shell am start -W -n com.devicecontrol.mml/.MainActivity
 
 failed_step="allowing the first screen to finish rendering"
 sleep 30
@@ -192,7 +192,7 @@ fi
 # first install we verify the account gate and continue with the separate admin APK.
 if [[ "$registration_gate" == false ]]; then
 failed_step="opening the Emma chat keyboard test route"
-timeout 60s adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/emma' com.devicecontrol.companion
+timeout 60s adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/emma' com.devicecontrol.mml
 sleep 8
 capture_ui
 
@@ -280,7 +280,7 @@ echo 'Android emulator verified the full-height Emma composer with the software 
 
 failed_step="opening the human chat keyboard test route"
 adb shell input keyevent KEYCODE_BACK
-adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/human/00000000-0000-0000-0000-000000000001?name=Test' com.devicecontrol.companion
+adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/human/00000000-0000-0000-0000-000000000001?name=Test' com.devicecontrol.mml
 sleep 8
 capture_ui
 
