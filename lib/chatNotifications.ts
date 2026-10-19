@@ -244,7 +244,10 @@ export async function startChatNotifications(
   await configureAndroidChannels();
   // The bridge still listens for in-app events if permission is denied; only
   // OS token registration is gated by the one-time permission request.
-  await askNotificationPermissionOnce();
+  // The management APK has a login screen. Do not consume the one-time
+  // permission prompt before the manager session exists; setupUserScope will
+  // request it while registering the manager's token after login.
+  if (!MANAGEMENT_BUILD) await askNotificationPermissionOnce();
 
   let stopped = false;
   let activeUserId: string | null = null;
