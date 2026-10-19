@@ -22,12 +22,21 @@ const build = () => {
   if (!admin && learnerLogin) {
     return {
       ...base,
-      name: 'MiloMultiLanguage Login',
+      name: 'MiloMultiLanguage',
+      slug: 'milomultilanguage-login',
       android: { ...base.android, package: 'com.devicecontrol.milomultilang' },
       ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.milomultilang' },
     };
   }
-  if (!admin) return base;
+  if (!admin) {
+    return {
+      ...base,
+      name: 'MML',
+      slug: 'mml',
+      android: { ...base.android, package: 'com.devicecontrol.mml' },
+      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.mml' },
+    };
+  }
   return {
     ...base,
     name: 'Adminapp',

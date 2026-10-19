@@ -98,6 +98,6 @@ select cron.schedule(
 
 ## ۷) EAS و مجوز Android
 
-- `EAS_PROJECT_ID` در `app.config.js` خوانده می‌شود و برای گرفتن Expo push token لازم است. این مورد **GitHub Actions variable** است، نه Supabase secret. اگر متغیر تنظیم نشده باشد، ساخت اپ ممکن است انجام شود ولی ثبت Expo token انجام نمی‌شود.
+- `EAS_PROJECT_ID` در `app.config.js` خوانده می‌شود و برای گرفتن Expo push token لازم است. این مورد **GitHub Actions variable** است، نه Supabase secret. اگر متغیر تنظیم نشده باشد، APK نباید ساخته شود؛ چون بدون آن ثبت Expo token انجام نمی‌شود و اعلان به هیچ گوشی نمی‌رسد.
 - فایل `app.json` از قبل مجوز `POST_NOTIFICATIONS` و کانال پیش‌فرض `milo-chat` را دارد. در Android 13+، اپ یک توضیح فارسی نشان می‌دهد و درخواست سیستم را حداکثر یک‌بار می‌فرستد. اگر کاربر رد کرد، باید بعداً مجوز را از تنظیمات Android روشن کند.
 - برای آزمایش واقعی، اعلان اپ و کانال **پیام‌ها و درخواست‌های چت** را در تنظیمات Android روشن نگه دارید و هر دو دستگاه را با نسخه‌ای بسازید که همان EAS Project ID را دارد.
