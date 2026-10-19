@@ -179,7 +179,7 @@ function EducationAdmin() {
       <View style={[s.sidebar, !wide && s.sidebarMobile]}>
         <View style={[s.brand, !wide && s.brandMobile]}>
           <View style={[s.logo, !wide && s.logoMobile]}><GraduationCap color="white" size={wide ? 25 : 21} /></View>
-          {wide ? <View><Text style={s.brandTitle}>English Journey</Text><Text style={s.small}>فضای مدیریت آموزش</Text></View> : <Text style={s.mobileBrandTitle}>مدیریت</Text>}
+          {wide ? <View><Text style={s.brandTitle}>Adminapp</Text><Text style={s.small}>فضای مدیریت آموزش</Text></View> : <Text style={s.mobileBrandTitle}>Adminapp</Text>}
         </View>
         <Text style={[s.navLabel, !wide && s.navLabelMobile]}>{wide ? 'میز کار شما' : 'منوی اصلی'}</Text>
         <View style={[s.navList, !wide && s.navListMobile]}>

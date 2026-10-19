@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Stack, usePathname } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
@@ -89,6 +89,9 @@ function CompanionRuntime() {
  */
 export default function RootLayout() {
   useFrameworkReady();
+  const router = useRouter();
+  const pathname = usePathname();
+  const startupRouteHandled = useRef(false);
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   const [fontsLoaded, fontError] = useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
@@ -142,6 +145,17 @@ export default function RootLayout() {
     }, 3400);
     return () => clearTimeout(finish);
   }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    if (!introComplete || startupRouteHandled.current || IS_ADMIN_APP) return;
+    // Android can restore the last native route after the process is resumed.
+    // The learner APK must open at the language home, not a stale pronunciation
+    // or deep-link screen. Notification taps navigate after startup.
+    startupRouteHandled.current = true;
+    if (pathname.startsWith('/learn/en') || pathname === '/lang') {
+      router.replace('/languages' as never);
+    }
+  }, [introComplete, pathname, router]);
 
   if (!fontsLoaded && !fontError) return null;
   if (!introComplete) {

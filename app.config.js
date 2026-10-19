@@ -30,7 +30,7 @@ const build = () => {
   if (!admin) return base;
   return {
     ...base,
-    name: 'MiloMultiLanguage Admin',
+    name: 'Adminapp',
     slug: 'milo-language-admin',
     scheme: 'miloadmin',
     android: {

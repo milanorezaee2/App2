@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { BookOpen, BookOpenCheck, MessageCircle, RefreshCw, Volume2 } from 'lucide-react-native';
 import { Radius, Typography } from '@/lib/theme';
 import { GermanPalette as Palette } from '@/components/germanTheme';
+import { getChatUnreadCount, subscribeToChatUnreadCount } from '@/lib/chatNotificationState';
 
 const items = [
   { path: '/learn/de', label: 'یادگیری', icon: BookOpen },
@@ -15,6 +17,9 @@ const items = [
 export function GermanBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const [chatUnreadCount, setChatUnreadCount] = useState(getChatUnreadCount());
+
+  useEffect(() => subscribeToChatUnreadCount(setChatUnreadCount), []);
 
   return (
     <View style={styles.shell}>
@@ -36,6 +41,7 @@ export function GermanBottomNav() {
           >
             <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
               <Icon size={19} color={active ? Palette.primary : Palette.muted} strokeWidth={active ? 2.4 : 2} />
+              {item.path === '/conversations' && chatUnreadCount > 0 && <View accessibilityLabel={`${chatUnreadCount} پیام خوانده‌نشده`} style={styles.badge}><Text style={styles.badgeText}>{chatUnreadCount > 9 ? '۹+' : chatUnreadCount.toLocaleString('fa-IR')}</Text></View>}
             </View>
             <Text style={[styles.label, active && styles.labelActive]}>{item.label}</Text>
           </Pressable>
@@ -67,7 +73,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   item: { flex: 1, minWidth: 52, alignItems: 'center', gap: 2 },
-  iconWrap: { width: 42, height: 32, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { width: 42, height: 32, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  badge: { position: 'absolute', top: -4, right: 1, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#D63F52', borderWidth: 1, borderColor: Palette.surface },
+  badgeText: { color: '#FFFFFF', fontFamily: Typography.boldFontFamily, fontSize: 8, lineHeight: 11, textAlign: 'center' },
   iconWrapActive: { backgroundColor: Palette.primarySoft },
   label: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.muted },
   labelActive: { color: Palette.primaryDark, fontWeight: Typography.weights.bold },
