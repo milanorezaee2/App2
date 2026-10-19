@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Stack, usePathname } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
@@ -21,6 +21,7 @@ import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
 import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
+import { RUSSIAN_ONLY_BUILD } from '@/lib/features';
 
 // Android native mirroring is disabled in withStableLayoutDirection. Persian
 // and course-language direction are applied explicitly, independent of device locale.
@@ -89,6 +90,9 @@ function CompanionRuntime() {
  */
 export default function RootLayout() {
   useFrameworkReady();
+  const router = useRouter();
+  const pathname = usePathname();
+  const startupRouteLocked = useRef(false);
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   const [fontsLoaded, fontError] = useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
@@ -142,6 +146,16 @@ export default function RootLayout() {
     }, 3400);
     return () => clearTimeout(finish);
   }, [fontsLoaded, fontError]);
+
+  // Android can restore the last native navigation state (including a chat
+  // route) instead of mounting index.tsx. Always normalize the first route of
+  // a fresh app process to the correct home screen.
+  useEffect(() => {
+    if (!introComplete || startupRouteLocked.current) return;
+    startupRouteLocked.current = true;
+    const target = IS_ADMIN_APP ? '/admin' : RUSSIAN_ONLY_BUILD ? '/learn/ru' : '/languages';
+    if (pathname !== target) router.replace(target as never);
+  }, [introComplete, pathname, router]);
 
   if (!fontsLoaded && !fontError) return null;
   if (!introComplete) {
