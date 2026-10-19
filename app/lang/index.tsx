@@ -123,8 +123,9 @@ export default function LearningHome() {
             colors={['#FFFFFF', '#EDF5FF', '#DDEEFF']}
             start={{ x: .95, y: .08 }}
             end={{ x: .04, y: 1 }}
-            style={[styles.welcomeBlock, compact && styles.welcomeBlockCompact]}
+            style={styles.heroSection}
           >
+          <View style={[styles.welcomeBlock, compact && styles.welcomeBlockCompact]}>
             <View pointerEvents="none" style={styles.welcomeGlowOne} />
             <View pointerEvents="none" style={styles.welcomeGlowTwo} />
             <View style={styles.welcomeCopy}>
@@ -154,7 +155,7 @@ export default function LearningHome() {
                 <Text style={styles.welcomeImageStampSub}>LEARN</Text>
               </View>
             </View>
-          </LinearGradient>
+          </View>
 
           <View style={styles.lessonCard}>
             <LinearGradient colors={['#4D9AF2', '#21A7C0', '#4D9AF2']} start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} style={styles.lessonCardAccent} />
@@ -224,6 +225,7 @@ export default function LearningHome() {
               </View>
             </View>
           </View>
+          </LinearGradient>
 
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleBlock}>
@@ -424,7 +426,8 @@ const styles = StyleSheet.create({
   brandCopy: { gap: 2 },
   brandEyebrow: { fontFamily: 'Inter-ExtraBold', color: '#8C7BB8', fontSize: 6, fontWeight: '800', letterSpacing: 1.45, textAlign: 'right', writingDirection: 'ltr' },
   headerTitle: { fontFamily: Typography.fontFamily, fontSize: 16, lineHeight: 24, fontWeight: '400', color: HomeColors.ink, textAlign: 'right', writingDirection: 'rtl' },
-  welcomeBlock: { position: 'relative', minHeight: 202, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 18, overflow: 'hidden', padding: 19, borderRadius: 28, borderWidth: 1, borderColor: '#C9DFFF', shadowColor: '#174B86', shadowOpacity: 0.12, shadowRadius: 22, shadowOffset: { width: 0, height: 11 }, elevation: 6 },
+  heroSection: { position: 'relative', overflow: 'hidden', borderRadius: 28, padding: 19, gap: 15, borderWidth: 1, borderColor: '#C9DFFF', shadowColor: '#174B86', shadowOpacity: 0.12, shadowRadius: 22, shadowOffset: { width: 0, height: 11 }, elevation: 6 },
+  welcomeBlock: { position: 'relative', minHeight: 202, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 18, overflow: 'hidden', padding: 0, borderRadius: 20 },
   welcomeBlockCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 15, padding: 16 },
   welcomeGlowOne: { position: 'absolute', top: -104, right: '18%', width: 270, height: 270, borderRadius: 135, backgroundColor: 'rgba(40,120,222,0.09)' },
   welcomeGlowTwo: { position: 'absolute', bottom: -142, left: -90, width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(33,167,192,0.12)' },
@@ -444,7 +447,7 @@ const styles = StyleSheet.create({
   welcomeImageStampMain: { fontFamily: 'Inter-ExtraBold', color: '#F2D99C', fontSize: 11, fontWeight: '800', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
   welcomeImageStampLine: { width: 23, height: 1, backgroundColor: 'rgba(216,183,110,0.8)', marginVertical: 2 },
   welcomeImageStampSub: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 6, fontWeight: '800', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },
-  lessonCard: { position: 'relative', overflow: 'hidden', borderRadius: 23, padding: 17, gap: 14, backgroundColor: HomeColors.surface, borderWidth: 1, borderColor: HomeColors.border, shadowColor: '#174B86', shadowOpacity: 0.045, shadowRadius: 13, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
+  lessonCard: { position: 'relative', overflow: 'hidden', borderRadius: 19, padding: 0, gap: 14, backgroundColor: 'transparent' },
   lessonCardAccent: { position: 'absolute', top: 0, right: 0, height: 4, width: '46%' },
   lessonMetaRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 4 },
   levelTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, borderRadius: Radius.full, backgroundColor: '#FBF8F0', borderWidth: 1, borderColor: '#EADCB9', paddingHorizontal: 10, paddingVertical: 7 },
