@@ -3,13 +3,21 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BookOpen, BookOpenCheck, Check, ChevronDown, ChevronLeft, ChevronUp, Compass, Flame, MessageCircle, Play, RefreshCw, ShieldCheck, Sparkles, Volume2 } from 'lucide-react-native';
-import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel, ENGLISH_LEVEL_GRADIENTS } from '@/components/EnglishUI';
+import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel } from '@/components/EnglishUI';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { RussianBottomNav } from '@/components/RussianBottomNav';
 import { RUSSIAN_LEVELS, RUSSIAN_LESSONS, russianProgress, type RussianLevelId } from '@/lib/languages/russian';
 import type { CourseProgress } from '@/lib/courseProgress';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
+
+const RUSSIAN_LEVEL_GRADIENTS: Record<number, [string, string]> = {
+  0: ['#8175F2', '#4036A8'],
+  1: ['#A875E8', '#6840A8'],
+  2: ['#C56BD0', '#853B8C'],
+  3: ['#E079A5', '#A33E6D'],
+  4: ['#D58A62', '#954A2B'],
+};
 
 export default function RussianHome() {
   const router = useRouter();
@@ -75,7 +83,7 @@ export default function RussianHome() {
             <View style={styles.headerChip}><ShieldCheck size={15} color={Palette.teal} /><Text style={styles.headerChipText}>مسیر جمله‌محور</Text></View>
           </View>
 
-          <LinearGradient colors={ENGLISH_LEVEL_GRADIENTS[activeLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.heroCard}>
+          <LinearGradient colors={RUSSIAN_LEVEL_GRADIENTS[activeLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.heroCard}>
             <View pointerEvents="none" style={styles.heroOrbLarge} />
             <View pointerEvents="none" style={styles.heroOrbSmall} />
             <View style={styles.heroTopRow}>

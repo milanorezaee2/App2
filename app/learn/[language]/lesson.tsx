@@ -115,8 +115,8 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
   // Read each active sentence as soon as it is displayed.
   useEffect(() => {
     if (sessionState !== 'ready' || stage !== 1 || !current?.text) return;
-    speak(current.text, NORMAL_SPEECH_RATE);
-    return () => { void Speech.stop(); };
+    const timer = setTimeout(() => speak(current.text, NORMAL_SPEECH_RATE), 100);
+    return () => { clearTimeout(timer); void Speech.stop(); };
   }, [sessionState, stage, index, lesson.id]);
   const previousPage = () => {
     void Speech.stop();
@@ -163,7 +163,9 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
         setSessionSaveState('error');
         setSessionSaveError('پیشرفت درس ثبت شد، اما پیش‌نویس جلسه پاک نشد.');
       }
-      router.replace('/learn/de' as never);
+      router.replace(nextLesson
+        ? ({ pathname: '/learn/[language]/lesson', params: { language: 'de', id: nextLesson.id } } as never)
+        : '/learn/de' as never);
     } catch {
       setError('پیشرفت ذخیره نشد. فضای ذخیره‌سازی دستگاه را بررسی و دوباره تلاش کنید.');
       setFinishing(false);

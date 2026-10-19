@@ -107,8 +107,8 @@ export default function SentenceLessonScreen() {
   // sentence-first behaviour of the Russian course.
   useEffect(() => {
     if (!sessionReady || stage !== 1 || !current?.en) return;
-    speak(current.en, NORMAL_SPEECH_RATE);
-    return () => { void Speech.stop(); };
+    const timer = setTimeout(() => speak(current.en, NORMAL_SPEECH_RATE), 100);
+    return () => { clearTimeout(timer); void Speech.stop(); };
   }, [sessionReady, stage, sentenceIndex, lesson.id]);
 
   const startSpeechPractice = async () => {
@@ -177,7 +177,9 @@ export default function SentenceLessonScreen() {
     const nextLesson = SENTENCE_LESSONS[index + 1];
     await completeSentenceLesson(lesson.id, nextLesson?.id);
     await saveLessonSession(lesson.id,freshSession());
-    router.replace('/lang' as never);
+    router.replace(nextLesson
+      ? ({ pathname: '/course/lesson', params: { id: nextLesson.id } } as never)
+      : '/lang' as never);
     } catch { setCompletionError('پایان درس ذخیره نشد؛ دوباره تلاش کنید.'); }
     finally { completing.current=false; setSaving(false); }
   };

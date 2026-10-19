@@ -5,7 +5,13 @@ import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { ArrowRight, BookOpenCheck, Check, ChevronLeft, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
-import { ENGLISH_LEVEL_GRADIENTS } from '@/components/EnglishUI';
+const RUSSIAN_LESSON_GRADIENTS: Record<number, [string, string]> = {
+  0: ['#8175F2', '#4036A8'],
+  1: ['#A875E8', '#6840A8'],
+  2: ['#C56BD0', '#853B8C'],
+  3: ['#E079A5', '#A33E6D'],
+  4: ['#D58A62', '#954A2B'],
+};
 import RussianSentenceBuilder from '@/components/RussianSentenceBuilder';
 import RussianDialoguePractice from '@/components/RussianDialoguePractice';
 import { clearRussianLessonSession, loadRussianLessonSession, saveRussianLessonSession } from '@/lib/languages/russianStudyState';
@@ -94,6 +100,12 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     });
   }, []);
 
+  useEffect(() => {
+    if (!sessionReady || (stage !== 1 && stage !== 3) || !current?.text) return;
+    const timer = setTimeout(() => speak(current.text, NORMAL_SPEECH_RATE), 100);
+    return () => { clearTimeout(timer); void Speech.stop(); };
+  }, [sessionReady, stage, sentenceIndex, lesson.id, speak]);
+
   const selectSentence = (index: number, rate = 0.72) => {
     setSentenceIndex(index);
     setRevealed(false);
@@ -109,7 +121,6 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
       const nextIndex = sentenceIndex + 1;
       setSentenceIndex(nextIndex);
       setRevealed(false);
-      speak(lesson.sentences[nextIndex].text, NORMAL_SPEECH_RATE);
       return;
     }
     if (stage < stages.length - 1) {
@@ -117,8 +128,6 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
       setStage(nextStage);
       setSentenceIndex(0);
       setRevealed(false);
-      // Entering a sentence stage speaks its first sentence automatically.
-      if (nextStage === 1 || nextStage === 3) speak(lesson.sentences[0].text, NORMAL_SPEECH_RATE);
       return;
     }
     if (!allChecksPassed && !showCheckAnswers) return;
@@ -129,7 +138,9 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
       const nextLesson = RUSSIAN_LESSONS[index + 1];
       await russianProgress.completeSentenceLesson(lesson.id, nextLesson?.id);
       await clearRussianLessonSession(lesson.id);
-      router.replace('/learn/ru' as never);
+      router.replace(nextLesson
+        ? ({ pathname: '/learn/[language]/lesson', params: { language: 'ru', id: nextLesson.id } } as never)
+        : '/learn/ru' as never);
     } catch {
       completing.current = false;
       setCompletionError('پایان درس ذخیره نشد؛ دوباره تلاش کنید.');
@@ -142,7 +153,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={ENGLISH_LEVEL_GRADIENTS[courseLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.header}>
+      <LinearGradient colors={RUSSIAN_LESSON_GRADIENTS[courseLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.header}>
         <View style={styles.headerTop}>
           <Pressable accessibilityRole="button" accessibilityLabel="بازگشت" style={styles.back} onPress={() => router.back()}><ArrowRight size={19} color="#FFFFFF" /></Pressable>
           <View style={styles.headerText}>
