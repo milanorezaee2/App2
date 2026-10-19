@@ -226,7 +226,7 @@ export default function HumanConversationScreen() {
             const mine = message.senderId === myId;
             return (
               <View key={message.id} style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
-                {message.type === 'voice' ? <VoiceMessage message={message} /> : <Text style={[styles.messageText, containsRtlScript(message.body || '') ? styles.rtlText : styles.ltrText]}>{message.body}</Text>}
+                {message.type === 'voice' ? <VoiceMessage message={message} /> : <Text style={[styles.messageText, mine ? styles.mineMessageText : styles.theirsMessageText, containsRtlScript(message.body || '') ? styles.rtlText : styles.ltrText]}>{message.body}</Text>}
                 <Text style={styles.time}>{new Date(message.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</Text>
               </View>
             );
@@ -265,7 +265,7 @@ export default function HumanConversationScreen() {
           value={input}
           onChangeText={setInput}
           placeholder="پیام فارسی یا انگلیسی بنویسید…"
-          placeholderTextColor={Colors.neutral[600]}
+          placeholderTextColor="#64748B"
           multiline
         />
         {input.trim() ? (
@@ -302,7 +302,9 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '84%', borderRadius: Radius.xl, padding: Spacing.md, borderWidth: 1 },
   mine: { alignSelf: 'flex-end', backgroundColor: Colors.primary[600], borderColor: Colors.primary[500], borderBottomRightRadius: 5 },
   theirs: { alignSelf: 'flex-start', backgroundColor: Colors.neutral[850], borderColor: Colors.neutral[700], borderBottomLeftRadius: 5 },
-  messageText: { fontSize: 16, lineHeight: 24, color: Colors.neutral[50] },
+  messageText: { fontSize: 16, lineHeight: 24, color: '#0F172A' },
+  mineMessageText: { color: '#FFFFFF' },
+  theirsMessageText: { color: '#0F172A' },
   rtlText: { fontFamily: Typography.fontFamily, textAlign: 'right', writingDirection: 'rtl' },
   ltrText: { fontFamily: Typography.latinFontFamily, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   time: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.neutral[400], marginTop: 5, textAlign: 'left' },
@@ -331,7 +333,7 @@ const styles = StyleSheet.create({
   error: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.error[300], textAlign: 'center', paddingHorizontal: Spacing.md, paddingTop: 6, backgroundColor: Colors.neutral[900] },
   composer: { flexShrink: 0, minHeight: 64, overflow: 'visible', padding: Spacing.sm, paddingBottom: 10, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   helper: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingTop: 10, paddingBottom: 8, fontSize: Typography.sizes.sm, lineHeight: 22, color: Colors.neutral[100], textAlignVertical: 'center', includeFontPadding: false },
+  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#94A3B8', paddingHorizontal: Spacing.md, paddingTop: 10, paddingBottom: 8, fontSize: Typography.sizes.sm, lineHeight: 22, color: '#0F172A', textAlignVertical: 'center', includeFontPadding: false },
   send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.primary[500], alignItems: 'center', justifyContent: 'center' },
   recordStop: { backgroundColor: Colors.error[500] },
   disabled: { opacity: .4 },

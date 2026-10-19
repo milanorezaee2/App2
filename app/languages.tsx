@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   brandName: { fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 16, lineHeight: 20, fontWeight: '800', textAlign: 'right', letterSpacing: 2, writingDirection: 'ltr' },
   brandCaption: { fontFamily: 'Inter-ExtraBold', color: '#6680A5', fontSize: 6, fontWeight: '800', letterSpacing: 1.35, writingDirection: 'ltr' },
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  heroBackground: { ...StyleSheet.absoluteFillObject, opacity: .55 },
+  heroBackground: { ...StyleSheet.absoluteFillObject, opacity: .88 },
   lockButton: { width: 36, height: 36, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
   statusPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#22A06B' },

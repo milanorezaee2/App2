@@ -171,7 +171,7 @@ export default function EmmaChat() {
         <View style={styles.topicChip}><Sparkles size={13} color={Colors.accent[400]} /><Text style={styles.topicText}>موضوع امروز: {context?.lessonTitleFa || 'درس فعلی شما'}</Text></View>
         {messages.map((message) => (
           <View key={message.id} style={[styles.bubble, message.from === 'learner' ? styles.mine : styles.theirs]}>
-            <Text style={styles.messageText}>{message.text}</Text>
+            <Text style={[styles.messageText, message.from === 'learner' ? styles.mineMessageText : styles.theirsMessageText]}>{message.text}</Text>
             {message.translation ? <Text style={styles.translation}>{message.translation}</Text> : null}
             {message.from === 'emma' ? (
               <Pressable accessibilityRole="button" accessibilityLabel={`پخش پیام انگلیسی Emma: ${message.text}`} style={styles.listen} onPress={() => Speech.speak(message.text, { language: 'en-US', rate: .78 })}>
@@ -217,7 +217,7 @@ export default function EmmaChat() {
           value={input}
           onChangeText={setInput}
           placeholder="پیام انگلیسی بنویسید…"
-          placeholderTextColor={Colors.neutral[600]}
+          placeholderTextColor="#64748B"
           multiline
           textAlign="left"
         />
@@ -253,7 +253,9 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '86%', borderRadius: Radius.xl, padding: Spacing.md, borderWidth: 1 },
   theirs: { alignSelf: 'flex-start', backgroundColor: Colors.neutral[850], borderColor: Colors.neutral[700], borderBottomLeftRadius: 5 },
   mine: { alignSelf: 'flex-end', backgroundColor: Colors.primary[600], borderColor: Colors.primary[500], borderBottomRightRadius: 5 },
-  messageText: { fontFamily: Typography.latinFontFamily, fontSize: 16, lineHeight: 23, fontWeight: '800', color: Colors.neutral[50], textAlign: 'left', writingDirection: 'ltr' },
+  messageText: { fontFamily: Typography.latinFontFamily, fontSize: 16, lineHeight: 23, fontWeight: '800', color: '#0F172A', textAlign: 'left', writingDirection: 'ltr' },
+  mineMessageText: { color: '#FFFFFF' },
+  theirsMessageText: { color: '#0F172A' },
   translation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs, color: Colors.neutral[400], textAlign: 'right', lineHeight: 19, marginTop: 7, paddingTop: 7, borderTopWidth: 1, borderTopColor: Colors.neutral[700] + '80' },
   listen: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, marginTop: 7, alignSelf: 'flex-end' },
   listenText: { fontFamily: Typography.fontFamily, fontSize: 9, color: Colors.primary[300] },
@@ -277,7 +279,7 @@ const styles = StyleSheet.create({
   suggestionText: { fontFamily: Typography.latinFontFamily, fontSize: 12, fontWeight: '800', color: Colors.primary[200], writingDirection: 'ltr' },
   composer: { flexShrink: 0, minHeight: 64, overflow: 'visible', padding: Spacing.sm, paddingBottom: 10, backgroundColor: Colors.neutral[900], flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   helper: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.neutral[850], alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: Colors.neutral[850], borderWidth: 1, borderColor: Colors.neutral[700], paddingHorizontal: Spacing.md, paddingTop: 10, paddingBottom: 8, fontFamily: Typography.latinFontFamily, fontSize: Typography.sizes.sm, lineHeight: 22, fontWeight: '800', color: Colors.neutral[100], textAlignVertical: 'center', includeFontPadding: false, writingDirection: 'ltr' },
+  input: { flex: 1, minHeight: 44, maxHeight: 100, borderRadius: 22, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#94A3B8', paddingHorizontal: Spacing.md, paddingTop: 10, paddingBottom: 8, fontFamily: Typography.latinFontFamily, fontSize: Typography.sizes.sm, lineHeight: 22, fontWeight: '800', color: '#0F172A', textAlignVertical: 'center', includeFontPadding: false, writingDirection: 'ltr' },
   send: { width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.accent[500], alignItems: 'center', justifyContent: 'center' },
   sendDisabled: { opacity: .4 },
 });
