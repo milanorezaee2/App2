@@ -32,6 +32,13 @@ function chatDb() {
   return MANAGEMENT_BUILD ? adminClient() : supabase;
 }
 
+function isMissingChatModerationSchema(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === '42P01' || error.code === 'PGRST205'
+    || (/user_chat_access|chat_conversation_moderation/.test(error.message || '')
+      && /not found|does not exist|schema cache/i.test(error.message || ''));
+}
+
 export { SUPABASE_NOT_CONFIGURED_MESSAGE, readableSupabaseError } from './errors';
 
 const HIDDEN_CONVERSATIONS_KEY = 'milo_hidden_conversations_v1';
@@ -129,8 +136,16 @@ export async function claimRealContactInvite(code: string, displayName = 'زبا
   return data;
 }
 
-export async function listRealContacts(): Promise<RealContact[]> {
-  await ensureChatIdentity();
+export async function listRealContacts(includeDeleted = false): Promise<RealContact[]> {
+  const currentUser = await ensureChatIdentity();
+  const { data: accessControl, error: accessError } = await chatDb()
+    .from('user_chat_access')
+    .select('is_blocked')
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
+  if (accessError && !isMissingChatModerationSchema(accessError)) throw new Error(readableSupabaseError(accessError));
+  if (accessControl?.is_blocked) return [];
+
   const { data, error } = await chatDb()
     .from('learning_contacts')
     .select('conversation_id,created_at,contact_id')
@@ -139,7 +154,17 @@ export async function listRealContacts(): Promise<RealContact[]> {
 
   if (!data?.length) return [];
   const hiddenConversationIds = await getHiddenConversationIds();
-  const visibleRows = data.filter(row => !hiddenConversationIds.has(row.conversation_id));
+  let visibleRows = data.filter(row => !hiddenConversationIds.has(row.conversation_id));
+  if (!visibleRows.length) return [];
+  const { data: moderationRows, error: moderationError } = await chatDb()
+    .from('chat_conversation_moderation')
+    .select('conversation_id,deleted_at')
+    .in('conversation_id', visibleRows.map(row => row.conversation_id));
+  if (moderationError && !isMissingChatModerationSchema(moderationError)) throw new Error(readableSupabaseError(moderationError));
+  const deletedIds = new Set((moderationRows || [])
+    .filter(row => Boolean(row.deleted_at))
+    .map(row => row.conversation_id));
+  if (!includeDeleted) visibleRows = visibleRows.filter(row => !deletedIds.has(row.conversation_id));
   if (!visibleRows.length) return [];
   // contact_id references auth.users, not profiles. Fetch profiles separately;
   // both queries remain subject to the current user's RLS policies.
@@ -272,6 +297,55 @@ export async function currentChatUserId(): Promise<string | null> {
 }
 
 export type SupportRequestStatus = 'open' | 'resolved';
+
+export interface AdminChatModeration {
+  blockedUsers: Record<string, boolean>;
+  deletedConversations: Record<string, boolean>;
+}
+
+export async function loadAdminChatModeration(
+  userIds: string[],
+  conversationIds: string[],
+): Promise<AdminChatModeration> {
+  if (!MANAGEMENT_BUILD) throw new Error('ADMIN_REQUIRED');
+  await ensureChatIdentity();
+  const [accessResult, moderationResult] = await Promise.all([
+    userIds.length
+      ? chatDb().from('user_chat_access').select('user_id,is_blocked').in('user_id', userIds)
+      : Promise.resolve({ data: [], error: null }),
+    conversationIds.length
+      ? chatDb().from('chat_conversation_moderation').select('conversation_id,deleted_at').in('conversation_id', conversationIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (isMissingChatModerationSchema(accessResult.error) || isMissingChatModerationSchema(moderationResult.error)) {
+    throw new Error('برای کنترل دسترسی و حذف گفتگو، فایل supabase/SETUP-MULTI-CONTACT-ADMIN-ONCE.sql را ابتدا در SQL Editor داشبورد Supabase اجرا کنید.');
+  }
+  if (accessResult.error) throw new Error(readableSupabaseError(accessResult.error));
+  if (moderationResult.error) throw new Error(readableSupabaseError(moderationResult.error));
+  return {
+    blockedUsers: Object.fromEntries((accessResult.data || []).map(row => [row.user_id, Boolean(row.is_blocked)])),
+    deletedConversations: Object.fromEntries((moderationResult.data || []).map(row => [row.conversation_id, Boolean(row.deleted_at)])),
+  };
+}
+
+export async function setChatUserBlocked(userId: string, blocked: boolean): Promise<void> {
+  if (!MANAGEMENT_BUILD) throw new Error('ADMIN_REQUIRED');
+  const { error } = await chatDb().rpc('admin_set_chat_access', {
+    p_user_id: userId,
+    p_blocked: blocked,
+    p_reason: blocked ? 'مدیریت دسترسی گفتگو' : null,
+  });
+  if (error) throw new Error(readableSupabaseError(error));
+}
+
+export async function setChatConversationDeleted(conversationId: string, deleted: boolean): Promise<void> {
+  if (!MANAGEMENT_BUILD) throw new Error('ADMIN_REQUIRED');
+  const { error } = await chatDb().rpc('admin_set_conversation_deleted', {
+    p_conversation_id: conversationId,
+    p_deleted: deleted,
+  });
+  if (error) throw new Error(readableSupabaseError(error));
+}
 
 export async function listSupportRequestStatuses(): Promise<Record<string, SupportRequestStatus>> {
   await ensureChatIdentity();

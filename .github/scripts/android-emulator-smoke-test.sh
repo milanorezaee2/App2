@@ -62,8 +62,18 @@ PY
 trap on_exit EXIT
 
 capture_ui() {
-  timeout 60s adb shell uiautomator dump "$remote_ui_file"
-  adb pull "$remote_ui_file" "$ui_file"
+  local attempt
+  for attempt in 1 2 3; do
+    if timeout 60s adb shell uiautomator dump "$remote_ui_file" \
+      && adb pull "$remote_ui_file" "$ui_file" \
+      && [[ -s "$ui_file" ]]; then
+      return 0
+    fi
+    echo "Android UI hierarchy was temporarily unavailable (attempt $attempt/3)."
+    sleep 5
+  done
+  echo 'Android UI hierarchy could not be collected after three attempts.'
+  return 1
 }
 
 printf 'Testing standalone APK: %s\n' "$apk_path"
@@ -92,7 +102,7 @@ for attempt in 1 2; do
   # Android "system" process as temporarily unresponsive during first boot.
   # Both dialogs expose a Wait action and are infrastructure noise when our
   # activity remains resumed without a FATAL EXCEPTION.
-  if ! grep -Eq "System UI isn't responding|Process system isn't responding" "$ui_file"; then
+  if ! grep -Eq "System UI isn't responding|Process system isn't responding|Settings isn't responding" "$ui_file"; then
     break
   fi
 

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BookOpenCheck } from 'lucide-react-native';
 
 const LETTERS = ['M', 'i', 'l', 'o'];
-const SUBTITLE = 'MULTI LANGUAGE';
+const SUBTITLE = 'MULTILANGUAGE';
 
 type Props = {
   /** `intro` is the large startup logo; `header` is the compact in-app logo. */
