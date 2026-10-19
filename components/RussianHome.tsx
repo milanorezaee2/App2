@@ -43,10 +43,15 @@ export default function RussianHome() {
   const sentenceCount = RUSSIAN_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0);
   const uniqueWords = new Set(RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size;
   const firstSentence = heroLesson.sentences[0];
-  const levelCounts = {} as Partial<Record<RussianLevelId, { completed: number; total: number }>>;
+  const levelCounts = {} as Partial<Record<RussianLevelId, { completed: number; total: number; sentences: number; words: number }>>;
   RUSSIAN_LEVELS.forEach(level => {
     const lessons = RUSSIAN_LESSONS.filter(lesson => lesson.levelId === level.id);
-    levelCounts[level.id] = { completed: lessons.filter(lesson => completedSet.has(lesson.id)).length, total: lessons.length };
+    levelCounts[level.id] = {
+      completed: lessons.filter(lesson => completedSet.has(lesson.id)).length,
+      total: lessons.length,
+      sentences: lessons.reduce((sum, lesson) => sum + lesson.sentences.length, 0),
+      words: new Set(lessons.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size,
+    };
   });
 
   const openLevel = (levelId: RussianLevelId) => router.push(`/learn/ru/library?level=${levelId}` as never);
@@ -131,11 +136,11 @@ export default function RussianHome() {
               {showRoadmap ? <ChevronUp size={18} color={Palette.primary} /> : <ChevronDown size={18} color={Palette.primary} />}
             </Pressable>
             {showRoadmap && <View style={styles.fullRoadmap}>{RUSSIAN_LEVELS.map(level => {
-              const count = levelCounts[level.id] ?? { completed: 0, total: 0 };
+              const count = levelCounts[level.id] ?? { completed: 0, total: 0, sentences: 0, words: 0 };
               const passed = count.total > 0 && count.completed === count.total;
               return <Pressable key={level.id} accessibilityRole="button" accessibilityLabel={`فهرست درس‌های ${level.title}`} style={[styles.levelCard, level.id === activeLevel.id && styles.levelCardActive]} onPress={() => openLevel(level.id)}>
                 <View style={[styles.levelNumber, { backgroundColor: `${level.color}18` }]}>{passed ? <Check size={18} color={level.color} strokeWidth={2.6} /> : <Text style={[styles.levelNumberText, { color: level.color }]}>{fa(level.id)}</Text>}</View>
-                <View style={styles.levelText}><View style={styles.levelTitleRow}><Text style={styles.levelTitle}>{level.title}</Text><Text style={[styles.levelBand, { color: level.color }]}>{level.cefr}</Text></View><Text style={styles.levelDesc} numberOfLines={2}>{level.description}</Text><Text style={styles.levelStats}>{fa(count.completed)} از {fa(count.total)} درس · {level.status === 'planned' ? 'در نقشهٔ آینده' : 'محتوای موجود'}</Text></View>
+                <View style={styles.levelText}><View style={styles.levelTitleRow}><Text style={styles.levelTitle}>{level.title}</Text><Text style={[styles.levelBand, { color: level.color }]}>{level.cefr}</Text></View><Text style={styles.levelDesc} numberOfLines={2}>{level.description}</Text><Text style={styles.levelStats}>{fa(count.completed)} از {fa(count.total)} درس · {fa(count.sentences)} جمله · {fa(count.words)} واژهٔ یکتا</Text></View>
                 <ChevronLeft size={18} color={Palette.muted} />
               </Pressable>;
             })}</View>}

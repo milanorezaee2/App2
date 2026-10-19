@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
   buttonText: { fontFamily: 'Vazir', color: '#FFFFFF', fontSize: 14, fontWeight: '400', textAlign: 'center', writingDirection: 'rtl' },
   buttonTextSecondary: { color: Palette.primaryDark },
   row: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
+  replayRow: { flexDirection: 'row-reverse', alignItems: 'stretch', justifyContent: 'center', gap: 10, flexWrap: 'wrap' },
   pill: { alignSelf: 'flex-start', fontFamily: 'Vazir', color: Palette.primaryDark, fontSize: 12, fontWeight: '400', backgroundColor: Palette.primarySoft, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, textAlign: 'right', writingDirection: 'rtl' },
   notice: { fontFamily: 'Vazir', color: Palette.warning, backgroundColor: Palette.warningSoft, borderWidth: 1, borderColor: '#F2DFC1', padding: 14, borderRadius: 15, fontSize: 13, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   error: { fontFamily: 'Vazir', color: Palette.danger, backgroundColor: Palette.dangerSoft, borderWidth: 1, borderColor: '#F2D1D8', padding: 13, borderRadius: 14, fontSize: 13, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },

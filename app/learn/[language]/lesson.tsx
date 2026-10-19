@@ -17,6 +17,8 @@ import { playResponsiveSpeech, warmSpeech } from '@/lib/responsiveSpeech';
 
 const stages = ['موقعیت', 'جمله‌ها', 'شنیدن', 'جمله‌سازی', 'مکالمه', 'لغات'];
 const PAGE_SIZE = 5;
+const NORMAL_SPEECH_RATE = 0.85;
+const SLOW_SPEECH_RATE = 0.5;
 
 export default function LanguageLessonRoute() {
   const { language, id } = useLocalSearchParams<{ language: string; id: string }>();
@@ -100,14 +102,22 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
     warmSpeech('de-DE');
     return () => { void Speech.stop(); };
   }, []);
-  const speak = (text: string) => {
+  const speak = (text: string, rate = NORMAL_SPEECH_RATE) => {
     setError('');
     playResponsiveSpeech({
       text,
       locale: 'de-DE',
+      rate,
       onError: () => setError('پخش انجام نشد. صدای آلمانی دستگاه یا مرورگر را بررسی کنید؛ متن درس همچنان در دسترس است.'),
     });
   };
+
+  // Read each active sentence as soon as it is displayed.
+  useEffect(() => {
+    if (sessionState !== 'ready' || stage !== 1 || !current?.text) return;
+    speak(current.text, NORMAL_SPEECH_RATE);
+    return () => { void Speech.stop(); };
+  }, [sessionState, stage, index, lesson.id]);
   const previousPage = () => {
     void Speech.stop();
     setIndex(value => Math.max(0, value - 1));
@@ -224,7 +234,11 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
         <View style={s.divider} />
         <Text style={s.description}>{current.fa}</Text>
         {current.pattern && <Text style={s.notice}>الگوی جمله: {current.pattern}</Text>}
-        <GermanCourseButton title="🔊 شنیدن جمله به آلمانی" onPress={() => speak(current.text)} />
+        <View style={s.replayRow}>
+          <GermanCourseButton title="🔊 آهسته" secondary onPress={() => speak(current.text, SLOW_SPEECH_RATE)} />
+          <GermanCourseButton title="🔊 معمولی" secondary onPress={() => speak(current.text, NORMAL_SPEECH_RATE)} />
+        </View>
+        <Text style={s.small}>جمله به‌صورت خودکار پخش می‌شود؛ برای شنیدن دوباره سرعت آهسته یا معمولی را انتخاب کنید.</Text>
       </View>}
       {stage === 2 && <>
         <Text style={s.description}>گوش بدهید و با صدای خودتان تکرار کنید. ضبط و سرویس هوش مصنوعی لازم نیست.</Text>

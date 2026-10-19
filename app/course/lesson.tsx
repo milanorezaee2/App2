@@ -33,6 +33,8 @@ import { PAID_AI_ENABLED, PAID_AI_DISABLED_MESSAGE } from '@/lib/paidAI';
 import { playResponsiveSpeech, warmSpeech } from '@/lib/responsiveSpeech';
 
 const stages = ENGLISH_ENGINE_STEPS;
+const NORMAL_SPEECH_RATE = 0.85;
+const SLOW_SPEECH_RATE = 0.5;
 
 export default function SentenceLessonScreen() {
   const router = useRouter();
@@ -100,6 +102,14 @@ export default function SentenceLessonScreen() {
   const speak = (text: string, rate?: number) => {
     playResponsiveSpeech({ text, locale: 'en-US', rate });
   };
+
+  // Read every sentence when it becomes the active sentence, matching the
+  // sentence-first behaviour of the Russian course.
+  useEffect(() => {
+    if (!sessionReady || stage !== 1 || !current?.en) return;
+    speak(current.en, NORMAL_SPEECH_RATE);
+    return () => { void Speech.stop(); };
+  }, [sessionReady, stage, sentenceIndex, lesson.id]);
 
   const startSpeechPractice = async () => {
     if (!PAID_AI_ENABLED) { setSpeechError(PAID_AI_DISABLED_MESSAGE); return; }
@@ -240,7 +250,11 @@ export default function SentenceLessonScreen() {
               <Text style={styles.persian}>{current.fa}</Text>
               {current.pattern ? <View style={styles.pattern}><Text style={styles.patternLabel}>الگو</Text><Text style={styles.patternEnglish}>{current.pattern}</Text></View> : null}
             </View>
-            <Text style={styles.hint}>چند بار گوش دهید و جمله را با صدای بلند تکرار کنید.</Text>
+            <View style={styles.replayRow}>
+              <Pressable accessibilityRole="button" style={styles.replayButton} onPress={() => speak(current.en, SLOW_SPEECH_RATE)}><Volume2 size={17} color={Palette.primary} /><Text style={styles.replayText}>آهسته</Text></Pressable>
+              <Pressable accessibilityRole="button" style={styles.replayButton} onPress={() => speak(current.en, NORMAL_SPEECH_RATE)}><Volume2 size={17} color={Palette.primary} /><Text style={styles.replayText}>معمولی</Text></Pressable>
+            </View>
+            <Text style={styles.hint}>جمله به‌صورت خودکار پخش می‌شود؛ می‌توانید آهسته یا معمولی دوباره بشنوید و با صدای بلند تکرار کنید.</Text>
           </View>
         )}
 
@@ -446,6 +460,9 @@ const styles = StyleSheet.create({
   sentenceStage: { alignItems: 'center', paddingTop: Spacing.lg, width: '100%' },
   counter: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, marginBottom: Spacing.md, alignSelf: 'flex-end', textAlign: 'right', writingDirection: 'rtl' },
   sentenceCard: { width: '100%', borderRadius: Radius.xl, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: Spacing.xl, alignItems: 'center', shadowColor: '#172033', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  replayRow: { width: '100%', flexDirection: 'row-reverse', justifyContent: 'center', gap: 10, marginTop: Spacing.md },
+  replayButton: { minHeight: 42, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 17, borderRadius: Radius.full, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: Palette.border },
+  replayText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: '400', color: Palette.primaryDark, writingDirection: 'rtl' },
   soundButton: { width: 54, height: 54, borderRadius: 27, backgroundColor: Palette.primary, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
   english: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 25, lineHeight: 36, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   pronunciation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.primaryDark, textAlign: 'center', writingDirection: 'rtl', marginTop: 8 },
