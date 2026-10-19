@@ -68,8 +68,8 @@ check(/shouldPlaySound: !foreground/.test(notifications)
   && /shouldShowBanner: !foreground/.test(notifications), 'native notification presentation is silent while foreground');
 check(/onForegroundEvent/.test(bridge) && /incrementChatUnreadCount/.test(bridge), 'foreground events show a quiet in-app banner and increment unread count');
 check(/chatNotificationState/.test(navigation) && /item\.path === '\/conversations'/.test(navigation), 'conversation tab displays the unread counter');
-check(/requestPermissionsAsync/.test(notifications) && /PERMISSION_PROMPTED_KEY/.test(notifications)
-  && /فقط یک‌بار/.test(notifications), 'notification permission is requested politely no more than once');
+check(/requestPermissionsAsync/.test(notifications)
+  && !/PERMISSION_PROMPTED_KEY/.test(notifications), 'notification permission can be requested again after a previous denial');
 check(/supabase functions deploy chat-push/.test(setupDoc)
   && /x-chat-webhook-secret/.test(setupDoc), 'setup guide documents function deployment and webhook authentication');
 

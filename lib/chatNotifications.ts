@@ -1,5 +1,4 @@
 import { Alert, AppState, Platform, type AppStateStatus } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
@@ -11,7 +10,6 @@ import { MANAGEMENT_BUILD } from './features';
 
 export const CHAT_NOTIFICATION_CHANNEL = 'milo-chat';
 export const QUIET_CHAT_NOTIFICATION_CHANNEL = 'milo-chat-quiet';
-const PERMISSION_PROMPTED_KEY = 'milo_chat_notification_permission_prompted_v1';
 const FOREGROUND_PRESENCE_INTERVAL_MS = 45_000;
 
 export type ChatNotificationEvent = {
@@ -85,18 +83,13 @@ async function askNotificationPermissionOnce(): Promise<boolean> {
   let promptPromise: Promise<boolean> | null = null;
   try {
     // Recheck system settings on resume so a user who enables notifications
-    // manually after the one-time prompt can register without reinstalling.
+    // manually can register without reinstalling.
     const current = await Notifications.getPermissionsAsync();
     if (current.granted) return true;
     if (current.canAskAgain === false) return false;
     if (permissionPromptPromise) return permissionPromptPromise;
 
     promptPromise = (async () => {
-      const alreadyPrompted = await AsyncStorage.getItem(PERMISSION_PROMPTED_KEY);
-      if (alreadyPrompted) return false;
-      // Mark before opening the dialog so remounts or login changes can never
-      // prompt repeatedly. The user can enable it later in Android Settings.
-      await AsyncStorage.setItem(PERMISSION_PROMPTED_KEY, '1');
       return await new Promise<boolean>(resolve => {
         let settled = false;
         const finish = (granted: boolean) => {
@@ -106,7 +99,7 @@ async function askNotificationPermissionOnce(): Promise<boolean> {
         };
         Alert.alert(
           'اجازهٔ اعلان‌ها',
-          'برای باخبرشدن از پیام و درخواست پشتیبانی، اجازهٔ اعلان‌ها را فعال کنید. این پرسش فقط یک‌بار نمایش داده می‌شود.',
+          'برای باخبرشدن از پیام و درخواست پشتیبانی، اجازهٔ اعلان‌ها را فعال کنید.',
           [
             { text: 'بعداً', style: 'cancel', onPress: () => finish(false) },
             {
@@ -133,8 +126,16 @@ async function askNotificationPermissionOnce(): Promise<boolean> {
 
 function expoProjectId(): string | null {
   const extraProjectId = Constants.expoConfig?.extra?.eas?.projectId;
+  const legacyProjectId = (Constants as typeof Constants & {
+    manifest?: { extra?: { eas?: { projectId?: unknown } } };
+    manifest2?: { extra?: { eas?: { projectId?: unknown } } };
+  }).manifest2?.extra?.eas?.projectId
+    ?? (Constants as typeof Constants & {
+      manifest?: { extra?: { eas?: { projectId?: unknown } } };
+    }).manifest?.extra?.eas?.projectId;
   const projectId = Constants.easConfig?.projectId
-    ?? (typeof extraProjectId === 'string' ? extraProjectId : null);
+    ?? (typeof extraProjectId === 'string' ? extraProjectId : null)
+    ?? (typeof legacyProjectId === 'string' ? legacyProjectId : null);
   return typeof projectId === 'string' && projectId.trim() ? projectId.trim() : null;
 }
 
