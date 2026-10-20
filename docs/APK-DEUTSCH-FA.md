@@ -2,19 +2,19 @@
 
 ## دانلود (نسخهٔ جدید با پخش روان)
 
-**https://github.com/milanorezaee2/App2/releases/download/apk-deutsch-2/Milo-Deutsch-2.apk**
+**https://github.com/milanorezaee2/App2/releases/download/apk-deutsch-3/Milo-Deutsch-3.apk**
 
 | مشخصه | مقدار |
 |---|---|
-| نام فایل | `Milo-Deutsch-2.apk` |
+| نام فایل | `Milo-Deutsch-3.apk` |
 | حجم | ۱۵۷٫۸ مگابایت |
-| SHA-256 | `5c01e0bef7da78d382746f5f2a40557d37d409ec735128d7aee573fef48005f8` |
-| صفحهٔ انتشار | https://github.com/milanorezaee2/App2/releases/tag/apk-deutsch-2 |
-| بیلد | GitHub Actions، اجرای `39513955616` (موفق) |
-| کامیت | `b62d6bb` — «پخش روان و پیوسته» |
+| SHA-256 | `46d56d7069c214d2b434b2940d8fc3780e070fe8dcd1945c44ac64c8f81699f0` |
+| صفحهٔ انتشار | https://github.com/milanorezaee2/App2/releases/tag/apk-deutsch-3 |
+| بیلد | GitHub Actions، اجرای `39515081352` (موفق) |
+| کامیت | `e024656` (کد `b62d6bb` — «پخش روان و پیوسته») |
 
-> نسخهٔ قبلی (`Milo-Deutsch-1.apk`) هنوز در ریلیز `apk-deutsch-1` هست، اما صدای آن
-> در انتهای جمله‌ها بریده می‌شد. این نسخه را نصب کنید.
+> نسخهٔ ۲ (`apk-deutsch-2`) از نظر کد یکسان است؛ فقط یک فایل مستندات تفاوت دارد.
+> `Milo-Deutsch-1.apk` قدیمی است (انتهای جمله‌ها بریده می‌شد) — آن را نصب نکنید.
 
 ## نصب روی گوشی اندروید
 
