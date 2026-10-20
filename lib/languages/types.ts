@@ -12,6 +12,9 @@ export interface LearningLesson {
   title: string;
   situation: string;
   durationMinutes: number;
+  subtitle?: string;
+  goal?: string;
+  explanation?: readonly string[];
   teachingFa?: string;
   checks?: Array<{ promptFa: string; choices: string[]; correctIndex: number; explanationFa: string }>;
   sentences: LearningSentence[];

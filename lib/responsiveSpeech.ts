@@ -1,6 +1,9 @@
 import * as Speech from 'expo-speech';
+import { preloadSpeechVoices, registerNativeVoiceFetcher, resolveRequiredSpeechOptions, resolveSpeechOptions } from './speechLanguage';
 
-type SpeechLocale = 'en-US' | 'de-DE';
+registerNativeVoiceFetcher(() => Speech.getAvailableVoicesAsync());
+
+export type SpeechLocale = 'en-US' | 'de-DE' | 'ru-RU';
 
 const warmedLocales = new Set<SpeechLocale>();
 const playCounts = new Map<string, number>();
@@ -8,13 +11,14 @@ let active = false;
 let requestId = 0;
 
 /**
- * Starts the platform TTS engine silently while the lesson is loading. Native
- * engines often need one cold-start request before their first audible phrase.
+ * Warms native/web voice metadata silently while the screen is loading so the
+ * very first spoken German, Russian, or English phrase uses the native voice.
  */
 export function warmSpeech(locale: SpeechLocale) {
   // Intentionally silent. The previous warm-up spoke "ready" and "bereit" aloud at startup.
   if (warmedLocales.has(locale)) return;
   warmedLocales.add(locale);
+  void preloadSpeechVoices();
 }
 
 /** First press uses natural 1× speed; the second press of the same phrase uses 0.5×. */
@@ -40,11 +44,19 @@ export function playResponsiveSpeech({
 }) {
   const currentRequest = ++requestId;
   const selectedRate = rate ?? alternatingRate(locale, text);
-  const start = () => {
+  const start = async () => {
     if (currentRequest !== requestId) return;
+    const targetVoice = locale === 'de-DE'
+      ? await resolveRequiredSpeechOptions(locale)
+      : await resolveSpeechOptions(locale);
+    if (currentRequest !== requestId) return;
+    if (!targetVoice) {
+      onError?.();
+      return;
+    }
     active = true;
     Speech.speak(text, {
-      language: locale,
+      ...targetVoice,
       rate: selectedRate,
       onDone: () => {
         if (currentRequest === requestId) active = false;
@@ -61,9 +73,9 @@ export function playResponsiveSpeech({
   };
 
   if (active) {
-    void Speech.stop().catch(() => undefined).finally(start);
+    void Speech.stop().catch(() => undefined).finally(() => { void start(); });
   } else {
-    start();
+    void start();
   }
 
   return selectedRate;

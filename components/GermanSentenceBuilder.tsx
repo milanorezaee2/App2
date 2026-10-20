@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Typography } from '@/lib/theme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { LearningSentence } from '@/lib/languages/types';
 import { GermanPalette as Palette } from './germanTheme';

@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   brand: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
   title: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 21, lineHeight: 28, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   subtitle: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 12, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
-  progressPill: { fontFamily: Typography.fontFamily, minWidth: 42, paddingHorizontal: 8, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Palette.primarySoft, color: Palette.primaryDark, textAlign: 'center', fontSize: 12, fontWeight: '800', writingDirection: 'rtl' },
+  progressPill: { fontFamily: Typography.fontFamily, minWidth: 42, paddingHorizontal: 8, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Palette.primarySoft, color: Palette.primaryDark, textAlign: 'center', fontSize: 12, fontWeight: '400', writingDirection: 'rtl' },
   track: { height: 5, width: '100%', backgroundColor: Palette.border, overflow: 'hidden' },
   fill: { height: '100%', backgroundColor: Palette.primary, alignSelf: 'flex-end' },
   scrollContent: { flexGrow: 1, paddingBottom: 30 },

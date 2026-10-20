@@ -1,14 +1,221 @@
 import { Platform } from 'react-native';
 
+export type SpeechVoiceInfo = {
+  identifier: string;
+  name: string;
+  language: string;
+  quality?: string;
+};
+
+type NativeVoiceFetcher = () => Promise<SpeechVoiceInfo[]>;
+
+let nativeVoiceFetcher: NativeVoiceFetcher | null = null;
+
+export function registerNativeVoiceFetcher(fetcher: NativeVoiceFetcher): void {
+  nativeVoiceFetcher = fetcher;
+  cachedVoices = null;
+}
+
 /**
- * Language tag to pass to expo-speech.
+ * Normalizes a BCP-47 speech locale for the current platform's TTS engine.
  *
- * On Android, expo-speech builds `new Locale(tag)` without splitting region
- * tags, so "ru-RU" becomes the unknown language "ru-ru". The engine then reports
- * the language as unsupported and falls back to the device language, which makes
- * Russian sound wrong and slow to start. Android therefore receives the bare
- * language code ("ru"), which the engine accepts. iOS keeps the full locale.
+ * On Android, `expo-speech` constructs `java.util.Locale(language)` with a single
+ * string argument instead of `Locale.forLanguageTag(language)`, causing hyphenated
+ * tags like `"de-DE"` to become an invalid `Locale("de-de", "")` and silently fall
+ * back to `Locale.getDefault()` (an English US operator reading German words!).
+ * Passing primary ISO-639 code `"de"` on Android yields a valid `Locale("de")`
+ * while pairing with an explicit native `de-DE` `voice` identifier selected below.
  */
-export function speechTagFor(speechLocale: string): string {
-  return Platform.OS === 'android' ? speechLocale.split('-')[0] : speechLocale;
+export function speechTagFor(locale: string, os: string = Platform.OS): string {
+  const normalized = locale.replace(/_/g, '-').trim();
+  if (os === 'android') return normalized.split('-')[0].toLowerCase();
+  return normalized;
+}
+
+function getWebSynthesis(): SpeechSynthesis | null {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !window.speechSynthesis) {
+    return null;
+  }
+  return window.speechSynthesis;
+}
+
+let cachedVoices: SpeechVoiceInfo[] | null = null;
+let pendingVoicesPromise: Promise<SpeechVoiceInfo[]> | null = null;
+let webListenerAttached = false;
+
+function readWebVoicesSync(): SpeechVoiceInfo[] {
+  const synth = getWebSynthesis();
+  if (!synth || typeof synth.getVoices !== 'function') return [];
+  if (!webListenerAttached && typeof synth.addEventListener === 'function') {
+    webListenerAttached = true;
+    synth.addEventListener('voiceschanged', () => {
+      cachedVoices = null;
+    });
+  }
+  const raw = synth.getVoices() || [];
+  return raw.map(v => ({
+    identifier: v.voiceURI || v.name,
+    name: v.name,
+    language: v.lang,
+    quality: v.localService ? 'Enhanced' : 'Default',
+  }));
+}
+
+export async function loadAvailableVoices(): Promise<SpeechVoiceInfo[]> {
+  if (Platform.OS === 'web') {
+    const voices = readWebVoicesSync();
+    if (voices.length > 0) cachedVoices = voices;
+    return voices;
+  }
+  if (cachedVoices && cachedVoices.length > 0) {
+    return cachedVoices;
+  }
+  if (!nativeVoiceFetcher) {
+    return [];
+  }
+  if (!pendingVoicesPromise) {
+    const fetcher = nativeVoiceFetcher;
+    pendingVoicesPromise = Promise.race([
+      fetcher().catch(() => [] as SpeechVoiceInfo[]),
+      new Promise<SpeechVoiceInfo[]>(resolve => setTimeout(() => resolve([]), 800)),
+    ]).then(voices => {
+      if (voices.length > 0) cachedVoices = voices;
+      pendingVoicesPromise = null;
+      return voices;
+    });
+  }
+  return pendingVoicesPromise;
+}
+
+/**
+ * Ranks available TTS voices for a target BCP-47 locale (e.g., `'de-DE'`, `'ru-RU'`, `'en-US'`),
+ * strictly rejecting wrong-language operators and strongly preferring native local voices
+ * (high-quality on-device neural voices in Germany German `de-DE`, Russian `ru-RU`, US English `en-US`).
+ */
+export function scoreVoiceForLocale(voice: SpeechVoiceInfo, targetLocale: string): number {
+  const voiceLang = (voice.language || '').replace(/_/g, '-').trim().toLowerCase();
+  const target = targetLocale.replace(/_/g, '-').trim().toLowerCase();
+  const [targetPrimary, targetRegion] = target.split('-');
+  if (!voiceLang || !targetPrimary) return -1;
+
+  const [voicePrimary, voiceRegion] = voiceLang.split('-');
+  if (voicePrimary !== targetPrimary) return -1;
+
+  let score = 100;
+  if (targetRegion && voiceRegion === targetRegion) {
+    score += 50;
+  } else if (!voiceRegion) {
+    score += 20;
+  }
+
+  const hay = `${voice.identifier} ${voice.name}`.toLowerCase();
+
+  // Strongly prefer local / on-device neural voices over remote network voices.
+  if (hay.includes('-local') || hay.includes('_local') || hay.includes('local')) score += 30;
+  if (hay.includes('-network') || hay.includes('online')) score -= 10;
+
+  if (String(voice.quality || '').toLowerCase() === 'enhanced') score += 25;
+
+  if (
+    hay.includes('anna') ||
+    hay.includes('petra') ||
+    hay.includes('markus') ||
+    hay.includes('helena') ||
+    hay.includes('martin') ||
+    hay.includes('katja') ||
+    hay.includes('conrad') ||
+    hay.includes('de-de-x-') ||
+    hay.includes('german') ||
+    hay.includes('deutsch') ||
+    hay.includes('milena') ||
+    hay.includes('yuri') ||
+    hay.includes('irina') ||
+    hay.includes('pavel') ||
+    hay.includes('russian') ||
+    hay.includes('samantha')
+  ) {
+    score += 18;
+  }
+
+  if (hay.includes('compact') || hay.includes('espeak') || hay.includes('novelty')) {
+    score -= 25;
+  }
+
+  return score;
+}
+
+export function selectBestVoiceForLocale(
+  voices: readonly SpeechVoiceInfo[],
+  targetLocale: string,
+): SpeechVoiceInfo | undefined {
+  let best: SpeechVoiceInfo | undefined;
+  let bestScore = -1;
+  for (const voice of voices) {
+    const s = scoreVoiceForLocale(voice, targetLocale);
+    if (s > bestScore) {
+      bestScore = s;
+      best = voice;
+    }
+  }
+  return best;
+}
+
+export function preloadSpeechVoices(): void {
+  void loadAvailableVoices();
+}
+
+/**
+ * Returns optimal options (`{ language, voice }`) for `Speech.speak(...)`.
+ * Never passes an empty or unmatched `voice` string (which on Web causes `expo-speech`
+ * to fall back to `voices[0]`, typically English!).
+ */
+export async function resolveSpeechOptions(
+  targetLocale: string,
+): Promise<{ language: string; voice?: string }> {
+  const language = speechTagFor(targetLocale);
+  const voices = await loadAvailableVoices();
+  const chosen = selectBestVoiceForLocale(voices, targetLocale);
+  if (chosen?.identifier) {
+    return { language, voice: chosen.identifier };
+  }
+  return { language };
+}
+
+/** Resolve only a voice verified to match the requested language; never let the
+ * device silently substitute its default (often English) voice for German. */
+export async function resolveRequiredSpeechOptions(
+  targetLocale: string,
+): Promise<{ language: string; voice: string } | null> {
+  const voices = await loadAvailableVoices();
+  const normalizedTarget = targetLocale.replace(/_/g, '-').toLowerCase();
+  const matchingLocale = voices.filter(voice =>
+    (voice.language || '').replace(/_/g, '-').toLowerCase() === normalizedTarget
+    && !/network|online/i.test(`${voice.identifier} ${voice.name}`),
+  );
+
+  // On Android the platform exposes explicit local/network voice identifiers.
+  // Refuse a network voice (or the device-default English voice) instead of
+  // silently letting the TTS engine substitute it for German.
+  const onDeviceVoices = Platform.OS === 'android'
+    ? matchingLocale.filter(voice => /local/i.test(`${voice.identifier} ${voice.name}`))
+    : Platform.OS === 'web'
+      ? matchingLocale.filter(voice => String(voice.quality || '').toLowerCase() === 'enhanced')
+      : matchingLocale;
+
+  // The user selected the feminine German sample. Prefer a local de-DE voice
+  // identifiable as feminine; avoid a clearly masculine voice when the device
+  // exposes gendered German voice names. Unknown naming schemes remain eligible.
+  const germanVoiceNames = (voice: SpeechVoiceInfo) => `${voice.identifier} ${voice.name}`.toLowerCase();
+  const feminineGermanVoice = /anna|petra|katja|helena|marlene|vicki|female|de-de-x-deb/;
+  const masculineGermanVoice = /markus|martin|conrad|hans|male|de-de-x-deg/;
+  const feminineVoices = targetLocale.toLowerCase() === 'de-de'
+    ? onDeviceVoices.filter(voice => feminineGermanVoice.test(germanVoiceNames(voice)))
+    : [];
+  const safeGermanVoices = targetLocale.toLowerCase() === 'de-de'
+    ? onDeviceVoices.filter(voice => !masculineGermanVoice.test(germanVoiceNames(voice)))
+    : onDeviceVoices;
+  const preferredVoices = feminineVoices.length ? feminineVoices : safeGermanVoices;
+  const chosen = selectBestVoiceForLocale(preferredVoices, targetLocale);
+  if (!chosen?.identifier) return null;
+  return { language: speechTagFor(targetLocale), voice: chosen.identifier };
 }

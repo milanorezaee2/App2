@@ -8,6 +8,7 @@ import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { RUSSIAN_LEVELS, RUSSIAN_LESSONS, russianProgress, type RussianLevelId } from '@/lib/languages/russian';
 import type { CourseProgress } from '@/lib/courseProgress';
 import { loadRussianLessonSession, type RussianLessonSession } from '@/lib/languages/russianStudyState';
+import { PageNavigation } from '@/components/PageNavigation';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
 
@@ -82,7 +83,7 @@ export default function RussianLibrary() {
         <View style={styles.page}>
           {!selected ? <>
             <View style={styles.topBar}>
-              <Pressable accessibilityRole="button" style={styles.backButton} onPress={() => router.replace('/learn/ru' as never)}><ChevronLeft size={18} color={Palette.ink} /><Text style={styles.backText}>بازگشت به آموزش روسی</Text></Pressable>
+              <PageNavigation backFallback="/learn/ru" accentColor={Palette.primary} borderColor={Palette.border} />
               <Text style={styles.brandEyebrow}>RUSSIAN PATH · MAIN COURSE</Text>
               <Text style={styles.pageTitle}>مسیر یادگیری روسی</Text>
               <Text style={styles.pageIntro}>یک سطح را انتخاب کنید؛ از شناخت خط سیریلیک و نخستین جمله‌ها شروع می‌کنیم و مرحله‌به‌مرحله به موقعیت‌های روزمره می‌رسیم.</Text>
@@ -129,7 +130,7 @@ export default function RussianLibrary() {
             </View>
           </> : <>
             <View style={styles.selectedTopBar}>
-              <Pressable accessibilityRole="button" style={styles.backButton} onPress={() => router.replace('/learn/ru/library' as never)}><ChevronLeft size={18} color={Palette.ink} /><Text style={styles.backText}>همهٔ سطح‌ها</Text></Pressable>
+              <PageNavigation backFallback="/learn/ru/library" onBack={() => router.replace('/learn/ru/library' as never)} accentColor={Palette.primary} borderColor={Palette.border} />
               <Text style={styles.brandEyebrow}>LEVEL {selected.id} · RUSSIAN COURSE MAP</Text>
             </View>
 
@@ -181,6 +182,7 @@ export default function RussianLibrary() {
                         <View style={styles.lessonSentenceHeader}><Volume2 size={12} color={Palette.primary} /><Text style={styles.lessonSentenceEyebrow}>جملهٔ آغازین</Text></View>
                         <Text style={styles.lessonSentenceRussian}>{sentence.text}</Text>
                         <Text style={styles.lessonSentenceFa}>{sentence.fa}</Text>
+                        {sentence.pattern ? <Text style={styles.lessonPattern}>الگوی جمله‌سازی: {sentence.pattern}</Text> : null}
                         {!!sentence.vocabulary.length && <View style={styles.lessonVocabRow}>{sentence.vocabulary.slice(0, 3).map(word => <Text key={word.word} style={styles.lessonVocabChip}>{word.word} · {word.meaning}</Text>)}</View>}
                       </View>
                       <View style={styles.lessonFooter}><View style={styles.lessonFooterItem}><Clock3 size={12} color={Palette.muted} /><Text style={styles.lessonFooterText}>{fa(item.durationMinutes)} دقیقه</Text></View><Text style={styles.lessonFooterDot}>·</Text><Text style={styles.lessonFooterText}>{fa(item.sentences.length)} جملهٔ اصلی</Text></View>
@@ -224,7 +226,7 @@ const styles = StyleSheet.create({
   overviewText: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 12, lineHeight: 21, textAlign: 'right', writingDirection: 'rtl' },
   overviewMetrics: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-around', marginTop: 5, paddingTop: 13, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
   overviewMetric: { flex: 1, alignItems: 'center', gap: 2 },
-  overviewMetricValue: { fontFamily: Typography.numberFontFamily, color: '#FFFFFF', fontSize: 18, fontWeight: '800', writingDirection: 'rtl' },
+  overviewMetricValue: { fontFamily: Typography.numberFontFamily, color: '#FFFFFF', fontSize: 18, fontWeight: '400', writingDirection: 'rtl' },
   overviewMetricLabel: { fontFamily: Typography.fontFamily, color: '#CFD2FF', fontSize: 9, writingDirection: 'rtl' },
   overviewMetricDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.18)' },
   levelRailCard: { padding: 16, gap: 12, borderRadius: 21, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
@@ -233,7 +235,7 @@ const styles = StyleSheet.create({
   levelList: { gap: 9 },
   levelOption: { minHeight: 96, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 14, borderRadius: 20, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .035, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
   levelOptionMark: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  levelOptionNumber: { fontFamily: 'Vazir', color: '#FFFFFF', fontSize: 17, fontWeight: '800', writingDirection: 'rtl' },
+  levelOptionNumber: { fontFamily: Typography.numberFontFamily, color: '#FFFFFF', fontSize: 17, fontWeight: '400', writingDirection: 'rtl' },
   levelOptionContent: { flex: 1, gap: 5 },
   levelOptionTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   levelOptionTitle: { flexShrink: 1, fontFamily: Typography.latinFontFamily, color: Palette.ink, fontSize: 12, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
@@ -257,7 +259,7 @@ const styles = StyleSheet.create({
   selectedProgressFill: { height: '100%', alignSelf: 'flex-end', borderRadius: 999, backgroundColor: '#B8F28F' },
   metricGrid: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-around', paddingTop: 12, marginTop: 2, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
   heroMetric: { flex: 1, alignItems: 'center', gap: 1 },
-  heroMetricValue: { fontFamily: Typography.numberFontFamily, color: '#FFFFFF', fontSize: 17, fontWeight: '800', writingDirection: 'rtl' },
+  heroMetricValue: { fontFamily: Typography.numberFontFamily, color: '#FFFFFF', fontSize: 17, fontWeight: '400', writingDirection: 'rtl' },
   heroMetricLabel: { fontFamily: Typography.fontFamily, color: '#D6D9FF', fontSize: 9, writingDirection: 'rtl' },
   heroMetricDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.18)' },
   focusCard: { padding: 17, borderRadius: 21, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10 },
@@ -281,7 +283,7 @@ const styles = StyleSheet.create({
   groupHeader: { minHeight: 68, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 13, paddingVertical: 10, borderRadius: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
   groupNumber: { width: 36, height: 36, borderRadius: 12, backgroundColor: Palette.surfaceMuted, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Palette.border },
   groupNumberActive: { backgroundColor: Palette.primary, borderColor: Palette.primary },
-  groupNumberText: { fontFamily: Typography.numberFontFamily, color: Palette.muted, fontSize: 12, fontWeight: '800', writingDirection: 'rtl' },
+  groupNumberText: { fontFamily: Typography.numberFontFamily, color: Palette.muted, fontSize: 12, fontWeight: '400', writingDirection: 'rtl' },
   groupNumberTextActive: { color: '#FFFFFF' },
   groupHeaderCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
   groupTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
@@ -290,7 +292,7 @@ const styles = StyleSheet.create({
   lessonCard: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 10, padding: 12, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
   lessonOrder: { width: 33, height: 33, borderRadius: 11, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   lessonOrderComplete: { backgroundColor: Palette.success },
-  lessonOrderText: { fontFamily: 'Vazir', color: Palette.primaryDark, fontSize: 11, fontWeight: '800', writingDirection: 'rtl' },
+  lessonOrderText: { fontFamily: Typography.numberFontFamily, color: Palette.primaryDark, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
   lessonCopy: { flex: 1, gap: 4 },
   lessonTitleLine: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   lessonTitle: { fontFamily: Typography.fontFamily, flexShrink: 1, color: Palette.ink, fontSize: 13, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
@@ -306,6 +308,7 @@ const styles = StyleSheet.create({
   lessonSentenceEyebrow: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
   lessonSentenceRussian: { fontFamily: 'Inter-ExtraBold', color: Palette.ink, fontSize: 12, lineHeight: 21, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
   lessonSentenceFa: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
+  lessonPattern: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 9, lineHeight: 16, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl', marginTop: 2 },
   lessonVocabRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 5, marginTop: 2 },
   lessonVocabChip: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, backgroundColor: Palette.primarySoft, fontSize: 8, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8, writingDirection: 'rtl' },
   lessonFooter: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, marginTop: 3 },

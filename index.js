@@ -30,6 +30,19 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   try {
     document.documentElement.dir = 'rtl';
     document.documentElement.lang = 'fa';
+    if (typeof HTMLMediaElement !== 'undefined' && HTMLMediaElement.prototype.play) {
+      const origMediaPlay = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function (...args) {
+        const res = origMediaPlay.apply(this, args);
+        if (res && typeof res.catch === 'function') {
+          return res.catch((err) => {
+            if (err && err.name === 'NotAllowedError') return undefined;
+            throw err;
+          });
+        }
+        return res;
+      };
+    }
   } catch (webRtlError) {
     // ignore — web preview degrades gracefully
   }
@@ -81,11 +94,11 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
         html:not(.arena-frame-disabled) #root::before {
           content: '';
           position: absolute;
-          top: 10px;
+          top: 8px;
           left: 50%;
           transform: translateX(-50%);
-          width: 90px;
-          height: 28px;
+          width: 82px;
+          height: 24px;
           background: #0f172a;
           border-radius: 9999px;
           z-index: 9999;
@@ -107,11 +120,15 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
           z-index: 9999;
           pointer-events: none;
         }
-        /* Safe area for notch - ensure background matches page to hide gap */
+        /* Safe area for notch & home indicator inside mobile frame */
         html:not(.arena-frame-disabled) #root > div {
-          padding-top: 0 !important;
           background: #F8F6FB !important;
           min-height: 100% !important;
+          box-sizing: border-box !important;
+        }
+        html:not(.arena-frame-disabled):not(.arena-keep-desktop) #root > div {
+          padding-top: 38px !important;
+          padding-bottom: 18px !important;
         }
         /* Subtle label below frame */
         html:not(.arena-frame-disabled) body::after {
@@ -266,7 +283,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     // Toggle buttons logic (persisted) - frame on/off and keep-desktop vs mobile-optimized
     try {
       const KEY_KEEP = 'arena-keep-desktop';
-      const keepDesktop = (() => { try { const v=localStorage.getItem(KEY_KEEP); return v===null || v==='1'; } catch { return true; } })();
+      const keepDesktop = (() => { try { const v=localStorage.getItem(KEY_KEEP); return v==='1'; } catch { return false; } })();
       if (keepDesktop) document.documentElement.classList.add('arena-keep-desktop');
       // Second toggle for keep-desktop
       const onReadyKeep = () => {

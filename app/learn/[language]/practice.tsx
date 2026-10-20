@@ -1,9 +1,11 @@
 import { loadSession, saveSession, clearSession, type LearningSession } from '@/lib/languages/sessionStore';
+import { Typography } from '@/lib/theme';
 import { LtrDirection } from '@/lib/theme';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
+import { preloadSpeechVoices, resolveRequiredSpeechOptions, resolveSpeechOptions } from '@/lib/speechLanguage';
 import { GermanCoursePage as CoursePage, GermanCourseButton as CourseButton, germanCourseStyles as s } from '@/components/GermanCourseUI';
 import { FIRST_MEETING } from '@/lib/languages/germanFirstMeeting';
 import type { GuidedLesson, LearningExercise, LearningUnit } from '@/lib/languages/learningDesign';
@@ -85,14 +87,26 @@ function PracticeSession({ unit, lesson, initial }: { unit: LearningUnit; lesson
   const activeAudio = useRef<object | null>(null);
   const actionLock = useRef(false);
   useEffect(() => { actionLock.current = false; }, [index, feedback, stage]);
-  useEffect(() => () => { activeAudio.current = null; void Speech.stop(); }, []);
+  useEffect(() => { void preloadSpeechVoices(); return () => { activeAudio.current = null; void Speech.stop(); }; }, []);
   const speak = (text: string, listeningId?: string) => {
     // Each playback has its own token: a cancelled/error callback cannot unlock a later replay.
     const token={};activeAudio.current=token;setAudioError('');void Speech.stop();
-    Speech.speak(text, { language: unit.language==='en'?'en-US':'de-DE', rate: .78,
-      onStart: () => { if (unit.language==='de' && listeningId && activeAudio.current === token) setPlayed(true); },
-      onDone: () => {if(unit.language==='en'&&listeningId&&activeAudio.current===token)setPlayed(true);},
-      onError: () => { if (activeAudio.current === token) {activeAudio.current=null;setAudioError('صدای دستگاه پخش نشد. می‌توانید متن را ببینید؛ پاسخ آن سؤال به‌عنوان کمک‌گرفته ثبت می‌شود.');} },
+    const targetLocale = unit.language==='en'?'en-US':'de-DE';
+    const voiceOptions = targetLocale === 'de-DE'
+      ? resolveRequiredSpeechOptions(targetLocale)
+      : resolveSpeechOptions(targetLocale);
+    void voiceOptions.then(targetVoice => {
+      if (activeAudio.current !== token) return;
+      if (!targetVoice) {
+        activeAudio.current = null;
+        setAudioError('صدای آلمانیِ آفلاین پیدا نشد؛ در تنظیمات گفتار دستگاه، صدای آلمانی (آلمان) را دانلود کنید و دوباره امتحان کنید.');
+        return;
+      }
+      Speech.speak(text, { ...targetVoice, rate: .78,
+        onStart: () => { if (unit.language==='de' && listeningId && activeAudio.current === token) setPlayed(true); },
+        onDone: () => {if(unit.language==='en'&&listeningId&&activeAudio.current===token)setPlayed(true);},
+        onError: () => { if (activeAudio.current === token) {activeAudio.current=null;setAudioError('صدای دستگاه پخش نشد. می‌توانید متن را ببینید؛ پاسخ آن سؤال به‌عنوان کمک‌گرفته ثبت می‌شود.');} },
+      });
     });
   };
   const stop = () => { activeAudio.current = null; void Speech.stop(); };
@@ -225,6 +239,6 @@ const styles = StyleSheet.create({
   answerBox: { padding: 18, borderRadius: 12, backgroundColor: '#f4f6fa' },
   tokens: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, ...LtrDirection },
   token: { borderRadius: 10, backgroundColor: '#f4f6fa', padding: 15 },
-  tokenText: { fontSize: 19, color: '#475569' },
+  tokenText: { fontFamily: Typography.fontFamily, fontSize: 19, color: '#475569' },
   feedback: { backgroundColor: '#f4f6fa', borderRadius: 14, padding: 18, gap: 16 },
 });

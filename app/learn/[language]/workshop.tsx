@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Typography } from '@/lib/theme';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { GermanCoursePage, GermanCourseButton, germanCourseStyles as s } from '@/components/GermanCourseUI';
@@ -281,7 +282,7 @@ function ChecklistRow({ label, checked, onPress }: { label: string; checked: boo
 
 const styles = StyleSheet.create({
   field: { width: '100%', gap: 6 },
-  fieldLabel: { fontFamily: 'Vazir', color: Palette.ink, fontSize: 12, lineHeight: 20, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  fieldLabel: { fontFamily: 'Vazir', color: Palette.ink, fontSize: 12, lineHeight: 20, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   formInput: { fontFamily: 'Inter-ExtraBold', minHeight: 48, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10, color: Palette.ink, fontSize: 13, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   messageInput: { fontFamily: 'Inter-ExtraBold', minHeight: 126, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 12, color: Palette.ink, fontSize: 13, fontWeight: '800', lineHeight: 24, textAlign: 'left', writingDirection: 'ltr' },
   sampleBox: { padding: 13, gap: 7, borderRadius: 13, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: Palette.border },
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: .82 },
   checkbox: { width: 21, height: 21, borderRadius: 6, borderWidth: 1.5, borderColor: Palette.muted, alignItems: 'center', justifyContent: 'center' },
   checkboxChecked: { backgroundColor: Palette.primary, borderColor: Palette.primary },
-  checkMark: { color: '#FFFFFF', fontSize: 14, lineHeight: 17, fontWeight: '800' },
+  checkMark: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 14, lineHeight: 17, fontWeight: '400' },
   checkLabel: { fontFamily: 'Vazir', flex: 1, color: Palette.ink, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   confirmRow: { flexDirection: 'row-reverse', gap: 10 },
 });

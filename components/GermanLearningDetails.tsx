@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { Typography } from '@/lib/theme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Compass, Headphones, BookOpen, PenLine, Mic } from 'lucide-react-native';

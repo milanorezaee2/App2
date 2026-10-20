@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { ArrowRight, BookOpenCheck, Check, ChevronLeft, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
+import { BookOpenCheck, Check, ChevronLeft, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 const RUSSIAN_LESSON_GRADIENTS: Record<number, [string, string]> = {
   0: ['#8175F2', '#4036A8'],
@@ -12,6 +12,7 @@ const RUSSIAN_LESSON_GRADIENTS: Record<number, [string, string]> = {
   3: ['#E079A5', '#A33E6D'],
   4: ['#D58A62', '#954A2B'],
 };
+import { PageNavigation } from '@/components/PageNavigation';
 import RussianSentenceBuilder from '@/components/RussianSentenceBuilder';
 import RussianDialoguePractice from '@/components/RussianDialoguePractice';
 import { clearRussianLessonSession, loadRussianLessonSession, saveRussianLessonSession } from '@/lib/languages/russianStudyState';
@@ -19,7 +20,7 @@ import { findLanguage } from '@/lib/languages/catalog';
 import { RUSSIAN_LESSONS, RUSSIAN_LEVELS, RUSSIAN_LESSON_STAGES, russianProgress, type RussianCourseLesson } from '@/lib/languages/russian';
 import type { RussianLessonSession } from '@/lib/languages/russianStudyState';
 import { toPersianDigits as fa } from '@/lib/format';
-import { speechTagFor } from '@/lib/speechLanguage';
+import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
 import { Typography } from '@/lib/theme';
 
 const stages = RUSSIAN_LESSON_STAGES;
@@ -68,6 +69,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     setSessionReady(false);
     setSessionError('');
     setCompletionError('');
+    void preloadSpeechVoices();
     void loadRussianLessonSession(lesson.id).then(saved => {
       if (!alive) return;
       setStage(saved.stage);
@@ -93,10 +95,12 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
   const speak = useCallback((text: string, rate = 0.78) => {
     setSpeechError('');
     void Speech.stop();
-    Speech.speak(text, {
-      language: speechTagFor(findLanguage('ru')!.speechLocale),
-      rate,
-      onError: () => setSpeechError('صدای روسی دستگاه در دسترس نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
+    void resolveSpeechOptions(findLanguage('ru')!.speechLocale).then(targetVoice => {
+      Speech.speak(text, {
+        ...targetVoice,
+        rate,
+        onError: () => setSpeechError('صدای روسی دستگاه در دسترس نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
+      });
     });
   }, []);
 
@@ -149,13 +153,13 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     }
   };
 
-  if (!sessionReady) return <View style={styles.root}><View style={styles.loadingCard}><ActivityIndicator color={Palette.primary} /><Text accessibilityRole={sessionError ? 'alert' : undefined} style={styles.loadingText}>{sessionError || 'در حال بازیابی جلسهٔ روسی…'}</Text>{sessionError ? <Pressable accessibilityRole="button" style={styles.loadingButton} onPress={() => setLoadingRetry(value => value + 1)}><Text style={styles.loadingButtonText}>تلاش دوباره</Text></Pressable> : null}</View></View>;
+  if (!sessionReady) return <View style={styles.root}><PageNavigation backFallback="/learn/ru" accentColor={Palette.primary} borderColor={Palette.border} /><View style={styles.loadingCard}><ActivityIndicator color={Palette.primary} /><Text accessibilityRole={sessionError ? 'alert' : undefined} style={styles.loadingText}>{sessionError || 'در حال بازیابی جلسهٔ روسی…'}</Text>{sessionError ? <Pressable accessibilityRole="button" style={styles.loadingButton} onPress={() => setLoadingRetry(value => value + 1)}><Text style={styles.loadingButtonText}>تلاش دوباره</Text></Pressable> : null}</View></View>;
 
   return (
     <View style={styles.root}>
       <LinearGradient colors={RUSSIAN_LESSON_GRADIENTS[courseLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.header}>
         <View style={styles.headerTop}>
-          <Pressable accessibilityRole="button" accessibilityLabel="بازگشت" style={styles.back} onPress={() => router.back()}><ArrowRight size={19} color="#FFFFFF" /></Pressable>
+          <PageNavigation tone="dark" backFallback="/learn/ru" />
           <View style={styles.headerText}>
             <Text style={styles.headerEyebrow}>LEVEL {courseLevel.id} · {courseLevel.title.toUpperCase()}</Text>
             <Text style={styles.headerTitle}>{lesson.title}</Text>
@@ -194,7 +198,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
             <Text style={styles.pronunciation}>{current.pronunciation}</Text>
             <View style={styles.divider} />
             <Text style={styles.persian}>{current.fa}</Text>
-            {current.pattern ? <View style={styles.pattern}><Text style={styles.patternLabel}>الگو</Text><Text style={styles.patternText}>{current.pattern}</Text></View> : null}
+            {current.pattern ? <View style={styles.pattern}><Text style={styles.patternLabel}>الگوی جمله‌سازی:</Text><Text style={styles.patternText}>{current.pattern}</Text></View> : null}
           </View>
           <View style={styles.replayRow}>
             <Pressable accessibilityRole="button" accessibilityLabel="پخش آهستهٔ جمله" style={styles.replayButton} onPress={() => speak(current.text, SLOW_SPEECH_RATE)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>آهسته</Text></Pressable>
@@ -231,8 +235,8 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
         {stage === 4 && <View style={styles.centerStage}>
           <View style={styles.bigIcon}><RotateCcw size={33} color={Palette.success} /></View>
           <Text style={styles.stageTitle}>ساخت جمله</Text>
-          <Text style={styles.stageDesc}>معنی را بخوانید و واژه‌های همان جمله را به ترتیب بچینید؛ تمرین به جمله‌های همین درس متصل است.</Text>
-          <RussianSentenceBuilder key={current.id} sentence={current} />
+          <Text style={styles.stageDesc}>معنی و الگوی جمله‌سازی را بخوانید و واژه‌های همان جمله را به ترتیب بچینید؛ تمرین به جمله‌های همین درس متصل است.</Text>
+          <RussianSentenceBuilder key={current.id} sentence={current} lessonSentences={lesson.sentences} />
           <View style={styles.dots}>{lesson.sentences.map((sentence, index) => <Pressable key={sentence.id} accessibilityRole="button" accessibilityLabel={`جمله ${fa(index + 1)}`} onPress={() => setSentenceIndex(index)} style={[styles.dot, index === sentenceIndex && styles.dotActive]} />)}</View>
         </View>}
 
@@ -365,9 +369,9 @@ const styles = StyleSheet.create({
   pronunciation: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl', marginTop: 8 },
   divider: { width: '70%', height: 1, backgroundColor: Palette.border, marginVertical: 18 },
   persian: { fontFamily: Typography.fontFamily, fontSize: 17, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  pattern: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', gap: 8, alignSelf: 'flex-end', backgroundColor: Palette.warningSoft, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, marginTop: 14 },
-  patternLabel: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.warning, writingDirection: 'rtl' },
-  patternText: { fontFamily: Typography.latinFontFamily, fontSize: 10, fontWeight: '800', color: Palette.warning, textAlign: 'right', writingDirection: 'ltr' },
+  pattern: { width: '100%', flexDirection: 'column', alignItems: 'flex-end', gap: 4, backgroundColor: Palette.warningSoft, borderWidth: 1, borderColor: '#F3DEC0', paddingHorizontal: 13, paddingVertical: 9, borderRadius: 14, marginTop: 14 },
+  patternLabel: { fontFamily: Typography.fontFamily, fontSize: 10, fontWeight: '400', color: Palette.warning, textAlign: 'right', writingDirection: 'rtl' },
+  patternText: { fontFamily: Typography.fontFamily, fontSize: 12, lineHeight: 20, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
   hint: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: 14 },
   listenList: { width: '100%', gap: 8, marginTop: 20 },
   listenRow: { minHeight: 62, borderRadius: 16, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: 13, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },

@@ -1,7 +1,7 @@
 import { RUSSIAN_LESSONS, type RussianLevelId } from './russian';
 
 export type RussianCefrLevel = 'A1' | 'A2' | 'B1' | 'B2';
-export type RussianCurriculumStatus = 'starter-only' | 'planned';
+export type RussianCurriculumStatus = 'available' | 'planned';
 export type RussianUnitStatus = 'available' | 'planned';
 export type RussianGrammarFeatureId = 'grammatical-cases' | 'verb-aspect' | 'agreement';
 
@@ -87,14 +87,14 @@ function plannedUnit(levelId: RussianCefrLevel, id: string, titleFa: string, out
   };
 }
 
-/** Four internal CEFR planning bands; future bands are outlines, not published lessons. */
+/** Four internal CEFR planning bands; levels are not formal certification. */
 export const RUSSIAN_CEFR_BANDS: readonly RussianCefrBand[] = [
   {
     id: 'A1',
     titleFa: 'جمله‌سازی پایه',
     goalFa: 'معرفی، هویت، اشیا، مکان، نیازهای روزمره و افعال پرکاربرد',
     legacyLevelIds: [0, 1],
-    status: 'starter-only',
+    status: 'available',
     units: A1_UNITS,
   },
   {
@@ -102,7 +102,7 @@ export const RUSSIAN_CEFR_BANDS: readonly RussianCefrBand[] = [
     titleFa: 'گسترش و ترکیب جمله‌ها',
     goalFa: 'گذشته و آینده، توصیف، مقایسه، درخواست و ارتباط میان جمله‌ها',
     legacyLevelIds: [2],
-    status: 'starter-only',
+    status: 'available',
     units: A2_UNITS,
   },
   {
@@ -110,26 +110,16 @@ export const RUSSIAN_CEFR_BANDS: readonly RussianCefrBand[] = [
     titleFa: 'بیان مستقل منظور',
     goalFa: 'روایت، توضیح دلیل، بیان تجربه، نظر، هدف و ارتباط میان ایده‌ها',
     legacyLevelIds: [3],
-    status: 'planned',
-    units: [
-      plannedUnit('B1', 'narration', 'روایت تجربه', 'بازگویی تجربه‌ها و رویدادها با ترتیب روشن.'),
-      plannedUnit('B1', 'reasons', 'توضیح دلیل', 'بیان دلیل و نتیجه در جمله‌ها و گفت‌وگو.'),
-      plannedUnit('B1', 'opinions-goals', 'نظر و هدف', 'گفتن نظر، تجربه و هدف شخصی.'),
-      plannedUnit('B1', 'idea-links', 'ارتباط ایده‌ها', 'پیوند چند ایده در یک توضیح منسجم.'),
-    ],
+    status: 'available',
+    units: RUSSIAN_LESSONS.filter(lesson => RUSSIAN_LEVEL_TO_CEFR[lesson.levelId] === 'B1').map(lesson => lessonUnit(lesson, 'B1')),
   },
   {
     id: 'B2',
     titleFa: 'بیان دقیق و انعطاف‌پذیر',
     goalFa: 'استدلال، شرط، فرض، ظرافت معنایی، ساختارهای پیچیده و بحث‌های تخصصی‌تر',
     legacyLevelIds: [4],
-    status: 'planned',
-    units: [
-      plannedUnit('B2', 'argument', 'استدلال و بحث', 'پشتیبانی از نظر با دلیل و پاسخ به دیدگاه دیگر.'),
-      plannedUnit('B2', 'conditionals', 'شرط و فرض', 'ساخت و تفسیر جمله‌های شرطی و فرضی.'),
-      plannedUnit('B2', 'nuance', 'ظرافت معنایی', 'انتخاب صورت و لحن متناسب با منظور و بافت.'),
-      plannedUnit('B2', 'complex-sentences', 'ساختارهای پیچیده', 'ترکیب ساختارهای پیچیده در موضوع‌های عمومی و تخصصی.'),
-    ],
+    status: 'available',
+    units: RUSSIAN_LESSONS.filter(lesson => RUSSIAN_LEVEL_TO_CEFR[lesson.levelId] === 'B2').map(lesson => lessonUnit(lesson, 'B2')),
   },
 ];
 

@@ -37,7 +37,7 @@ export function PageNavigation({
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="بازگشت به صفحهٔ انتخاب زبان"
+        accessibilityLabel="بازگشت به صفحهٔ اصلی اپ"
         hitSlop={6}
         onPress={() => router.replace('/languages' as never)}
         style={({ pressed }) => [styles.button, dark ? styles.buttonDark : styles.buttonLight, !dark && borderColor ? { borderColor } : null, pressed && styles.pressed]}

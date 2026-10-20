@@ -9,9 +9,9 @@ import publicConfig from '../config/supabase.public.json';
 const saved = publicConfig as { EXPO_PUBLIC_SUPABASE_URL?: string; EXPO_PUBLIC_SUPABASE_ANON_KEY?: string };
 
 export const SUPABASE_PUBLIC_URL = (
-  process.env.EXPO_PUBLIC_SUPABASE_URL || saved.EXPO_PUBLIC_SUPABASE_URL || ''
+  (process.env.EXPO_PUBLIC_SUPABASE_URL ?? saved.EXPO_PUBLIC_SUPABASE_URL ?? '')
 ).trim();
 
 export const SUPABASE_PUBLIC_ANON_KEY = (
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || saved.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''
+  (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? saved.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '')
 ).trim();
