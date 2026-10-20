@@ -34,6 +34,7 @@ export const germanHomeStyles = StyleSheet.create({
   sentenceLabelEn: { fontFamily: 'Inter-ExtraBold', marginRight: 'auto', color: '#CFD2FF', fontSize: 6, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
   sentenceGerman: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 18, lineHeight: 30, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
   sentencePersian: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.82)', fontSize: 12, lineHeight: 20, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  sentencePronunciation: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.62)', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   sentencePattern: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'center', gap: 5, paddingTop: 7, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.16)' },
   sentencePatternLabel: { fontFamily: Typography.fontFamily, color: '#A4F3D5', fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
   sentencePatternText: { flex: 1, fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 11, lineHeight: 18, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },

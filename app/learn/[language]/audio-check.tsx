@@ -109,9 +109,8 @@ export default function AudioCheck() {
       },
       onError: reason => {
         if (!valid()) return;
-        if (reason === 'no-german-voice') finish(NO_VOICE_MESSAGE);
-        else if (reason === 'blocked') finish('مرورگر پخش خودکار را متوقف کرد؛ دوباره روی «پخش» بزنید.');
-        else finish('پخش ناموفق بود. بلندی صدا، حالت بی‌صدا و صدای آلمانی دستگاه را بررسی کنید.');
+        if (reason === 'unsupported') finish(NO_VOICE_MESSAGE);
+        else finish('پخش ناموفق بود. بلندی صدا، حالت بی‌صدا و صدای آلمانی دستگاه را بررسی کنید و دوباره تلاش کنید.');
       },
     });
   };

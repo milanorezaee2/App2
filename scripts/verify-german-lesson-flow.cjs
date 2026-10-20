@@ -67,7 +67,15 @@ await require('esbuild').build({
       build.onResolve({ filter: /^@react-native-async-storage\/async-storage$/ }, () => ({ path: 'async-storage', namespace: 'stub' }));
       build.onLoad({ filter: /.*/, namespace: 'stub' }, args => {
         if (args.path === 'react-native') return { contents: `export const Platform={OS:'web'};`, loader: 'js' };
-        if (args.path === 'expo-speech') return { contents: `export function speak(){}; export async function stop(){}; export async function getAvailableVoicesAsync(){return [];}`, loader: 'js' };
+        if (args.path === 'expo-speech') return { contents: `
+          export function speak(text, options = {}) {
+            globalThis.__expoSpoken = globalThis.__expoSpoken || [];
+            globalThis.__expoSpoken.push({ text, ...options });
+            if (typeof options.onStart === 'function') setTimeout(() => options.onStart(), 0);
+          }
+          export async function stop() { globalThis.__expoStops = (globalThis.__expoStops || 0) + 1; }
+          export async function getAvailableVoicesAsync() { return []; }
+        `, loader: 'js' };
         return { contents: `const m=new Map(); export default { getItem:async k=>m.has(k)?m.get(k):null, setItem:async(k,v)=>{m.set(k,String(v));}, removeItem:async k=>{m.delete(k);} };`, loader: 'js' };
       });
     },
@@ -99,30 +107,45 @@ await require('esbuild').build({
   const unsupported = await app.resolveRequiredSpeechOptions('fr-FR');
   check('a language with no declared voice returns null instead of the English default', unsupported === null);
 
-  // Exercise the real web playback path, not only the voice resolver.
+  // Exercise the real playback path: German must go through expo-speech exactly
+  // like the Russian lesson does, instead of a private speechSynthesis shortcut.
+  globalThis.__expoSpoken = [];
   const germanList = await app.listGermanVoices();
   check('the German voice list only contains German voices', germanList.length === 2 && germanList.every(voice => voice.language.toLowerCase().startsWith('de')));
+
   app.setGermanVoicePreference('Google Deutsch');
   app.speakGerman({ text: 'Guten Morgen!', rate: 0.55 });
-  await wait(140);
-  check('speaking a German sentence really reaches the browser speech engine', spokenUtterances.length === 1 && spokenUtterances[0].text === 'Guten Morgen!');
-  check('the learner-selected German voice is used for the utterance', spokenUtterances[0]?.voice?.name === 'Google Deutsch' && spokenUtterances[0]?.lang === 'de-DE');
-  check('slow replay keeps its slow rate', spokenUtterances[0]?.rate === 0.55);
+  await wait(160);
+  const first = globalThis.__expoSpoken.at(-1);
+  check('German speech reaches expo-speech, the same engine the Russian lesson uses', first?.text === 'Guten Morgen!' && globalThis.__expoSpoken.length === 1);
+  check('the learner-selected German voice is passed to the engine', first?.voice === 'Google Deutsch');
+  check('the request carries the German language tag', String(first?.language || '').toLowerCase().startsWith('de'));
+  check('slow replay keeps its slow rate', first?.rate === 0.55);
+
   app.setGermanVoicePreference(null);
   app.speakGerman({ text: 'Wie geht es dir?' });
-  await wait(140);
-  check('without a preference an installed German voice is preferred', spokenUtterances[1]?.voice?.name === 'Microsoft Hedda Desktop');
-  check('natural speech uses the German lesson rate', spokenUtterances[1]?.rate === 0.9);
+  await wait(160);
+  const second = globalThis.__expoSpoken.at(-1);
+  check('without a preference an installed German voice is preferred', second?.voice === 'Microsoft Hedda');
+  check('natural speech uses the German lesson rate', second?.rate === 0.9);
+  check('a stop happens before every German utterance, like the Russian lesson', (globalThis.__expoStops || 0) >= 2);
 
+  // Parity with Russian: when the platform lists no German voice at all, the
+  // lesson still asks for German. Russian never refuses in this situation, and
+  // refusing was exactly what made the German section silent.
   const originalVoices = global.window.speechSynthesis.getVoices;
   global.window.speechSynthesis.getVoices = () => WEB_VOICES.filter(voice => voice.lang === 'en-US');
+  globalThis.__expoSpoken = [];
   let missingVoiceReason = null;
-  const beforeMissing = spokenUtterances.length;
   app.speakGerman({ text: 'Hallo', onError: reason => { missingVoiceReason = reason; } });
-  await wait(1600);
-  check('German is never spoken with the English default when no German voice exists', missingVoiceReason === 'no-german-voice' && spokenUtterances.length === beforeMissing);
+  await wait(400);
+  const fallback = globalThis.__expoSpoken.at(-1);
+  check('with no listed German voice the lesson still speaks German like Russian does', fallback?.text === 'Hallo' && String(fallback?.language || '').toLowerCase().startsWith('de'));
+  check('the fallback never forwards an English voice identifier', !fallback?.voice || !/english|samantha/i.test(String(fallback.voice)));
+  check('a missing voice entry is not reported as an error', missingVoiceReason === null);
   global.window.speechSynthesis.getVoices = originalVoices;
-  check('the selected voice is persisted locally for later lessons', storage.get('german_voice_preference_v1') === undefined || storage.get('german_voice_preference_v1') === null);
+  app.setGermanVoicePreference(null);
+  check('choosing the automatic voice clears the stored preference', (storage.get('german_voice_preference_v1') ?? null) === null);
 
   check('speech boundary indexes map to the word being read', app.wordIndexAt('Guten Morgen, wie geht es dir?', 6) === 1 && app.wordIndexAt('Guten Morgen', 0) === 0 && app.wordIndexAt('Guten Morgen', 11) === 1);
 

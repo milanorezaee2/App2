@@ -43,7 +43,6 @@ import {
   stopGermanSpeech,
   subscribeGermanVoices,
   wordIndexAt,
-  type GermanSpeechError,
 } from '@/lib/germanSpeech';
 
 const stages = GERMAN_SENTENCE_STAGES;
@@ -52,8 +51,9 @@ const NORMAL_RATE = 0.9;
 const SLOW_RATE = 0.55;
 
 const NO_VOICE_MESSAGE = Platform.OS === 'web'
-  ? 'صدای آلمانی در این مرورگر پیدا نشد. در تنظیمات زبان سیستم، زبان آلمانی (Deutsch) را اضافه کنید یا با Chrome/Edge دوباره باز کنید؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'
-  : 'صدای آلمانی روی این دستگاه پیدا نشد. در تنظیمات گفتار گوشی، بستهٔ زبان آلمانی را نصب کنید و دوباره تلاش کنید؛ متن و راهنمای خوانش همچنان دیده می‌شوند.';
+  ? 'این مرورگر از پخش گفتار پشتیبانی نمی‌کند. درس را در Chrome یا Edge باز کنید؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'
+  : 'موتور گفتار روی این دستگاه در دسترس نیست. متن و راهنمای خوانش همچنان دیده می‌شوند.';
+const UNLISTED_VOICE_MESSAGE = 'مرورگر فهرست صداهای آلمانی را برنگرداند؛ درس مثل بخش روسی با زبان آلمانی پخش می‌شود. اگر صدا طبیعی نبود، از «صدا» در سربرگ، صدای آلمانی دستگاه را انتخاب کنید.';
 
 type WordToken = { text: string; start: number };
 
@@ -61,11 +61,8 @@ function splitWords(text: string): WordToken[] {
   return [...text.matchAll(/\S+/g)].map(match => ({ text: match[0], start: match.index ?? 0 }));
 }
 
-function speechErrorMessage(reason: GermanSpeechError) {
-  if (reason === 'no-german-voice') return NO_VOICE_MESSAGE;
-  if (reason === 'unsupported') return 'این مرورگر یا دستگاه از پخش گفتار پشتیبانی نمی‌کند؛ متن درس همچنان قابل خواندن است.';
-  if (reason === 'blocked') return 'مرورگر پخش خودکار صدا را متوقف کرد؛ یک‌بار روی دکمهٔ بلندگو کنار جمله بزنید تا صدا با همان صدای آلمانی پخش شود.';
-  return 'پخش صدا انجام نشد. بلندی صدا و حالت بی‌صدا را بررسی کنید و دوباره تلاش کنید؛ متن درس همچنان در دسترس است.';
+function speechErrorMessage() {
+  return 'پخش صدا انجام نشد. بلندی صدا و حالت بی‌صدا را بررسی کنید، یک‌بار روی دکمهٔ بلندگو بزنید و دوباره تلاش کنید؛ متن درس همچنان در دسترس است.';
 }
 
 export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseLesson }) {
@@ -82,6 +79,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
   const [speechError, setSpeechError] = useState('');
   const [voiceState, setVoiceState] = useState<'checking' | 'ready' | 'unavailable'>('checking');
   const [voiceName, setVoiceName] = useState('');
+  const [voiceListed, setVoiceListed] = useState(true);
   const [spokenWord, setSpokenWord] = useState(-1);
   const [loadingRetry, setLoadingRetry] = useState(0);
   const [saveRetry, setSaveRetry] = useState(0);
@@ -127,25 +125,17 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
     return patterns;
   }, [lesson]);
 
+  // Informational only. Playback never waits for a listed voice: German uses the
+  // same pipeline as Russian, which speaks even when the list is empty.
   const refreshVoiceState = useCallback(() => {
     setVoiceState('checking');
-    // Chrome/Edge fill the voice list asynchronously. Give the browser a second
-    // chance before declaring German audio unavailable.
     void germanSpeechSupport()
       .then(result => {
-        if (result.available) {
-          setVoiceState('ready');
-          setVoiceName(result.voiceName ?? '');
-          return undefined;
-        }
-        return new Promise(resolve => setTimeout(resolve, 1200))
-          .then(() => germanSpeechSupport())
-          .then(second => {
-            setVoiceState(second.available ? 'ready' : 'unavailable');
-            setVoiceName(second.voiceName ?? '');
-          });
+        setVoiceState(result.available ? 'ready' : 'unavailable');
+        setVoiceName(result.voiceName ?? '');
+        setVoiceListed(result.listed !== false);
       })
-      .catch(() => setVoiceState('unavailable'));
+      .catch(() => setVoiceState('ready'));
   }, []);
 
   // Late `voiceschanged` events mean the browser now has a German voice even
@@ -154,6 +144,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
     const german = voices.find(voice => (voice.language || '').toLowerCase().startsWith('de'));
     if (!german) return;
     setVoiceState('ready');
+    setVoiceListed(true);
     setVoiceName(german.name);
   }), []);
 
@@ -171,8 +162,8 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
       onDone: () => setSpokenWord(-1),
       onError: reason => {
         setSpokenWord(-1);
-        if (reason === 'no-german-voice') setVoiceState('unavailable');
-        setSpeechError(speechErrorMessage(reason));
+        if (reason === 'unsupported') setVoiceState('unavailable');
+        setSpeechError(speechErrorMessage());
       },
     });
   }, []);
@@ -186,9 +177,6 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
       onStart: () => {
         hasSpoken.current = true;
         setVoiceState('ready');
-      },
-      onError: reason => {
-        if (reason === 'no-german-voice') setVoiceState('unavailable');
       },
     });
   }, []);
@@ -204,7 +192,8 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
       if (!alive) return;
       setVoiceState(result.available ? 'ready' : 'unavailable');
       setVoiceName(result.voiceName ?? '');
-    }).catch(() => { if (alive) setVoiceState('unavailable'); });
+      setVoiceListed(result.listed !== false);
+    }).catch(() => { if (alive) setVoiceState('ready'); });
     void loadGermanLessonSession(lesson.id).then(saved => {
       if (!alive) return;
       setStage(saved.stage);
@@ -236,14 +225,9 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
   // The first sentence is spoken once the voice list is actually ready, so a
   // cold browser never reads German with its English default.
   useEffect(() => {
-    if (!sessionReady || stage !== 0 || !firstSentence?.text) return;
-    let alive = true;
-    const timer = setTimeout(() => {
-      void germanSpeechSupport().then(result => {
-        if (alive && result.available) autoSpeak(firstSentence.text);
-      });
-    }, 480);
-    return () => { alive = false; clearTimeout(timer); };
+    if (!sessionReady || stage !== 0 || !firstSentence?.text) return undefined;
+    const timer = setTimeout(() => autoSpeak(firstSentence.text), 320);
+    return () => clearTimeout(timer);
   }, [sessionReady, stage, lesson.id, firstSentence?.text, autoSpeak]);
 
   // Browsers can refuse speech before any user gesture. If the automatic
@@ -282,9 +266,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
         rate: NORMAL_RATE,
         onStart: () => setVoiceState('ready'),
         onDone: () => step(index + 1),
-        onError: reason => {
-          if (reason === 'no-german-voice') setVoiceState('unavailable');
-        },
+        onError: () => setVoiceState('ready'),
       });
     };
     step(0);
@@ -424,12 +406,15 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
 
       {!!(sessionError || speechError) && <Text accessibilityRole="alert" style={styles.error}>{sessionError || speechError}</Text>}
       {voiceState === 'unavailable' ? <View style={styles.voiceWarning}>
-        <Text style={styles.voiceWarningTitle}>پخش صدای آلمانی در دسترس نیست</Text>
+        <Text style={styles.voiceWarningTitle}>این مرورگر موتور گفتار ندارد</Text>
         <Text style={styles.voiceWarningText}>{NO_VOICE_MESSAGE}</Text>
         <View style={styles.voiceWarningActions}>
-          <Pressable accessibilityRole="button" style={styles.voiceRetry} onPress={refreshVoiceState}><Text style={styles.voiceRetryText}>بررسی دوبارهٔ صدا</Text></Pressable>
-          <Pressable accessibilityRole="button" style={styles.voiceRetry} onPress={() => router.push('/learn/de/audio-check' as never)}><Text style={styles.voiceRetryText}>انتخاب و آزمایش صدای آلمانی</Text></Pressable>
+          <Pressable accessibilityRole="button" style={styles.voiceRetry} onPress={refreshVoiceState}><Text style={styles.voiceRetryText}>بررسی دوباره</Text></Pressable>
         </View>
+      </View> : null}
+      {voiceState !== 'unavailable' && !voiceListed ? <View style={styles.voiceHint}>
+        <Volume2 size={15} color={Palette.primary} />
+        <Text style={styles.voiceHintText}>{UNLISTED_VOICE_MESSAGE}</Text>
       </View> : null}
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -463,7 +448,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
           {lesson.teachingFa ? <View style={styles.noteCard}><Text style={styles.noteTitle}>نکتهٔ آلمانی به فارسی</Text><Text style={styles.noteText}>{lesson.teachingFa}</Text></View> : null}
           <View style={styles.voiceReadyCard}>
             <Volume2 size={18} color={Palette.primary} />
-            <Text style={styles.voiceReadyText}>{voiceState === 'ready' ? 'صدای آلمانی آماده است؛ جمله‌ها به‌صورت خودکار و واژه‌ها با لمس پخش می‌شوند.' : 'برای شنیدن جمله‌ها، صدای آلمانی دستگاه یا مرورگر باید فعال باشد.'}</Text>
+            <Text style={styles.voiceReadyText}>{voiceState === 'unavailable' ? 'این مرورگر موتور گفتار ندارد؛ متن و راهنمای خوانش همچنان دیده می‌شوند.' : 'جمله‌ها خودکار پخش می‌شوند و هر واژه با لمس خوانده می‌شود؛ همان روش بخش روسی.'}</Text>
           </View>
         </View>}
 
@@ -646,6 +631,8 @@ const styles = StyleSheet.create({
   voiceWarning: { width: '100%', maxWidth: 820, alignSelf: 'center', marginTop: 10, padding: 13, borderRadius: 15, backgroundColor: Palette.warningSoft, borderWidth: 1, borderColor: '#F2DFC1', gap: 6 },
   voiceWarningTitle: { fontFamily: Typography.fontFamily, color: Palette.warning, fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   voiceWarningActions: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 16 },
+  voiceHint: { width: '100%', maxWidth: 820, alignSelf: 'center', marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border, flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 8 },
+  voiceHintText: { flex: 1, fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
   voiceWarningText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   voiceRetry: { alignSelf: 'flex-start', paddingVertical: 4 },
   voiceRetryText: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },

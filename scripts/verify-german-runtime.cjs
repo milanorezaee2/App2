@@ -261,17 +261,29 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   check('the cold-start sentence never used the English default',
     coldStart.every(item => !/english/i.test(item.voice || '')));
 
-  // 7. No German voice: refuse to read German with English and explain why.
+  // 7. Only an English voice installed: the German lesson must behave exactly like
+  //    the Russian lesson, i.e. still ask the engine for German and never hand it
+  //    the English voice. Refusing to speak at all was the original defect.
   await page.goto(`${LESSON}&seed=0&english=1`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(4200);
+  await page.waitForTimeout(2600);
+  const englishOnly = await spoken();
+  const englishOnlyGerman = englishOnly.filter(item => item.text === 'Hallo!');
   const englishCalls = await page.evaluate(() => window.__voiceCalls || 0);
-  check('German is not read with the English default when no German voice exists', englishCalls === 0);
-  check('the lesson explains the missing German voice in Persian',
-    (await body()).includes('پخش صدای آلمانی در دسترس نیست'));
-  check('the lesson stays readable without a German voice',
+  const englishOnlyVoiceNames = englishOnly.map(item => item.voice).filter(Boolean);
+  check('the German request never resolves to the installed English voice',
+    englishOnlyVoiceNames.every(name => !/english/i.test(String(name))));
+  check('with only an English voice installed the lesson still speaks German',
+    englishOnlyGerman.length >= 1 && englishOnlyGerman.every(item => item.lang === 'de-DE'));
+  check('the English system voice is never used for German text',
+    englishOnlyGerman.length > 0
+    && englishOnlyGerman.every(item => !item.voice || !/english/i.test(item.voice))
+    && englishCalls === englishOnly.length);
+  check('the lesson does not block itself with a "no German voice" refusal',
+    !(await body()).includes('پخش صدای آلمانی در دسترس نیست'));
+  check('the lesson stays readable without a listed German voice',
     (await body()).includes('موقعیت · مرحلهٔ ۱ از ۹'));
 
-  console.log(`${checks} German runtime speech checks passed (home, situation, core sentences, slow replay, all nine stages, vocabulary, voice picker, review, cold-start voices, no-English fallback).`);
+  console.log(`${checks} German runtime speech checks passed (home, situation, core sentences, slow replay, all nine stages, vocabulary, voice picker, review, cold-start voices, no-English fallback, English-only systems).`);
   await browser.close();
 })().catch(async error => {
   console.error(error);

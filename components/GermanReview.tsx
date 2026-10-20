@@ -95,9 +95,7 @@ export default function GermanReview() {
     speakGerman({
       text,
       rate: 0.8,
-      onError: reason => setError(reason === 'no-german-voice'
-        ? 'صدای آلمانی دستگاه پیدا نشد؛ جمله همچنان برای خواندن نمایش داده می‌شود.'
-        : 'پخش صدا انجام نشد؛ جمله همچنان برای خواندن نمایش داده می‌شود.'),
+      onError: () => setError('پخش صدا انجام نشد؛ جمله همچنان برای خواندن نمایش داده می‌شود.'),
     });
   };
 

@@ -75,9 +75,7 @@ export default function GermanSentenceHome() {
     speakGerman({
       text,
       rate: 0.8,
-      onError: reason => setError(reason === 'no-german-voice'
-        ? 'صدای آلمانیِ دستگاه پیدا نشد؛ در تنظیمات گفتار، بستهٔ زبان آلمانی را نصب کنید یا مرورگر Chrome/Edge را امتحان کنید.'
-        : 'پخش صدای آلمانی انجام نشد؛ بلندی صدا و حالت بی‌صدا را بررسی کنید.'),
+      onError: () => setError('پخش صدای آلمانی انجام نشد؛ بلندی صدا و حالت بی‌صدا را بررسی کنید و دوباره تلاش کنید.'),
     });
   }, []);
 
@@ -105,6 +103,26 @@ export default function GermanSentenceHome() {
   const progressPercent = lessonCount ? completed / lessonCount * 100 : 0;
   const isCourseComplete = lessonCount > 0 && completed === lessonCount;
   const heroGradient = SHARED_JOURNEY_GRADIENTS[currentLevel.id] ?? SHARED_JOURNEY_GRADIENTS[0];
+
+  // The Russian home fills its core-sentence card with the first sentence's
+  // pattern and vocabulary. A German first sentence often carries a single word
+  // ("Hallo!"), which made the German card look empty by comparison. Fill it the
+  // same way, using the current sentence first and then the lesson's own words.
+  const heroPattern = currentSentence.pattern
+    ?? currentLesson.sentences.find(sentence => sentence.pattern)?.pattern
+    ?? '';
+  const heroWords: { word: string; meaning: string }[] = [];
+  const seenHeroWords = new Set<string>();
+  for (const sentence of currentLesson.sentences) {
+    for (const item of sentence.vocabulary) {
+      const key = item.word.toLowerCase();
+      if (seenHeroWords.has(key)) continue;
+      seenHeroWords.add(key);
+      heroWords.push({ word: item.word, meaning: item.meaning });
+      if (heroWords.length === 7) break;
+    }
+    if (heroWords.length === 7) break;
+  }
 
   const openLevel = (levelId: number) => router.push(`/learn/de/library?level=${levelId}` as never);
   const openLesson = (id: string) => router.push({ pathname: '/learn/[language]/lesson', params: { language: 'de', id } } as never);
@@ -154,15 +172,16 @@ export default function GermanSentenceHome() {
                   <Text style={styles.sentenceGerman}>{currentSentence.text}</Text>
                 </Pressable>
                 <Text style={styles.sentencePersian}>{currentSentence.fa}</Text>
-                {currentSentence.pattern ? (
+                <Text style={styles.sentencePronunciation}>{currentSentence.pronunciation}</Text>
+                {heroPattern ? (
                   <View style={styles.sentencePattern}>
                     <Text style={styles.sentencePatternLabel}>الگوی جمله‌سازی:</Text>
-                    <Text style={styles.sentencePatternText}>{currentSentence.pattern}</Text>
+                    <Text style={styles.sentencePatternText}>{heroPattern}</Text>
                   </View>
                 ) : null}
-                {!!currentSentence.vocabulary.length && (
+                {!!heroWords.length && (
                   <View style={styles.wordChipRow}>
-                    {currentSentence.vocabulary.map(item => (
+                    {heroWords.map(item => (
                       <Pressable key={`${currentSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`تلفظ واژه آلمانی: ${item.word}`} style={styles.wordChip} onPress={() => playGerman(item.word)}>
                         <Text style={styles.wordChipEn}>{item.word}</Text>
                         <Text style={styles.wordChipDivider}>·</Text>
