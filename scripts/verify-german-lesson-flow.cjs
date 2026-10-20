@@ -19,11 +19,18 @@ global.window = {
   },
   speechSynthesis: {
     getVoices: () => WEB_VOICES,
-    speak: utterance => { spokenUtterances.push(utterance); },
-    cancel: () => undefined,
+    speak: utterance => {
+      spokenUtterances.push(utterance);
+      global.window.speechSynthesis.__speaking = true;
+      setTimeout(() => { if (typeof utterance.onStart === 'function') utterance.onStart(); }, 5);
+    },
+    cancel: () => { global.window.speechSynthesis.__speaking = false; },
     resume: () => undefined,
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
+    __speaking: false,
+    get speaking() { return this.__speaking; },
+    get pending() { return false; },
   },
 };
 class MockSpeechSynthesisUtterance {
@@ -71,9 +78,17 @@ await require('esbuild').build({
           export function speak(text, options = {}) {
             globalThis.__expoSpoken = globalThis.__expoSpoken || [];
             globalThis.__expoSpoken.push({ text, ...options });
+            globalThis.__expoEvents = globalThis.__expoEvents || [];
+            globalThis.__expoEvents.push('speak:' + text);
+            if (globalThis.window && globalThis.window.speechSynthesis) globalThis.window.speechSynthesis.__speaking = true;
             if (typeof options.onStart === 'function') setTimeout(() => options.onStart(), 0);
           }
-          export async function stop() { globalThis.__expoStops = (globalThis.__expoStops || 0) + 1; }
+          export async function stop() {
+            globalThis.__expoStops = (globalThis.__expoStops || 0) + 1;
+            globalThis.__expoEvents = globalThis.__expoEvents || [];
+            globalThis.__expoEvents.push('stop');
+            if (globalThis.window && globalThis.window.speechSynthesis) globalThis.window.speechSynthesis.__speaking = false;
+          }
           export async function getAvailableVoicesAsync() { return []; }
         `, loader: 'js' };
         return { contents: `const m=new Map(); export default { getItem:async k=>m.has(k)?m.get(k):null, setItem:async(k,v)=>{m.set(k,String(v));}, removeItem:async k=>{m.delete(k);} };`, loader: 'js' };
@@ -127,8 +142,12 @@ await require('esbuild').build({
   await wait(160);
   const second = globalThis.__expoSpoken.at(-1);
   check('without a preference an installed German voice is preferred', second?.voice === 'Microsoft Hedda');
-  check('natural speech uses the German lesson rate', second?.rate === 0.9);
-  check('a stop happens before every German utterance, like the Russian lesson', (globalThis.__expoStops || 0) >= 2);
+  check('natural speech is read at the engine normal pace so it flows',
+    second?.rate === 1);
+  const events = globalThis.__expoEvents || [];
+  const secondSpeak = events.lastIndexOf('speak:Wie geht es dir?');
+  check('a sentence that is still speaking is stopped before the next one starts',
+    secondSpeak > 0 && events.slice(0, secondSpeak).includes('stop'));
 
   // Parity with Russian: when the platform lists no German voice at all, the
   // lesson still asks for German. Russian never refuses in this situation, and
@@ -209,7 +228,10 @@ await require('esbuild').build({
   // The native bridge must really use expo-audio and honour clip offsets.
   const nativeBridge = fs.readFileSync(path.join(root, 'lib/germanAudioNative.native.ts'), 'utf8');
   check('native playback uses expo-audio', /from 'expo-audio'/.test(nativeBridge) && /createAudioPlayer/.test(nativeBridge));
-  check('native playback seeks to the recorded clip start', /seekTo\(clip\.start\)/.test(nativeBridge));
+  check('native playback waits for the file to load before it seeks',
+    /waitForLoaded\(created\)/.test(nativeBridge) && /isLoaded/.test(nativeBridge));
+  check('native playback seeks to the recorded clip start',
+    /seekAndSettle\(created, clip\.start\)/.test(nativeBridge) && /\.seekTo\(/.test(nativeBridge));
   check('native playback stops at the recorded clip end', /clip\.end - clip\.start/.test(nativeBridge));
   check('the web build keeps using the Audio element, not expo-audio',
     !/from 'expo-audio'/.test(fs.readFileSync(path.join(root, 'lib/germanAudio.ts'), 'utf8'))

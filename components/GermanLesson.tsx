@@ -226,6 +226,9 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
 
   const playVocabularyPage = () => {
     const words = pageVocabulary.map(item => item.word.word).filter(Boolean);
+    // A short breath between two words: without it every word is glued to the
+    // next one and the list sounds rushed and chopped instead of spoken.
+    const PAUSE_BETWEEN_WORDS = 260;
     const step = (index: number) => {
       if (index >= words.length) return;
       speakGerman({
@@ -233,7 +236,9 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
         kind: 'word',
         rate: NORMAL_RATE,
         onStart: () => undefined,
-        onDone: () => step(index + 1),
+        onDone: () => {
+          setTimeout(() => step(index + 1), PAUSE_BETWEEN_WORDS);
+        },
         onError: () => undefined,
       });
     };

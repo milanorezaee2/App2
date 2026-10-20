@@ -35,7 +35,8 @@
     "validate:pronunciation": "node scripts/verify-pronunciation-course.mjs",
     "validate:personal-sync": "node scripts/verify-personal-sync.mjs",
     "validate:english-four": "node scripts/verify-english-four.cjs",
-    "prebuild:web": "node scripts/check-public-connection.mjs"
+    "prebuild:web": "node scripts/check-public-connection.mjs",
+    "validate:german-native": "node scripts/verify-german-native-audio.cjs"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

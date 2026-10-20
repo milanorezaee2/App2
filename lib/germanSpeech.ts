@@ -143,6 +143,47 @@ export function webSpeechAvailable(): boolean {
     || (typeof window !== 'undefined' && !!(window as { speechSynthesis?: unknown }).speechSynthesis);
 }
 
+/**
+ * True while the platform speech engine is actually speaking or has something
+ * queued. Calling `cancel()` immediately before `speak()` makes Chrome drop the
+ * new utterance (and Android TTS clip the first word), so the lesson only stops
+ * the engine when there really is something to stop.
+ */
+function speechEngineBusy(): boolean {
+  if (Platform.OS === 'web') {
+    if (!webSpeechAvailable()) return false;
+    try {
+      const engine = (window as unknown as { speechSynthesis?: { speaking?: boolean; pending?: boolean } }).speechSynthesis;
+      return !!engine && !!(engine.speaking || engine.pending);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+/**
+ * A listed voice that never starts (locked audio channel, broken TTS package)
+ * must not swallow the sentence, but a voice that *is* speaking must never be
+ * cut off by the fallback. The watchdog therefore only gives up while the engine
+ * has reported idle for two consecutive checks, with an absolute cap.
+ */
+function watchDeviceStart(isSettled: () => boolean, onGiveUp: () => void): void {
+  const startedAt = Date.now();
+  let idleChecks = 0;
+  const tick = () => {
+    if (isSettled()) return;
+    if (speechEngineBusy()) idleChecks = 0;
+    else idleChecks += 1;
+    if (idleChecks >= 2 || Date.now() - startedAt > 3500) {
+      if (!isSettled()) onGiveUp();
+      return;
+    }
+    setTimeout(tick, 240);
+  };
+  setTimeout(tick, 900);
+}
+
 function safeSpeechStop(): void {
   if (Platform.OS === 'web' && !webSpeechAvailable()) return;
   try {
@@ -307,7 +348,6 @@ export function speakGerman(options: GermanSpeechRequest): void {
       bundledFirst();
       return;
     }
-    safeSpeechStop();
     let started = false;
     let fellBack = false;
     const fallBack = () => {
@@ -317,15 +357,28 @@ export function speakGerman(options: GermanSpeechRequest): void {
         if (!played && request === sequence) options.onError?.('failed');
       });
     };
-    const cancelDevice = speakWithDevice(text, options, request, fallBack, () => {
-      started = true;
-      publishEngine('device');
-    });
-    // A voice that is listed but never starts (locked audio, dead TTS package)
-    // must not swallow the sentence: fall back to the bundled German audio.
-    setTimeout(fallBack, 1400);
-    // Keep the reference so a later stop can cancel the pending watchdog path.
-    void cancelDevice;
+    const begin = () => {
+      if (request !== sequence || started || fellBack) return;
+      speakWithDevice(text, options, request, fallBack, () => {
+        started = true;
+        publishEngine('device');
+      });
+    };
+    // The platform engine queues utterances instead of replacing them, so the
+    // previous sentence must always be stopped first or two voices overlap. On
+    // the web the cancel is only issued when something is really speaking, and
+    // the new utterance follows one tick later: `cancel()` and `speak()` in the
+    // same tick make Chrome drop the sentence (which sounds like chopped audio).
+    if (Platform.OS !== 'web') {
+      safeSpeechStop();
+      begin();
+    } else if (speechEngineBusy()) {
+      safeSpeechStop();
+      setTimeout(begin, 140);
+    } else {
+      begin();
+    }
+    watchDeviceStart(() => started || fellBack || request !== sequence, fallBack);
   };
 
   if (source === 'app') {
@@ -380,9 +433,12 @@ function speakWithDevice(
   void germanSpeechOptions()
     .then(({ germanVoice: _germanVoice, ...target }) => {
       if (request !== sequence) return;
+      // A natural sentence is read at the engine's own normal pace: dragging the
+      // system voice below it is what makes it sound laboured and chopped up.
+      const requestedRate = options.rate ?? NORMAL_RATE;
       safeSpeechSpeak(text, {
         ...target,
-        rate: options.rate ?? NORMAL_RATE,
+        rate: requestedRate >= 0.85 ? 1 : requestedRate,
         onStart: () => {
           if (request !== sequence) return;
           if (onStarted) onStarted();

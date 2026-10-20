@@ -166,9 +166,10 @@ export async function playGermanClip(options: {
     try { audio.pause(); } catch { /* element already detached */ }
     if (completed) options.onDone?.();
   };
+  const stopAt = clip.end + 0.05;
   const onTime = () => {
     // Fallback in case `ended` never fires because we stop before the file ends.
-    if (audio.currentTime >= clip.end - 0.02) finish(true);
+    if (audio.currentTime >= stopAt) finish(true);
   };
   const onEnded = () => finish(true);
   const onError = () => {
@@ -215,11 +216,14 @@ export async function playGermanClip(options: {
     cleanup();
     return false;
   }
-  // Stop exactly at the end of this clip instead of waiting for the next
-  // `timeupdate` (which only fires about four times a second).
+  // A short natural tail past the recorded end: the MP3 encoder adds a few
+  // milliseconds of delay and cutting exactly on the boundary clips the final
+  // consonant, which makes every sentence sound chopped. The manifest keeps at
+  // least 0.22 s between two clips, so this never runs into the next one.
+  // Safety net only — the `timeupdate` handler above stops on the real position.
   stopTimer = setTimeout(
     () => finish(true),
-    Math.max(120, ((clip.end - clip.start) / playbackRate) * 1000 + 80),
+    Math.max(120, ((stopAt - clip.start) / playbackRate) * 1000 + 350),
   );
   options.onStart?.();
   return true;

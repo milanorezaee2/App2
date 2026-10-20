@@ -151,7 +151,7 @@ function browserSetup() {
     }
 
     play() {
-      this.__record.plays.push({ start: this.currentTime, rate: this.playbackRate });
+      this.__record.plays.push({ start: this.currentTime, rate: this.playbackRate, at: Date.now() });
       if (window.__audioBlocked) return Promise.reject(new Error('NotSupportedError'));
       this.paused = false;
       this.dispatchEvent(new Event('playing'));
@@ -160,6 +160,8 @@ function browserSetup() {
 
     pause() {
       this.paused = true;
+      this.__record.stops = this.__record.stops || [];
+      this.__record.stops.push(Date.now());
     }
 
     load() { /* no-op */ }
@@ -299,6 +301,22 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   check('the core-sentence stage auto-plays the sentence at natural speed',
     natural?.file === greetingSentences.file && natural?.rate === 1);
 
+  // The sentence must be audible for its full recorded length: a stop timer that
+  // starts before playback (or a missing tail) cuts the last word and makes the
+  // narrator sound choppy.
+  const sentenceTiming = await page.evaluate(theFile => {
+    const entry = (window.__audio || []).find(item => item.src.endsWith('/' + theFile));
+    if (!entry || !entry.plays || !entry.plays.length) return null;
+    const play = entry.plays[entry.plays.length - 1];
+    const stop = (entry.stops || []).find(at => at >= play.at);
+    return stop ? stop - play.at : null;
+  }, greetingSentences.file);
+  const spokenClip = Object.values(greetingSentences.clips)
+    .find(range => Math.abs(range[0] - (natural?.start ?? -1)) < 0.05);
+  check('the sentence is allowed to finish instead of being cut off mid-word',
+    typeof sentenceTiming === 'number' && !!spokenClip
+      && sentenceTiming >= (spokenClip[1] - spokenClip[0]) * 1000 * 0.9);
+
   await clearAudio();
   await page.getByRole('button', { name: 'پخش آهستهٔ جمله' }).click();
   await page.waitForTimeout(500);
@@ -318,10 +336,16 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
     await page.getByRole('button', { name: 'پخش واژه‌های این صفحه' }).count() === 1);
   await clearAudio();
   await page.getByRole('button', { name: 'پخش واژه‌های این صفحه' }).click();
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(4200);
   const sequence = await played();
   const starts = sequence.flatMap(entry => entry.plays.map(play => play.start));
   check('play-all walks several different German words', new Set(starts).size >= 2);
+  const wordPlays = sequence.flatMap(entry => entry.plays).sort((left, right) => left.at - right.at);
+  const wordGaps = wordPlays.slice(1).map((play, index) => play.at - wordPlays[index].at);
+  // Words glued together read as one rushed, chopped stream; a short breath
+  // between them is what makes the list sound spoken instead of clipped.
+  check('play-all leaves a short breath between words instead of gluing them together',
+    wordGaps.length > 0 && wordGaps.every(gap => gap >= 220));
   check('every play-all clip comes from the vocabulary pack',
     sequence.every(entry => entry.file === greetingWords.file || entry.src.endsWith('.words.mp3')));
 
