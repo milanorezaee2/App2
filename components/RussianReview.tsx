@@ -6,11 +6,12 @@ import { Brain, Check, CheckCircle2, Clock3, RefreshCw, Sparkles, Volume2 } from
 import * as Speech from 'expo-speech';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { RussianBottomNav } from '@/components/RussianBottomNav';
+import { PageNavigation } from '@/components/PageNavigation';
 import { RUSSIAN_LESSONS, russianProgress } from '@/lib/languages/russian';
 import type { CourseProgress, ReviewRating, SentenceReviewCard } from '@/lib/courseProgress';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
-import { speechTagFor } from '@/lib/speechLanguage';
+import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
 
 const ratingOptions: Array<{ id: ReviewRating; label: string; hint: string; color: string }> = [
   { id: 'again', label: 'فراموش کردم', hint: '۱۰ دقیقه', color: Palette.danger },
@@ -50,6 +51,7 @@ export default function RussianReview() {
   }, []);
 
   useFocusEffect(useCallback(() => {
+    void preloadSpeechVoices();
     void load();
     return () => { void Speech.stop(); };
   }, [load]));
@@ -90,7 +92,9 @@ export default function RussianReview() {
   const speak = (text: string) => {
     setError('');
     void Speech.stop();
-    Speech.speak(text, { language: speechTagFor('ru-RU'), rate: .78, onError: () => setError('صدای روسی دستگاه در دسترس نیست؛ جمله همچنان برای خواندن نمایش داده می‌شود.') });
+    void resolveSpeechOptions('ru-RU').then(targetVoice => {
+      Speech.speak(text, { ...targetVoice, rate: .78, onError: () => setError('صدای روسی دستگاه در دسترس نیست؛ جمله همچنان برای خواندن نمایش داده می‌شود.') });
+    });
   };
 
   if (sessionActive && currentContent) {
@@ -98,7 +102,7 @@ export default function RussianReview() {
     const vocabulary = sentence.vocabulary.map(item => `${item.word} · ${item.meaning}`).join('   ');
     return <View style={styles.root}>
       {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-      <View style={styles.header}><Text style={styles.title}>مرور امروز</Text><Text style={styles.subtitle}>کارت {fa(cardIndex + 1)} از {fa(sessionCards.length)} · {lesson.title}</Text></View>
+      <View style={[styles.header, styles.headerRow]}><PageNavigation backFallback="/learn/ru" accentColor={Palette.primary} borderColor={Palette.border} /><View style={{ flex: 1 }}><Text style={styles.title}>مرور امروز</Text><Text style={styles.subtitle}>کارت {fa(cardIndex + 1)} از {fa(sessionCards.length)} · {lesson.title}</Text></View></View>
       <View style={styles.sessionProgress}><View style={[styles.sessionProgressFill, { width: `${((cardIndex + 1) / sessionCards.length) * 100}%` }]} /></View>
       <ScrollView contentContainerStyle={styles.sessionContent}>
         <Text style={styles.recallLabel}>جملهٔ روسی را به یاد بیاورید</Text>
@@ -106,6 +110,7 @@ export default function RussianReview() {
           <Text style={styles.reviewFa}>{sentence.fa}</Text>
           {!revealed ? <><Text style={styles.sayHint}>پاسخ روسی را با صدای بلند بگویید.</Text><Pressable accessibilityRole="button" style={styles.revealButton} onPress={() => setRevealed(true)}><Text style={styles.revealButtonText}>نمایش پاسخ</Text></Pressable></> : <View style={styles.answerArea}>
             <View style={styles.answerDivider} /><Text style={styles.reviewRussian}>{sentence.text}</Text><Text style={styles.reviewPronunciation}>{sentence.pronunciation}</Text>
+            {sentence.pattern ? <Text style={styles.reviewPattern}>الگوی جمله‌سازی: {sentence.pattern}</Text> : null}
             <Pressable accessibilityRole="button" style={styles.soundButton} onPress={() => speak(sentence.text)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.soundText}>پخش جمله</Text></Pressable>
             {vocabulary ? <View style={styles.vocabChip}><Sparkles size={13} color={Palette.warning} /><Text style={styles.vocabText}>{vocabulary}</Text></View> : null}
           </View>}
@@ -116,7 +121,7 @@ export default function RussianReview() {
   }
 
   return <View style={styles.root}>
-    <View style={styles.header}><Text style={styles.title}>مرور روسی</Text><Text style={styles.subtitle}>فقط جمله‌هایی که زمان مرورشان رسیده است</Text></View>
+    <View style={[styles.header, styles.headerRow]}><PageNavigation backFallback="/learn/ru" accentColor={Palette.primary} borderColor={Palette.border} /><View style={{ flex: 1 }}><Text style={styles.title}>مرور روسی</Text><Text style={styles.subtitle}>فقط جمله‌هایی که زمان مرورشان رسیده است</Text></View></View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {finished ? <View style={styles.finishedCard}><View style={styles.finishedIcon}><Check size={32} color={Palette.success} /></View><Text style={styles.finishedTitle}>مرور امروز تمام شد</Text><Text style={styles.finishedDesc}>زمان مرور بعدی هر جمله بر اساس پاسخ شما تنظیم شد.</Text></View> : null}
       <LinearGradient colors={['#18204B', '#303A80', '#4D48B6']} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.summaryCard}>
@@ -142,6 +147,7 @@ function Method({ num, title, desc }: { num: string; title: string; desc: string
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.canvas },
   header: { width: '100%', maxWidth: 860, alignSelf: 'center', paddingTop: 26, paddingBottom: 14, paddingHorizontal: 20 },
+  headerRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   title: { fontFamily: Typography.fontFamily, fontSize: 27, lineHeight: 37, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
   subtitle: { fontFamily: Typography.fontFamily, fontSize: 13, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: 3 },
   content: { width: '100%', maxWidth: 860, alignSelf: 'center', paddingHorizontal: 20, paddingBottom: 28, gap: 16 },
@@ -187,6 +193,7 @@ const styles = StyleSheet.create({
   answerDivider: { width: '75%', height: 1, backgroundColor: Palette.border, marginVertical: 18 },
   reviewRussian: { fontFamily: 'Inter-ExtraBold', alignSelf: 'stretch', fontSize: 21, lineHeight: 34, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
   reviewPronunciation: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl', marginTop: 7 },
+  reviewPattern: { fontFamily: Typography.fontFamily, fontSize: 11, lineHeight: 19, fontWeight: '400', color: Palette.ink, backgroundColor: Palette.warningSoft, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 11, textAlign: 'right', writingDirection: 'rtl', marginTop: 8 },
   soundButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, padding: 8, marginTop: 8 },
   soundText: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.primary, writingDirection: 'rtl' },
   vocabChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, flexWrap: 'wrap', borderRadius: 15, backgroundColor: Palette.warningSoft, paddingHorizontal: 10, paddingVertical: 7, marginTop: 8 },

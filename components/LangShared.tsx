@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radius } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
+import { resolveSpeechOptions } from '@/lib/speechLanguage';
 
 /** Map the icon names stored in the curriculum to real components. */
 export const LESSON_ICONS: Record<string, LucideIcon> = {
@@ -50,8 +51,9 @@ export async function speakEnglish(text: string): Promise<void> {
       speaking = false;
     }
     speaking = true;
+    const targetVoice = await resolveSpeechOptions('en-US');
     Speech.speak(text, {
-      language: 'en-US',
+      ...targetVoice,
       rate: Platform.OS === 'ios' ? 0.45 : 0.85,
       onDone: () => {
         speaking = false;

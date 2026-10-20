@@ -57,26 +57,26 @@ const esbuild = require('esbuild');
     && curriculum.RUSSIAN_CEFR_POLICY.lessonCompletionMeansMastery === false);
 
   const a1 = curriculum.findRussianCefrBand('A1');
-  check('A1 currently contains forty-nine measurable starter units', a1.status === 'starter-only'
-    && a1.units.length === 49 && a1.units.every(unit => unit.status === 'available' && unit.lessonIds.length === 1
+  check('A1 maps sixty-five published Foundation and Survival units', a1.status === 'available'
+    && a1.units.length === 65 && a1.units.every(unit => unit.status === 'available' && unit.lessonIds.length === 1
       && unit.lessonCheckCount === 2 && unit.independentTransferPrompts === 0));
   check('A1 units point to the original Foundation and Survival lesson ids and order', a1.units.map(unit => unit.lessonIds[0]).join('|')
     === russian.RUSSIAN_LESSONS.filter(lesson => lesson.levelId <= 1).map(lesson => lesson.id).join('|'));
   const a2 = curriculum.findRussianCefrBand('A2');
-  check('A2 band maps exactly the twenty Everyday lessons as available units', a2.units.length === 20
+  check('A2 band maps all thirty published Everyday lessons as available units', a2.units.length === 30
     && a2.units.map(unit => unit.lessonIds[0]).join('|') === russian.RUSSIAN_LESSONS.filter(lesson => lesson.levelId === 2).map(lesson => lesson.id).join('|')
     && a2.units.every(unit => unit.status === 'available' && unit.lessonCheckCount === 2));
-  check('B1 and B2 remain planned roadmaps with no invented published lessons', curriculum.RUSSIAN_CEFR_BANDS.slice(2).every(band => band.status === 'planned'
-    && band.units.length > 0 && band.units.every(unit => unit.status === 'planned' && unit.lessonIds.length === 0)));
+  check('B1 and B2 map ten authored, sequenced units each', curriculum.RUSSIAN_CEFR_BANDS.slice(2).every(band => band.status === 'available'
+    && band.units.length === 10 && band.units.every(unit => unit.status === 'available' && unit.lessonIds.length === 1)));
 
   const sourceSentences = russian.RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences);
-  check('sentence curriculum metadata links all 552 current sentences without rewriting their text',
-    sourceSentences.length === 552 && curriculum.RUSSIAN_SENTENCE_CURRICULUM.length === sourceSentences.length
+  check('sentence curriculum metadata links all 3,450 current sentences without rewriting their text',
+    sourceSentences.length === 3450 && curriculum.RUSSIAN_SENTENCE_CURRICULUM.length === sourceSentences.length
       && new Set(curriculum.RUSSIAN_SENTENCE_CURRICULUM.map(entry => entry.sentenceId)).size === sourceSentences.length
       && curriculum.RUSSIAN_SENTENCE_CURRICULUM.every(entry => {
         const source = sourceSentences.find(sentence => sentence.id === entry.sentenceId);
         const owner = russian.RUSSIAN_LESSONS.find(lesson => lesson.sentences.some(item => item.id === entry.sentenceId));
-        const expectedCefr = owner && owner.levelId === 2 ? 'A2' : 'A1';
+        const expectedCefr = owner ? ({ 0: 'A1', 1: 'A1', 2: 'A2', 3: 'B1', 4: 'B2' }[owner.levelId]) : undefined;
         return source && entry.patternFa === (source.pattern ?? null) && entry.cefrLevelId === expectedCefr;
       }));
   check('each vocabulary entry is attached to one or more existing sentence examples', curriculum.RUSSIAN_VOCABULARY.length > 0
@@ -116,7 +116,7 @@ const esbuild = require('esbuild');
   equal('unrecognized responses are sent for review rather than marked wrong', engine.evaluateRussianAnswer('новый ответ', ['Привет']).requiresHumanReview, true);
   equal('empty Russian responses are not treated as mistakes', engine.evaluateRussianAnswer('   ', ['Привет']).outcome, 'empty');
   equal('lesson checks alone do not count as transfer assessment', engine.assessRussianBandReadiness('A1', []).status, 'insufficient-transfer-evidence');
-  equal('unwritten CEFR bands remain unassessable', engine.assessRussianBandReadiness('B1', []).status, 'planned');
+  equal('upper authored bands still require independent reviewed transfer evidence', engine.assessRussianBandReadiness('B1', []).status, 'insufficient-transfer-evidence');
 
   const completeEvidence = a1.units.map((unit, index) => ({
     objectiveId: unit.objectiveId,

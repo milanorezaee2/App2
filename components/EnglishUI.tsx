@@ -76,7 +76,15 @@ export function EnglishLevelRail({
                   ? <Check size={15} color="#FFFFFF" strokeWidth={3} />
                   : <Text style={[styles.railNodeText, active && styles.railNodeTextActive]}>{toPersianDigits(level.id + numberOffset)}</Text>}
               </View>
-              <Text style={[styles.railLabel, active && styles.railLabelActive, active && { color: activeLabelColor }]} numberOfLines={1}>
+              <Text
+                style={[
+                  styles.railLabel,
+                  /[\u0600-\u06FF]/.test(level.id === 0 ? startLabel : level.cefr) && styles.railLabelRtl,
+                  active && styles.railLabelActive,
+                  active && { color: activeLabelColor },
+                ]}
+                numberOfLines={1}
+              >
                 {level.id === 0 ? startLabel : level.cefr}
               </Text>
             </Pressable>
@@ -111,7 +119,7 @@ export function EnglishSectionHeading({
 const styles = StyleSheet.create({
   progressTrack: { width: '100%', borderRadius: 999, overflow: 'hidden', backgroundColor: '#E7EAF2' },
   progressFill: { height: '100%', borderRadius: 999, alignSelf: 'flex-start' },
-  rail: { width: '100%', flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 2 },
+  rail: { width: '100%', direction: 'ltr', flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 2 },
   railRtl: { flexDirection: 'row-reverse' },
   railItem: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   railItemRtl: { flexDirection: 'row-reverse' },
@@ -119,9 +127,10 @@ const styles = StyleSheet.create({
   railNode: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
   railNodeActive: { backgroundColor: Palette.primary, borderColor: Palette.primary, shadowColor: Palette.primary, shadowOpacity: 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
   railNodeDone: { backgroundColor: Palette.success, borderColor: Palette.success },
-  railNodeText: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 11, fontWeight: '800', writingDirection: 'rtl' },
+  railNodeText: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
   railNodeTextActive: { color: '#FFFFFF' },
   railLabel: { fontFamily: 'Inter-ExtraBold', maxWidth: 42, color: Palette.muted, fontSize: 6, fontWeight: '800', textAlign: 'center', writingDirection: 'ltr' },
+  railLabelRtl: { fontFamily: Typography.fontFamily, maxWidth: 46, fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
   railLabelActive: { color: Palette.primaryDark },
   railConnector: { height: 3, flex: 1, borderRadius: 99, backgroundColor: Palette.border, marginTop: 15 },
   railConnectorActive: { backgroundColor: Palette.success },

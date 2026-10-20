@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Volume2 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { CoursePage } from '@/components/LanguageCourseUI';
@@ -18,7 +19,6 @@ import { playResponsiveSpeech, warmSpeech } from '@/lib/responsiveSpeech';
 const stages = ['موقعیت', 'جمله‌ها', 'شنیدن', 'جمله‌سازی', 'مکالمه', 'لغات'];
 const PAGE_SIZE = 5;
 const NORMAL_SPEECH_RATE = 0.85;
-const SLOW_SPEECH_RATE = 0.5;
 
 export default function LanguageLessonRoute() {
   const { language, id } = useLocalSearchParams<{ language: string; id: string }>();
@@ -112,12 +112,6 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
     });
   };
 
-  // Read each active sentence as soon as it is displayed.
-  useEffect(() => {
-    if (sessionState !== 'ready' || stage !== 1 || !current?.text) return;
-    const timer = setTimeout(() => speak(current.text, NORMAL_SPEECH_RATE), 100);
-    return () => { clearTimeout(timer); void Speech.stop(); };
-  }, [sessionState, stage, index, lesson.id]);
   const previousPage = () => {
     void Speech.stop();
     setIndex(value => Math.max(0, value - 1));
@@ -231,16 +225,26 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
       </View>}
       {stage === 1 && <View style={s.card}>
         <Text style={s.small}>جمله {fa(index + 1)} از {fa(lesson.sentences.length)}</Text>
-        <Text style={s.target}>{current.text}</Text>
+        <Text style={s.target} onPress={() => speak(current.text, NORMAL_SPEECH_RATE)}>{current.text}</Text>
         <Text style={s.pronunciation}>{current.pronunciation}</Text>
         <View style={s.divider} />
         <Text style={s.description}>{current.fa}</Text>
-        {current.pattern && <Text style={s.notice}>الگوی جمله: {current.pattern}</Text>}
-        <View style={s.replayRow}>
-          <GermanCourseButton title="🔊 آهسته" secondary onPress={() => speak(current.text, SLOW_SPEECH_RATE)} />
-          <GermanCourseButton title="🔊 معمولی" secondary onPress={() => speak(current.text, NORMAL_SPEECH_RATE)} />
-        </View>
-        <Text style={s.small}>جمله به‌صورت خودکار پخش می‌شود؛ برای شنیدن دوباره سرعت آهسته یا معمولی را انتخاب کنید.</Text>
+        {current.pattern && <Text style={s.notice}>الگوی جمله‌سازی: {current.pattern}</Text>}
+        {!!current.vocabulary.length && (
+          <View style={{ gap: 8 }}>
+            <Text style={s.small}>واژه‌های این جمله (روی هر واژهٔ آلمانی بزنید تا تلفظ بومی آن را بشنوید):</Text>
+            {current.vocabulary.map((word, wordIndex) => (
+              <View key={`${current.id}-${word.word}-${wordIndex}`} style={s.row}>
+                <Pressable accessibilityLabel={`تلفظ واژه آلمانی: ${word.word}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }} onPress={() => speak(word.word, NORMAL_SPEECH_RATE)}>
+                  <Volume2 size={15} color="#175E50" />
+                  <Text style={s.word}>{word.word}</Text>
+                </Pressable>
+                <Text style={s.description}>{word.meaning}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+        <Text style={s.small}>برای شنیدن جمله یا واژه، روی متن آن بزنید.</Text>
       </View>}
       {stage === 2 && <>
         <Text style={s.description}>گوش بدهید و با صدای خودتان تکرار کنید. ضبط و سرویس هوش مصنوعی لازم نیست.</Text>
@@ -266,10 +270,13 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
         {pagedStage && <Text style={s.small}>صفحه {fa(index + 1)} از {fa(pageCount)} · جمله‌های {fa(pageStart + 1)} تا {fa(pageEnd)} از {fa(lesson.sentences.length)}</Text>}
         {pageSentences.map(item => <View key={item.id} style={s.card}>
           {item.vocabulary.map((word, wordIndex) => <View key={`${word.word}-${wordIndex}`} style={s.row}>
-            <Text style={s.word}>{word.word}</Text>
+            <Pressable accessibilityLabel={`تلفظ واژه آلمانی: ${word.word}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }} onPress={() => speak(word.word, NORMAL_SPEECH_RATE)}>
+              <Volume2 size={15} color="#175E50" />
+              <Text style={s.word}>{word.word}</Text>
+            </Pressable>
             <Text style={s.description}>{word.meaning}</Text>
           </View>)}
-          <Text style={[s.target, { fontSize: 18 }]}>{item.text}</Text>
+          <Text style={[s.target, { fontSize: 18 }]} onPress={() => speak(item.text, NORMAL_SPEECH_RATE)}>{item.text}</Text>
           <Text style={s.description}>{item.fa}</Text>
           <GermanCourseButton title="شنیدن مثال" secondary onPress={() => speak(item.text)} />
         </View>)}

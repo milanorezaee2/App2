@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Typography } from '@/lib/theme';
 import { Platform, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { GermanCourseButton, GermanCoursePage, germanCourseStyles as s } from '@/components/GermanCourseUI';

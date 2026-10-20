@@ -10,6 +10,8 @@ import { AppBottomNav } from '@/components/AppBottomNav';
 import { GermanBottomNav } from '@/components/GermanBottomNav';
 import { RussianBottomNav } from '@/components/RussianBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
+import { preloadSpeechVoices, resolveRequiredSpeechOptions, resolveSpeechOptions } from '@/lib/speechLanguage';
+import { Typography } from '@/lib/theme';
 import { toPersianDigits as fa } from '@/lib/format';
 import {
   PRONUNCIATION_COURSES,
@@ -99,6 +101,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
     setMarks({});
     setStorageReady(false);
     setStorageError('');
+    void preloadSpeechVoices();
     void loadPronunciationMarks(language).then(next => {
       if (!active) return;
       setMarks(next);
@@ -138,8 +141,17 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
     try {
       await Speech.stop();
       if (request !== speechGeneration.current) return;
+      const targetVoice = theme.locale === 'de-DE'
+        ? await resolveRequiredSpeechOptions(theme.locale)
+        : await resolveSpeechOptions(theme.locale);
+      if (request !== speechGeneration.current) return;
+      if (!targetVoice) {
+        setSpeaking(false);
+        setSpeechMessage('صدای آلمانیِ آفلاین پیدا نشد؛ در تنظیمات گفتار دستگاه، صدای آلمانی (آلمان) را دانلود کنید و دوباره امتحان کنید.');
+        return;
+      }
       Speech.speak(text, {
-        language: theme.locale,
+        ...targetVoice,
         rate: rate === 'slow' ? 0.62 : 0.86,
         onStart: () => {
           if (request === speechGeneration.current) setSpeechMessage('موتور دستگاه شروع پخش را گزارش کرد؛ شنیده‌شدن صدا را خودتان بررسی کنید.');
@@ -252,7 +264,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
                 <Text style={[styles.exampleText, { color: theme.ink }]}>{example.text}</Text>
                 <Text style={[styles.exampleMeaning, { color: theme.text }]}>{example.meaningFa}</Text>
                 <Text style={[styles.exampleFocus, { color: theme.muted }]}>{example.focusFa}</Text>
-                <View style={styles.audioButtons}>
+                {language !== 'de' ? <View style={styles.audioButtons}>
                   <AudioButton
                     title="آهسته گوش کن"
                     accessibilityLabel={`پخش آهستهٔ ${example.text} به ${theme.languageFa}`}
@@ -269,7 +281,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
                     disabled={false}
                     onPress={() => void speak(example.text, 'normal')}
                   />
-                </View>
+                </View> : null}
               </View>
             ))}
           </View>
@@ -279,7 +291,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
             <Text style={styles.practiceText}>{unit.practiceText}</Text>
             <Text style={styles.practiceMeaning}>{unit.practiceMeaningFa}</Text>
             <Text style={styles.practiceInstruction}>{unit.practiceFa}</Text>
-            <View style={styles.audioButtons}>
+            {language !== 'de' ? <View style={styles.audioButtons}>
               <AudioButton
                 title="جمله را آهسته بشنو"
                 accessibilityLabel={`پخش آهستهٔ جمله به ${theme.languageFa}`}
@@ -298,7 +310,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
                 onPress={() => void speak(unit.practiceText, 'normal')}
                 light
               />
-            </View>
+            </View> : null}
           </View>
 
           <View style={[styles.selfCheck, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -454,7 +466,7 @@ const styles = StyleSheet.create({
   header: { minHeight: 64, width: '100%', maxWidth: 980, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 15, paddingTop: 12, paddingBottom: 7, borderBottomWidth: 1 },
   headerCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
   brand: { fontFamily: 'Inter-ExtraBold', fontSize: 6, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
-  headerTitle: { fontFamily: 'Vazir', fontSize: 16, lineHeight: 24, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  headerTitle: { fontFamily: 'Vazir', fontSize: 16, lineHeight: 24, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   headerCount: { minWidth: 52, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 999, alignItems: 'center' },
   headerCountText: { fontFamily: 'Inter-ExtraBold', fontSize: 8, fontWeight: '800', writingDirection: 'ltr' },
   track: { height: 5, width: '100%', overflow: 'hidden' },
@@ -464,27 +476,27 @@ const styles = StyleSheet.create({
   hero: { overflow: 'hidden', padding: 19, borderRadius: 22, gap: 9 },
   heroTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
   heroIcon: { width: 37, height: 37, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.11)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
-  heroEyebrow: { fontFamily: 'Vazir', color: '#F2D99C', fontSize: 10, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
-  heroTitle: { fontFamily: 'Vazir', color: '#FFFFFF', fontSize: 22, lineHeight: 34, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  heroEyebrow: { fontFamily: 'Vazir', color: '#F2D99C', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  heroTitle: { fontFamily: 'Vazir', color: '#FFFFFF', fontSize: 22, lineHeight: 34, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   heroFocus: { fontFamily: 'Vazir', color: '#E1DDEF', fontSize: 12, lineHeight: 22, textAlign: 'right', writingDirection: 'rtl' },
   heroProgress: { fontFamily: 'Vazir', color: '#D2CDE2', fontSize: 10, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl', marginTop: 3 },
   noticeCard: { padding: 14, borderRadius: 17, borderWidth: 1, gap: 6 },
-  noticeTitle: { fontFamily: 'Vazir', fontSize: 12, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  noticeTitle: { fontFamily: 'Vazir', fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   card: { padding: 16, borderRadius: 19, borderWidth: 1, gap: 11 },
   sectionHeadingRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  sectionTitle: { fontFamily: 'Vazir', flex: 1, fontSize: 15, lineHeight: 23, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  sectionTitle: { fontFamily: 'Vazir', flex: 1, fontSize: 15, lineHeight: 23, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   body: { fontFamily: 'Vazir', fontSize: 12, lineHeight: 22, textAlign: 'right', writingDirection: 'rtl' },
   smallBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
-  smallBadgeText: { fontFamily: 'Vazir', fontSize: 9, fontWeight: '800', writingDirection: 'rtl' },
+  smallBadgeText: { fontFamily: 'Vazir', fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
   example: { padding: 12, borderRadius: 14, borderWidth: 1, gap: 5 },
   exampleText: { fontFamily: 'Inter-ExtraBold', fontSize: 19, lineHeight: 31, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   exampleMeaning: { fontFamily: 'Vazir', fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
   exampleFocus: { fontFamily: 'Vazir', fontSize: 10, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl' },
   audioButtons: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7, paddingTop: 4 },
   audioButton: { minHeight: 38, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 5, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
-  audioButtonText: { fontFamily: 'Vazir', fontSize: 10, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  audioButtonText: { fontFamily: 'Vazir', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   practiceCard: { padding: 17, borderRadius: 20, gap: 9 },
-  practiceLabel: { fontFamily: 'Vazir', color: '#F2D99C', fontSize: 11, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  practiceLabel: { fontFamily: 'Vazir', color: '#F2D99C', fontSize: 11, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   practiceText: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 18, lineHeight: 31, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
   practiceMeaning: { fontFamily: 'Vazir', color: '#E1DDEF', fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
   practiceInstruction: { fontFamily: 'Vazir', color: '#E1DDEF', fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
@@ -492,7 +504,7 @@ const styles = StyleSheet.create({
   markButtons: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
   actionButton: { minHeight: 42, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9 },
   footerAction: { flex: 1, minWidth: 0 },
-  actionButtonText: { fontFamily: 'Vazir', flexShrink: 1, fontSize: 10, fontWeight: '800', textAlign: 'center', writingDirection: 'rtl' },
+  actionButtonText: { fontFamily: 'Vazir', flexShrink: 1, fontSize: 10, fontWeight: '400', textAlign: 'center', writingDirection: 'rtl' },
   disabled: { opacity: 0.45 },
   clearMark: { minHeight: 36, flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-start', gap: 5, paddingHorizontal: 2 },
   clearMarkText: { fontFamily: 'Vazir', fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },

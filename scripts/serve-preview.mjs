@@ -29,7 +29,7 @@ try {
     var FRAME_W=360, FRAME_H=800, BP=520;
     var html=document.documentElement;
     try { if(localStorage.getItem('arena-mobile-frame-disabled')==='1') html.classList.add('arena-frame-disabled'); } catch(e){}
-    try { var _k=null; try{_k=localStorage.getItem('arena-keep-desktop');}catch(e){} if(_k===null || _k==='1') html.classList.add('arena-keep-desktop'); } catch(e){}
+    try { var _k=null; try{_k=localStorage.getItem('arena-keep-desktop');}catch(e){} if(_k==='1') html.classList.add('arena-keep-desktop'); } catch(e){}
     var winProto=Object.getPrototypeOf(window);
     var origWDesc=Object.getOwnPropertyDescriptor(winProto,'innerWidth');
     var origHDesc=Object.getOwnPropertyDescriptor(winProto,'innerHeight');
@@ -156,15 +156,20 @@ try {
     html:not(.arena-frame-disabled) #root > div {
       background: #F8F6FB !important;
       min-height: 100% !important;
+      box-sizing: border-box !important;
+    }
+    html:not(.arena-frame-disabled):not(.arena-keep-desktop) #root > div {
+      padding-top: 38px !important;
+      padding-bottom: 18px !important;
     }
     html:not(.arena-frame-disabled) #root::before {
       content: '';
       position: absolute;
-      top: 10px;
+      top: 8px;
       left: 50%;
       transform: translateX(-50%);
-      width: 90px;
-      height: 28px;
+      width: 82px;
+      height: 24px;
       background: #0f172a;
       border-radius: 9999px;
       z-index: 9999;
@@ -333,7 +338,7 @@ try {
       if (isDisabled) document.documentElement.classList.add('arena-frame-disabled');
       var KEY2 = 'arena-keep-desktop';
       var _k2=null; try{ _k2=localStorage.getItem(KEY2); }catch(e){}
-      var keepDesktop = _k2===null || _k2==='1';
+      var keepDesktop = _k2==='1';
       if (keepDesktop) document.documentElement.classList.add('arena-keep-desktop');
       document.addEventListener('DOMContentLoaded', function() {
         var btn = document.createElement('button');
@@ -385,6 +390,66 @@ function injectMobileFrame(html) {
   return html;
 }
 
+function resolveRouteFile(rootDir, pathname) {
+  let filePath = path.join(rootDir, pathname);
+  let stat = null;
+  try { stat = fs.statSync(filePath); } catch {}
+  if (stat && stat.isDirectory()) {
+    const index = path.join(filePath, 'index.html');
+    if (fs.existsSync(index)) return index;
+  } else if (stat && stat.isFile()) {
+    return filePath;
+  } else {
+    const withHtml = filePath + '.html';
+    if (fs.existsSync(withHtml)) return withHtml;
+    const indexInFolder = path.join(filePath, 'index.html');
+    if (fs.existsSync(indexInFolder)) return indexInFolder;
+  }
+
+  // Match Expo Router static dynamic segments (e.g. dist/learn/[language]/index.html)
+  const segs = pathname.split('/').filter(Boolean);
+  function matchDynamic(dir, idx) {
+    if (idx >= segs.length) {
+      const idxHtml = path.join(dir, 'index.html');
+      return fs.existsSync(idxHtml) ? idxHtml : null;
+    }
+    const seg = segs[idx];
+    const isLast = idx === segs.length - 1;
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return null; }
+
+    // 1. Exact segment match first
+    if (isLast) {
+      const exactHtml = path.join(dir, seg + '.html');
+      if (fs.existsSync(exactHtml)) return exactHtml;
+      const exactIdx = path.join(dir, seg, 'index.html');
+      if (fs.existsSync(exactIdx)) return exactIdx;
+    } else {
+      const exactSub = path.join(dir, seg);
+      try {
+        if (fs.statSync(exactSub).isDirectory()) {
+          const found = matchDynamic(exactSub, idx + 1);
+          if (found) return found;
+        }
+      } catch {}
+    }
+
+    // 2. Bracketed dynamic segment fallback: [param].html or [param]/...
+    for (const entry of entries) {
+      if (isLast && entry.isFile() && /^\[[^\]]+\]\.html$/.test(entry.name)) {
+        return path.join(dir, entry.name);
+      }
+      if (entry.isDirectory() && /^\[[^\]]+\]$/.test(entry.name)) {
+        const found = matchDynamic(path.join(dir, entry.name), idx + 1);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  return matchDynamic(rootDir, 0);
+}
+
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
@@ -398,23 +463,7 @@ const server = http.createServer((req, res) => {
     if (pathname === baseUrl) pathname = '/';
     else if (pathname.startsWith(baseUrl + '/')) pathname = pathname.slice(baseUrl.length);
     pathname = pathname.replace(/\0/g, '');
-    let filePath = path.join(dist, pathname);
-    let resolved = null;
-    let stat = null;
-    try { stat = fs.statSync(filePath); } catch {}
-    if (stat && stat.isDirectory()) {
-      const index = path.join(filePath, 'index.html');
-      if (fs.existsSync(index)) resolved = index;
-    } else if (stat && stat.isFile()) {
-      resolved = filePath;
-    } else {
-      const withHtml = filePath + '.html';
-      if (fs.existsSync(withHtml)) resolved = withHtml;
-      else {
-        const indexInFolder = path.join(filePath, 'index.html');
-        if (fs.existsSync(indexInFolder)) resolved = indexInFolder;
-      }
-    }
+    const resolved = resolveRouteFile(dist, pathname);
     if (!resolved) {
       const notFound = path.join(dist, '+not-found.html');
       if (fs.existsSync(notFound)) {

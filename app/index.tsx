@@ -8,7 +8,7 @@ export default function Index() {
   const router = useRouter();
   const admin = Constants.expoConfig?.extra?.appRole === 'admin'
     || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
-  const target = admin ? '/admin' : RUSSIAN_ONLY_BUILD ? '/learn/ru' : '/languages';
+  const target = RUSSIAN_ONLY_BUILD && !admin ? '/learn/ru' : admin ? '/admin' : '/languages';
 
   // Replace the launch entry so a stale deep link cannot reopen the
   // pronunciation workshop as the app's startup screen.

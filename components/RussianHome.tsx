@@ -2,16 +2,19 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BookOpen, BookOpenCheck, Check, ChevronDown, ChevronLeft, ChevronUp, Compass, Flame, MessageCircle, Play, RefreshCw, ShieldCheck, Sparkles, Volume2 } from 'lucide-react-native';
+import * as Speech from 'expo-speech';
+import { BookOpen, BookOpenCheck, Check, ChevronDown, ChevronLeft, ChevronUp, Compass, Flame, MessageCircle, Play, RefreshCw, Sparkles, Volume2 } from 'lucide-react-native';
 import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel } from '@/components/EnglishUI';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
+import { PageNavigation } from '@/components/PageNavigation';
 import { RussianBottomNav } from '@/components/RussianBottomNav';
 import { RUSSIAN_LEVELS, RUSSIAN_LESSONS, russianProgress, type RussianLevelId } from '@/lib/languages/russian';
 import type { CourseProgress } from '@/lib/courseProgress';
 import { toPersianDigits as fa } from '@/lib/format';
+import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
 import { Typography } from '@/lib/theme';
 
-const RUSSIAN_LEVEL_GRADIENTS: Record<number, [string, string]> = {
+export const SHARED_JOURNEY_GRADIENTS: Record<number, [string, string]> = {
   0: ['#8175F2', '#4036A8'],
   1: ['#A875E8', '#6840A8'],
   2: ['#C56BD0', '#853B8C'],
@@ -29,6 +32,7 @@ export default function RussianHome() {
 
   useFocusEffect(useCallback(() => {
     let alive = true;
+    void preloadSpeechVoices();
     void Promise.all([russianProgress.getCourseProgress(), russianProgress.getDueReviewCards()])
       .then(([nextProgress, cards]) => {
         if (!alive) return;
@@ -37,8 +41,15 @@ export default function RussianHome() {
         setError('');
       })
       .catch(() => { if (alive) setError('پیشرفت روسی خوانده نشد؛ اطلاعات قبلی تغییر نکرده است. دوباره تلاش کنید.'); });
-    return () => { alive = false; };
+    return () => { alive = false; void Speech.stop(); };
   }, [retry]));
+
+  const speakRussian = useCallback((text: string) => {
+    void Speech.stop();
+    void resolveSpeechOptions('ru-RU').then(targetVoice => {
+      Speech.speak(text, { ...targetVoice, rate: 0.8 });
+    });
+  }, []);
 
   const completedIds = progress?.completedLessonIds ?? [];
   const completedSet = useMemo(() => new Set(completedIds), [completedIds]);
@@ -80,10 +91,10 @@ export default function RussianHome() {
                 <Text style={styles.headerTitle}>Russian Journey</Text>
               </View>
             </View>
-            <View style={styles.headerChip}><ShieldCheck size={15} color={Palette.teal} /><Text style={styles.headerChipText}>مسیر جمله‌محور</Text></View>
+            <PageNavigation backFallback="/languages" accentColor={Palette.primary} borderColor={Palette.border} />
           </View>
 
-          <LinearGradient colors={RUSSIAN_LEVEL_GRADIENTS[activeLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.heroCard}>
+          <LinearGradient colors={SHARED_JOURNEY_GRADIENTS[activeLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.heroCard}>
             <View pointerEvents="none" style={styles.heroOrbLarge} />
             <View pointerEvents="none" style={styles.heroOrbSmall} />
             <View style={styles.heroTopRow}>
@@ -96,15 +107,33 @@ export default function RussianHome() {
               <Text style={styles.heroDescription}>{nextLesson ? heroLesson.subtitle : 'درس‌های موجود را مرور کنید یا نقشهٔ سطح‌های بعدی را ببینید.'}</Text>
             </View>
             <View style={styles.sentenceShowcase}>
-              <View style={styles.sentenceShowcaseTop}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`پخش تلفظ روسی: ${firstSentence.text}`} style={styles.sentenceShowcaseTop} onPress={() => speakRussian(firstSentence.text)}>
                 <View style={styles.sentenceLabelIcon}><Volume2 size={14} color="#C8C9FF" /></View>
                 <Text style={styles.sentenceLabel}>جملهٔ کلیدی این درس</Text>
                 <Text style={styles.sentenceLabelEn}>CORE SENTENCE</Text>
-              </View>
-              <Text style={styles.sentenceRussian}>{firstSentence.text}</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جمله: ${firstSentence.text}`} onPress={() => speakRussian(firstSentence.text)}>
+                <Text style={styles.sentenceRussian}>{firstSentence.text}</Text>
+              </Pressable>
               <Text style={styles.sentencePersian}>{firstSentence.fa}</Text>
               <Text style={styles.sentencePronunciation}>{firstSentence.pronunciation}</Text>
-              {!!firstSentence.vocabulary.length && <View style={styles.wordChipRow}>{firstSentence.vocabulary.map(item => <View key={item.word} style={styles.wordChip}><Text style={styles.wordChipRussian}>{item.word}</Text><Text style={styles.wordChipDivider}>·</Text><Text style={styles.wordChipFa}>{item.meaning}</Text></View>)}</View>}
+              {firstSentence.pattern ? (
+                <View style={styles.sentencePatternBox}>
+                  <Text style={styles.sentencePatternLabel}>الگوی جمله‌سازی:</Text>
+                  <Text style={styles.sentencePatternText}>{firstSentence.pattern}</Text>
+                </View>
+              ) : null}
+              {!!firstSentence.vocabulary.length && (
+                <View style={styles.wordChipRow}>
+                  {firstSentence.vocabulary.map(item => (
+                    <Pressable key={item.word} accessibilityRole="button" accessibilityLabel={`تلفظ واژه: ${item.word}`} style={styles.wordChip} onPress={() => speakRussian(item.word)}>
+                      <Text style={styles.wordChipRussian}>{item.word}</Text>
+                      <Text style={styles.wordChipDivider}>·</Text>
+                      <Text style={styles.wordChipFa}>{item.meaning}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </View>
             <View style={styles.heroActions}>
               <Pressable accessibilityRole="button" style={styles.continueButton} onPress={openNextLesson}>
@@ -163,10 +192,11 @@ export default function RussianHome() {
 
           <View style={styles.quickRow}>
             <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/ru/review' as never)}><View style={[styles.quickIcon, { backgroundColor: Palette.tealSoft }]}><RefreshCw size={19} color={Palette.teal} /></View><View style={styles.quickCopy}><Text style={styles.quickTitle}>مرور جمله‌ها</Text><Text style={styles.quickDesc}>جمله‌های روسی با موعد مرور</Text></View><ChevronLeft size={17} color={Palette.muted} /></Pressable>
+            <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/ru/pronunciation' as never)}><View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><Volume2 size={19} color={Palette.primary} /></View><View style={styles.quickCopy}><Text style={styles.quickTitle}>کارگاه تلفظ روسی</Text><Text style={styles.quickDesc}>تمرین آواها، تکیه و آهنگ جمله</Text></View><ChevronLeft size={17} color={Palette.muted} /></Pressable>
             <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/ru/library' as never)}><View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><MessageCircle size={19} color={Palette.primary} /></View><View style={styles.quickCopy}><Text style={styles.quickTitle}>کتابخانهٔ درس‌ها</Text><Text style={styles.quickDesc}>سطح و درس را انتخاب کنید</Text></View><ChevronLeft size={17} color={Palette.muted} /></Pressable>
           </View>
 
-          <View style={styles.tipCard}><View style={styles.tipIcon}><Sparkles size={17} color="#D07A1E" /></View><View style={styles.tipCopy}><Text style={styles.tipTitle}>نقشهٔ سطح‌ها، محتوای مستقل روسی</Text><Text style={styles.tipText}>سطح‌بندی این مسیر داخلی است؛ سه سطح بالاتر فعلاً نقشه‌اند و هنوز درس جمله‌محور منتشرشده ندارند.</Text></View></View>
+          <View style={styles.tipCard}><View style={styles.tipIcon}><Sparkles size={17} color="#D07A1E" /></View><View style={styles.tipCopy}><Text style={styles.tipTitle}>نقشهٔ سطح‌ها، محتوای مستقل روسی</Text><Text style={styles.tipText}>سطح‌بندی این مسیر داخلی است؛ هر جمله همراه با الگوی جمله‌سازی و تلفظ ارائه می‌شود.</Text></View></View>
         </View>
       </ScrollView>
       <RussianBottomNav />
@@ -175,10 +205,11 @@ export default function RussianHome() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Palette.canvas },
+  root: { flex: 1, direction: 'ltr', backgroundColor: Palette.canvas },
   scrollContent: { flexGrow: 1 },
   page: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 26, gap: 18 },
   header: { minHeight: 56, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  headerEnd: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   brandLockup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
   brandMark: { width: 42, height: 42, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   brandEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 7, fontWeight: '800', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
@@ -196,90 +227,93 @@ const styles = StyleSheet.create({
   heroCopy: { gap: 2, paddingTop: 2 },
   heroEyebrow: { fontFamily: Typography.fontFamily, color: '#C6C8FF', fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   heroTitle: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 27, lineHeight: 39, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  heroDescription: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 12, lineHeight: 21, textAlign: 'right', writingDirection: 'rtl' },
+  heroDescription: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 12, lineHeight: 21, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   sentenceShowcase: { borderRadius: 19, padding: 15, gap: 8, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
   sentenceShowcaseTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   sentenceLabelIcon: { width: 25, height: 25, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   sentenceLabel: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-  sentenceLabelEn: { fontFamily: 'Inter-ExtraBold', marginLeft: 'auto', color: '#CFD2FF', fontSize: 6, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
+  sentenceLabelEn: { fontFamily: 'Inter-ExtraBold', marginRight: 'auto', color: '#CFD2FF', fontSize: 6, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
   sentenceRussian: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 18, lineHeight: 30, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
-  sentencePersian: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.75)', fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
-  sentencePronunciation: { fontFamily: Typography.fontFamily, color: '#D5D7FF', fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
+  sentencePersian: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.82)', fontSize: 12, lineHeight: 20, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  sentencePronunciation: { fontFamily: Typography.fontFamily, color: '#D5D7FF', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  sentencePatternBox: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'center', gap: 5, paddingTop: 7, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.16)' },
+  sentencePatternLabel: { fontFamily: Typography.fontFamily, color: '#A4F3D5', fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
+  sentencePatternText: { flex: 1, fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 11, lineHeight: 18, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   wordChipRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 2 },
   wordChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', paddingHorizontal: 9, paddingVertical: 5 },
-  wordChipRussian: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 8, fontWeight: '800', writingDirection: 'ltr' },
-  wordChipDivider: { color: '#C6C8FF', fontSize: 10 },
-  wordChipFa: { fontFamily: Typography.fontFamily, color: '#E4E6FF', fontSize: 10, writingDirection: 'rtl' },
+  wordChipRussian: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 9, fontWeight: '800', writingDirection: 'ltr' },
+  wordChipDivider: { fontFamily: Typography.fontFamily, color: '#C6C8FF', fontSize: 10, fontWeight: '400' },
+  wordChipFa: { fontFamily: Typography.fontFamily, color: '#E4E6FF', fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
   heroActions: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   continueButton: { minHeight: 48, flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 15, backgroundColor: '#FFFFFF', paddingHorizontal: 13 },
   continueButtonText: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 12, fontWeight: '400', writingDirection: 'rtl' },
   sentenceCount: { alignItems: 'flex-end', minWidth: 76 },
-  sentenceCountValue: { fontFamily: Typography.numberFontFamily, color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
-  sentenceCountLabel: { fontFamily: Typography.fontFamily, color: '#D5D7FF', fontSize: 9, writingDirection: 'rtl' },
+  sentenceCountValue: { fontFamily: Typography.numberFontFamily, color: '#FFFFFF', fontSize: 17, fontWeight: '400' },
+  sentenceCountLabel: { fontFamily: Typography.fontFamily, color: '#D5D7FF', fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
   pathPanel: { borderRadius: 23, padding: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 14, shadowColor: '#21264A', shadowOpacity: .045, shadowRadius: 13, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
-  panelHeadingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  panelHeadingRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   panelHeadingText: { flex: 1, alignItems: 'stretch' },
   panelEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 6, fontWeight: '800', letterSpacing: 1.3, textAlign: 'right', writingDirection: 'ltr' },
   panelTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 20, lineHeight: 29, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  libraryLink: { minHeight: 37, flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 9, borderRadius: 12, backgroundColor: Palette.primarySoft },
+  libraryLink: { minHeight: 37, flexDirection: 'row-reverse', alignItems: 'center', gap: 2, paddingHorizontal: 10, borderRadius: 12, backgroundColor: Palette.primarySoft },
   libraryLinkText: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
   railWrap: { paddingVertical: 2 },
-  currentLevelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 12, borderRadius: 17, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
+  currentLevelRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 12, borderRadius: 17, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
   currentLevelCopy: { flex: 1, alignItems: 'stretch', gap: 2 },
   currentLevelEyebrow: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 9, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   currentLevelName: { fontFamily: Typography.latinFontFamily, color: Palette.ink, fontSize: 13, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
-  currentLevelDescription: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
+  currentLevelDescription: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   levelCountBadge: { alignItems: 'stretch', justifyContent: 'center', minWidth: 92, minHeight: 58, borderRadius: 18, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 6, gap: 3 },
   levelCountValue: { width: '100%', fontFamily: Typography.numberFontFamily, fontSize: 13, lineHeight: 19, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  levelCountMeta: { flexDirection: 'row', alignSelf: 'stretch', alignItems: 'center', gap: 4 },
+  levelCountMeta: { flexDirection: 'row-reverse', alignSelf: 'stretch', alignItems: 'center', gap: 4 },
   levelCountDot: { width: 5, height: 5, borderRadius: 3 },
-  levelCountLabel: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 8, textAlign: 'right', writingDirection: 'rtl' },
-  mapToggle: { minHeight: 51, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 11, borderRadius: 15, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
+  levelCountLabel: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 8, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  mapToggle: { minHeight: 51, flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 11, borderRadius: 15, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
   mapToggleIcon: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: Palette.primarySoft },
   mapToggleText: { flex: 1, gap: 2 },
   mapToggleTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 11, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  mapToggleMeta: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 8, textAlign: 'right', writingDirection: 'rtl' },
+  mapToggleMeta: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 8, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   fullRoadmap: { gap: 8 },
   levelCard: { minHeight: 76, flexDirection: 'row-reverse', alignItems: 'center', gap: 11, padding: 12, borderRadius: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
   levelCardActive: { borderColor: Palette.primary, backgroundColor: '#F9F8FF' },
   levelNumber: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  levelNumberText: { fontFamily: Typography.numberFontFamily, fontSize: 15, fontWeight: '800', writingDirection: 'rtl' },
+  levelNumberText: { fontFamily: Typography.numberFontFamily, fontSize: 15, fontWeight: '400', writingDirection: 'rtl' },
   levelText: { flex: 1, gap: 3 },
   levelTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   levelTitle: { fontFamily: Typography.latinFontFamily, flexShrink: 1, color: Palette.ink, fontSize: 10, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
   levelBand: { fontFamily: Typography.fontFamily, fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
-  levelDesc: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
-  levelStats: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 9, textAlign: 'right', writingDirection: 'rtl' },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 },
+  levelDesc: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  levelStats: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 9, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  sectionHeader: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 },
   sectionHeaderCopy: { alignItems: 'stretch' },
   sectionEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 6, fontWeight: '800', letterSpacing: 1.3, textAlign: 'right', writingDirection: 'ltr' },
   sectionTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 19, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  todayPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Palette.warningSoft, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },
+  todayPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, backgroundColor: Palette.warningSoft, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },
   todayPillText: { fontFamily: Typography.fontFamily, color: Palette.warning, fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
   todayCard: { borderRadius: 20, padding: 16, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 13, shadowColor: '#20264A', shadowOpacity: .035, shadowRadius: 11, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
-  todayCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  todayCardTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
   todayMetricCopy: { flex: 1, alignItems: 'stretch' },
-  todayValue: { fontFamily: Typography.numberFontFamily, color: Palette.ink, fontSize: 23, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  todayValue: { fontFamily: Typography.numberFontFamily, color: Palette.ink, fontSize: 23, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   todayValueUnit: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 12, fontWeight: '400' },
-  todayLabel: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
+  todayLabel: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   todayIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  todayProgressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  todayProgressText: { fontFamily: 'Vazir', width: 34, color: Palette.primaryDark, fontSize: 11, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  todayProgressRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  todayProgressText: { fontFamily: Typography.numberFontFamily, width: 34, color: Palette.primaryDark, fontSize: 11, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   todayProgressTrack: { flex: 1 },
-  todayFootnote: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5, paddingTop: 10, borderTopWidth: 1, borderTopColor: Palette.border },
-  todayFootnoteText: { flex: 1, fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
+  todayFootnote: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 5, paddingTop: 10, borderTopWidth: 1, borderTopColor: Palette.border },
+  todayFootnoteText: { flex: 1, fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   quickRow: { gap: 10 },
-  quickCard: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 13, paddingVertical: 10, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
+  quickCard: { minHeight: 70, flexDirection: 'row-reverse', alignItems: 'center', gap: 11, paddingHorizontal: 13, paddingVertical: 10, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
   quickIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   quickCopy: { flex: 1, alignItems: 'stretch', gap: 2 },
   quickTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  quickDesc: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
-  tipCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 17, borderWidth: 1, borderColor: '#F4DFC5', backgroundColor: '#FFF8EF' },
+  quickDesc: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
+  tipCard: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 17, borderWidth: 1, borderColor: '#F4DFC5', backgroundColor: '#FFF8EF' },
   tipIcon: { width: 33, height: 33, borderRadius: 11, backgroundColor: '#FFEDD4', alignItems: 'center', justifyContent: 'center' },
   tipCopy: { flex: 1, alignItems: 'stretch', gap: 2 },
   tipTitle: { fontFamily: Typography.fontFamily, color: Palette.warning, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  tipText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, lineHeight: 17, textAlign: 'right', writingDirection: 'rtl' },
+  tipText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, lineHeight: 17, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   errorCard: { padding: 14, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, borderRadius: 16, backgroundColor: Palette.dangerSoft, borderWidth: 1, borderColor: '#F5CDD3' },
-  errorText: { flex: 1, fontFamily: Typography.fontFamily, color: Palette.danger, fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
+  errorText: { flex: 1, fontFamily: Typography.fontFamily, color: Palette.danger, fontSize: 11, lineHeight: 19, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   retryText: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
 });

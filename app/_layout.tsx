@@ -4,11 +4,15 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
-import { I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AppState, I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
 import { createAudioPlayer } from 'expo-audio';
+import * as Speech from 'expo-speech';
+import { registerNativeVoiceFetcher } from '@/lib/speechLanguage';
+
+registerNativeVoiceFetcher(() => Speech.getAvailableVoicesAsync());
 import { Inter_400Regular, Inter_600SemiBold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
 import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_700Bold, Vazirmatn_900Black } from '@expo-google-fonts/vazirmatn';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
@@ -40,6 +44,7 @@ stableText.defaultProps = {
   includeFontPadding: false,
   textBreakStrategy: 'simple',
   android_hyphenationFrequency: 'none',
+  style: [{ fontFamily: 'Vazir' }, (stableText.defaultProps as { style?: unknown } | undefined)?.style],
 };
 stableInput.defaultProps = {
   ...stableInput.defaultProps,
@@ -92,6 +97,9 @@ export default function RootLayout() {
   useFrameworkReady();
   const router = useRouter();
   const pathname = usePathname();
+  const homeRoute = IS_ADMIN_APP ? '/admin' : RUSSIAN_ONLY_BUILD ? '/learn/ru' : '/languages';
+  const pathnameRef = useRef(pathname);
+  const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   const [fontsLoaded, fontError] = useFonts({
@@ -147,15 +155,38 @@ export default function RootLayout() {
     return () => clearTimeout(finish);
   }, [fontsLoaded, fontError]);
 
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  // Returning to the app after leaving it should always start from the same
+  // language chooser/home, not the last nested lesson, library, or conversation.
+  // Only a real background -> active transition triggers this; temporary native
+  // dialogs and permission prompts do not reset navigation.
+  useEffect(() => {
+    if (Platform.OS === 'web' || !introComplete) return;
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'background') {
+        wasBackgrounded.current = true;
+        return;
+      }
+      if (state === 'active' && wasBackgrounded.current) {
+        wasBackgrounded.current = false;
+        if (pathnameRef.current !== homeRoute) router.replace(homeRoute as never);
+      }
+    });
+    return () => subscription.remove();
+  }, [homeRoute, introComplete, router]);
+
   // Android can restore the last native navigation state (including a chat
   // route) instead of mounting index.tsx. Always normalize the first route of
   // a fresh app process to the correct home screen.
   useEffect(() => {
     if (!introComplete || startupRouteLocked.current) return;
     startupRouteLocked.current = true;
-    const target = IS_ADMIN_APP ? '/admin' : RUSSIAN_ONLY_BUILD ? '/learn/ru' : '/languages';
-    if (pathname !== target) router.replace(target as never);
-  }, [introComplete, pathname, router]);
+    if (Platform.OS === 'web') return;
+    if (pathname !== homeRoute) router.replace(homeRoute as never);
+  }, [homeRoute, introComplete, pathname, router]);
 
   if (!fontsLoaded && !fontError) return null;
   if (!introComplete) {

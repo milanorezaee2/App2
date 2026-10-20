@@ -15,6 +15,7 @@ on:
       - arena/9ecb1f7a-app2
       - arena/8366eeeb-app2
       - arena/8290df12-app2
+      - arena/78e12bfa-app2
 
 permissions:
   contents: write

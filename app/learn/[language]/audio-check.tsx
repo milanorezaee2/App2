@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Redirect, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Speech from 'expo-speech';
+import { speechTagFor } from '@/lib/speechLanguage';
 import { GermanCourseButton as CourseButton, GermanCoursePage as CoursePage, germanCourseStyles as s } from '@/components/GermanCourseUI';
 import { A1_AUDIO_SAMPLES, AUDIO_OBSERVATIONS, audioCheckReport, isGermanVoice, type AudioObservation } from '@/lib/languages/a1AudioCheck';
 
@@ -40,7 +41,7 @@ export default function AudioCheck(){
   timer.current=setTimeout(()=>{if(valid()){finish('موتور گفتار پاسخ نداد؛ توقف و تلاش دوباره را امتحان کنید.');void Speech.stop().catch(()=>undefined);}},12000);
   try{
    await Speech.stop();if(!valid())return;
-   Speech.speak(text,{language:'de-DE',voice:selected,rate:.78,
+   Speech.speak(text,{language:speechTagFor('de-DE'),voice:selected,rate:.78,
     onStart:()=>{if(valid()){clearTimer();setStatus('موتور گفتار شروع پخش را گزارش کرد؛ فقط شما می‌توانید شنیده‌شدن آن را تأیید کنید.');timer.current=setTimeout(()=>{if(valid()){finish('پایان پخش گزارش نشد؛ پخش متوقف شد.');void Speech.stop().catch(()=>undefined);}},45000);}},
     onDone:()=>finish('موتور گفتار پایان پخش را گزارش کرد؛ این پیام تأیید کیفیت تلفظ نیست.'),
     onStopped:()=>finish('پخش متوقف شد؛ شنیده‌شدن صدا تأیید نشده است.'),

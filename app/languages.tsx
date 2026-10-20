@@ -178,6 +178,7 @@ export default function LanguagesHome() {
                     <View style={styles.languageIdentity}>
                       <Text style={styles.languageCode} numberOfLines={1}>{meta.code}</Text>
                       <Text style={styles.languageName} numberOfLines={1}>{meta.nativeName}</Text>
+                      <Text style={styles.languageLessonCount}>{fa(language.lessonsCount)} درس</Text>
                     </View>
                     <View style={styles.languageArrow}><ArrowLeft size={14} color="#1769D2" strokeWidth={2.5} /></View>
                   </Pressable>
@@ -261,11 +262,11 @@ const styles = StyleSheet.create({
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#22A06B' },
   statusText: { fontFamily: 'Vazir', color: '#49617F', fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
   hero: { minHeight: 290, borderRadius: 28, borderWidth: 1, borderColor: '#D4E5FA', overflow: 'hidden', flexDirection: 'row-reverse', alignItems: 'center', padding: 30, shadowColor: '#18529A', shadowOpacity: .08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 3 },
-  heroCompact: { minHeight: 330, padding: 21, alignItems: 'flex-start' },
+  heroCompact: { minHeight: 266, padding: 18, alignItems: 'flex-start' },
   heroOrbOne: { position: 'absolute', width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(79,160,255,0.12)', top: -72, right: -38 },
   heroOrbTwo: { position: 'absolute', width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(74,216,224,0.13)', bottom: -55, left: 40 },
   heroCopy: { flex: 1, zIndex: 2, alignItems: 'flex-end', gap: 12, maxWidth: 610 },
-  heroCopyCompact: { paddingTop: 3, paddingBottom: 110 },
+  heroCopyCompact: { paddingTop: 2, paddingBottom: 82 },
   eyebrow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, alignSelf: 'flex-end', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.84)', borderWidth: 1, borderColor: '#D5E6FA' },
   eyebrowText: { fontFamily: 'Vazir', color: '#1769D2', fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
   heroTitle: { fontFamily: 'Vazir', color: '#102A56', fontSize: 34, lineHeight: 49, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
   checkItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
   checkText: { fontFamily: 'Vazir', color: '#315274', fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
   heroVisual: { width: '36%', height: 235, alignItems: 'center', justifyContent: 'center' },
-  heroVisualCompact: { position: 'absolute', width: 138, height: 138, left: 10, bottom: -3, opacity: .98 },
+  heroVisualCompact: { position: 'absolute', width: 108, height: 108, left: 10, bottom: 8, borderRadius: 24, overflow: 'hidden', opacity: .96 },
   heroImage: { width: '100%', height: '100%' },
   statsStrip: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 14, borderRadius: 20, paddingHorizontal: 17, paddingVertical: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8', shadowColor: '#174B86', shadowOpacity: .035, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
   statsStripCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
@@ -303,6 +304,7 @@ const styles = StyleSheet.create({
   languageIdentity: { alignItems: 'center', gap: 0 },
   languageCode: { flexShrink: 0, textAlign: 'center', fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 12, lineHeight: 17, fontWeight: '800', letterSpacing: 1.2, writingDirection: 'ltr' },
   languageName: { fontFamily: 'Inter-ExtraBold', color: '#6680A5', fontSize: 7, lineHeight: 12, fontWeight: '800', writingDirection: 'ltr' },
+  languageLessonCount: { fontFamily: 'Vazir', color: '#1769D2', fontSize: 8, lineHeight: 13, fontWeight: '400', writingDirection: 'rtl' },
   languageArrow: { position: 'absolute', left: 8, bottom: 8, width: 23, height: 23, borderRadius: 8, backgroundColor: 'rgba(255,255,255,.8)', alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: .82, transform: [{ scale: .98 }] },
   flowCard: { borderRadius: 24, padding: 20, gap: 19, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8', shadowColor: '#174B86', shadowOpacity: .05, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
