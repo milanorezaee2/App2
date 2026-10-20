@@ -18,8 +18,8 @@ const assert=require('node:assert/strict');const {chromium:pw}=require('playwrig
   }});
  });
  const root=process.env.BROWSER_BASE_URL||'http://127.0.0.1:8081';const button=name=>page.getByRole('button',{name,exact:true});
- await page.goto(root+'/learn/de/coverage',{waitUntil:'networkidle'});await button('بررسی صدای دستگاه').click();
- await button('انتخاب‌شده: German test (de-DE)').waitFor();check('coverage links to German audio diagnostic',page.url().includes('/audio-check'));
+ await page.goto(root+'/learn/de/audio-check',{waitUntil:'networkidle'});
+ await button('انتخاب‌شده: German test (de-DE)').waitFor();check('German audio diagnostic is reachable on its own route',page.url().includes('/audio-check'));
  check('four samples available',await page.getByRole('button',{name:/^پخش:/}).count()===4);
  const storageBefore=await page.evaluate(()=>JSON.stringify({...localStorage}));
  await button('پخش: هجی').click();await page.getByText('موتور گفتار شروع پخش را گزارش کرد؛ فقط شما می‌توانید شنیده‌شدن آن را تأیید کنید.',{exact:true}).waitFor();
@@ -38,11 +38,11 @@ const assert=require('node:assert/strict');const {chromium:pw}=require('playwrig
  await page.evaluate(()=>{window.__speechMode='hang';});await button('پخش: ساعت').click();await page.getByText('موتور گفتار پاسخ نداد؛ توقف و تلاش دوباره را امتحان کنید.',{exact:true}).waitFor({timeout:18000});check('missing speech callbacks time out without success',await button('پخش: ساعت').isEnabled());
  await page.evaluate(()=>{window.__voiceMode='en';});await button('دوباره صداها را بررسی کن').click();await page.getByRole('alert').waitFor();
  check('non-German voice is never silently selected',await button('پخش: هجی').isDisabled()&&(await page.locator('body').innerText()).includes('صدای آلمانی پیدا نشد'));
- await page.evaluate(()=>{window.__voiceMode='empty';});await button('دوباره صداها را بررسی کن').click();await page.getByText('فهرست صداها پاسخ نداد. دوباره تلاش کنید یا تنظیمات گفتار دستگاه را بررسی کنید.',{exact:true}).waitFor({timeout:12000});check('empty browser voice list has bounded wait',await button('دوباره صداها را بررسی کن').isEnabled());
+ await page.evaluate(()=>{window.__voiceMode='empty';});await button('دوباره صداها را بررسی کن').click();await page.getByText('صدای آلمانی پیدا نشد. در Chrome یا Edge، در بخش زبان‌های سیستم زبان Deutsch را اضافه کنید؛ روی گوشی، بستهٔ گفتار آلمانی (Google TTS / صدای آلمانی) را نصب کنید و سپس دوباره بررسی کنید. درس بدون صدا هم خواندنی می‌ماند.',{exact:true}).waitFor({timeout:12000});check('empty browser voice list explains the installation step',await button('دوباره صداها را بررسی کن').isEnabled());
  await page.evaluate(()=>{window.__voiceMode='de';});await button('دوباره صداها را بررسی کن').click();await button('انتخاب‌شده: German test (de-DE)').waitFor();
  check('voice retry clears old observations',(await page.locator('body').innerText()).split('هنوز گزارش نشده').length===5);
  check('diagnostic fits mobile width',await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- const cancelled=await page.evaluate(()=>window.__cancelCount);await button('بازگشت').click();await button('بررسی صدای دستگاه').waitFor();check('leaving screen cancels speech',await page.evaluate(()=>window.__cancelCount)>cancelled);
+ const cancelled=await page.evaluate(()=>window.__cancelCount);await button('یادگیری').click();await page.getByText('Deutsch Journey',{exact:true}).waitFor();check('leaving screen cancels speech',await page.evaluate(()=>window.__cancelCount)>cancelled);
  await page.goto(root+'/learn/en/audio-check',{waitUntil:'networkidle'});check('unsupported language rejected',(await page.locator('body').innerText()).includes('بررسی صدا پیدا نشد'));
  console.log('MOCK AUDIO BROWSER CHECKS:',passed);await browser.close();
 })().catch(e=>{console.error(e);process.exit(1);});

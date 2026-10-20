@@ -57,6 +57,19 @@ export const GERMAN_SENTENCE_LEVELS: readonly GermanSentenceCourseLevel[] = [
   },
 ] as const;
 
+/** The nine-stage sentence-lesson flow shared with the Russian course design. */
+export const GERMAN_SENTENCE_STAGES = [
+  { id: 'situation', labelFa: 'موقعیت', labelEn: 'Situation' },
+  { id: 'core-sentences', labelFa: 'جمله‌های اصلی', labelEn: 'Core Sentences' },
+  { id: 'listening', labelFa: 'شنیدن', labelEn: 'Listening' },
+  { id: 'shadowing', labelFa: 'سایه‌خوانی', labelEn: 'Shadowing' },
+  { id: 'sentence-building', labelFa: 'ساخت جمله', labelEn: 'Sentence Building' },
+  { id: 'vocabulary', labelFa: 'واژگان از جمله', labelEn: 'Vocabulary From Sentences' },
+  { id: 'grammar-through-usage', labelFa: 'دستور در کاربرد', labelEn: 'Grammar Through Usage' },
+  { id: 'conversation', labelFa: 'مکالمه', labelEn: 'Conversation Practice' },
+  { id: 'review', labelFa: 'مرور هوشمند', labelEn: 'Spaced Review' },
+] as const;
+
 const sentence = (
   id: string,
   text: string,

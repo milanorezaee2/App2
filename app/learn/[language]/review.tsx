@@ -8,6 +8,7 @@ import * as Speech from 'expo-speech';
 import { CoursePage, CourseButton, courseStyles } from '@/components/LanguageCourseUI';
 import { GermanCoursePage, GermanCourseButton, germanCourseStyles } from '@/components/GermanCourseUI';
 import RussianReview from '@/components/RussianReview';
+import GermanReview from '@/components/GermanReview';
 import { germanProgress, findGermanLesson, findLanguage } from '@/lib/languages/catalog';
 import { russianProgress, findRussianLesson } from '@/lib/languages/russian';
 import { playResponsiveSpeech, warmSpeech, type SpeechLocale } from '@/lib/responsiveSpeech';
@@ -20,6 +21,7 @@ export default function ReviewRoute(){
   if(unit&&!unit.lessons.length){const Page=language==='de'?GermanCoursePage:CoursePage;const s=language==='de'?germanCourseStyles:courseStyles;return <Page title="جمع‌بندی مرور مستقل ندارد" back={unitHref(unit)}><Text style={s.description}>برای مرور، به درس مرتبط در گزارش جمع‌بندی برگردید.</Text></Page>;}
   if(!['de','en','ru'].includes(language)||(id!==undefined&&!unit)||(language==='en'&&!unit)||(course!==undefined&&(language!=='de'||course!=='first-meeting')))return language==='de'?<GermanCoursePage title="مرور پیدا نشد">{null}</GermanCoursePage>:<CoursePage title="مرور پیدا نشد">{null}</CoursePage>;
   if(language==='ru'&&!unit)return <RussianReview/>;
+  if(language==='de'&&!unit)return <GermanReview/>;
   return <LanguageReview key={unit?.id??'library'} unit={unit} language={language}/>;
 }
 function LanguageReview({unit,language}:{unit?:LearningUnit;language:string}){

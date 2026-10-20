@@ -18,6 +18,7 @@
     "validate:admin": "node scripts/verify-education-admin.mjs",
     "validate:a1": "node scripts/verify-a1-editorial.cjs",
     "validate:german-levels": "node scripts/verify-german-completion.cjs",
+    "validate:german-lesson": "node scripts/verify-german-lesson-flow.cjs",
     "validate:russian": "node scripts/verify-russian-course.cjs",
     "validate:russian-architecture": "node scripts/verify-russian-architecture.cjs",
     "validate:english-supplement": "node scripts/verify-english-supplement.cjs",

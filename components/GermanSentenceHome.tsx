@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import {
   BookOpen,
   BookOpenCheck,
@@ -36,7 +35,7 @@ import {
 import { germanProgress } from '@/lib/languages/catalog';
 import { syncPersonalLearningData } from '@/lib/personalLearningSync';
 import type { CourseProgress } from '@/lib/createCourseProgressStore';
-import { preloadSpeechVoices, resolveRequiredSpeechOptions } from '@/lib/speechLanguage';
+import { primeGermanSpeech, speakGerman, stopGermanSpeech } from '@/lib/germanSpeech';
 import { germanHomeStyles as styles } from './germanHomeStyles';
 
 const GERMAN_RAIL_LEVELS = GERMAN_SENTENCE_LEVELS.map((level, index) => ({
@@ -54,7 +53,7 @@ export default function GermanSentenceHome() {
 
   useFocusEffect(useCallback(() => {
     let alive = true;
-    void preloadSpeechVoices();
+    primeGermanSpeech();
     const refreshLocal = () => Promise.all([germanProgress.getCourseProgress(), germanProgress.getDueReviewCards()])
       .then(([nextProgress, due]) => {
         if (!alive) return;
@@ -68,17 +67,17 @@ export default function GermanSentenceHome() {
       if (result.status === 'synced') return refreshLocal();
       return undefined;
     }).catch(() => undefined);
-    return () => { alive = false; void Speech.stop(); };
+    return () => { alive = false; void stopGermanSpeech(); };
   }, [retry]));
 
-  const speakGerman = useCallback((text: string) => {
-    void Speech.stop();
-    void resolveRequiredSpeechOptions('de-DE').then(targetVoice => {
-      if (!targetVoice) {
-        setError('صدای آلمانیِ آفلاین پیدا نشد؛ در تنظیمات گفتار دستگاه، صدای آلمانی (آلمان) را دانلود کنید و دوباره امتحان کنید.');
-        return;
-      }
-      Speech.speak(text, { ...targetVoice, rate: 0.78 });
+  const playGerman = useCallback((text: string) => {
+    setError('');
+    speakGerman({
+      text,
+      rate: 0.8,
+      onError: reason => setError(reason === 'no-german-voice'
+        ? 'صدای آلمانیِ دستگاه پیدا نشد؛ در تنظیمات گفتار، بستهٔ زبان آلمانی را نصب کنید یا مرورگر Chrome/Edge را امتحان کنید.'
+        : 'پخش صدای آلمانی انجام نشد؛ بلندی صدا و حالت بی‌صدا را بررسی کنید.'),
     });
   }, []);
 
@@ -146,12 +145,12 @@ export default function GermanSentenceHome() {
 
             {currentSentence ? (
               <View style={styles.sentenceShowcase}>
-                <Pressable accessibilityRole="button" accessibilityLabel={`پخش تلفظ آلمانی: ${currentSentence.text}`} style={styles.sentenceShowcaseTop} onPress={() => speakGerman(currentSentence.text)}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`پخش تلفظ آلمانی: ${currentSentence.text}`} style={styles.sentenceShowcaseTop} onPress={() => playGerman(currentSentence.text)}>
                   <View style={styles.sentenceLabelIcon}><Volume2 size={14} color="#C8C9FF" /></View>
                   <Text style={styles.sentenceLabel}>جملهٔ کلیدی این درس</Text>
                   <Text style={styles.sentenceLabelEn}>CORE SENTENCE</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جمله: ${currentSentence.text}`} onPress={() => speakGerman(currentSentence.text)}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جمله: ${currentSentence.text}`} onPress={() => playGerman(currentSentence.text)}>
                   <Text style={styles.sentenceGerman}>{currentSentence.text}</Text>
                 </Pressable>
                 <Text style={styles.sentencePersian}>{currentSentence.fa}</Text>
@@ -164,7 +163,7 @@ export default function GermanSentenceHome() {
                 {!!currentSentence.vocabulary.length && (
                   <View style={styles.wordChipRow}>
                     {currentSentence.vocabulary.map(item => (
-                      <Pressable key={`${currentSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`تلفظ واژه آلمانی: ${item.word}`} style={styles.wordChip} onPress={() => speakGerman(item.word)}>
+                      <Pressable key={`${currentSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`تلفظ واژه آلمانی: ${item.word}`} style={styles.wordChip} onPress={() => playGerman(item.word)}>
                         <Text style={styles.wordChipEn}>{item.word}</Text>
                         <Text style={styles.wordChipDivider}>·</Text>
                         <Text style={styles.wordChipFa}>{item.meaning}</Text>
@@ -311,7 +310,7 @@ export default function GermanSentenceHome() {
           </View>
 
           <View style={styles.quickRow}>
-            <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/de/reviews' as never)}>
+            <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/de/review' as never)}>
               <View style={[styles.quickIcon, { backgroundColor: Palette.tealSoft }]}><RefreshCw size={19} color={Palette.teal} /></View>
               <View style={styles.quickCopy}><Text style={styles.quickTitle}>مرور امروز</Text><Text style={styles.quickDesc}>جمله‌های آلمانی با موعد مرور</Text></View>
               <ChevronLeft size={17} color={Palette.muted} />
@@ -334,6 +333,11 @@ export default function GermanSentenceHome() {
             <Pressable accessibilityRole="button" accessibilityLabel="سنجش آغازین آلمانی برای انتخاب نقطهٔ شروع" style={styles.quickCard} onPress={() => router.push({ pathname: '/placement', params: { language: 'de' } } as never)}>
               <View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><Compass size={19} color={Palette.primary} /></View>
               <View style={styles.quickCopy}><Text style={styles.quickTitle}>پیداکردن نقطهٔ شروع</Text><Text style={styles.quickDesc}>سنجش کوتاه و اختیاری برای انتخاب سطح آلمانی</Text></View>
+              <ChevronLeft size={17} color={Palette.muted} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="انتخاب و آزمایش صدای آلمانی" accessibilityHint="شنیدن نمونه‌ها و انتخاب صدای آلمانی نصب‌شده روی دستگاه یا مرورگر" style={styles.quickCard} onPress={() => router.push('/learn/de/audio-check' as never)}>
+              <View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><Volume2 size={19} color={Palette.primary} /></View>
+              <View style={styles.quickCopy}><Text style={styles.quickTitle}>صدای آلمانی</Text><Text style={styles.quickDesc}>انتخاب و آزمایش صدایی که جمله‌ها را می‌خواند</Text></View>
               <ChevronLeft size={17} color={Palette.muted} />
             </Pressable>
             <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/de/backup' as never)}>

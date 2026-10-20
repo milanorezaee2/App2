@@ -23,7 +23,9 @@ import {
   type GermanSentenceLevelId,
 } from '@/lib/languages/germanSentenceCourse';
 import { germanProgress } from '@/lib/languages/catalog';
+import { primeGermanSpeech, speakGerman, stopGermanSpeech } from '@/lib/germanSpeech';
 import type { CourseProgress } from '@/lib/createCourseProgressStore';
+import { loadGermanLessonSession, type GermanLessonSession } from '@/lib/languages/germanStudyState';
 import { Typography } from '@/lib/theme';
 
 function resolveLevel(value?: string): GermanSentenceLevelId | null {
@@ -44,18 +46,29 @@ export default function GermanCourseLibrary() {
   const selectedLevelId = resolveLevel(levelParam);
   const selectedLevel = selectedLevelId === null ? undefined : GERMAN_SENTENCE_LEVELS.find(level => level.id === selectedLevelId);
   const [progress, setProgress] = useState<CourseProgress | null>(null);
+  const [sessions, setSessions] = useState<Record<string, GermanLessonSession | null>>({});
   const [expandedGroup, setExpandedGroup] = useState(0);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
 
   useFocusEffect(useCallback(() => {
     let alive = true;
-    void germanProgress.getCourseProgress().then(value => {
-      if (alive) { setProgress(value); setError(''); }
+    primeGermanSpeech();
+    void Promise.all([
+      germanProgress.getCourseProgress(),
+      Promise.all(GERMAN_SENTENCE_LESSONS.map(async lesson => {
+        try { return [lesson.id, await loadGermanLessonSession(lesson.id)] as const; }
+        catch { return [lesson.id, null] as const; }
+      })),
+    ]).then(([value, savedSessions]) => {
+      if (!alive) return;
+      setProgress(value);
+      setSessions(Object.fromEntries(savedSessions));
+      setError('');
     }).catch(() => {
       if (alive) setError('پیشرفت ذخیره‌شده خوانده نشد؛ فهرست درس‌ها همچنان قابل استفاده است.');
     });
-    return () => { alive = false; };
+    return () => { alive = false; void stopGermanSpeech(); };
   }, [retry]));
 
   useEffect(() => setExpandedGroup(0), [selectedLevel?.id]);
@@ -263,19 +276,25 @@ export default function GermanCourseLibrary() {
                                   <View style={styles.lessonTitleLine}>
                                     <Text style={styles.lessonTitle}>{lesson.title}</Text>
                                     <View style={[styles.lessonStatus, complete && styles.lessonStatusDone]}>
-                                      <Text style={[styles.lessonStatusText, complete && styles.lessonStatusTextDone]}>{complete ? 'تکمیل‌شده · قابل مرور' : 'شروع درس'}</Text>
+                                      <Text style={[styles.lessonStatusText, complete && styles.lessonStatusTextDone]}>{
+                                        complete
+                                          ? 'تکمیل‌شده · قابل مرور'
+                                          : sessions[lesson.id] && (sessions[lesson.id]!.stage > 0 || sessions[lesson.id]!.sentenceIndex > 0)
+                                            ? `ادامه از مرحلهٔ ${fa(sessions[lesson.id]!.stage + 1)}`
+                                            : 'شروع درس'
+                                      }</Text>
                                     </View>
                                   </View>
                                   <Text style={styles.lessonSubtitle}>{lesson.subtitle}</Text>
                                   {preview ? (
-                                    <View style={styles.lessonSentencePreview}>
-                                      <View style={styles.lessonSentenceHeader}><Volume2 size={13} color={Palette.primary} /><Text style={styles.lessonSentenceEyebrow}>جملهٔ نمونه</Text></View>
+                                    <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جملهٔ نمونه: ${preview.text}`} onPress={event => { (event as unknown as { stopPropagation?: () => void }).stopPropagation?.(); speakGerman({ text: preview.text, rate: 0.8 }); }} style={styles.lessonSentencePreview}>
+                                      <View style={styles.lessonSentenceHeader}><Volume2 size={13} color={Palette.primary} /><Text style={styles.lessonSentenceEyebrow}>جملهٔ نمونه · برای شنیدن لمس کنید</Text></View>
                                       <Text style={styles.lessonSentenceGerman}>{preview.text}</Text>
                                       <Text style={styles.lessonSentenceFa}>{preview.fa}</Text>
                                       <View style={styles.vocabularyRow}>
                                         {preview.vocabulary.slice(0, 3).map(item => <Text key={`${preview.id}-${item.word}`} style={styles.vocabularyChip}>{item.word} · {item.meaning}</Text>)}
                                       </View>
-                                    </View>
+                                    </Pressable>
                                   ) : null}
                                   {preview?.pattern ? <Text style={styles.lessonPattern}>الگو: {preview.pattern}</Text> : null}
                                 </View>

@@ -5,6 +5,9 @@ export type SpeechVoiceInfo = {
   name: string;
   language: string;
   quality?: string;
+  /** Web Speech API only: true when the voice is installed on the device. */
+  localService?: boolean;
+  isDefault?: boolean;
 };
 
 type NativeVoiceFetcher = () => Promise<SpeechVoiceInfo[]>;
@@ -58,6 +61,8 @@ function readWebVoicesSync(): SpeechVoiceInfo[] {
     name: v.name,
     language: v.lang,
     quality: v.localService ? 'Enhanced' : 'Default',
+    localService: v.localService,
+    isDefault: v.default,
   }));
 }
 
@@ -164,58 +169,133 @@ export function preloadSpeechVoices(): void {
   void loadAvailableVoices();
 }
 
+export function primarySpeechLanguage(locale: string): string {
+  return locale.replace(/_/g, '-').trim().toLowerCase().split('-')[0];
+}
+
+/** All voices that actually speak the requested language (de-DE and de-AT/de-CH for German). */
+export function voicesForLocale(
+  voices: readonly SpeechVoiceInfo[],
+  targetLocale: string,
+): SpeechVoiceInfo[] {
+  const primary = primarySpeechLanguage(targetLocale);
+  if (!primary) return [];
+  return voices.filter(voice => primarySpeechLanguage(voice.language || '') === primary);
+}
+
+/**
+ * Web browsers fill `speechSynthesis.getVoices()` asynchronously. Waiting a
+ * short, bounded moment prevents the first tap from speaking with the wrong
+ * (usually English) default voice.
+ */
+export async function waitForSpeechVoices(
+  targetLocale: string,
+  timeoutMs = 1400,
+): Promise<SpeechVoiceInfo[]> {
+  const ready = (list: readonly SpeechVoiceInfo[]) => voicesForLocale(list, targetLocale).length > 0;
+  let voices = await loadAvailableVoices();
+  if (ready(voices) || Platform.OS !== 'web') return voices;
+  const synth = getWebSynthesis();
+  if (!synth) return voices;
+  if (typeof synth.addEventListener !== 'function') {
+    return new Promise(resolve => setTimeout(() => resolve(readWebVoicesSync()), 250));
+  }
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      synth.removeEventListener('voiceschanged', onChange);
+      clearTimeout(timer);
+      clearTimeout(poll);
+      resolve(readWebVoicesSync());
+    };
+    const onChange = () => {
+      const next = readWebVoicesSync();
+      if (ready(next)) finish();
+    };
+    const timer = setTimeout(finish, timeoutMs);
+    // Some Chromium builds never fire voiceschanged after the first call.
+    const poll = setTimeout(() => {
+      if (ready(readWebVoicesSync())) finish();
+    }, Math.min(600, timeoutMs));
+    synth.addEventListener('voiceschanged', onChange);
+    onChange();
+  });
+}
+
 /**
  * Returns optimal options (`{ language, voice }`) for `Speech.speak(...)`.
- * Never passes an empty or unmatched `voice` string (which on Web causes `expo-speech`
- * to fall back to `voices[0]`, typically English!).
+ * Never passes an empty or unmatched `voice` string (which on Web causes
+ * `expo-speech` to fall back to `voices[0]`, typically English!).
  */
 export async function resolveSpeechOptions(
   targetLocale: string,
 ): Promise<{ language: string; voice?: string }> {
   const language = speechTagFor(targetLocale);
   const voices = await loadAvailableVoices();
-  const chosen = selectBestVoiceForLocale(voices, targetLocale);
+  const matching = voicesForLocale(voices, targetLocale);
+  const chosen = selectBestVoiceForLocale(matching, targetLocale);
   if (chosen?.identifier) {
     return { language, voice: chosen.identifier };
   }
+  // No voice declared for this language: still ask the platform for the right
+  // language instead of passing an explicit English voice.
   return { language };
 }
 
-/** Resolve only a voice verified to match the requested language; never let the
- * device silently substitute its default (often English) voice for German. */
+/**
+ * Resolve a German/Russian/English voice without ever silently falling back to
+ * a different language. Network voices are fully eligible: on the web the
+ * high-quality Chrome "Google Deutsch" voice is a network voice, and rejecting
+ * it left German lessons silent while Russian (which already accepted it) worked.
+ */
 export async function resolveRequiredSpeechOptions(
   targetLocale: string,
 ): Promise<{ language: string; voice: string } | null> {
-  const voices = await loadAvailableVoices();
-  const normalizedTarget = targetLocale.replace(/_/g, '-').toLowerCase();
-  const matchingLocale = voices.filter(voice =>
-    (voice.language || '').replace(/_/g, '-').toLowerCase() === normalizedTarget
-    && !/network|online/i.test(`${voice.identifier} ${voice.name}`),
-  );
+  const voices = await waitForSpeechVoices(targetLocale);
+  const matching = voicesForLocale(voices, targetLocale);
+  if (!matching.length) return null;
 
-  // On Android the platform exposes explicit local/network voice identifiers.
-  // Refuse a network voice (or the device-default English voice) instead of
-  // silently letting the TTS engine substitute it for German.
-  const onDeviceVoices = Platform.OS === 'android'
-    ? matchingLocale.filter(voice => /local/i.test(`${voice.identifier} ${voice.name}`))
-    : Platform.OS === 'web'
-      ? matchingLocale.filter(voice => String(voice.quality || '').toLowerCase() === 'enhanced')
-      : matchingLocale;
+  const localNamed = matching.filter(voice => {
+    const hay = `${voice.identifier} ${voice.name}`.toLowerCase();
+    return voice.localService === true || /\blocal\b|\benhanced\b/.test(hay);
+  });
+  // Prefer an installed voice, then any declared voice for the language. Never
+  // drop the only usable voice just because the platform labels it as network.
+  const pool = localNamed.length ? localNamed : matching;
 
-  // The user selected the feminine German sample. Prefer a local de-DE voice
-  // identifiable as feminine; avoid a clearly masculine voice when the device
-  // exposes gendered German voice names. Unknown naming schemes remain eligible.
-  const germanVoiceNames = (voice: SpeechVoiceInfo) => `${voice.identifier} ${voice.name}`.toLowerCase();
-  const feminineGermanVoice = /anna|petra|katja|helena|marlene|vicki|female|de-de-x-deb/;
-  const masculineGermanVoice = /markus|martin|conrad|hans|male|de-de-x-deg/;
-  const feminineVoices = targetLocale.toLowerCase() === 'de-de'
-    ? onDeviceVoices.filter(voice => feminineGermanVoice.test(germanVoiceNames(voice)))
-    : [];
-  const safeGermanVoices = targetLocale.toLowerCase() === 'de-de'
-    ? onDeviceVoices.filter(voice => !masculineGermanVoice.test(germanVoiceNames(voice)))
-    : onDeviceVoices;
-  const preferredVoices = feminineVoices.length ? feminineVoices : safeGermanVoices;
-  const chosen = selectBestVoiceForLocale(preferredVoices, targetLocale);
+  // The German course uses a feminine narrator. Prefer an identifiable feminine
+  // German voice, but never reject every available voice because of a naming
+  // convention the platform does not expose.
+  const nameOf = (voice: SpeechVoiceInfo) => `${voice.identifier} ${voice.name}`.toLowerCase();
+  const feminineGermanVoice = /anna|petra|katja|helena|marlene|vicki|hedda|claudia|female|de-de-x-deb|google deutsch|google german/;
+  const masculineGermanVoice = /markus|martin|conrad|hans|stefan|male|de-de-x-deg/;
+  const preferred = targetLocale.toLowerCase().startsWith('de')
+    ? (() => {
+        const feminine = pool.filter(voice => feminineGermanVoice.test(nameOf(voice)));
+        const neutral = pool.filter(voice => !masculineGermanVoice.test(nameOf(voice)));
+        return feminine.length ? feminine : neutral.length ? neutral : pool;
+      })()
+    : pool;
+
+  const chosen = selectBestVoiceForLocale(preferred, targetLocale)
+    ?? selectBestVoiceForLocale(pool, targetLocale)
+    ?? matching[0];
   if (!chosen?.identifier) return null;
   return { language: speechTagFor(targetLocale), voice: chosen.identifier };
+}
+
+/** Best-effort, language-safe voice check used by lesson UI to explain silence. */
+export async function detectSpeechSupport(targetLocale: string): Promise<{
+  available: boolean;
+  voiceName?: string;
+  local?: boolean;
+}> {
+  const voices = await waitForSpeechVoices(targetLocale, 900);
+  const matching = voicesForLocale(voices, targetLocale);
+  const chosen = selectBestVoiceForLocale(matching, targetLocale);
+  return chosen
+    ? { available: true, voiceName: chosen.name, local: chosen.localService !== false }
+    : { available: false };
 }
