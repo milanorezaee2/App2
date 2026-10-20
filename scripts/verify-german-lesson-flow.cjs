@@ -143,9 +143,53 @@ await require('esbuild').build({
   check('with no listed German voice the lesson still speaks German like Russian does', fallback?.text === 'Hallo' && String(fallback?.language || '').toLowerCase().startsWith('de'));
   check('the fallback never forwards an English voice identifier', !fallback?.voice || !/english|samantha/i.test(String(fallback.voice)));
   check('a missing voice entry is not reported as an error', missingVoiceReason === null);
+  check('the speech layer reports that the device has no German voice',
+    app.getGermanVoiceStatus().checked === true && app.getGermanVoiceStatus().german === false);
   global.window.speechSynthesis.getVoices = originalVoices;
   app.setGermanVoicePreference(null);
   check('choosing the automatic voice clears the stored preference', (storage.get('german_voice_preference_v1') ?? null) === null);
+  app.speakGerman({ text: 'Tschüss' });
+  await wait(200);
+  check('after the German voices come back the speech layer reports a German voice again',
+    app.getGermanVoiceStatus().german === true && !!app.getGermanVoiceStatus().voiceName);
+
+  // The German voice that ships with the app: every sentence and every word of
+  // every lesson must have a clip, and the referenced files must exist.
+  const fs = require('node:fs');
+  const audioDir = path.join(root, 'public/audio/de');
+  const manifest = JSON.parse(fs.readFileSync(path.join(audioDir, 'manifest.json'), 'utf8'));
+  const lessonsWithAudio = Object.keys(manifest.lessons).length;
+  check('the German audio pack covers every lesson', lessonsWithAudio === app.GERMAN_SENTENCE_LESSONS.length);
+  let missingSentences = 0;
+  let missingWords = 0;
+  let badRanges = 0;
+  let missingFiles = 0;
+  const checkedFiles = new Set();
+  for (const lesson of app.GERMAN_SENTENCE_LESSONS) {
+    const entry = manifest.lessons[lesson.id];
+    if (!entry) { missingSentences += lesson.sentences.length; continue; }
+    for (const [kind, pack, texts] of [
+      ['sentences', entry.sentences, lesson.sentences.map(item => item.text)],
+      ['words', entry.words, lesson.sentences.flatMap(item => item.vocabulary.map(word => word.word))],
+    ]) {
+      const file = path.join(audioDir, pack.file);
+      if (!checkedFiles.has(pack.file)) {
+        checkedFiles.add(pack.file);
+        if (!fs.existsSync(file) || fs.statSync(file).size < 20000) missingFiles += 1;
+      }
+      for (const text of texts) {
+        const key = text.trim().toLowerCase().replace(/\s+/g, ' ');
+        const range = pack.clips[key];
+        if (!range) { if (kind === 'sentences') missingSentences += 1; else missingWords += 1; continue; }
+        if (!(range[1] > range[0] + 0.15)) badRanges += 1;
+      }
+    }
+  }
+  check('every German sentence has its own clip in the shipped audio pack', missingSentences === 0);
+  check('every German vocabulary word has its own clip in the shipped audio pack', missingWords === 0);
+  check('every clip range is a positive, non-empty interval', badRanges === 0);
+  check('every referenced audio file is present and non-trivial', missingFiles === 0 && checkedFiles.size === app.GERMAN_SENTENCE_LESSONS.length * 2);
+  check('the audio pack records which engine produced it', /eSpeak NG/.test(String(manifest.engine)));
 
   check('speech boundary indexes map to the word being read', app.wordIndexAt('Guten Morgen, wie geht es dir?', 6) === 1 && app.wordIndexAt('Guten Morgen', 0) === 0 && app.wordIndexAt('Guten Morgen', 11) === 1);
 

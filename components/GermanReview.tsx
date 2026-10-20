@@ -12,6 +12,7 @@ import type { CourseProgress, ReviewRating, SentenceReviewCard } from '@/lib/cou
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
 import { primeGermanSpeech, speakGerman, stopGermanSpeech } from '@/lib/germanSpeech';
+import { setGermanAudioLesson } from '@/lib/germanAudio';
 
 const ratingOptions: Array<{ id: ReviewRating; label: string; hint: string; color: string }> = [
   { id: 'again', label: 'فراموش کردم', hint: '۱۰ دقیقه', color: Palette.danger },
@@ -89,18 +90,20 @@ export default function GermanReview() {
     } finally { setSaving(false); }
   };
 
-  const speak = (text: string) => {
+  const speak = (text: string, kind: 'sentence' | 'word' = 'sentence') => {
     setError('');
     void stopGermanSpeech();
     speakGerman({
       text,
-      rate: 0.8,
+      kind,
+      rate: 0.9,
       onError: () => setError('پخش صدا انجام نشد؛ جمله همچنان برای خواندن نمایش داده می‌شود.'),
     });
   };
 
   if (sessionActive && currentContent) {
     const { lesson, sentence } = currentContent;
+    setGermanAudioLesson(lesson.id);
     const vocabulary = sentence.vocabulary.map(item => `${item.word} · ${item.meaning}`).join('   ');
     return <View style={styles.root}>
       {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}

@@ -13,6 +13,7 @@ import { GermanPalette as Palette, GERMAN_LEVEL_GRADIENTS } from '@/components/g
 import { GermanBottomNav } from '@/components/GermanBottomNav';
 import type { CourseLevelId } from '@/lib/courseContent';
 import { toPersianDigits as fa } from '@/lib/format';
+import { setGermanAudioLesson } from '@/lib/germanAudio';
 import { PageNavigation } from '@/components/PageNavigation';
 import {
   GERMAN_SENTENCE_LEVELS,
@@ -287,7 +288,7 @@ export default function GermanCourseLibrary() {
                                   </View>
                                   <Text style={styles.lessonSubtitle}>{lesson.subtitle}</Text>
                                   {preview ? (
-                                    <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جملهٔ نمونه: ${preview.text}`} onPress={event => { (event as unknown as { stopPropagation?: () => void }).stopPropagation?.(); speakGerman({ text: preview.text, rate: 0.8 }); }} style={styles.lessonSentencePreview}>
+                                    <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جملهٔ نمونه: ${preview.text}`} onPress={event => { (event as unknown as { stopPropagation?: () => void }).stopPropagation?.(); setGermanAudioLesson(lesson.id); speakGerman({ text: preview.text, rate: 0.9 }); }} style={styles.lessonSentencePreview}>
                                       <View style={styles.lessonSentenceHeader}><Volume2 size={13} color={Palette.primary} /><Text style={styles.lessonSentenceEyebrow}>جملهٔ نمونه · برای شنیدن لمس کنید</Text></View>
                                       <Text style={styles.lessonSentenceGerman}>{preview.text}</Text>
                                       <Text style={styles.lessonSentenceFa}>{preview.fa}</Text>

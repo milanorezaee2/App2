@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,7 +35,8 @@ import {
 import { germanProgress } from '@/lib/languages/catalog';
 import { syncPersonalLearningData } from '@/lib/personalLearningSync';
 import type { CourseProgress } from '@/lib/createCourseProgressStore';
-import { primeGermanSpeech, speakGerman, stopGermanSpeech } from '@/lib/germanSpeech';
+import { primeGermanSpeech, probeGermanVoice, speakGerman, stopGermanSpeech, subscribeGermanVoiceStatus } from '@/lib/germanSpeech';
+import { setGermanAudioLesson } from '@/lib/germanAudio';
 import { germanHomeStyles as styles } from './germanHomeStyles';
 
 const GERMAN_RAIL_LEVELS = GERMAN_SENTENCE_LEVELS.map((level, index) => ({
@@ -54,6 +55,7 @@ export default function GermanSentenceHome() {
   useFocusEffect(useCallback(() => {
     let alive = true;
     primeGermanSpeech();
+    probeGermanVoice();
     const refreshLocal = () => Promise.all([germanProgress.getCourseProgress(), germanProgress.getDueReviewCards()])
       .then(([nextProgress, due]) => {
         if (!alive) return;
@@ -70,11 +72,16 @@ export default function GermanSentenceHome() {
     return () => { alive = false; void stopGermanSpeech(); };
   }, [retry]));
 
-  const playGerman = useCallback((text: string) => {
+  useEffect(() => subscribeGermanVoiceStatus(() => undefined), []);
+
+  const playGerman = useCallback((text: string, kind: 'sentence' | 'word' = 'sentence') => {
+    // The hero card always shows the resume lesson; the effect below keeps the
+    // audio context pointed at that lesson's pack.
     setError('');
     speakGerman({
       text,
-      rate: 0.8,
+      kind,
+      rate: 0.9,
       onError: () => setError('پخش صدای آلمانی انجام نشد؛ بلندی صدا و حالت بی‌صدا را بررسی کنید و دوباره تلاش کنید.'),
     });
   }, []);
@@ -123,6 +130,8 @@ export default function GermanSentenceHome() {
     }
     if (heroWords.length === 7) break;
   }
+
+  useEffect(() => { setGermanAudioLesson(currentLesson.id); }, [currentLesson.id]);
 
   const openLevel = (levelId: number) => router.push(`/learn/de/library?level=${levelId}` as never);
   const openLesson = (id: string) => router.push({ pathname: '/learn/[language]/lesson', params: { language: 'de', id } } as never);
@@ -182,7 +191,7 @@ export default function GermanSentenceHome() {
                 {!!heroWords.length && (
                   <View style={styles.wordChipRow}>
                     {heroWords.map(item => (
-                      <Pressable key={`${currentSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`تلفظ واژه آلمانی: ${item.word}`} style={styles.wordChip} onPress={() => playGerman(item.word)}>
+                      <Pressable key={`${currentSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`تلفظ واژه آلمانی: ${item.word}`} style={styles.wordChip} onPress={() => playGerman(item.word, 'word')}>
                         <Text style={styles.wordChipEn}>{item.word}</Text>
                         <Text style={styles.wordChipDivider}>·</Text>
                         <Text style={styles.wordChipFa}>{item.meaning}</Text>

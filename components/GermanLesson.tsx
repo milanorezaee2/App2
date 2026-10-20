@@ -36,12 +36,14 @@ import {
   saveGermanLessonSession,
   type GermanLessonSession,
 } from '@/lib/languages/germanStudyState';
+import { setGermanAudioLesson } from '@/lib/germanAudio';
 import {
   germanSpeechSupport,
   primeGermanSpeech,
   speakGerman,
   stopGermanSpeech,
   subscribeGermanVoices,
+  subscribeGermanVoiceStatus,
   wordIndexAt,
 } from '@/lib/germanSpeech';
 
@@ -50,11 +52,7 @@ const PAGE_SIZE = GERMAN_STUDY_PAGE_SIZE;
 const NORMAL_RATE = 0.9;
 const SLOW_RATE = 0.55;
 
-const NO_VOICE_MESSAGE = Platform.OS === 'web'
-  ? 'این مرورگر از پخش گفتار پشتیبانی نمی‌کند. درس را در Chrome یا Edge باز کنید؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'
-  : 'موتور گفتار روی این دستگاه در دسترس نیست. متن و راهنمای خوانش همچنان دیده می‌شوند.';
-const UNLISTED_VOICE_MESSAGE = 'مرورگر فهرست صداهای آلمانی را برنگرداند؛ درس مثل بخش روسی با زبان آلمانی پخش می‌شود. اگر صدا طبیعی نبود، از «صدا» در سربرگ، صدای آلمانی دستگاه را انتخاب کنید.';
-
+const UNLISTED_VOICE_MESSAGE = 'این درس صداهای آلمانی خودش را همراه دارد؛ اگر پخش نشد، اتصال صفحه را یک‌بار تازه کنید یا از بخش «صدا» در سربرگ، صدای آلمانی را بررسی کنید.';
 type WordToken = { text: string; start: number };
 
 function splitWords(text: string): WordToken[] {
@@ -78,8 +76,6 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
   const [completionError, setCompletionError] = useState('');
   const [speechError, setSpeechError] = useState('');
   const [voiceState, setVoiceState] = useState<'checking' | 'ready' | 'unavailable'>('checking');
-  const [voiceName, setVoiceName] = useState('');
-  const [voiceListed, setVoiceListed] = useState(true);
   const [spokenWord, setSpokenWord] = useState(-1);
   const [loadingRetry, setLoadingRetry] = useState(0);
   const [saveRetry, setSaveRetry] = useState(0);
@@ -125,16 +121,12 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
     return patterns;
   }, [lesson]);
 
-  // Informational only. Playback never waits for a listed voice: German uses the
-  // same pipeline as Russian, which speaks even when the list is empty.
+  // Informational only: it tells the audio-check page whether the optional
+  // device voice exists. The bundled German audio never depends on it.
   const refreshVoiceState = useCallback(() => {
     setVoiceState('checking');
     void germanSpeechSupport()
-      .then(result => {
-        setVoiceState(result.available ? 'ready' : 'unavailable');
-        setVoiceName(result.voiceName ?? '');
-        setVoiceListed(result.listed !== false);
-      })
+      .then(result => setVoiceState(result.available ? 'ready' : 'unavailable'))
       .catch(() => setVoiceState('ready'));
   }, []);
 
@@ -144,15 +136,16 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
     const german = voices.find(voice => (voice.language || '').toLowerCase().startsWith('de'));
     if (!german) return;
     setVoiceState('ready');
-    setVoiceListed(true);
-    setVoiceName(german.name);
   }), []);
 
-  const speak = useCallback((text: string, rate = NORMAL_RATE) => {
+  useEffect(() => subscribeGermanVoiceStatus(() => setVoiceState('ready')), []);
+
+  const speak = useCallback((text: string, rate = NORMAL_RATE, kind: 'sentence' | 'word' = 'sentence') => {
     setSpeechError('');
     setSpokenWord(-1);
     speakGerman({
       text,
+      kind,
       rate,
       onStart: () => {
         hasSpoken.current = true;
@@ -170,9 +163,10 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
 
   // Auto-play paths stay quiet when the browser blocks autoplay or no German
   // voice exists; the learner sees the explicit warning instead of a red error.
-  const autoSpeak = useCallback((text: string, rate = NORMAL_RATE) => {
+  const autoSpeak = useCallback((text: string, rate = NORMAL_RATE, kind: 'sentence' | 'word' = 'sentence') => {
     speakGerman({
       text,
+      kind,
       rate,
       onStart: () => {
         hasSpoken.current = true;
@@ -187,12 +181,11 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
     setSessionReady(false);
     setSessionError('');
     setCompletionError('');
+    setGermanAudioLesson(lesson.id);
     primeGermanSpeech();
     void germanSpeechSupport().then(result => {
       if (!alive) return;
       setVoiceState(result.available ? 'ready' : 'unavailable');
-      setVoiceName(result.voiceName ?? '');
-      setVoiceListed(result.listed !== false);
     }).catch(() => { if (alive) setVoiceState('ready'); });
     void loadGermanLessonSession(lesson.id).then(saved => {
       if (!alive) return;
@@ -253,7 +246,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
   const firstPageWord = pageVocabulary[0]?.word.word ?? '';
   useEffect(() => {
     if (!sessionReady || stage !== 5 || !firstPageWord) return;
-    const timer = setTimeout(() => autoSpeak(firstPageWord), 420);
+    const timer = setTimeout(() => autoSpeak(firstPageWord, NORMAL_RATE, 'word'), 420);
     return () => clearTimeout(timer);
   }, [sessionReady, stage, sentenceIndex, firstPageWord, autoSpeak]);
 
@@ -263,6 +256,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
       if (index >= words.length) return;
       speakGerman({
         text: words[index],
+        kind: 'word',
         rate: NORMAL_RATE,
         onStart: () => setVoiceState('ready'),
         onDone: () => step(index + 1),
@@ -364,7 +358,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
           key={`${word.start}-${word.text}`}
           accessibilityRole="button"
           accessibilityLabel={`پخش واژهٔ آلمانی: ${word.text}`}
-          onPress={() => speak(word.text, NORMAL_RATE)}
+          onPress={() => speak(word.text, NORMAL_RATE, 'word')}
           style={[styles.sentenceWord, index === spokenWord && styles.sentenceWordActive]}
         >
           {word.text}{index < words.length - 1 ? ' ' : ''}
@@ -388,9 +382,9 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
         <View style={styles.headerBottom}>
           <View style={styles.headerInfoChip}><BookOpenCheck size={13} color="#D9F3E8" /><Text style={styles.headerInfoText}>مسیر اصلی جمله‌محور</Text></View>
           <Text style={styles.headerInfoText}>{fa(lesson.sentences.length)} جملهٔ اصلی</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={voiceState === 'ready' ? `صدای آلمانی آماده: ${voiceName}` : voiceState === 'unavailable' ? 'صدای آلمانی پیدا نشد؛ انتخاب و آزمایش صدا' : 'در حال آماده‌سازی صدا'} accessibilityHint="باز کردن صفحهٔ انتخاب و آزمایش صدای آلمانی" onPress={() => router.push('/learn/de/audio-check' as never)} style={styles.voiceChip}>
-            <View style={[styles.voiceDot, voiceState === 'ready' && styles.voiceDotReady, voiceState === 'unavailable' && styles.voiceDotMissing]} />
-            <Text style={styles.voiceChipText}>{voiceState === 'ready' ? 'صدای آلمانی' : voiceState === 'unavailable' ? 'صدا پیدا نشد' : 'صدا…'}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="صدای آلمانی این درس" accessibilityHint="باز کردن صفحهٔ بررسی صدا" onPress={() => router.push('/learn/de/audio-check' as never)} style={styles.voiceChip}>
+            <View style={[styles.voiceDot, styles.voiceDotReady]} />
+            <Text style={styles.voiceChipText}>صدای آلمانی</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -405,17 +399,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
       </View>
 
       {!!(sessionError || speechError) && <Text accessibilityRole="alert" style={styles.error}>{sessionError || speechError}</Text>}
-      {voiceState === 'unavailable' ? <View style={styles.voiceWarning}>
-        <Text style={styles.voiceWarningTitle}>این مرورگر موتور گفتار ندارد</Text>
-        <Text style={styles.voiceWarningText}>{NO_VOICE_MESSAGE}</Text>
-        <View style={styles.voiceWarningActions}>
-          <Pressable accessibilityRole="button" style={styles.voiceRetry} onPress={refreshVoiceState}><Text style={styles.voiceRetryText}>بررسی دوباره</Text></Pressable>
-        </View>
-      </View> : null}
-      {voiceState !== 'unavailable' && !voiceListed ? <View style={styles.voiceHint}>
-        <Volume2 size={15} color={Palette.primary} />
-        <Text style={styles.voiceHintText}>{UNLISTED_VOICE_MESSAGE}</Text>
-      </View> : null}
+
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {stage === 0 && <View style={styles.centerStage}>
@@ -438,7 +422,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
             </View>
             {!!firstSentence.vocabulary.length && <>
               <Text style={styles.previewWordsLabel}>واژه‌های کلیدی · برای شنیدن لمس کنید</Text>
-              <View style={styles.previewWords}>{firstSentence.vocabulary.map(item => <Pressable key={`${firstSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`پخش واژهٔ آلمانی: ${item.word}`} style={styles.previewWordChip} onPress={() => speak(item.word, NORMAL_RATE)}><Volume2 size={13} color={Palette.primary} /><Text style={styles.previewWordText}>{item.word}</Text></Pressable>)}</View>
+              <View style={styles.previewWords}>{firstSentence.vocabulary.map(item => <Pressable key={`${firstSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`پخش واژهٔ آلمانی: ${item.word}`} style={styles.previewWordChip} onPress={() => speak(item.word, NORMAL_RATE, 'word')}><Volume2 size={13} color={Palette.primary} /><Text style={styles.previewWordText}>{item.word}</Text></Pressable>)}</View>
             </>}
           </View> : null}
           <View style={styles.promiseCard}>
@@ -448,7 +432,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
           {lesson.teachingFa ? <View style={styles.noteCard}><Text style={styles.noteTitle}>نکتهٔ آلمانی به فارسی</Text><Text style={styles.noteText}>{lesson.teachingFa}</Text></View> : null}
           <View style={styles.voiceReadyCard}>
             <Volume2 size={18} color={Palette.primary} />
-            <Text style={styles.voiceReadyText}>{voiceState === 'unavailable' ? 'این مرورگر موتور گفتار ندارد؛ متن و راهنمای خوانش همچنان دیده می‌شوند.' : 'جمله‌ها خودکار پخش می‌شوند و هر واژه با لمس خوانده می‌شود؛ همان روش بخش روسی.'}</Text>
+            <Text style={styles.voiceReadyText}>صداهای این درس همراه برنامه ذخیره شده‌اند؛ جمله‌ها خودکار پخش می‌شوند و هر واژه با لمس خوانده می‌شود.</Text>
           </View>
         </View>}
 

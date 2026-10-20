@@ -52,6 +52,10 @@ export const germanHomeStyles = StyleSheet.create({
   sentenceCountLabel: { fontFamily: Typography.fontFamily, color: '#D5D7FF', fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
 
   errorCard: { padding: 14, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, borderRadius: 16, backgroundColor: Palette.dangerSoft, borderWidth: 1, borderColor: '#F5CDD3' },
+  voiceNotice: { marginTop: 12, padding: 14, borderRadius: 16, backgroundColor: Palette.warningSoft, borderWidth: 1, borderColor: '#F2DFC1', gap: 6 },
+  voiceNoticeTitle: { fontFamily: Typography.fontFamily, color: Palette.warning, fontSize: 12, textAlign: 'right', writingDirection: 'rtl' },
+  voiceNoticeText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+  voiceNoticeLink: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 11, textAlign: 'right', writingDirection: 'rtl' },
   errorText: { flex: 1, fontFamily: Typography.fontFamily, color: Palette.danger, fontSize: 11, lineHeight: 19, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
   retryText: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
 

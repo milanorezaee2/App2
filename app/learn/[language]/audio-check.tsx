@@ -4,16 +4,21 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { GermanCourseButton as CourseButton, GermanCoursePage as CoursePage, germanCourseStyles as s } from '@/components/GermanCourseUI';
 import { A1_AUDIO_SAMPLES, AUDIO_OBSERVATIONS, audioCheckReport, type AudioObservation } from '@/lib/languages/a1AudioCheck';
 import {
+  getGermanVoiceSource,
   germanSpeechSupport,
   listGermanVoices,
   loadGermanVoicePreference,
   setGermanVoicePreference,
+  setGermanVoiceSource,
   speakGerman,
   stopGermanSpeech,
+  type GermanVoiceSource,
 } from '@/lib/germanSpeech';
 import { selectBestVoiceForLocale, type SpeechVoiceInfo } from '@/lib/speechLanguage';
+import { loadGermanAudioManifest, playGermanClip, setGermanAudioLesson, stopGermanClip } from '@/lib/germanAudio';
+import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 
-const NO_VOICE_MESSAGE = 'صدای آلمانی پیدا نشد. در Chrome یا Edge، در بخش زبان‌های سیستم زبان Deutsch را اضافه کنید؛ روی گوشی، بستهٔ گفتار آلمانی (Google TTS / صدای آلمانی) را نصب کنید و سپس دوباره بررسی کنید. درس بدون صدا هم خواندنی می‌ماند.';
+const NO_VOICE_MESSAGE = 'صدای آلمانی دستگاه در دسترس نیست؛ نگران نباشید، درس‌ها همیشه با صدای آلمانی داخلی برنامه پخش می‌شوند.';
 
 export default function AudioCheck() {
   const { language } = useLocalSearchParams<{ language: string }>();
@@ -25,6 +30,9 @@ export default function AudioCheck() {
   const [active, setActive] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [observations, setObservations] = useState<Partial<Record<string, AudioObservation>>>({});
+  const [bundled, setBundled] = useState<{ engine: string; sentences: number; words: number; sample: string; sampleWord: string } | null>(null);
+  const [bundledStatus, setBundledStatus] = useState('');
+  const [source, setSource] = useState<GermanVoiceSource>('app');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const request = useRef(0);
 
@@ -60,14 +68,51 @@ export default function AudioCheck() {
       });
   }, []);
 
+  // The voice that actually ships with the app: no install, no permission, no network.
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    setSource(getGermanVoiceSource());
+    setGermanAudioLesson('de-v2-greetings');
+    void loadGermanAudioManifest().then(manifest => {
+      if (!alive || !manifest) return;
+      const greetings = manifest.lessons['de-v2-greetings'];
+      const firstLesson = GERMAN_SENTENCE_LESSONS[0];
+      setBundled({
+        engine: manifest.engine ?? 'eSpeak NG',
+        sentences: Object.keys(greetings?.sentences.clips ?? {}).length,
+        words: Object.keys(greetings?.words.clips ?? {}).length,
+        sample: firstLesson?.sentences[0]?.text ?? '',
+        sampleWord: firstLesson?.sentences[0]?.vocabulary[0]?.word ?? '',
+      });
+    });
+    return () => { alive = false; };
+  }, []));
+
   useFocusEffect(useCallback(() => {
     loadVoices();
     return () => {
       request.current += 1;
       if (timer.current) clearTimeout(timer.current);
       void stopGermanSpeech();
+      stopGermanClip();
     };
   }, [loadVoices]));
+
+  const playBundled = (kind: 'sentence' | 'word') => {
+    const text = kind === 'word' ? bundled?.sampleWord : bundled?.sample;
+    if (!text) return;
+    setBundledStatus('در حال پخش صدای داخلی برنامه…');
+    void playGermanClip({
+      text,
+      kind,
+      lessonId: 'de-v2-greetings',
+      rate: 0.9,
+      onDone: () => setBundledStatus('پخش صدای داخلی برنامه تمام شد.'),
+      onError: () => setBundledStatus('پخش صدا انجام نشد؛ بلندی صدا و حالت بی‌صدا را بررسی کنید.'),
+    }).then(played => {
+      if (!played) setBundledStatus('صدای داخلی برای این عبارت پیدا نشد.');
+    });
+  };
 
   if (language !== 'de') return <CoursePage title="بررسی صدا پیدا نشد">{null}</CoursePage>;
 
@@ -123,14 +168,37 @@ export default function AudioCheck() {
     setStatus('پخش متوقف شد؛ شنیده‌شدن صدا تأیید نشده است.');
   };
 
-  return <CoursePage title="بررسی و انتخاب صدای آلمانی" subtitle="آزمون روی دستگاه شما • بدون نمره یا ضبط میکروفن" back="/learn/de">
-    <Text style={s.notice}>بلندی صدا را بالا ببرید و حالت بی‌صدا را بررسی کنید. صدا از موتور گفتار دستگاه/مرورگر می‌آید؛ آفلاین‌بودن به تنظیمات آن بستگی دارد. پیدا‌شدن صدا یا پیام «پایان پخش» ثابت نمی‌کند که تلفظ درست یا صدا شنیده شده است.</Text>
+  return <CoursePage title="بررسی و انتخاب صدای آلمانی" subtitle="صدای داخلی برنامه • بدون نصب زبان و بدون اینترنت" back="/learn/de">
+    <Text style={s.notice}>بلندی صدا را بالا ببرید و حالت بی‌صدا را بررسی کنید. جمله‌ها و واژه‌های آلمانی همراه خود برنامه ذخیره شده‌اند؛ برای شنیدنشان نه به نصب زبان آلمانی روی دستگاه نیاز است و نه به اینترنت.</Text>
 
     <View style={s.card}>
-      <Text style={s.heading}>۱. صدای آلمانی</Text>
+      <Text style={s.heading}>۱. صدای آلمانی داخلی برنامه</Text>
+      {bundled ? <>
+        <Text style={s.small}>موتور: {bundled.engine} • {bundled.sentences} جمله و {bundled.words} واژه در درس نمونه</Text>
+        <CourseButton title={`شنیدن نمونه: ${bundled.sample}`} secondary disabled={active !== null} onPress={() => playBundled('sentence')} />
+        <CourseButton title={`شنیدن واژه: ${bundled.sampleWord}`} secondary disabled={active !== null} onPress={() => playBundled('word')} />
+      </> : <Text style={s.small}>صداهای داخلی برنامه در حال بارگذاری…</Text>}
+      {!!bundledStatus && <Text accessibilityLiveRegion="polite" style={s.small}>{bundledStatus}</Text>}
+      <Text style={s.small}>این صدا همیشه آلمانی است و در همهٔ مرورگرها، از جمله Firefox گوشی، کار می‌کند.</Text>
+      <CourseButton
+        title={source === 'app' ? 'انتخاب‌شده: صدای داخلی برنامه (پیشنهادی)' : 'استفاده از صدای داخلی برنامه'}
+        secondary={source !== 'app'}
+        disabled={active !== null}
+        onPress={() => { setGermanVoiceSource('app'); setSource('app'); setBundledStatus('درس‌ها با صدای داخلی برنامه پخش می‌شوند.'); }}
+      />
+      <CourseButton
+        title={source === 'device' ? 'انتخاب‌شده: صدای آلمانی دستگاه' : 'استفاده از صدای آلمانی دستگاه (اگر نصب باشد)'}
+        secondary={source !== 'device'}
+        disabled={active !== null}
+        onPress={() => { setGermanVoiceSource('device'); setSource('device'); setBundledStatus('اگر دستگاه صدای آلمانی داشته باشد، درس‌ها با آن خوانده می‌شوند؛ وگرنه صدای داخلی برنامه.'); }}
+      />
+    </View>
+
+    <View style={s.card}>
+      <Text style={s.heading}>۲. صدای آلمانی دستگاه (اختیاری)</Text>
       {loading && <Text style={s.small}>در حال خواندن صداهای آلمانی…</Text>}
-      {!!voiceError && <Text accessibilityRole="alert" style={s.error}>{voiceError}</Text>}
-      {!loading && !voices.length && <Text style={s.small}>پس از نصب زبان آلمانی، دکمهٔ «دوباره صداها را بررسی کن» را بزنید.</Text>}
+      {!!voiceError && <Text style={s.small}>{voiceError}</Text>}
+      {!loading && !voices.length && <Text style={s.small}>این دستگاه صدای آلمانی ندارد؛ بخش اختیاری است و درس‌ها بدون آن هم کاملاً آلمانی خوانده می‌شوند.</Text>}
       {voices.map(voice => <View key={voice.identifier} style={{ gap: 2 }}>
         <CourseButton
           title={`${voice.identifier === selected ? 'انتخاب‌شده: ' : 'انتخاب: '}${voice.name} (${voice.language})`}
@@ -147,7 +215,7 @@ export default function AudioCheck() {
     <Text accessibilityLiveRegion="polite" style={s.description}>{status}</Text>
     <CourseButton title="توقف پخش" secondary onPress={stop} />
 
-    <Text style={s.heading}>۲. ابتدا بشنوید، سپس متن را مقایسه کنید</Text>
+    <Text style={s.heading}>۳. ابتدا بشنوید، سپس متن را مقایسه کنید</Text>
     {A1_AUDIO_SAMPLES.map(sample => <View key={sample.id} style={s.card}>
       <Text style={s.heading}>{sample.title}</Text>
       <CourseButton title={`پخش: ${sample.title}`} disabled={!selected || active !== null} onPress={() => play(sample.id, sample.text)} />

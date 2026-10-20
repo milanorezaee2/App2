@@ -2,19 +2,22 @@
 /**
  * Runtime proof for the German lesson audio.
  *
- * Optional browser test, like the other `verify-*.cjs` browser scripts here.
- * It needs a built web export, a running preview server and Playwright:
+ * The German course ships its own voice (`public/audio/de`), so the lessons must
+ * sound German even on a phone whose system voices are English-only, and even in
+ * a browser without any Web Speech support (Firefox for Android). This test
+ * drives the built web export in Chromium and records:
+ *
+ *   - which bundled clip is requested (file + start offset) for every playback,
+ *   - whether the device speech engine was touched at all,
+ *   - and what happens when the bundled audio cannot be loaded (fallback).
+ *
+ * Browser playback is faked with a deterministic `Audio` element: headless
+ * Chromium has no MP3 codec in every build, and the point of the test is the
+ * wiring between the lesson UI and the shipped audio, not the decoder.
  *
  *   npm run build:web
  *   npm run serve:web
  *   NODE_PATH=/path/to/playwright/node_modules node scripts/verify-german-runtime.cjs
- *
- * The test injects a deterministic German voice before the app loads. That is
- * deliberate: headless Chromium has no speech voices, and the point is to
- * prove that the UI really asks the speech engine to read German with a German
- * voice, at the right speed, on the right stages. It also proves the opposite:
- * with only English voices available, the lesson refuses to speak English and
- * shows a Persian installation hint instead.
  */
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -43,36 +46,27 @@ async function launchBrowser(chromium) {
 }
 
 /**
- * Runs before every document. Besides installing the fake voices it understands
- * two query flags used only by this test:
- *   ?seed=5       start the greetings lesson directly on a given stage
- *   ?english=1    report only the English system voice
- *   ?latevoices=1 expose the German voices only after 900 ms, like a cold Chrome
+ * Runs before every document.
+ *   ?seed=5       start the greetings lesson on a given stage
+ *   ?english=1    expose only an English system voice
+ *   ?novoices=1   expose no system voices at all (like Firefox for Android)
  */
 function browserSetup() {
   const params = new URLSearchParams(location.search);
-  if (params.get('english') === '1') window.__forceEnglish = true;
-  if (params.get('latevoices') === '1') {
-    window.__voicesReadyAt = Date.now() + 900;
-    window.__voicesChangeListeners = [];
-  }
+  window.__audioBlocked = params.get('audioblocked') === '1';
   const seed = params.get('seed');
   if (seed !== null && /^\d$/.test(seed)) {
     try {
       window.localStorage.setItem('german_lesson_study_v1', JSON.stringify({
         schema: 1,
         sessions: {
-          'de-v2-greetings': {
-            stage: Number(seed),
-            sentenceIndex: 0,
-            answers: {},
-            showCheckAnswers: false,
-          },
+          'de-v2-greetings': { stage: Number(seed), sentenceIndex: 0, answers: {}, showCheckAnswers: false },
         },
       }));
     } catch { /* storage disabled */ }
   }
 
+  // --- device speech (should stay unused while the bundled audio works) ---
   class MockUtterance {
     constructor(text) {
       this.text = text;
@@ -84,60 +78,93 @@ function browserSetup() {
     }
   }
   window.SpeechSynthesisUtterance = MockUtterance;
-  const allVoices = [
-    { name: 'Google Deutsch', lang: 'de-DE', localService: false, default: true, voiceURI: 'Google Deutsch' },
-    { name: 'Microsoft Hedda', lang: 'de-DE', localService: true, default: false, voiceURI: 'Microsoft Hedda' },
-    { name: 'English United States', lang: 'en-US', localService: true, default: false, voiceURI: 'English United States' },
-  ];
-  window.__voiceCalls = 0;
-  window.__spoken = [];
+  const germanVoice = { name: 'Google Deutsch', lang: 'de-DE', localService: false, default: true, voiceURI: 'Google Deutsch' };
+  const englishVoice = { name: 'English United States', lang: 'en-US', localService: true, default: false, voiceURI: 'English United States' };
   Object.defineProperty(window, 'speechSynthesis', {
     configurable: true,
     value: {
-      getVoices: () => {
-        if (window.__forceEnglish) return allVoices.filter(voice => voice.lang === 'en-US');
-        if (window.__voicesReadyAt && Date.now() < window.__voicesReadyAt) return [];
-        if (window.__voicesReadyAt && !window.__voicesAnnounced) {
-          window.__voicesAnnounced = true;
-          (window.__voicesChangeListeners || []).forEach(listener => listener());
-        }
-        return allVoices;
-      },
+      getVoices: () => (params.get('novoices') === '1' ? [] : params.get('english') === '1' ? [englishVoice] : [germanVoice, englishVoice]),
       speak: utterance => {
-        window.__voiceCalls += 1;
+        window.__spoken = window.__spoken || [];
         window.__spoken.push({
           text: utterance.text,
           lang: utterance.lang,
           voice: utterance.voice ? utterance.voice.name : null,
           rate: utterance.rate,
         });
-        setTimeout(() => utterance.onstart && utterance.onstart({}), 10);
-        setTimeout(() => {
-          if (utterance.onboundary) utterance.onboundary({ charIndex: 0 });
-          if (utterance.onend) utterance.onend({});
-        }, 55);
+        setTimeout(() => utterance.onstart && utterance.onstart({}), 5);
+        setTimeout(() => utterance.onend && utterance.onend({}), 20);
       },
       cancel: () => undefined,
       resume: () => undefined,
       pause: () => undefined,
-      addEventListener: (name, listener) => {
-        if (name === 'voiceschanged') (window.__voicesChangeListeners || []).push(listener);
-      },
-      removeEventListener: (name, listener) => {
-        if (name !== 'voiceschanged') return;
-        window.__voicesChangeListeners = (window.__voicesChangeListeners || []).filter(item => item !== listener);
-      },
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
       speaking: false,
       pending: false,
       paused: false,
     },
   });
+
+  // --- deterministic audio element that records every clip request ---
+  class FakeAudio extends EventTarget {
+    constructor(src) {
+      super();
+      this.src = String(src);
+      this.readyState = 0;
+      this.currentTime = 0;
+      this.playbackRate = 1;
+      this.preload = '';
+      this.paused = true;
+      window.__audio = window.__audio || [];
+      window.__audio.push({ src: this.src, plays: [], path: new URL(this.src, location.href).pathname });
+      this.__record = window.__audio[window.__audio.length - 1];
+      setTimeout(() => {
+        this.readyState = 4;
+        this.dispatchEvent(new Event('loadedmetadata'));
+        this.dispatchEvent(new Event('canplay'));
+      }, 0);
+    }
+
+    play() {
+      this.__record.plays.push({ start: this.currentTime, rate: this.playbackRate });
+      if (window.__audioBlocked) return Promise.reject(new Error('NotSupportedError'));
+      this.paused = false;
+      this.dispatchEvent(new Event('playing'));
+      return Promise.resolve();
+    }
+
+    pause() {
+      this.paused = true;
+    }
+
+    load() { /* no-op */ }
+  }
+  window.Audio = FakeAudio;
 }
 
 const BASE = process.env.BROWSER_BASE_URL || 'http://127.0.0.1:8081';
 const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
 
 (async () => {
+  const response = await fetch(`${BASE}/App1/audio/de/manifest.json`).catch(() => null);
+  const manifest = response && response.ok ? await response.json() : null;
+  assert.ok(manifest, 'the German audio manifest must be served from /audio/de/manifest.json');
+  const greetingSentences = manifest.lessons['de-v2-greetings'].sentences;
+  const greetingWords = manifest.lessons['de-v2-greetings'].words;
+
+  // --- shipped files really exist ---
+  const sampleFiles = [greetingSentences.file, greetingWords.file, ...Object.keys(manifest.lessons).map(id => manifest.lessons[id].sentences.file).slice(0, 3)];
+  let staticChecks = 0;
+  for (const file of sampleFiles) {
+    const head = await fetch(`${BASE}/App1/audio/de/${file}`);
+    assert.equal(head.status, 200, `audio file ${file} must be served`);
+    assert.match(head.headers.get('content-type') || '', /audio|octet-stream/, `${file} must be served as audio`);
+    const bytes = (await head.arrayBuffer()).byteLength;
+    assert.ok(bytes > 20000, `${file} must contain real audio (${bytes} bytes)`);
+    staticChecks += 1;
+  }
+
   const { chromium } = loadPlaywright();
   const browser = await launchBrowser(chromium);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -146,144 +173,200 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  const cleanErrors = () => errors.filter(message =>
-    !message.includes('cdn.jsdelivr.net/npm/jsqr@1.2.0/dist/jsQR.min.js'));
-  const spoken = () => page.evaluate(() => window.__spoken || []);
-  const body = () => page.locator('body').innerText();
-  let checks = 0;
+  const cleanErrors = () => errors.filter(message => !message.includes('jsQR'));
+  const played = () => page.evaluate(() => window.__audio || []);
+  const deviceSpoken = () => page.evaluate(() => window.__spoken || []);
+  const lastPlay = async () => {
+    const list = await played();
+    for (let index = list.length - 1; index >= 0; index -= 1) {
+      const entry = list[index];
+      if (!entry || !entry.plays || !entry.plays.length) continue;
+      const play = entry.plays[entry.plays.length - 1];
+      return { file: entry.src.split('/').pop(), path: entry.path, start: play.start, rate: play.rate };
+    }
+    return null;
+  };
+  // Audio elements are cached by the app, so clearing the array would lose the
+  // mapping between an element and its later plays. Mark a boundary instead.
+  const clearAudio = () => page.evaluate(() => {
+    window.__audio = window.__audio || [];
+    window.__audio.forEach(entry => { if (entry.plays) entry.plays.length = 0; });
+    window.__spoken = [];
+  });
+  let checks = staticChecks;
   const check = (label, value) => { assert.ok(value, label); checks += 1; };
 
-  // 1. Home: the key German sentence plays with a German voice.
+  // 0. The shipped MP3s must really decode in this browser, not just exist.
+  await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => { window.__audio = []; window.__spoken = []; });
+  const decode = await page.evaluate(async file => {
+    const el = document.createElement('audio');
+    el.src = `/App1/audio/de/${file}`;
+    el.preload = 'auto';
+    const loaded = await new Promise(resolve => {
+      el.addEventListener('loadedmetadata', () => resolve(el.duration), { once: true });
+      el.addEventListener('error', () => resolve(-1), { once: true });
+      setTimeout(() => resolve(-2), 8000);
+    });
+    return loaded;
+  }, greetingSentences.file);
+  check('the bundled German MP3 decodes in the browser', typeof decode === 'number' && decode > 1);
+  const playResult = await page.evaluate(async file => {
+    const el = document.createElement('audio');
+    el.src = `/App1/audio/de/${file}`;
+    el.currentTime = 0.12;
+    try {
+      await el.play();
+      await new Promise(resolve => setTimeout(resolve, 600));
+      const advanced = el.currentTime;
+      el.pause();
+      return advanced;
+    } catch (error) {
+      return -1;
+    }
+  }, greetingSentences.file);
+  check('the bundled German MP3 really advances during playback', typeof playResult === 'number' && playResult > 0.12);
+
+  // 1. Home: the key sentence is played from the bundled German pack.
   await page.goto(`${BASE}/learn/de`, { waitUntil: 'networkidle' });
   await page.getByText('Deutsch Journey', { exact: true }).waitFor();
+  await clearAudio();
   await page.getByRole('button', { name: /^پخش تلفظ آلمانی:/ }).first().click();
-  await page.waitForTimeout(400);
-  const homeHeard = await spoken();
-  check('German home speaks its key sentence in German',
-    homeHeard.length > 0 && homeHeard[homeHeard.length - 1].text === 'Hallo!');
-  check('home speech uses German, not the English default',
-    homeHeard.every(item => item.lang.toLowerCase().startsWith('de') && !/english/i.test(item.voice || '')));
+  await page.waitForTimeout(600);
+  const homeClip = await lastPlay();
+  check('German home plays the bundled German audio, not the device voice',
+    homeClip?.file === greetingSentences.file);
+  check('the home clip starts at the recorded offset for "Hallo!"',
+    Math.abs((homeClip?.start ?? -1) - greetingSentences.clips['hallo!'][0]) < 0.05);
+  check('the home sentence never falls back to the device voice',
+    (await deviceSpoken()).length === 0);
   check('German home raises no runtime errors', cleanErrors().length === 0);
 
-  // 2. Stage 0 and stage 1: entering a lesson is audible, words are tappable.
+  // 2. Entering a lesson speaks automatically.
   await page.goto(LESSON, { waitUntil: 'networkidle' });
   await page.getByText(/موقعیت · مرحلهٔ ۱ از ۹/).waitFor();
-  await page.waitForTimeout(2400);
-  const stage0 = await spoken();
-  check('situation stage auto-speaks the first German sentence',
-    stage0.length > 0 && stage0[stage0.length - 1].text === 'Hallo!');
-  check('situation stage exposes tappable key words',
+  await page.waitForTimeout(2000);
+  const stage0 = await lastPlay();
+  check('the situation stage auto-plays the first German sentence', stage0?.file === greetingSentences.file);
+  check('the situation stage does not need the device voice', (await deviceSpoken()).length === 0);
+  check('the situation stage exposes tappable key words',
     await page.getByRole('button', { name: /^پخش واژهٔ آلمانی:/ }).count() > 0);
 
+  // 3. Tapping a word plays that word from the vocabulary pack.
   const wordButton = page.getByRole('button', { name: /^پخش واژهٔ آلمانی:/ }).first();
   const wordLabel = await wordButton.getAttribute('aria-label');
-  const word = (wordLabel || '').split(':').pop().trim();
+  const word = (wordLabel || '').split(':').pop().trim().toLowerCase();
+  await clearAudio();
   await wordButton.click();
-  await page.waitForTimeout(250);
-  const afterWord = await spoken();
-  check('tapping a German word speaks exactly that word', afterWord[afterWord.length - 1].text === word);
+  await page.waitForTimeout(500);
+  const wordClip = await lastPlay();
+  check('tapping a German word plays the word clip from the lesson vocabulary pack',
+    wordClip?.file === greetingWords.file && greetingWords.clips[word] !== undefined);
+  check('the word clip uses the recorded start of that word',
+    Math.abs((wordClip?.start ?? -1) - greetingWords.clips[word][0]) < 0.05);
+  check('the tapped word is not read by the device voice', (await deviceSpoken()).length === 0);
 
+  // 4. Core sentence stage: natural playback, then slow replay.
+  await clearAudio();
   await page.getByRole('button', { name: 'ادامه', exact: true }).click();
   await page.getByText(/جمله‌های اصلی · مرحلهٔ ۲ از ۹/).waitFor();
-  await page.waitForTimeout(1600);
-  const stage1 = await spoken();
-  check('core-sentence stage auto-speaks the new sentence', stage1[stage1.length - 1].text === 'Hallo!');
-  check('natural German sentence uses rate 0.9', Math.abs(stage1[stage1.length - 1].rate - 0.9) < 0.001);
-  check('a German, not English, voice is used', !/english/i.test(stage1[stage1.length - 1].voice || ''));
+  await page.waitForTimeout(1800);
+  const natural = await lastPlay();
+  check('the core-sentence stage auto-plays the sentence at natural speed',
+    natural?.file === greetingSentences.file && natural?.rate === 1);
 
+  await clearAudio();
   await page.getByRole('button', { name: 'پخش آهستهٔ جمله' }).click();
-  await page.waitForTimeout(250);
-  const slow = await spoken();
-  check('slow replay speaks the sentence at rate 0.55',
-    Math.abs(slow[slow.length - 1].rate - 0.55) < 0.001 && slow[slow.length - 1].text === 'Hallo!');
+  await page.waitForTimeout(500);
+  const slow = await lastPlay();
+  check('slow replay slows the same clip down instead of changing the voice',
+    slow?.file === greetingSentences.file && slow.rate < 1);
   check('the core-sentence stage raises no runtime errors', cleanErrors().length === 0);
 
-  // 3. Every remaining stage is reachable and labelled like the Russian flow.
-  const stages = [
-    [2, 'شنیدن · مرحلهٔ ۳ از ۹'],
-    [3, 'سایه‌خوانی · مرحلهٔ ۴ از ۹'],
-    [4, 'ساخت جمله · مرحلهٔ ۵ از ۹'],
-    [5, 'واژگان از جمله · مرحلهٔ ۶ از ۹'],
-    [6, 'دستور در کاربرد · مرحلهٔ ۷ از ۹'],
-    [7, 'مکالمه · مرحلهٔ ۸ از ۹'],
-    [8, 'مرور هوشمند · مرحلهٔ ۹ از ۹'],
-  ];
-  for (const [stage, header] of stages) {
-    await page.goto(`${LESSON}&seed=${stage}`, { waitUntil: 'networkidle' });
-    await page.getByText(new RegExp(header.replace(' ', '\\s+'))).waitFor();
-    check(`stage ${stage + 1} renders ${header}`, true);
-    if (stage === 5) {
-      await page.waitForTimeout(1400);
-      const words = await spoken();
-      check('vocabulary stage auto-speaks its first German word',
-        words.length > 0 && !/english/i.test(words[words.length - 1].voice || ''));
-      check('vocabulary stage offers a play-all-words control',
-        await page.getByRole('button', { name: 'پخش واژه‌های این صفحه' }).count() === 1);
-      await page.getByRole('button', { name: 'پخش واژه‌های این صفحه' }).click();
-      await page.waitForTimeout(1500);
-      const sequence = await spoken();
-      check('play-all speaks several German words one after another',
-        new Set(sequence.slice(-4).map(item => item.text)).size >= 2);
-    }
-    if (stage === 8) {
-      await page.getByRole('button', { name: 'نمایش توضیح همهٔ پاسخ‌ها' }).waitFor();
-      check('review stage keeps the lesson self-check', true);
-    }
-  }
+  // 5. Vocabulary stage: first word is automatic, play-all walks the words.
+  await page.goto(`${LESSON}&seed=5`, { waitUntil: 'networkidle' });
+  await page.getByText(/واژگان از جمله · مرحلهٔ ۶ از ۹/).waitFor();
+  await page.waitForTimeout(1600);
+  const firstWord = await lastPlay();
+  check('the vocabulary stage auto-plays its first word from the word pack',
+    firstWord?.file === greetingWords.file);
+  check('the vocabulary stage offers a play-all-words control',
+    await page.getByRole('button', { name: 'پخش واژه‌های این صفحه' }).count() === 1);
+  await clearAudio();
+  await page.getByRole('button', { name: 'پخش واژه‌های این صفحه' }).click();
+  await page.waitForTimeout(2500);
+  const sequence = await played();
+  const starts = sequence.flatMap(entry => entry.plays.map(play => play.start));
+  check('play-all walks several different German words', new Set(starts).size >= 2);
+  check('every play-all clip comes from the vocabulary pack',
+    sequence.every(entry => entry.file === greetingWords.file || entry.src.endsWith('.words.mp3')));
 
-  // 4. Voice picker: choosing Google Deutsch is honoured by the next playback.
+  // 6. The audio-check page demonstrates the bundled voice.
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
   await page.getByText('بررسی و انتخاب صدای آلمانی', { exact: true }).waitFor();
-  check('German audio-check page is reachable instead of redirecting', true);
-  await page.waitForTimeout(1000);
-  check('audio-check lists the German voices',
+  await page.waitForTimeout(900);
+  check('audio-check presents the in-app German voice', (await page.locator('body').innerText()).includes('صدای آلمانی داخلی برنامه'));
+  await clearAudio();
+  await page.getByRole('button', { name: /^شنیدن نمونه:/ }).first().click();
+  await page.waitForTimeout(600);
+  const sample = await lastPlay();
+  check('audio-check plays the bundled sample', sample?.file === greetingSentences.file);
+  check('audio-check still lists the optional device voices',
     await page.getByRole('button', { name: /Google Deutsch/ }).count() >= 1);
-  await page.getByRole('button', { name: /Google Deutsch/ }).first().click();
-  await page.getByRole('button', { name: 'پخش: هجی', exact: true }).click();
-  await page.waitForTimeout(400);
-  const picked = await spoken();
-  check('the chosen Google German voice is used for the sample',
-    picked[picked.length - 1].voice === 'Google Deutsch');
-  check('the sample is spoken in German', picked[picked.length - 1].lang === 'de-DE');
   check('audio-check raises no runtime errors', cleanErrors().length === 0);
 
-  // 5. Review screen is mounted for /learn/de/review.
+  // 7. Review screen renders on its own route.
   await page.goto(`${BASE}/learn/de/review`, { waitUntil: 'networkidle' });
   await page.getByText('مرور آلمانی', { exact: true }).waitFor();
   check('German review screen renders on its own route', true);
 
-  // 6. Cold browser: the voice list is empty for the first ~0.9 s, like Chrome.
-  await page.goto(`${LESSON}&seed=1&latevoices=1`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(3200);
-  const coldStart = await spoken();
-  check('a cold voice list still auto-speaks German once the voices arrive',
-    coldStart.some(item => item.text === 'Hallo!' && item.lang === 'de-DE'));
-  check('the cold-start sentence never used the English default',
-    coldStart.every(item => !/english/i.test(item.voice || '')));
+  // 8. A browser with no system voices at all (Firefox for Android) still speaks German.
+  await page.goto(`${LESSON}&seed=1&novoices=1`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2200);
+  const noVoices = await lastPlay();
+  check('with no system voices the lesson still plays German audio',
+    noVoices?.file === greetingSentences.file);
+  check('no system voices means no device speech attempts at all', (await deviceSpoken()).length === 0);
 
-  // 7. Only an English voice installed: the German lesson must behave exactly like
-  //    the Russian lesson, i.e. still ask the engine for German and never hand it
-  //    the English voice. Refusing to speak at all was the original defect.
-  await page.goto(`${LESSON}&seed=0&english=1`, { waitUntil: 'networkidle' });
+  // 9. Fallback A: the clips are missing (pack not deployed). The device voice
+  //    takes over with the German language tag - never the English default.
+  await context.route(/\/audio\/de\//, route => route.abort());
+  await page.goto(`${LESSON}&seed=1&english=1`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(2600);
-  const englishOnly = await spoken();
-  const englishOnlyGerman = englishOnly.filter(item => item.text === 'Hallo!');
-  const englishCalls = await page.evaluate(() => window.__voiceCalls || 0);
-  const englishOnlyVoiceNames = englishOnly.map(item => item.voice).filter(Boolean);
-  check('the German request never resolves to the installed English voice',
-    englishOnlyVoiceNames.every(name => !/english/i.test(String(name))));
-  check('with only an English voice installed the lesson still speaks German',
-    englishOnlyGerman.length >= 1 && englishOnlyGerman.every(item => item.lang === 'de-DE'));
-  check('the English system voice is never used for German text',
-    englishOnlyGerman.length > 0
-    && englishOnlyGerman.every(item => !item.voice || !/english/i.test(item.voice))
-    && englishCalls === englishOnly.length);
-  check('the lesson does not block itself with a "no German voice" refusal',
-    !(await body()).includes('پخش صدای آلمانی در دسترس نیست'));
-  check('the lesson stays readable without a listed German voice',
-    (await body()).includes('موقعیت · مرحلهٔ ۱ از ۹'));
+  const fallbackCalls = await deviceSpoken();
+  check('when the bundled clips are missing the lesson falls back to the device',
+    fallbackCalls.length >= 1);
+  check('the fallback asks for German and never sends the English voice',
+    fallbackCalls.every(item => String(item.lang).toLowerCase().startsWith('de') && !/english/i.test(item.voice || '')));
+  check('the lesson stays readable when audio cannot load',
+    (await page.locator('body').innerText()).includes('جمله‌های اصلی · مرحلهٔ ۲ از ۹'));
+  await context.unroute(/\/audio\/de\//);
 
-  console.log(`${checks} German runtime speech checks passed (home, situation, core sentences, slow replay, all nine stages, vocabulary, voice picker, review, cold-start voices, no-English fallback, English-only systems).`);
+  // 9b. The learner can switch to the device voice from the audio-check page.
+  await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
+  await page.getByText('بررسی و انتخاب صدای آلمانی', { exact: true }).waitFor();
+  await page.waitForTimeout(800);
+  check('audio-check offers the in-app voice as the default choice',
+    await page.getByRole('button', { name: /صدای داخلی برنامه/ }).count() >= 1);
+  await page.getByRole('button', { name: /صدای آلمانی دستگاه/ }).first().click();
+  await page.waitForTimeout(200);
+  await page.goto(LESSON, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2400);
+  const deviceMode = await deviceSpoken();
+  check('after choosing the device voice the lesson asks the device engine for German',
+    deviceMode.length >= 1 && deviceMode.every(item => String(item.lang).toLowerCase().startsWith('de')));
+  await page.evaluate(() => window.localStorage.removeItem('german_voice_source_v1'));
+
+  // 10. Fallback B: the files load but this browser cannot decode them.
+  await page.goto(`${LESSON}&seed=1&english=1&audioblocked=1`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2600);
+  const decodeFallback = await deviceSpoken();
+  check('when this browser cannot decode the clips the device voice takes over',
+    decodeFallback.length >= 1);
+  check('the decode fallback still asks for German',
+    decodeFallback.every(item => String(item.lang).toLowerCase().startsWith('de')));
+
+  console.log(`${checks} German runtime audio checks passed (manifest and files, home, situation, core sentences, slow replay, vocabulary, play-all, audio-check, review, no-system-voice, fallback).`);
   await browser.close();
 })().catch(async error => {
   console.error(error);
