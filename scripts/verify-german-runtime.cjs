@@ -49,11 +49,26 @@ async function launchBrowser(chromium) {
  * Runs before every document.
  *   ?seed=5       start the greetings lesson on a given stage
  *   ?english=1    expose only an English system voice
- *   ?novoices=1   expose no system voices at all (like Firefox for Android)
+ *   ?novoices=1   expose no system voices at all
+ *   ?nospeech=1   remove the Web Speech API entirely (Firefox for Android)
+ *   ?source=auto  clear the learner's voice choice (device voice, else bundled)
+ *   ?source=app   force the audio that ships with the app
+ *   ?source=device  force the voice installed on the device
+ *   ?audioblocked=1  the browser cannot decode the bundled MP3s
  */
 function browserSetup() {
   const params = new URLSearchParams(location.search);
   window.__audioBlocked = params.get('audioblocked') === '1';
+  // ?nospeech=1 removes the Web Speech API entirely (Firefox for Android).
+  const noSpeech = params.get('nospeech') === '1';
+  // ?source=auto|app|device pins the learner's voice choice for the run.
+  const source = params.get('source');
+  if (source) {
+    try {
+      if (source === 'auto') window.localStorage.removeItem('german_voice_source_v1');
+      else window.localStorage.setItem('german_voice_source_v1', source);
+    } catch { /* storage disabled */ }
+  }
   const seed = params.get('seed');
   if (seed !== null && /^\d$/.test(seed)) {
     try {
@@ -77,10 +92,19 @@ function browserSetup() {
       this.volume = 1;
     }
   }
-  window.SpeechSynthesisUtterance = MockUtterance;
+  if (noSpeech) {
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: undefined });
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: undefined });
+    window.__spoken = [];
+    window.__pageErrors = [];
+    window.addEventListener('unhandledrejection', event => {
+      window.__pageErrors.push(String((event.reason && event.reason.message) || event.reason));
+    });
+  }
+  if (!noSpeech) window.SpeechSynthesisUtterance = MockUtterance;
   const germanVoice = { name: 'Google Deutsch', lang: 'de-DE', localService: false, default: true, voiceURI: 'Google Deutsch' };
   const englishVoice = { name: 'English United States', lang: 'en-US', localService: true, default: false, voiceURI: 'English United States' };
-  Object.defineProperty(window, 'speechSynthesis', {
+  if (!noSpeech) Object.defineProperty(window, 'speechSynthesis', {
     configurable: true,
     value: {
       getVoices: () => (params.get('novoices') === '1' ? [] : params.get('english') === '1' ? [englishVoice] : [germanVoice, englishVoice]),
@@ -228,7 +252,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   check('the bundled German MP3 really advances during playback', typeof playResult === 'number' && playResult > 0.12);
 
   // 1. Home: the key sentence is played from the bundled German pack.
-  await page.goto(`${BASE}/learn/de`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/learn/de?source=app`, { waitUntil: 'networkidle' });
   await page.getByText('Deutsch Journey', { exact: true }).waitFor();
   await clearAudio();
   await page.getByRole('button', { name: /^پخش تلفظ آلمانی:/ }).first().click();
@@ -243,7 +267,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   check('German home raises no runtime errors', cleanErrors().length === 0);
 
   // 2. Entering a lesson speaks automatically.
-  await page.goto(LESSON, { waitUntil: 'networkidle' });
+  await page.goto(`${LESSON}&source=app`, { waitUntil: 'networkidle' });
   await page.getByText(/موقعیت · مرحلهٔ ۱ از ۹/).waitFor();
   await page.waitForTimeout(2000);
   const stage0 = await lastPlay();
@@ -284,7 +308,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   check('the core-sentence stage raises no runtime errors', cleanErrors().length === 0);
 
   // 5. Vocabulary stage: first word is automatic, play-all walks the words.
-  await page.goto(`${LESSON}&seed=5`, { waitUntil: 'networkidle' });
+  await page.goto(`${LESSON}&seed=5&source=app`, { waitUntil: 'networkidle' });
   await page.getByText(/واژگان از جمله · مرحلهٔ ۶ از ۹/).waitFor();
   await page.waitForTimeout(1600);
   const firstWord = await lastPlay();
@@ -321,7 +345,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   check('German review screen renders on its own route', true);
 
   // 8. A browser with no system voices at all (Firefox for Android) still speaks German.
-  await page.goto(`${LESSON}&seed=1&novoices=1`, { waitUntil: 'networkidle' });
+  await page.goto(`${LESSON}&seed=1&novoices=1&source=auto`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(2200);
   const noVoices = await lastPlay();
   check('with no system voices the lesson still plays German audio',
@@ -331,7 +355,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   // 9. Fallback A: the clips are missing (pack not deployed). The device voice
   //    takes over with the German language tag - never the English default.
   await context.route(/\/audio\/de\//, route => route.abort());
-  await page.goto(`${LESSON}&seed=1&english=1`, { waitUntil: 'networkidle' });
+  await page.goto(`${LESSON}&seed=1&english=1&source=auto`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(2600);
   const fallbackCalls = await deviceSpoken();
   check('when the bundled clips are missing the lesson falls back to the device',
@@ -346,7 +370,9 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
   await page.getByText('بررسی و انتخاب صدای آلمانی', { exact: true }).waitFor();
   await page.waitForTimeout(800);
-  check('audio-check offers the in-app voice as the default choice',
+  check('audio-check offers automatic voice selection',
+    await page.getByRole('button', { name: /خودکار/ }).count() >= 1);
+  check('audio-check offers the in-app voice',
     await page.getByRole('button', { name: /صدای داخلی برنامه/ }).count() >= 1);
   await page.getByRole('button', { name: /صدای آلمانی دستگاه/ }).first().click();
   await page.waitForTimeout(200);
@@ -358,7 +384,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   await page.evaluate(() => window.localStorage.removeItem('german_voice_source_v1'));
 
   // 10. Fallback B: the files load but this browser cannot decode them.
-  await page.goto(`${LESSON}&seed=1&english=1&audioblocked=1`, { waitUntil: 'networkidle' });
+  await page.goto(`${LESSON}&seed=1&english=1&audioblocked=1&source=auto`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(2600);
   const decodeFallback = await deviceSpoken();
   check('when this browser cannot decode the clips the device voice takes over',
@@ -366,7 +392,41 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   check('the decode fallback still asks for German',
     decodeFallback.every(item => String(item.lang).toLowerCase().startsWith('de')));
 
-  console.log(`${checks} German runtime audio checks passed (manifest and files, home, situation, core sentences, slow replay, vocabulary, play-all, audio-check, review, no-system-voice, fallback).`);
+  // 11. Automatic mode: a phone that already has a natural German voice uses it.
+  await page.goto(`${LESSON}&seed=1&source=auto`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2600);
+  const autoDevice = await deviceSpoken();
+  check('automatic mode prefers the natural German voice installed on the device',
+    autoDevice.some(item => item.text === 'Hallo!' && item.lang === 'de-DE'));
+  check('automatic mode never sends the English voice', autoDevice.every(item => !/english/i.test(item.voice || '')));
+
+  // 12. Firefox for Android: there is no Web Speech API at all. The bundled
+  //     German audio must still play and nothing may throw. A single browser
+  //     context is reused on purpose (@sparticuz Chromium runs single-process).
+  const noSpeechErrors = [];
+  const onNoSpeechError = error => noSpeechErrors.push(error.message);
+  page.on('pageerror', onNoSpeechError);
+  for (const route of [
+    '/learn/de?source=auto&nospeech=1',
+    '/learn/de/audio-check?nospeech=1',
+    '/learn/de/review?nospeech=1',
+  ]) {
+    await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+  }
+  await page.goto(`${BASE}${LESSON.replace(BASE, '')}&seed=1&source=auto&nospeech=1`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2800);
+  const silentAudio = await page.evaluate(() => window.__audio || []);
+  const silentPlays = silentAudio.reduce((total, entry) => total + entry.plays.length, 0);
+  check('without any Web Speech API the lesson still plays the German audio', silentPlays >= 1);
+  check('the browser without Web Speech never touches a missing engine', noSpeechErrors.length === 0);
+  check('that browser also reports no unhandled speech rejections',
+    (await page.evaluate(() => window.__pageErrors || [])).length === 0);
+  check('the lesson stays readable without Web Speech',
+    (await page.locator('body').innerText()).includes('جمله‌های اصلی · مرحلهٔ ۲ از ۹'));
+  page.off('pageerror', onNoSpeechError);
+
+  console.log(`${checks} German runtime audio checks passed (manifest and files, home, situation, core sentences, slow replay, vocabulary, play-all, audio-check, review, automatic voice choice, no-system-voice, Firefox without Web Speech, fallback).`);
   await browser.close();
 })().catch(async error => {
   console.error(error);

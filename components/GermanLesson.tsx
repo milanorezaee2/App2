@@ -38,11 +38,9 @@ import {
 } from '@/lib/languages/germanStudyState';
 import { setGermanAudioLesson } from '@/lib/germanAudio';
 import {
-  germanSpeechSupport,
   primeGermanSpeech,
   speakGerman,
   stopGermanSpeech,
-  subscribeGermanVoices,
   subscribeGermanVoiceStatus,
   wordIndexAt,
 } from '@/lib/germanSpeech';
@@ -75,7 +73,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
   const [sessionError, setSessionError] = useState('');
   const [completionError, setCompletionError] = useState('');
   const [speechError, setSpeechError] = useState('');
-  const [voiceState, setVoiceState] = useState<'checking' | 'ready' | 'unavailable'>('checking');
+  const [activeEngine, setActiveEngine] = useState<'app' | 'device' | null>(null);
   const [spokenWord, setSpokenWord] = useState(-1);
   const [loadingRetry, setLoadingRetry] = useState(0);
   const [saveRetry, setSaveRetry] = useState(0);
@@ -121,24 +119,11 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
     return patterns;
   }, [lesson]);
 
-  // Informational only: it tells the audio-check page whether the optional
-  // device voice exists. The bundled German audio never depends on it.
-  const refreshVoiceState = useCallback(() => {
-    setVoiceState('checking');
-    void germanSpeechSupport()
-      .then(result => setVoiceState(result.available ? 'ready' : 'unavailable'))
-      .catch(() => setVoiceState('ready'));
-  }, []);
-
-  // Late `voiceschanged` events mean the browser now has a German voice even
-  // though the first check ran too early.
-  useEffect(() => subscribeGermanVoices(voices => {
-    const german = voices.find(voice => (voice.language || '').toLowerCase().startsWith('de'));
-    if (!german) return;
-    setVoiceState('ready');
+  // Which engine is speaking right now: the app's own German audio or the
+  // device voice (see the "صدا" chip in the header).
+  useEffect(() => subscribeGermanVoiceStatus(status => {
+    if (status.engine) setActiveEngine(status.engine);
   }), []);
-
-  useEffect(() => subscribeGermanVoiceStatus(() => setVoiceState('ready')), []);
 
   const speak = useCallback((text: string, rate = NORMAL_RATE, kind: 'sentence' | 'word' = 'sentence') => {
     setSpeechError('');
@@ -147,15 +132,11 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
       text,
       kind,
       rate,
-      onStart: () => {
-        hasSpoken.current = true;
-        setVoiceState('ready');
-      },
+      onStart: () => { hasSpoken.current = true; },
       onBoundary: charIndex => setSpokenWord(wordIndexAt(text, charIndex)),
       onDone: () => setSpokenWord(-1),
-      onError: reason => {
+      onError: () => {
         setSpokenWord(-1);
-        if (reason === 'unsupported') setVoiceState('unavailable');
         setSpeechError(speechErrorMessage());
       },
     });
@@ -168,10 +149,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
       text,
       kind,
       rate,
-      onStart: () => {
-        hasSpoken.current = true;
-        setVoiceState('ready');
-      },
+      onStart: () => { hasSpoken.current = true; },
     });
   }, []);
 
@@ -183,10 +161,6 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
     setCompletionError('');
     setGermanAudioLesson(lesson.id);
     primeGermanSpeech();
-    void germanSpeechSupport().then(result => {
-      if (!alive) return;
-      setVoiceState(result.available ? 'ready' : 'unavailable');
-    }).catch(() => { if (alive) setVoiceState('ready'); });
     void loadGermanLessonSession(lesson.id).then(saved => {
       if (!alive) return;
       setStage(saved.stage);
@@ -258,9 +232,9 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
         text: words[index],
         kind: 'word',
         rate: NORMAL_RATE,
-        onStart: () => setVoiceState('ready'),
+        onStart: () => undefined,
         onDone: () => step(index + 1),
-        onError: () => setVoiceState('ready'),
+        onError: () => undefined,
       });
     };
     step(0);
@@ -382,9 +356,9 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
         <View style={styles.headerBottom}>
           <View style={styles.headerInfoChip}><BookOpenCheck size={13} color="#D9F3E8" /><Text style={styles.headerInfoText}>مسیر اصلی جمله‌محور</Text></View>
           <Text style={styles.headerInfoText}>{fa(lesson.sentences.length)} جملهٔ اصلی</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="صدای آلمانی این درس" accessibilityHint="باز کردن صفحهٔ بررسی صدا" onPress={() => router.push('/learn/de/audio-check' as never)} style={styles.voiceChip}>
+          <Pressable accessibilityRole="button" accessibilityLabel={activeEngine === 'device' ? 'صدای آلمانی دستگاه' : 'صدای آلمانی داخلی برنامه'} accessibilityHint="باز کردن صفحهٔ بررسی صدا" onPress={() => router.push('/learn/de/audio-check' as never)} style={styles.voiceChip}>
             <View style={[styles.voiceDot, styles.voiceDotReady]} />
-            <Text style={styles.voiceChipText}>صدای آلمانی</Text>
+            <Text style={styles.voiceChipText}>{activeEngine === 'device' ? 'صدای دستگاه' : 'صدای آلمانی'}</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -596,7 +570,6 @@ const styles = StyleSheet.create({
   voiceChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 999 },
   voiceDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E8D9A8' },
   voiceDotReady: { backgroundColor: '#8BF0C2' },
-  voiceDotMissing: { backgroundColor: '#FFB1B1' },
   voiceChipText: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
   stepperCard: { width: '100%', maxWidth: 820, alignSelf: 'center', marginTop: 12, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 13, gap: 10 },
   stepperHeading: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
@@ -612,12 +585,8 @@ const styles = StyleSheet.create({
   stepperEnds: { flexDirection: 'row-reverse', justifyContent: 'space-between' },
   stepperEndText: { fontFamily: 'Inter-ExtraBold', color: Palette.muted, fontSize: 6, fontWeight: '800', letterSpacing: .5, writingDirection: 'ltr' },
   error: { width: '100%', maxWidth: 820, alignSelf: 'center', marginTop: 10, paddingHorizontal: 16, color: Palette.danger, fontFamily: Typography.fontFamily, fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
-  voiceWarning: { width: '100%', maxWidth: 820, alignSelf: 'center', marginTop: 10, padding: 13, borderRadius: 15, backgroundColor: Palette.warningSoft, borderWidth: 1, borderColor: '#F2DFC1', gap: 6 },
-  voiceWarningTitle: { fontFamily: Typography.fontFamily, color: Palette.warning, fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  voiceWarningActions: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 16 },
   voiceHint: { width: '100%', maxWidth: 820, alignSelf: 'center', marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border, flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 8 },
   voiceHintText: { flex: 1, fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
-  voiceWarningText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   voiceRetry: { alignSelf: 'flex-start', paddingVertical: 4 },
   voiceRetryText: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
   content: { flexGrow: 1, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 26 },

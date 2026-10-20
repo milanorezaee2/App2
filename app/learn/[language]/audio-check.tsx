@@ -180,18 +180,30 @@ export default function AudioCheck() {
       </> : <Text style={s.small}>صداهای داخلی برنامه در حال بارگذاری…</Text>}
       {!!bundledStatus && <Text accessibilityLiveRegion="polite" style={s.small}>{bundledStatus}</Text>}
       <Text style={s.small}>این صدا همیشه آلمانی است و در همهٔ مرورگرها، از جمله Firefox گوشی، کار می‌کند.</Text>
+      <Text style={s.description}>کدام صدا برای درس‌ها استفاده شود؟</Text>
       <CourseButton
-        title={source === 'app' ? 'انتخاب‌شده: صدای داخلی برنامه (پیشنهادی)' : 'استفاده از صدای داخلی برنامه'}
+        title={source === 'auto' ? 'انتخاب‌شده: خودکار (پیشنهاد)' : 'خودکار: صدای طبیعی دستگاه، وگرنه صدای برنامه'}
+        secondary={source !== 'auto'}
+        disabled={active !== null}
+        onPress={() => { setGermanVoiceSource('auto'); setSource('auto'); setBundledStatus('اگر گوشی صدای آلمانی داشته باشد همان استفاده می‌شود؛ وگرنه صدای داخلی برنامه.'); }}
+      />
+      <CourseButton
+        title={source === 'app' ? 'انتخاب‌شده: صدای داخلی برنامه' : 'همیشه صدای داخلی برنامه'}
         secondary={source !== 'app'}
         disabled={active !== null}
         onPress={() => { setGermanVoiceSource('app'); setSource('app'); setBundledStatus('درس‌ها با صدای داخلی برنامه پخش می‌شوند.'); }}
       />
       <CourseButton
-        title={source === 'device' ? 'انتخاب‌شده: صدای آلمانی دستگاه' : 'استفاده از صدای آلمانی دستگاه (اگر نصب باشد)'}
+        title={source === 'device' ? 'انتخاب‌شده: صدای آلمانی دستگاه' : 'همیشه صدای آلمانی دستگاه (اگر نصب باشد)'}
         secondary={source !== 'device'}
         disabled={active !== null}
         onPress={() => { setGermanVoiceSource('device'); setSource('device'); setBundledStatus('اگر دستگاه صدای آلمانی داشته باشد، درس‌ها با آن خوانده می‌شوند؛ وگرنه صدای داخلی برنامه.'); }}
       />
+      <Text style={s.small}>{source === 'auto'
+        ? 'حالت خودکار: طبیعی‌ترین صدای ممکن انتخاب می‌شود و اگر پخش نشد، خودِ برنامه جمله را با صدای آلمانی داخلی می‌خواند.'
+        : source === 'app'
+          ? 'در این حالت صدا روی همهٔ گوشی‌ها یکسان و همیشه آلمانی است، بدون نیاز به نصب زبان.'
+          : 'اگر گوشی صدای آلمانی نداشته باشد، برنامه به‌طور خودکار از صدای داخلی خودش استفاده می‌کند.'}</Text>
     </View>
 
     <View style={s.card}>

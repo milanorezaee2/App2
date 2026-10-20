@@ -73,9 +73,14 @@ export async function loadGermanAudioManifest(): Promise<GermanAudioManifest | n
   if (Platform.OS !== 'web') return null;
   if (typeof window === 'undefined' || typeof fetch !== 'function') return null;
   if (!manifestPromise) {
-    manifestPromise = fetch(germanAudioAssetUrl(MANIFEST_PATH))
-      .then(response => (response.ok ? response.json() as Promise<GermanAudioManifest> : null))
-      .catch(() => null);
+    try {
+      manifestPromise = fetch(germanAudioAssetUrl(MANIFEST_PATH))
+        .then(response => (response.ok ? response.json() as Promise<GermanAudioManifest> : null))
+        .catch(() => null);
+    } catch {
+      // A relative URL is invalid outside a browser document (tests, SSR).
+      manifestPromise = Promise.resolve(null);
+    }
   }
   return manifestPromise;
 }

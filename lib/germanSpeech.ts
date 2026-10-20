@@ -52,18 +52,21 @@ const VOICE_SOURCE_KEY = 'german_voice_source_v1';
 
 /**
  * Which German voice the lessons use.
- *  - `app`:    the audio that ships with the app (always German, works offline,
- *              no install and no permission needed). Default.
- *  - `device`: the German voice installed on the phone/browser, when there is
- *              one; the bundled audio still covers anything the device refuses.
+ *  - `auto` (default): the phone's own German voice when one is installed (it is
+ *    the most natural one available), otherwise the audio that ships with the app.
+ *  - `app`: always the bundled audio — identical on every device and offline.
+ *  - `device`: only the voice installed on the phone/browser.
+ * Whatever is chosen, playback never stays silent: if the selected engine cannot
+ * start, the other one covers the sentence.
  */
-export type GermanVoiceSource = 'app' | 'device';
+export type GermanVoiceSource = 'auto' | 'app' | 'device';
 let voiceSource: GermanVoiceSource | null = null;
 
 export function getGermanVoiceSource(): GermanVoiceSource {
   if (voiceSource) return voiceSource;
-  if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.localStorage) return 'app';
-  voiceSource = window.localStorage.getItem(VOICE_SOURCE_KEY) === 'device' ? 'device' : 'app';
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.localStorage) return 'auto';
+  const stored = window.localStorage.getItem(VOICE_SOURCE_KEY);
+  voiceSource = stored === 'device' || stored === 'app' ? stored : 'auto';
   return voiceSource;
 }
 
@@ -71,8 +74,8 @@ export function setGermanVoiceSource(source: GermanVoiceSource): void {
   voiceSource = source;
   if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.localStorage) return;
   try {
-    if (source === 'device') window.localStorage.setItem(VOICE_SOURCE_KEY, 'device');
-    else window.localStorage.removeItem(VOICE_SOURCE_KEY);
+    if (source === 'auto') window.localStorage.removeItem(VOICE_SOURCE_KEY);
+    else window.localStorage.setItem(VOICE_SOURCE_KEY, source);
   } catch {
     /* private browsing: the in-memory choice still applies */
   }
@@ -84,7 +87,16 @@ export function setGermanVoiceSource(source: GermanVoiceSource): void {
  * reads German with its default voice. Playback still happens (exactly like the
  * Russian lesson), but the UI explains how to install a real German voice.
  */
-export type GermanVoiceStatus = { german: boolean; listed: boolean; checked: boolean; voiceName?: string };
+export type GermanVoiceStatus = {
+  german: boolean;
+  listed: boolean;
+  checked: boolean;
+  voiceName?: string;
+  /** Which engine produced the last sound: the app's own audio or the device voice. */
+  engine?: 'app' | 'device';
+  /** True on browsers without any Web Speech API (Firefox for Android). */
+  deviceSpeech?: boolean;
+};
 let voiceStatus: GermanVoiceStatus = { german: true, listed: true, checked: false };
 const voiceStatusListeners = new Set<(status: GermanVoiceStatus) => void>();
 
@@ -102,7 +114,9 @@ function publishVoiceStatus(next: GermanVoiceStatus): void {
   const changed = next.german !== voiceStatus.german
     || next.listed !== voiceStatus.listed
     || next.checked !== voiceStatus.checked
-    || next.voiceName !== voiceStatus.voiceName;
+    || next.voiceName !== voiceStatus.voiceName
+    || next.engine !== voiceStatus.engine
+    || next.deviceSpeech !== voiceStatus.deviceSpeech;
   voiceStatus = next;
   if (!changed) return;
   voiceStatusListeners.forEach(listener => listener(voiceStatus));
@@ -116,6 +130,39 @@ let nativePreferencePromise: Promise<string | null> | null = null;
 
 function webStorageAvailable(): boolean {
   return typeof window !== 'undefined' && !!window.localStorage;
+}
+
+/**
+ * Firefox for Android has no Web Speech API at all: `window.speechSynthesis` is
+ * `undefined`, and `expo-speech` would throw inside `Speech.stop()` / `speak()`.
+ * Every call therefore goes through these guards; the bundled German audio does
+ * not need the API and keeps working there.
+ */
+export function webSpeechAvailable(): boolean {
+  return Platform.OS !== 'web'
+    || (typeof window !== 'undefined' && !!(window as { speechSynthesis?: unknown }).speechSynthesis);
+}
+
+function safeSpeechStop(): void {
+  if (Platform.OS === 'web' && !webSpeechAvailable()) return;
+  try {
+    void Promise.resolve(Speech.stop()).catch(() => undefined);
+  } catch {
+    /* no engine: the bundled audio is the only path */
+  }
+}
+
+function safeSpeechSpeak(text: string, options: Parameters<typeof Speech.speak>[1]): void {
+  if (Platform.OS === 'web' && !webSpeechAvailable()) return;
+  try {
+    Speech.speak(text, options);
+  } catch {
+    /* no engine */
+  }
+}
+
+function publishEngine(engine: 'app' | 'device'): void {
+  publishVoiceStatus({ ...voiceStatus, engine, checked: true, deviceSpeech: webSpeechAvailable() });
 }
 
 export function loadGermanVoicePreference(): Promise<string | null> {
@@ -213,48 +260,140 @@ async function germanSpeechOptions(): Promise<{ language: string; voice?: string
   return stillThere ? { language, voice: chosen.identifier, germanVoice: true } : { language, germanVoice: true };
 }
 
-/** Speak a German word or sentence with the shared lesson speech pipeline. */
+/**
+ * Speak one German phrase.
+ *
+ * The bundled audio and the device voice both speak German; this picks the best
+ * available one for the chosen source and guarantees that a failure in one is
+ * covered by the other instead of leaving the lesson silent.
+ */
 export function speakGerman(options: GermanSpeechRequest): void {
   const text = options.text.trim();
   if (!text) return;
   const request = ++sequence;
 
-  // Default on the web: the German audio that ships with the app. It needs no
-  // installed voice, no network and no permission, and it is always German.
-  if (Platform.OS === 'web' && getGermanVoiceSource() === 'app') {
-    const lessonId = options.lessonId === undefined ? getGermanAudioLesson() : options.lessonId;
-    void Speech.stop();
-    void playGermanClip({
-      text,
-      kind: options.kind ?? 'sentence',
-      lessonId,
-      rate: options.rate,
-      onStart: () => {
-        if (request === sequence) options.onStart?.();
-      },
-      onDone: () => {
-        if (request === sequence) options.onDone?.();
-      },
-    }).then(played => {
-      if (played || request !== sequence) return undefined;
-      return speakWithDevice(text, options, request);
-    });
+  if (Platform.OS !== 'web') {
+    safeSpeechStop();
+    speakWithDevice(text, options, request, null);
     return;
   }
 
-  void Speech.stop();
-  void speakWithDevice(text, options, request);
+  const source = getGermanVoiceSource();
+  const lessonId = options.lessonId === undefined ? getGermanAudioLesson() : options.lessonId;
+
+  const playBundled = (): Promise<boolean> => playGermanClip({
+    text,
+    kind: options.kind ?? 'sentence',
+    lessonId,
+    rate: options.rate,
+    onStart: () => {
+      if (request !== sequence) return;
+      publishEngine('app');
+      options.onStart?.();
+    },
+    onDone: () => {
+      if (request === sequence) options.onDone?.();
+    },
+  }).then(played => played).catch(() => false);
+
+  const bundledFirst = () => {
+    safeSpeechStop();
+    void playBundled().then(played => {
+      if (played || request !== sequence) return;
+      if (!webSpeechAvailable()) {
+        options.onError?.('unsupported');
+        return;
+      }
+      speakWithDevice(text, options, request, null);
+    });
+  };
+
+  const deviceFirst = () => {
+    if (!webSpeechAvailable()) {
+      bundledFirst();
+      return;
+    }
+    safeSpeechStop();
+    let started = false;
+    let fellBack = false;
+    const fallBack = () => {
+      if (fellBack || started || request !== sequence) return;
+      fellBack = true;
+      void playBundled().then(played => {
+        if (!played && request === sequence) options.onError?.('failed');
+      });
+    };
+    const cancelDevice = speakWithDevice(text, options, request, fallBack, () => {
+      started = true;
+      publishEngine('device');
+    });
+    // A voice that is listed but never starts (locked audio, dead TTS package)
+    // must not swallow the sentence: fall back to the bundled German audio.
+    setTimeout(fallBack, 1400);
+    // Keep the reference so a later stop can cancel the pending watchdog path.
+    void cancelDevice;
+  };
+
+  if (source === 'app') {
+    bundledFirst();
+    return;
+  }
+  if (source === 'device') {
+    deviceFirst();
+    return;
+  }
+  // auto: prefer the phone's own German voice, it is the most natural one.
+  void hasGermanDeviceVoice().then(has => {
+    if (request !== sequence) return;
+    if (has) deviceFirst();
+    else bundledFirst();
+  });
 }
 
-function speakWithDevice(text: string, options: GermanSpeechRequest, request: number): void {
+async function hasGermanDeviceVoice(): Promise<boolean> {
+  if (Platform.OS !== 'web' || !webSpeechAvailable()) return false;
+  const voices = await loadAvailableVoices();
+  const german = voices.some(isGermanVoice);
+  publishVoiceStatus({
+    german,
+    listed: voices.length > 0,
+    checked: true,
+    deviceSpeech: true,
+    voiceName: voiceStatus.voiceName,
+    engine: voiceStatus.engine,
+  });
+  return german;
+}
+
+function speakWithDevice(
+  text: string,
+  options: GermanSpeechRequest,
+  request: number,
+  onFailed?: (() => void) | null,
+  onStarted?: (() => void) | null,
+): () => void {
+  let done = false;
+  const fail = () => {
+    if (done) return;
+    done = true;
+    if (onFailed) onFailed();
+    else if (request === sequence) options.onError?.('failed');
+  };
+  if (Platform.OS === 'web' && !webSpeechAvailable()) {
+    fail();
+    return () => undefined;
+  }
   void germanSpeechOptions()
     .then(({ germanVoice: _germanVoice, ...target }) => {
       if (request !== sequence) return;
-      Speech.speak(text, {
+      safeSpeechSpeak(text, {
         ...target,
         rate: options.rate ?? NORMAL_RATE,
         onStart: () => {
-          if (request === sequence) options.onStart?.();
+          if (request !== sequence) return;
+          if (onStarted) onStarted();
+          else publishEngine('device');
+          options.onStart?.();
         },
         onBoundary: (event: unknown) => {
           if (request !== sequence) return;
@@ -277,19 +416,26 @@ function speakWithDevice(text: string, options: GermanSpeechRequest, request: nu
             if (request === sequence) options.onDone?.();
             return;
           }
-          if (request === sequence) options.onError?.('failed');
+          fail();
         },
       });
     })
-    .catch(() => {
-      if (request === sequence) options.onError?.('failed');
-    });
+    .catch(() => fail());
+  return () => {
+    done = true;
+    safeSpeechStop();
+  };
 }
 
 export function stopGermanSpeech(): Promise<void> {
   sequence += 1;
   stopGermanClip();
-  return Promise.resolve(Speech.stop()).catch(() => undefined);
+  if (Platform.OS === 'web' && !webSpeechAvailable()) return Promise.resolve();
+  try {
+    return Promise.resolve(Speech.stop()).catch(() => undefined);
+  } catch {
+    return Promise.resolve();
+  }
 }
 
 /** Every German voice currently reported by the platform (installed or network). */
@@ -334,7 +480,15 @@ export function probeGermanVoice(): void {
 /** Warm the voice list while a lesson screen is opening (same as Russian). */
 export function primeGermanSpeech(): void {
   preloadSpeechVoices();
-  void Speech.getAvailableVoicesAsync().catch(() => undefined);
+  if (Platform.OS === 'web' && !webSpeechAvailable()) {
+    publishVoiceStatus({ ...voiceStatus, german: false, listed: false, checked: true, deviceSpeech: false });
+    return;
+  }
+  try {
+    void Speech.getAvailableVoicesAsync().catch(() => undefined);
+  } catch {
+    /* no engine */
+  }
   void germanVoices(false);
 }
 
