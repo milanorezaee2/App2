@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { playNativeGermanClip, stopNativeGermanClip } from './germanAudioNative';
 
 /**
  * In-app German voice.
@@ -111,6 +112,7 @@ function audioFor(file: string): HTMLAudioElement {
 }
 
 export function stopGermanClip(): void {
+  stopNativeGermanClip();
   if (currentStop) {
     const stop = currentStop;
     currentStop = null;
@@ -131,7 +133,19 @@ export async function playGermanClip(options: {
   onDone?: () => void;
   onError?: () => void;
 }): Promise<boolean> {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  // Android/iOS play the same MP3s from the app bundle with expo-audio; the
+  // files are referenced in the generated germanAudioAssets.native.ts.
+  if (Platform.OS !== 'web') {
+    return playNativeGermanClip({
+      text: options.text,
+      kind: options.kind,
+      lessonId: options.lessonId === undefined ? activeLessonId : options.lessonId,
+      rate: options.rate,
+      onStart: options.onStart,
+      onDone: options.onDone,
+    });
+  }
+  if (typeof window === 'undefined') return false;
   const manifest = await loadGermanAudioManifest();
   const clip = germanClipFor(manifest, options.lessonId ?? activeLessonId, options.kind ?? 'sentence', options.text);
   if (!clip) return false;

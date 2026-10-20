@@ -191,6 +191,30 @@ await require('esbuild').build({
   check('every referenced audio file is present and non-trivial', missingFiles === 0 && checkedFiles.size === app.GERMAN_SENTENCE_LESSONS.length * 2);
   check('the audio pack records which engine produced it', /eSpeak NG/.test(String(manifest.engine)));
 
+  // The Android/iOS build cannot fetch the audio over HTTP: every clip must be
+  // referenced with a static require so Metro copies it into the APK/IPA.
+  const assetsFile = path.join(root, 'lib/germanAudioAssets.ts');
+  const assetsSource = fs.readFileSync(assetsFile, 'utf8');
+  const audioFilesOnDisk = fs.readdirSync(audioDir).filter(name => name.endsWith('.mp3')).sort();
+  const requiredFiles = [...assetsSource.matchAll(/require\('\.\.\/public\/audio\/de\/([^']+\.mp3)'\)/g)].map(match => match[1]).sort();
+  check('the native asset map references every bundled MP3 exactly once',
+    requiredFiles.length === audioFilesOnDisk.length
+    && new Set(requiredFiles).size === requiredFiles.length
+    && requiredFiles.every((file, index) => file === audioFilesOnDisk[index]));
+  check('the native asset map is generated for all lessons, not a subset',
+    Number((assetsSource.match(/GERMAN_AUDIO_FILE_COUNT = (\d+)/) || [])[1]) === audioFilesOnDisk.length);
+  check('the native asset map embeds the same manifest the web build serves',
+    assetsSource.includes("require('../public/audio/de/manifest.json')"));
+
+  // The native bridge must really use expo-audio and honour clip offsets.
+  const nativeBridge = fs.readFileSync(path.join(root, 'lib/germanAudioNative.native.ts'), 'utf8');
+  check('native playback uses expo-audio', /from 'expo-audio'/.test(nativeBridge) && /createAudioPlayer/.test(nativeBridge));
+  check('native playback seeks to the recorded clip start', /seekTo\(clip\.start\)/.test(nativeBridge));
+  check('native playback stops at the recorded clip end', /clip\.end - clip\.start/.test(nativeBridge));
+  check('the web build keeps using the Audio element, not expo-audio',
+    !/from 'expo-audio'/.test(fs.readFileSync(path.join(root, 'lib/germanAudio.ts'), 'utf8'))
+    && !/expo-audio/.test(fs.readFileSync(path.join(root, 'lib/germanAudioNative.ts'), 'utf8')));
+
   check('speech boundary indexes map to the word being read', app.wordIndexAt('Guten Morgen, wie geht es dir?', 6) === 1 && app.wordIndexAt('Guten Morgen', 0) === 0 && app.wordIndexAt('Guten Morgen', 11) === 1);
 
   const lessons = app.GERMAN_SENTENCE_LESSONS;

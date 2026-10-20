@@ -272,12 +272,6 @@ export function speakGerman(options: GermanSpeechRequest): void {
   if (!text) return;
   const request = ++sequence;
 
-  if (Platform.OS !== 'web') {
-    safeSpeechStop();
-    speakWithDevice(text, options, request, null);
-    return;
-  }
-
   const source = getGermanVoiceSource();
   const lessonId = options.lessonId === undefined ? getGermanAudioLesson() : options.lessonId;
 
