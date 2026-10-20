@@ -20,6 +20,15 @@ type PackEntry = { file: string; clips: Record<string, ClipRange> };
 
 type LessonAudio = { sentences: PackEntry; words: PackEntry };
 
+/** A `Audio`-compatible constructor; replaced in tests to record clip playback. */
+type AudioFactory = (src: string) => HTMLAudioElement;
+let audioFactory: AudioFactory | null = null;
+
+export function setGermanAudioFactory(factory: AudioFactory | null): void {
+  audioFactory = factory;
+  audioCache = new Map();
+}
+
 type GermanAudioManifest = {
   version: number;
   engine?: string;
@@ -89,7 +98,8 @@ export function germanClipFor(
 function audioFor(file: string): HTMLAudioElement {
   const cached = audioCache.get(file);
   if (cached) return cached;
-  const audio = new Audio(germanAudioAssetUrl(`/audio/de/${file}`));
+  const create = audioFactory ?? (src => new Audio(src));
+  const audio = create(germanAudioAssetUrl(`/audio/de/${file}`));
   audio.preload = 'auto';
   audioCache.set(file, audio);
   return audio;
