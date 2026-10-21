@@ -33,7 +33,7 @@ export default function AudioCheck() {
       const greetings = manifest.lessons['de-v2-greetings'];
       const firstLesson = GERMAN_SENTENCE_LESSONS[0];
       setBundled({
-        engine: manifest.engine ?? 'eSpeak NG',
+        engine: manifest.engine ?? 'Piper neural',
         sentences: Object.keys(greetings?.sentences.clips ?? {}).length,
         words: Object.keys(greetings?.words.clips ?? {}).length,
         sample: firstLesson?.sentences[0]?.text ?? '',
@@ -88,6 +88,7 @@ export default function AudioCheck() {
     <View style={s.card}>
       <Text style={s.heading}>۲. همین صدا در همهٔ درس‌ها</Text>
       <Text style={s.small}>همهٔ درس‌ها و همهٔ واژه‌ها با همین گوینده پخش می‌شوند؛ روی هر گوشی یکسان و بی‌نیاز از نصب زبان آلمانی.</Text>
+      <Text style={s.small}>هر جمله و هر واژه جداگانه ضبط شده و قبل و بعدش سکوت کامل دارد؛ بنابراین هیچ واژه‌ای از جملهٔ قبلی یا بعدی روی آن نمی‌افتد.</Text>
       <Text style={s.small}>روی دکمهٔ بلندگو در درس، بار اول جمله آهسته و بار دوم معمولی خوانده می‌شود.</Text>
       <Text style={s.small}>بخش «صدای آلمانی دستگاه» و انتخاب گوینده در این نسخه حذف شده است تا همیشه همین یک صدا شنیده شود.</Text>
     </View>

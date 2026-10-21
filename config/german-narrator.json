@@ -1,12 +1,17 @@
 {
-  "voice": "de+f1",
-  "descriptionFa": "زن، روشن و آرام",
-  "wordsPerMinute": 148,
-  "pitch": 62,
-  "range": 60,
-  "wordGap": 0,
+  "engine": "piper",
+  "voice": "de_DE-kerstin-low",
+  "model": "scripts/voice-models/de_DE-kerstin-low.onnx",
+  "modelConfig": "scripts/voice-models/de_DE-kerstin-low.onnx.json",
+  "modelMirror": "bottrading-bot/trading-bot:shorts_assets/voices/piper",
+  "speakerId": 0,
+  "lengthScale": 1.35,
+  "noiseScale": 0.667,
+  "noiseW": 0.8,
+  "descriptionFa": "زن، نرم و گرم و مهربان",
+  "wordsPerMinute": 141,
   "deviceRate": 1,
   "deviceShadowRate": 0.75,
   "deviceSlowRate": 0.55,
-  "selection": "v5-narrator-3-thinner-slower"
+  "selection": "v6-neural-kerstin"
 }

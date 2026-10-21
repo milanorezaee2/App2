@@ -39,6 +39,19 @@ type GermanAudioManifest = {
 
 const MANIFEST_PATH = '/audio/de/manifest.json';
 
+/**
+ * Playback window around every clip.
+ *
+ * The pack puts 0.30 s of digital silence before each sentence and 0.55 s after
+ * it (0.45 s for the word pack). Starting 0.25 s early and stopping 0.15 s late
+ * means the player only ever crosses silence between two clips: a slow seek, an
+ * encoder delay, or a browser that lands a frame off can add silence, never a
+ * fragment of the sentence before or after. That is the "no interference"
+ * promise for the German course.
+ */
+const PREROLL_SECONDS = 0.25;
+const TAIL_SECONDS = 0.15;
+
 let manifestPromise: Promise<GermanAudioManifest | null> | null = null;
 let activeLessonId: string | null = null;
 let audioCache = new Map<string, HTMLAudioElement>();
@@ -152,7 +165,7 @@ export async function playGermanClip(options: {
 
   stopGermanClip();
   const audio = audioFor(clip.file);
-  // eSpeak reads quickly; the lesson's natural rate is 0.9 and 0.55 for slow replay.
+  // The lesson asks for 0.9 on a normal sentence and 0.55 for slow replay.
   const rate = options.rate ?? 0.9;
   const playbackRate = rate >= 0.85 ? 1 : rate >= 0.7 ? 0.85 : 0.75;
   audio.playbackRate = playbackRate;
@@ -166,7 +179,7 @@ export async function playGermanClip(options: {
     try { audio.pause(); } catch { /* element already detached */ }
     if (completed) options.onDone?.();
   };
-  const stopAt = clip.end + 0.05;
+  const stopAt = clip.end + TAIL_SECONDS;
   const onTime = () => {
     // Fallback in case `ended` never fires because we stop before the file ends.
     if (audio.currentTime >= stopAt) finish(true);
@@ -200,14 +213,14 @@ export async function playGermanClip(options: {
         setTimeout(ready, 1200);
       });
     }
-    audio.currentTime = clip.start;
+    audio.currentTime = Math.max(0, clip.start - PREROLL_SECONDS);
     if (audio.readyState < 2) {
       await new Promise<void>(resolve => {
         const ready = () => { audio.removeEventListener('canplay', ready); resolve(); };
         audio.addEventListener('canplay', ready);
         setTimeout(ready, 1200);
       });
-      audio.currentTime = clip.start;
+      audio.currentTime = Math.max(0, clip.start - PREROLL_SECONDS);
     }
     await audio.play();
   } catch {
@@ -216,14 +229,12 @@ export async function playGermanClip(options: {
     cleanup();
     return false;
   }
-  // A short natural tail past the recorded end: the MP3 encoder adds a few
-  // milliseconds of delay and cutting exactly on the boundary clips the final
-  // consonant, which makes every sentence sound chopped. The manifest keeps at
-  // least 0.22 s between two clips, so this never runs into the next one.
+  // The tail past the recorded end is silence in the pack, so cutting there
+  // cannot clip the final consonant and cannot reach the next clip either.
   // Safety net only — the `timeupdate` handler above stops on the real position.
   stopTimer = setTimeout(
     () => finish(true),
-    Math.max(120, ((stopAt - clip.start) / playbackRate) * 1000 + 350),
+    Math.max(120, ((stopAt - Math.max(0, clip.start - PREROLL_SECONDS)) / playbackRate) * 1000 + 300),
   );
   options.onStart?.();
   return true;

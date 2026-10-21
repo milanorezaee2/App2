@@ -209,7 +209,7 @@ await require('esbuild').build({
   check('every German vocabulary word has its own clip in the shipped audio pack', missingWords === 0);
   check('every clip range is a positive, non-empty interval', badRanges === 0);
   check('every referenced audio file is present and non-trivial', missingFiles === 0 && checkedFiles.size === app.GERMAN_SENTENCE_LESSONS.length * 2);
-  check('the audio pack records which engine produced it', /eSpeak NG/.test(String(manifest.engine)));
+  check('the audio pack records which engine produced it', /Piper neural/.test(String(manifest.engine)));
 
   // The Android/iOS build cannot fetch the audio over HTTP: every clip must be
   // referenced with a static require so Metro copies it into the APK/IPA.

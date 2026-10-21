@@ -21,19 +21,38 @@ let checks = 0;
 const check = (label, value) => { assert.ok(value, label); checks += 1; };
 
 // --- the shipped pack ---------------------------------------------------------
-check('the audio pack was built by the chosen voice', manifest.engine.startsWith(`eSpeak NG ${preset.voice} `));
+check('the audio pack was built by the chosen neural voice',
+  manifest.engine.startsWith(`Piper neural ${preset.voice} `) && preset.engine === 'piper');
 check('the audio pack was built at the chosen tempo', manifest.engine.includes(`@ ${preset.wordsPerMinute} wpm`));
+check('the shipped clips really speak at the labelled tempo',
+  Math.abs(Number(manifest.measuredWordsPerMinute) - preset.wordsPerMinute) <= 6);
 // Older packs only carried the engine string; the rebuilt pack records the
 // numbers explicitly. Both forms must agree with the preset.
-const engineVoice = (manifest.engine.match(/eSpeak NG (\S+)/) || [])[1];
+const engineVoice = (manifest.engine.match(/Piper neural (\S+)/) || [])[1];
 const engineWpm = Number((manifest.engine.match(/@ (\d+) wpm/) || [])[1]);
 const packVoice = manifest.voice ?? engineVoice;
 const packWpm = manifest.wordsPerMinute ?? engineWpm;
 check('the pack records the chosen voice', packVoice === preset.voice);
 check('the pack records the chosen tempo', packWpm === preset.wordsPerMinute);
-check('the pack records the chosen pitch',
-  (manifest.pitch === undefined && manifest.range === undefined)
-    || (manifest.pitch === preset.pitch && manifest.range === preset.range));
+check('the pack records the neural speed setting instead of formant parameters',
+  manifest.lengthScale === preset.lengthScale && manifest.pitch === undefined);
+
+// --- every clip stands alone --------------------------------------------------
+// The generator surrounds each sentence and word with digital silence, and the
+// players start and stop inside that silence. Together they make it impossible
+// to hear a fragment of the previous or the next clip.
+const webPlayer = fs.readFileSync(path.join(root, 'lib/germanAudio.ts'), 'utf8');
+const nativePlayer = fs.readFileSync(path.join(root, 'lib/germanAudioNative.native.ts'), 'utf8');
+check('the pack keeps guard silence before and after every clip',
+  manifest.leadInSeconds >= 0.3 && manifest.sentenceGapSeconds >= 0.5 && manifest.wordGapSeconds >= 0.45);
+check('the web player starts and stops inside that silence',
+  /const PREROLL_SECONDS = 0\.25;/.test(webPlayer) && /const TAIL_SECONDS = 0\.15;/.test(webPlayer)
+  && /Math\.max\(0, clip\.start - PREROLL_SECONDS\)/.test(webPlayer));
+check('the Android player starts and stops inside that silence',
+  /const PRE_ROLL_SECONDS = 0\.25;/.test(nativePlayer) && /const TAIL_SECONDS = 0\.15;/.test(nativePlayer));
+check('the neural engine replaces the formant synthesizer everywhere',
+  manifest.engine.startsWith('Piper neural')
+  && !/eSpeak/.test(fs.readFileSync(path.join(root, 'app/learn/[language]/audio-check.tsx'), 'utf8')));
 
 const lessonIds = Object.keys(manifest.lessons);
 check('the pack covers every German lesson', lessonIds.length === 95);

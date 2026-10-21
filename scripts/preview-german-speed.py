@@ -1,232 +1,138 @@
 #!/usr/bin/env python3
-"""Render the faster German narrator options so one can be chosen by ear.
+"""Render the neural German narrator candidates so a voice can be chosen by ear.
 
-Every clip is produced by the same engine and the same voices that ship inside
-the app (`eSpeak NG`, `de+f1..f5` / `de+m1..m7`), so what is heard here is
-exactly what will be heard in the lessons after the pack is rebuilt.
+Everything here goes through `scripts/german_voice.py`, the same module the
+shipped pack uses, so what is heard on the page is exactly what the lessons will
+play — same model, same warmth chain, same loudness.
 
-Each option is "one step faster" than today's 140 wpm pack; they differ only in
-speaker and brightness, which is what "clearer" means for this engine.
+Each candidate is calibrated to the shipped tempo (138 words per minute) by its
+own `length_scale`, because the neural voices have different natural paces.
 
-Usage:
-    python3 -m venv /tmp/v2
-    /tmp/v2/bin/pip install espeakng-loader lameenc numpy
-    /tmp/v2/bin/python scripts/preview-german-speed.py
+Usage
+-----
+    python3 -m venv .venv-audio
+    .venv-audio/bin/pip install piper-tts onnxruntime numpy scipy lameenc
+    node scripts/fetch-german-voice-model.cjs      # de_DE-kerstin-low
+    .venv-audio/bin/python scripts/preview-german-speed.py
 
 Output (committed, served as docs):
-    docs/voice-samples/speed/v1-*.mp3 ... v4-*.mp3
-    docs/voice-samples/speed/compare-all.mp3   one file, options back to back
+    docs/voice-samples/speed/v6-*.mp3 ... v9-*.mp3
+    docs/voice-samples/speed/compare-all.mp3
     docs/voice-samples/speed/samples.json
     docs/voice-samples/speed/index.html
 """
-from __future__ import annotations
-
-import ctypes
 import json
 import sys
 from pathlib import Path
 
 import lameenc
 import numpy as np
-from espeakng_loader import get_data_path, get_library_path
 
-OUT = Path(__file__).resolve().parent.parent / 'docs' / 'voice-samples' / 'speed'
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from german_voice import LEAD_IN, Narrator  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / 'docs' / 'voice-samples' / 'speed'
+MODELS = ROOT / 'scripts' / 'voice-models'
 PERSIAN = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
 
 
-def fa_digit(value: int | str) -> str:
+def fa_digit(value):
     return str(value).translate(PERSIAN)
 
 
-def fa_clock(seconds: float) -> str:
+def fa_clock(seconds):
     minutes, rest = divmod(int(seconds), 60)
-    # Zero-pad in Latin first, then translate, so both digits are Persian.
     return fa_digit(f'{minutes}:{rest:02d}')
-BITRATE = 24
-LEAD_IN = 0.14
-END = 0.32
-LINE_GAP = 0.30
-VARIANT_GAP = 0.85
-
-LIB = ctypes.CDLL(str(get_library_path()))
-LIB.espeak_Initialize.restype = ctypes.c_int
-LIB.espeak_Initialize.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.c_int]
-SAMPLE_RATE = LIB.espeak_Initialize(2, 0, str(get_data_path()).encode(), 0)
-if SAMPLE_RATE <= 0:
-    raise SystemExit('eSpeak NG failed to initialise')
-LIB.espeak_SetVoiceByName.argtypes = [ctypes.c_char_p]
-LIB.espeak_SetParameter.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
-LIB.espeak_Synth.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_uint, ctypes.c_int,
-                             ctypes.c_uint, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p]
-
-# eSpeak NG speak_lib.h: 7 is the word gap; 5 is punctuation.
-RATE, VOLUME, PITCH, RANGE, GAP = 1, 2, 3, 4, 7
-
-_buffer: list[bytes] = []
-CALLBACK = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.POINTER(ctypes.c_short), ctypes.c_int, ctypes.c_void_p)
 
 
-def _callback(wav, count, events):  # noqa: ARG001
-    if wav and count > 0:
-        _buffer.append(ctypes.string_at(wav, count * ctypes.sizeof(ctypes.c_short)))
-    return 0
-
-
-_callback_ref = CALLBACK(_callback)
-LIB.espeak_SetSynthCallback(_callback_ref)
-
-
-def say(text: str, voice: str, rate: int, pitch: int, rng: int, gap: int = 0) -> np.ndarray:
-    LIB.espeak_SetVoiceByName(voice.encode())
-    LIB.espeak_SetParameter(RATE, rate, 0)
-    LIB.espeak_SetParameter(PITCH, pitch, 0)
-    LIB.espeak_SetParameter(RANGE, rng, 0)
-    LIB.espeak_SetParameter(GAP, gap, 0)
-    LIB.espeak_SetParameter(VOLUME, 100, 0)
-    _buffer.clear()
-    raw = text.encode('utf-8')
-    LIB.espeak_Synth(raw, len(raw) + 1, 0, 1, 0, 0, None, None)
-    LIB.espeak_Synchronize()
-    if not _buffer:
-        return np.zeros(0, dtype=np.float32)
-    return np.frombuffer(b''.join(_buffer), dtype=np.int16).astype(np.float32) / 32768.0
-
-
-def silence(seconds: float) -> np.ndarray:
-    return np.zeros(int(SAMPLE_RATE * seconds), dtype=np.float32)
-
-
-def encode(samples: np.ndarray) -> bytes:
-    pcm = np.clip(samples, -1.0, 1.0)
-    encoder = lameenc.Encoder()
-    encoder.set_bit_rate(BITRATE)
-    encoder.set_in_sample_rate(SAMPLE_RATE)
-    encoder.set_channels(1)
-    encoder.set_quality(4)
-    return encoder.encode((pcm * 32767).astype(np.int16).tobytes()) + encoder.flush()
-
-
-# Three real course sentences: a short greeting, a normal statement and a longer
-# request. Together they show how the tempo feels in a lesson.
+# Three real course sentences: a greeting, a statement and a polite request.
 LINES = [
     'Hallo! Wie geht es dir?',
     'Ich heiße Mina. Ich komme aus dem Iran.',
     'Guten Morgen! Ich möchte einen Kaffee, bitte.',
 ]
+WORDS = 20
+TARGET_WPM = 138
+GAP = 0.45
+END = 0.40
 
 OPTIONS = [
     {
-        'id': 'v1',
-        'file': 'v1-current-voice-faster.mp3',
-        'voice': 'de+f3', 'rate': 160, 'pitch': 52, 'range': 50, 'gap': 0,
-        'fa': 'همان گویندهٔ فعلی، یک پله سریع‌تر',
-        'detail': 'زن، گرم و متعادل · ۱۶۰ کلمه در دقیقه (اکنون ۱۴۰)',
+        'id': 'v6',
+        'file': 'v6-kerstin-warm.mp3',
+        'model': 'de_DE-kerstin-low',
+        'lengthScale': 1.35,
+        'fa': 'کرستین — زن، نرم و گرم (گویندهٔ این نسخه)',
+        'detail': 'صدای زنانهٔ آرام و مهربان · نزدیک‌ترین به سرعت این نسخه',
     },
     {
-        'id': 'v2',
-        'file': 'v2-current-voice-faster-clearer.mp3',
-        'voice': 'de+f3', 'rate': 158, 'pitch': 62, 'range': 60, 'gap': 0,
-        'fa': 'همان گوینده، یک پله سریع‌تر و روشن‌تر',
-        'detail': 'همان صدا با تُن بازتر و واضح‌تر · ۱۵۸ کلمه در دقیقه',
+        'id': 'v7',
+        'file': 'v7-ramona-warm.mp3',
+        'model': 'de_DE-ramona-low',
+        'lengthScale': 1.45,
+        'fa': 'رامونا — زن، روشن‌تر و شاداب‌تر',
+        'detail': 'تُن کمی بالاتر و شاداب‌تر',
     },
     {
-        'id': 'v3',
-        'file': 'v3-brighter-female.mp3',
-        'voice': 'de+f1', 'rate': 158, 'pitch': 55, 'range': 54, 'gap': 0,
-        'fa': 'گویندهٔ زن روشن‌تر و جوان‌تر',
-        'detail': 'صدای بازتر و واضح‌تر · ۱۵۸ کلمه در دقیقه',
+        'id': 'v8',
+        'file': 'v8-eva-bright.mp3',
+        'model': 'de_DE-eva_k-x_low',
+        'lengthScale': 1.00,
+        'fa': 'اِوا — زن جوان و بسیار واضح',
+        'detail': 'وضوح بیشتر، کمی خشک‌تر و آرام‌تر',
     },
-    {
-        'id': 'v4',
-        'file': 'v4-current-voice-fastest.mp3',
-        'voice': 'de+f3', 'rate': 172, 'pitch': 56, 'range': 54, 'gap': 0,
-        'fa': 'همان گوینده، دو پله سریع‌تر',
-        'detail': 'برای کسی که تندتر می‌خواهد · ۱۷۲ کلمه در دقیقه',
-    },
-    {
-        # The voice shipped from set 13 on: narrator #3 (`de+f1`), one step
-        # thinner than v3 (the same brightness step that turned v1 into v2) and
-        # one step slower (148 instead of 158 wpm).
-        'id': 'v5',
-        'file': 'v5-narrator-3-thinner-slower.mp3',
-        'voice': 'de+f1', 'rate': 148, 'pitch': 62, 'range': 60, 'gap': 0,
-        'fa': 'گویندهٔ شمارهٔ ۳، یک پله شفاف‌تر و یک پله آرام‌تر',
-        'detail': 'همان گویندهٔ شمارهٔ ۳ با تُن بازتر · ۱۴۸ کلمه در دقیقه',
-    },
+
 ]
 
-LABELS = ['Variante eins.', 'Variante zwei.', 'Variante drei.', 'Variante vier.', 'Variante fünf.']
+
+def model_paths(name):
+    base = MODELS / name
+    onnx = base.with_suffix('.onnx')
+    config = base.with_suffix('.onnx.json')
+    if not onnx.exists():
+        sys.exit(f'missing {onnx.relative_to(ROOT)}; run: node scripts/fetch-german-voice-model.cjs')
+    return onnx, config
 
 
-def variant_audio(option: dict) -> np.ndarray:
-    parts = [silence(LEAD_IN)]
+def encode(samples, bitrate=48):
+    pcm = np.clip(samples, -1.0, 1.0)
+    encoder = lameenc.Encoder()
+    encoder.set_bit_rate(bitrate)
+    encoder.set_in_sample_rate(16000 if samples.size else 16000)
+    encoder.set_out_sample_rate(44100)
+    encoder.set_channels(1)
+    encoder.set_quality(4)
+    return encoder.encode((pcm * 32767).astype(np.int16).tobytes()) + encoder.flush()
+
+
+def silence(narrator, seconds):
+    return np.zeros(int(narrator.sample_rate * seconds), dtype=np.float32)
+
+
+def render(narrator):
+    parts = [silence(narrator, LEAD_IN)]
     for index, line in enumerate(LINES):
-        parts.append(say(line, option['voice'], option['rate'], option['pitch'], option['range'], option.get('gap', 0)))
-        parts.append(silence(END if index == len(LINES) - 1 else LINE_GAP))
+        audio = narrator.render(line)
+        parts.append(audio)
+        parts.append(silence(narrator, END if index == len(LINES) - 1 else GAP))
     return np.concatenate(parts)
 
 
-REFERENCE = {'file': 'v0-current-140.mp3', 'voice': 'de+f3', 'rate': 140, 'pitch': 52, 'range': 50,
-             'fa': 'وضعیت فعلی (۱۴۰ کلمه در دقیقه) — فقط برای مقایسه'}
-
-
-def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    if '--page-only' in sys.argv:
-        manifest = json.loads((OUT / 'samples.json').read_text(encoding='utf-8'))
-        write_page(manifest)
-        print(f'page rebuilt from samples.json (chosen: {chosen_id() or "none"})')
-        return
-    manifest = {'lines': LINES, 'options': []}
-    reference_audio = variant_audio(REFERENCE)
-    (OUT / REFERENCE['file']).write_bytes(encode(reference_audio))
-    manifest['reference'] = {**REFERENCE, 'seconds': round(reference_audio.size / SAMPLE_RATE, 2)}
-    combined = [silence(LEAD_IN)]
-    cursor = LEAD_IN
-    for option, label in zip(OPTIONS, LABELS):
-        audio = variant_audio(option)
-        payload = encode(audio)
-        (OUT / option['file']).write_bytes(payload)
-        manifest['options'].append({
-            **{key: option[key] for key in ('id', 'file', 'voice', 'rate', 'pitch', 'range', 'gap', 'fa', 'detail')},
-            'seconds': round(audio.size / SAMPLE_RATE, 2),
-            'bytes': len(payload),
-        })
-        intro = say(label, option['voice'], option['rate'], option['pitch'], option['range'], option['gap'])
-        combined.append(intro)
-        combined.append(silence(0.45))
-        cursor += (intro.size + int(SAMPLE_RATE * 0.45)) / SAMPLE_RATE
-        manifest['options'][-1]['at'] = round(cursor, 1)
-        combined.append(audio)
-        cursor += (audio.size + int(SAMPLE_RATE * VARIANT_GAP)) / SAMPLE_RATE
-        combined.append(silence(VARIANT_GAP))
-        print(f"  {option['id']}  {option['voice']:7s} {option['rate']} wpm  "
-              f'{audio.size / SAMPLE_RATE:5.2f}s  {len(payload) / 1024:5.1f} KB')
-
-    all_audio = np.concatenate(combined)
-    (OUT / 'compare-all.mp3').write_bytes(encode(all_audio))
-    manifest['compare'] = {'file': 'compare-all.mp3', 'seconds': round(all_audio.size / SAMPLE_RATE, 2)}
-    (OUT / 'samples.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=1) + '\n')
-    write_page(manifest)
-    print(f'\ncompare-all.mp3: {all_audio.size / SAMPLE_RATE:.1f}s, {len(manifest["options"])} options in {OUT}')
-
-
-def chosen_id() -> str:
-    """Which option the app currently ships (config/german-narrator.json)."""
-    config = Path(__file__).resolve().parent.parent / 'config' / 'german-narrator.json'
+def chosen_id():
     try:
-        selection = json.loads(config.read_text(encoding='utf-8')).get('selection', '')
+        preset = json.loads((ROOT / 'config/german-narrator.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
         return ''
-    return selection
+    return preset.get('selection', '')
 
 
-def write_page(manifest: dict) -> None:
+def write_page(manifest):
     chosen = chosen_id()
     cards = '\n'.join(
-        f"""    <section class="card{' chosen' if item['id'] and item['id'] in chosen else ''}">
-      <div class="head"><span class="num">{index}</span><span class="name">{item['fa']}</span>{'<span class="badge">انتخاب‌شده</span>' if item['id'] and item['id'] in chosen else ''}</div>
-      <p class="hint">{item['detail']} · در فایل «همه با هم» از {fa_clock(item['at'])}</p>
+        f"""    <section class="card{' chosen' if item['id'] in chosen else ''}">
+      <div class="head"><span class="num">{index}</span><span class="name">{item['fa']}</span>{'<span class="badge">انتخاب‌شده</span>' if item['id'] in chosen else ''}</div>
+      <p class="hint">{item['detail']} · حدود {fa_digit(item['wordsPerMinute'])} کلمه در دقیقه · در فایل «همه با هم» از {fa_clock(item['at'])}</p>
       <button class="play" type="button" data-src="{item['file']}">▶ پخش نمونهٔ {fa_digit(index)}</button>
     </section>"""
         for index, item in enumerate(manifest['options'], start=1)
@@ -265,10 +171,11 @@ def write_page(manifest: dict) -> None:
 </head>
 <body>
 <header>
-  <h1>صدای آلمانی — پنج نمونه</h1>
+  <h1>صدای آلمانی — سه گویندهٔ عصبی</h1>
   <p class="lead">
-    هر پنج نمونه با همان موتور صدای داخل برنامه ساخته شده‌اند، پس بعد از انتخاب،
-    دقیقاً همین صدا در درس‌ها پخش می‌شود. جمله‌های واقعی درس:
+    این نمونه‌ها با همان موتور و همان پردازش صدایی ساخته شده‌اند که داخل برنامه پخش می‌شود
+    (گویندهٔ عصبی آفلاین، بدون اینترنت). هر سه نمونه با سرعتی نزدیک به هم (نزدیک ۱۴۰ تا ۱۵۵ کلمه در دقیقه) خوانده
+    شده‌اند تا فقط جنس صدا را مقایسه کنید. جمله‌های واقعی درس:
     <span class="de">Hallo! Wie geht es dir?</span> ·
     <span class="de">Ich heiße Mina. Ich komme aus dem Iran.</span> ·
     <span class="de">Guten Morgen! Ich möchte einen Kaffee, bitte.</span>
@@ -281,12 +188,13 @@ def write_page(manifest: dict) -> None:
   <button class="play all" type="button" data-src="compare-all.mp3">▶ پخش همهٔ نمونه‌ها</button>
 </section>
 <section class="card">
-  <div class="head"><span class="name">وضعیت فعلی برای مقایسه</span></div>
-  <p class="hint">همان گوینده با سرعت امروز (۱۴۰) — نمونه نیست، فقط مرجع.</p>
-  <button class="play" type="button" data-src="v0-current-140.mp3" style="background:#8a9691">▶ پخش صدای فعلی</button>
+  <div class="head"><span class="name">گویندهٔ قبلی برای مقایسه</span></div>
+  <p class="hint">همان صدای مصنوعی قبلی (eSpeak) — نمونه نیست، فقط مرجع.</p>
+  <button class="play" type="button" data-src="v0-current-140.mp3" style="background:#8a9691">▶ پخش صدای قبلی</button>
 </section>
 <footer>
-  هر نمونه سه جملهٔ واقعی درس را می‌خواند. بعد از انتخاب، کل ۹۵ درس و واژه‌ها با همین صدا بازسازی می‌شوند.
+  بعد از انتخاب، هر ۹۵ درس و واژه‌ها با همان گوینده و همان سرعت بازسازی می‌شوند؛
+  تغییر گوینده فقط یک خط در <code>config/german-narrator.json</code> است.
 </footer>
 <audio id="player" preload="none"></audio>
 <script>
@@ -309,6 +217,60 @@ def write_page(manifest: dict) -> None:
 </body>
 </html>
 """)
+
+
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    if '--page-only' in sys.argv:
+        manifest = json.loads((OUT / 'samples.json').read_text(encoding='utf-8'))
+        write_page(manifest)
+        print(f'page rebuilt from samples.json (chosen: {chosen_id() or "none"})')
+        return
+
+    manifest = {'lines': LINES, 'targetWordsPerMinute': TARGET_WPM, 'options': []}
+    parts = [np.zeros(int(16000 * 0.14), dtype=np.float32)]
+    cursor = 0.14
+    for option in OPTIONS:
+        onnx, config = model_paths(option['model'])
+        narrator = Narrator(onnx, config, speaker_id=option.get('speakerId'),
+                            length_scale=option['lengthScale'])
+        audio = render(narrator)
+        seconds = audio.size / narrator.sample_rate
+        # VITS sampling makes each render a little different; take the median of
+        # three passes so the published tempo is stable.
+        runs = sorted(sum(len(narrator.render(line)) / narrator.sample_rate for line in LINES)
+                      for _ in range(3))
+        speech = runs[1]
+        (OUT / option['file']).write_bytes(encode(audio))
+        wpm = round(WORDS / (speech / 60))
+        manifest['options'].append({
+            'id': option['id'],
+            'file': option['file'],
+            'model': option['model'],
+            'lengthScale': option['lengthScale'],
+            'wordsPerMinute': wpm,
+            'fa': option['fa'],
+            'detail': option['detail'],
+            'seconds': round(seconds, 2),
+            'bytes': (OUT / option['file']).stat().st_size,
+        })
+        intro = narrator.render(f'Variante {option["id"][1]}.')
+        parts.append(intro)
+        parts.append(np.zeros(int(narrator.sample_rate * 0.35), dtype=np.float32))
+        cursor += (intro.size + int(narrator.sample_rate * 0.35)) / narrator.sample_rate
+        manifest['options'][-1]['at'] = round(cursor, 1)
+        parts.append(audio)
+        parts.append(np.zeros(int(narrator.sample_rate * 0.7), dtype=np.float32))
+        cursor += seconds + 0.7
+        print(f"  {option['id']}  {option['model']:22s} ls={option['lengthScale']:4.2f} "
+              f'{seconds:5.2f}s  {wpm} wpm  {manifest["options"][-1]["bytes"] / 1024:5.1f} KB')
+
+    combined = np.concatenate(parts)
+    (OUT / 'compare-all.mp3').write_bytes(encode(combined))
+    manifest['compare'] = {'file': 'compare-all.mp3', 'seconds': round(combined.size / 16000, 2)}
+    (OUT / 'samples.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=1) + '\n')
+    write_page(manifest)
+    print(f'\ncompare-all.mp3: {combined.size / 16000:.1f}s, {len(manifest["options"])} options in {OUT}')
 
 
 if __name__ == '__main__':

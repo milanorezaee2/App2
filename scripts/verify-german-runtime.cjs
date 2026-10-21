@@ -265,8 +265,10 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   const homeClip = await lastPlay();
   check('German home plays the bundled German audio, not the device voice',
     homeClip?.file === greetingSentences.file);
-  check('the home clip starts at the recorded offset for "Hallo!"',
-    Math.abs((homeClip?.start ?? -1) - greetingSentences.clips['hallo!'][0]) < 0.05);
+  // The pack keeps 0.25 s of silence before the speech; playback starts inside
+  // it so a late seek can never land on the neighbouring sentence.
+  check('the home clip starts in the guard silence just before "Hallo!"',
+    Math.abs((homeClip?.start ?? -1) - (greetingSentences.clips['hallo!'][0] - 0.25)) < 0.05);
   check('the home sentence never falls back to the device voice',
     (await deviceSpoken()).length === 0);
   check('German home raises no runtime errors', cleanErrors().length === 0);
@@ -303,8 +305,8 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   const tappedWordPlays = await page.evaluate(file =>
     (window.__audio || []).filter(entry => entry.src.endsWith(file)).flatMap(entry => entry.plays || []),
     greetingWords.file);
-  check('the word clip uses the recorded start of that word',
-    tappedWordPlays.some(play => Math.abs(play.start - greetingWords.clips[word][0]) < 0.05));
+  check('the word clip starts in the guard silence before that word',
+    tappedWordPlays.some(play => Math.abs(play.start - Math.max(0, greetingWords.clips[word][0] - 0.25)) < 0.05));
   check('the tapped word is not read by the device voice', (await deviceSpoken()).length === 0);
 
   // Back into the lesson for the remaining stages.
@@ -332,7 +334,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
     return stop ? stop - play.at : null;
   }, greetingSentences.file);
   const spokenClip = Object.values(greetingSentences.clips)
-    .find(range => Math.abs(range[0] - (natural?.start ?? -1)) < 0.05);
+    .find(range => Math.abs((range[0] - 0.25) - (natural?.start ?? -1)) < 0.05);
   check('the sentence is allowed to finish instead of being cut off mid-word',
     typeof sentenceTiming === 'number' && !!spokenClip
       && sentenceTiming >= (spokenClip[1] - spokenClip[0]) * 1000 * 0.9);

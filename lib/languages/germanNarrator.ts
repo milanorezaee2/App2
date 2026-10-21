@@ -1,11 +1,12 @@
 /**
  * The one German narrator.
  *
- * The learner picks a voice by ear, and every German screen must then speak
- * with exactly that voice. Keeping the choice in `config/german-narrator.json`
- * means the audio pack generator (Python), the bundled clip player and the
- * device-voice path all read the same numbers, so "the voice I chose" cannot
- * silently stay the old one in one of the three places.
+ * The voice is a neural one (`piper`, offline, rendered ahead of time), because
+ * the formant synthesizer the course started with never sounded like a person.
+ * Keeping the choice in `config/german-narrator.json` means the audio pack
+ * generator (Python), the bundled clip player and the device-voice fallback all
+ * read the same numbers, so "the voice I chose" cannot silently stay the old
+ * one in one of the three places.
  *
  * `verify-german-narrator.cjs` pins the shipped manifest to this file.
  */
@@ -13,15 +14,14 @@ import preset from '../../config/german-narrator.json';
 import { toPersianDigits } from '../format';
 
 export type GermanNarrator = {
-  /** eSpeak NG voice used to build the bundled pack, e.g. `de+f1`. */
+  /** Voice that built the bundled pack, e.g. `de_DE-kerstin-low`. */
   voice: string;
+  /** Speech engine behind that voice (`piper` = neural, offline). */
+  engine: string;
   /** Persian description shown in the app. */
   descriptionFa: string;
-  /** Pack tempo in words per minute. */
+  /** Pack tempo in words per minute, measured from the shipped clips. */
   wordsPerMinute: number;
-  pitch: number;
-  range: number;
-  wordGap: number;
   /** expo-speech rate for a normal sentence (1 = the engine's own pace). */
   deviceRate: number;
   /** expo-speech rate for the shadowing stage. */

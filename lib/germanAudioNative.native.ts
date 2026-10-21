@@ -33,16 +33,17 @@ export type NativeManifest = typeof GERMAN_AUDIO_MANIFEST;
 
 export { GERMAN_AUDIO_MANIFEST };
 
-/** Extra room after the manifest end so the final consonant is never clipped. */
-const TAIL_SECONDS = 0.12;
+/** Room after the recorded speech; the pack keeps 0.45-0.55 s of silence there. */
+const TAIL_SECONDS = 0.15;
 /**
- * Start slightly inside the silence that precedes every clip. A seek can land a
- * frame late (~40 ms); beginning early keeps the first consonant intact, and the
- * 0.35 s / 0.22 s silent gaps guarantee no neighbouring word is heard.
+ * Start 0.25 s inside the silence that precedes every clip. The pack guarantees
+ * 0.30 s of digital silence before the speech and 0.45-0.55 s after it, so a
+ * seek that lands late, or a decoder that overshoots, still lands in silence:
+ * the learner can never hear a fragment of the previous or the next sentence.
  */
-const PRE_ROLL_SECONDS = 0.06;
-/** The words pack leaves 0.22 s between two words; stay well inside that. */
-const MAX_TAIL_SECONDS = 0.18;
+const PRE_ROLL_SECONDS = 0.25;
+/** Never listen past the neighbour's guard silence, even with a slow seek. */
+const MAX_TAIL_SECONDS = 0.25;
 
 let player: AudioPlayer | null = null;
 let stopTimer: ReturnType<typeof setTimeout> | null = null;
@@ -139,6 +140,9 @@ async function waitForLoaded(target: AudioPlayer, timeoutMs = 3000): Promise<boo
 
 /** Seek, then wait until the player position really moved to the requested time. */
 async function seekAndSettle(target: AudioPlayer, seconds: number, timeoutMs = 1200): Promise<boolean> {
+  // A clip that starts inside the first 0.25 s plays from the head of the file,
+  // which the pack guarantees to be silence.
+  if (seconds <= 0.001) return true;
   const tolerance = 0.06;
   let before = 0;
   try {

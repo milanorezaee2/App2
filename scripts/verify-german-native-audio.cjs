@@ -142,9 +142,9 @@ function check(name, condition) {
   const player = getLastPlayer();
   const order = player.log.filter(entry => !entry.startsWith('seeked'));
   check('the player waits for the file to load before seeking',
-    order.indexOf('loaded') !== -1 && order.indexOf('loaded') < order.indexOf('seek:1.96'));
-  check('playback begins inside the silence just before the clip, never at the head of the file',
-    order.some(entry => entry === 'play@1.96') && !order.includes('PLAYED-BEFORE-LOAD'));
+    order.indexOf('loaded') !== -1 && order.indexOf('loaded') < order.indexOf('seek:1.77'));
+  check('playback begins 0.25 s inside the guard silence, never at the head of the file',
+    order.some(entry => entry === 'play@1.77') && !order.includes('PLAYED-BEFORE-LOAD'));
 
   check('the stop timer never fires before the sentence is audible', started === true && player.playing);
 
@@ -166,7 +166,7 @@ function check(name, condition) {
     text: 'Hallo!', kind: 'sentence', lessonId: 'demo', rate: 1,
   });
   check('a dropped seek is retried on a fresh player and still starts at the clip',
-    retried === true && getLastPlayer().log.includes('play@1.96'));
+    retried === true && getLastPlayer().log.includes('play@1.77'));
   check('the failed first player never played the wrong part of the file',
     global.__germanPlayerProfiles.length === 0);
   native.stopNativeGermanClip();
@@ -202,7 +202,9 @@ function check(name, condition) {
   });
   const wordPlayer = getLastPlayer();
   check('a vocabulary word plays from the words pack', wordStarted === true && wordPlayer.assetId === 2);
-  check('a vocabulary word starts just before its own offset', wordPlayer.log.includes('play@0.06'));
+  // A word at 0.12 s has no room for the 0.25 s pre-roll, so it starts at the head the
+  // pack guarantees to be silent.
+  check('a vocabulary word starts in its guard silence, above 0', wordPlayer.log.includes('play@0.00'));
   native.stopNativeGermanClip();
 
   // 5. Unknown text never pretends to have played.
