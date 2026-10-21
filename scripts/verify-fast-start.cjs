@@ -29,7 +29,7 @@ const cacheSource = read('lib/registrationCache.ts');
 // --- 1. the intro no longer blocks the app for seconds ---------------------
 const introMatch = layout.match(/const INTRO_DURATION_MS = (\d+);/);
 check('the intro duration is a named, short constant',
-  !!introMatch && Number(introMatch[1]) <= 1000);
+  !!introMatch && Number(introMatch[1]) <= 1300);
 check('the old 3.4 second intro timer is gone', !/\},\s*3400\)/.test(layout));
 check('the app is revealed before the chime finishes, not after',
   /setIntroComplete\(true\);\s*\n\s*\/\/ Silence the short chime/.test(layout));
@@ -37,6 +37,28 @@ check('the chime is released on a timer instead of blocking the first screen',
   /player\?\.remove\(\)/.test(layout) && /1600/.test(layout));
 check('speech engines are warmed off the critical path',
   layout.indexOf("warmSpeech('en-US');") < layout.indexOf('const finish = setTimeout'));
+
+// --- 1a. the whole brand is visible before the intro ends ------------------
+// The logo used to animate for longer than the intro lasted, so the app opened
+// after a flash of "Milo" and the MULTILANGUAGE line was never seen.
+const logo = read('components/MiloLogoMotion.tsx');
+const number = name => {
+  const match = logo.match(new RegExp(`const ${name} = (\\d+);`));
+  return match ? Number(match[1]) : NaN;
+};
+const animationMs = number('MARK_MS')
+  + Math.max(number('SHEEN_MS'), number('LETTER_STAGGER_MS') * 3 + number('LETTER_MS'))
+  + number('TAGLINE_DELAY_MS')
+  + number('TAGLINE_MS');
+const introMs = Number(introMatch && introMatch[1]);
+check('the logo animation has named millisecond timings',
+  [number('MARK_MS'), number('SHEEN_MS'), number('LETTER_STAGGER_MS'), number('LETTER_MS'), number('TAGLINE_DELAY_MS'), number('TAGLINE_MS')].every(value => Number.isFinite(value) && value > 0));
+check('the logo contains the full app name, not only "Milo"',
+  logo.includes("'M', 'i', 'l', 'o'") && /const SUBTITLE = 'MULTILANGUAGE';/.test(logo));
+check('the complete brand is on screen before the intro ends',
+  animationMs < introMs && introMs - animationMs >= 450);
+check('the complete brand holds long enough to be read', introMs - animationMs >= 450 && introMs - animationMs <= 900);
+check('the intro is still short enough to feel instant', introMs <= 1300);
 
 // --- 1b. the greeting still starts after the startup chime ----------------
 const languages = read('app/languages.tsx');

@@ -54,51 +54,56 @@ export type GermanSpeechRequest = {
 export const GERMAN_SPEECH_LOCALE = 'de-DE';
 const NORMAL_RATE = 0.9;
 const VOICE_PREFERENCE_KEY = 'german_voice_preference_v1';
-const VOICE_SOURCE_KEY = 'german_voice_source_v1';
-const VOICE_SOURCE_MIGRATION_KEY = 'german_voice_source_migrated_v2';
+/** Keys written by older builds that let the learner pick another voice. */
+const LEGACY_VOICE_KEYS = ['german_voice_source_v1', 'german_voice_source_migrated_v2'];
 
 /**
- * Which German voice the lessons use.
- *  - `auto` (default): the narrator the learner chose, shipped with the app, so
- *    every phone hears the same voice at the same tempo; the device voice covers
- *    playback only if a clip is unavailable.
- *  - `app`: always the bundled audio — identical on every device and offline.
- *  - `device`: only the voice installed on the phone/browser.
- * Whatever is chosen, playback never stays silent: if the selected engine cannot
- * start, the other one covers the sentence.
+ * There is exactly **one** German narrator: the voice the learner chose
+ * (`config/german-narrator.json`), rendered into the pack that ships with the app.
+ * The audio page offers no device voice and no source switch any more, and any
+ * preference written by an older build is deleted on first launch, so a stale
+ * "use the phone voice" choice can never bring the old, worse voice back.
+ *
+ * The phone's German voice survives only as a *failure cover*: when a clip cannot
+ * be played at all, the sentence is read instead of leaving the lesson silent.
  */
-export type GermanVoiceSource = 'auto' | 'app' | 'device';
-let voiceSource: GermanVoiceSource | null = null;
+export type GermanVoiceSource = 'app';
 
-export function getGermanVoiceSource(): GermanVoiceSource {
-  if (voiceSource) return voiceSource;
-  if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.localStorage) return 'auto';
-  try {
-    // One-time migration: the learner asked for the phone's own voice, exactly
-    // like the English section. A choice saved by an older build (for example
-    // "always the bundled voice" from a voice test) must not keep the natural
-    // device voice switched off after the update. Later choices are respected.
-    if (!window.localStorage.getItem(VOICE_SOURCE_MIGRATION_KEY)) {
-      window.localStorage.removeItem(VOICE_SOURCE_KEY);
-      window.localStorage.setItem(VOICE_SOURCE_MIGRATION_KEY, '1');
+/**
+ * Deletes every voice preference that older builds could have stored.
+ *
+ * Web builds kept them in `localStorage`, Android/iOS in AsyncStorage. Both are
+ * cleared so the old, worse voice cannot return after an update.
+ */
+export function clearLegacyGermanVoiceChoices(): void {
+  webPreference = undefined;
+  nativePreference = null;
+  nativePreferenceLoaded = true;
+  nativePreferencePromise = null;
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      for (const key of [VOICE_PREFERENCE_KEY, ...LEGACY_VOICE_KEYS]) {
+        window.localStorage.removeItem(key);
+      }
+    } catch {
+      /* private browsing: nothing was persisted anyway */
     }
-  } catch {
-    /* private browsing: nothing to migrate */
+    return;
   }
-  const stored = window.localStorage.getItem(VOICE_SOURCE_KEY);
-  voiceSource = stored === 'device' || stored === 'app' ? stored : 'auto';
-  return voiceSource;
+  for (const key of [VOICE_PREFERENCE_KEY, ...LEGACY_VOICE_KEYS]) {
+    void AsyncStorage.removeItem(key).catch(() => undefined);
+  }
 }
 
-export function setGermanVoiceSource(source: GermanVoiceSource): void {
-  voiceSource = source;
-  if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.localStorage) return;
-  try {
-    if (source === 'auto') window.localStorage.removeItem(VOICE_SOURCE_KEY);
-    else window.localStorage.setItem(VOICE_SOURCE_KEY, source);
-  } catch {
-    /* private browsing: the in-memory choice still applies */
-  }
+export function getGermanVoiceSource(): GermanVoiceSource {
+  // Always the packaged narrator; nothing else can be selected.
+  return 'app';
+}
+
+/** Kept for older imports; there is nothing left to switch to. */
+export function setGermanVoiceSource(_source: GermanVoiceSource): void {
+  clearLegacyGermanVoiceChoices();
 }
 
 /**
@@ -333,7 +338,6 @@ export function speakGerman(options: GermanSpeechRequest): void {
   if (!text) return;
   const request = ++sequence;
 
-  const source = getGermanVoiceSource();
   const lessonId = options.lessonId === undefined ? getGermanAudioLesson() : options.lessonId;
 
   const playBundled = (): Promise<boolean> => playGermanClip({
@@ -363,57 +367,9 @@ export function speakGerman(options: GermanSpeechRequest): void {
     });
   };
 
-  const deviceFirst = () => {
-    if (!webSpeechAvailable()) {
-      bundledFirst();
-      return;
-    }
-    let started = false;
-    let fellBack = false;
-    const fallBack = () => {
-      if (fellBack || started || request !== sequence) return;
-      fellBack = true;
-      void playBundled().then(played => {
-        if (!played && request === sequence) options.onError?.('failed');
-      });
-    };
-    const begin = () => {
-      if (request !== sequence || started || fellBack) return;
-      speakWithDevice(text, options, request, fallBack, () => {
-        started = true;
-        publishEngine('device');
-      });
-    };
-    // The platform engine queues utterances instead of replacing them, so the
-    // previous sentence must always be stopped first or two voices overlap. On
-    // the web the cancel is only issued when something is really speaking, and
-    // the new utterance follows one tick later: `cancel()` and `speak()` in the
-    // same tick make Chrome drop the sentence (which sounds like chopped audio).
-    if (Platform.OS !== 'web') {
-      safeSpeechStop();
-      begin();
-    } else if (speechEngineBusy()) {
-      safeSpeechStop();
-      setTimeout(begin, 140);
-    } else {
-      begin();
-    }
-    watchDeviceStart(() => started || fellBack || request !== sequence, fallBack);
-  };
-
-  if (source === 'app') {
-    bundledFirst();
-    return;
-  }
-  if (source === 'device') {
-    deviceFirst();
-    return;
-  }
-  // auto: the learner picked this narrator by ear, so the bundled pack is what
-  // the lessons must play. It is the same voice on every phone, offline, and at
-  // the chosen tempo. The device voice still covers any clip the pack cannot
-  // play (see `bundledFirst`), so a lesson is never silent.
-  void hasGermanDeviceVoice().catch(() => false);
+  // One narrator only: always the pack that ships with the app. If a clip
+  // cannot start, `bundledFirst` lets the phone's German voice read that one
+  // sentence instead of staying silent; that cover is not a voice choice.
   bundledFirst();
 }
 

@@ -231,9 +231,13 @@ await require('esbuild').build({
   check('native playback uses expo-audio', /from 'expo-audio'/.test(nativeBridge) && /createAudioPlayer/.test(nativeBridge));
   check('native playback waits for the file to load before it seeks',
     /waitForLoaded\(created/.test(nativeBridge) && /isLoaded/.test(nativeBridge));
-  check('native playback seeks to the recorded clip start',
-    /seekAndSettle\(created, clip\.start\)/.test(nativeBridge) && /\.seekTo\(/.test(nativeBridge));
-  check('native playback stops at the recorded clip end', /clip\.end - clip\.start/.test(nativeBridge));
+  check('native playback seeks just before the recorded clip start',
+    /const seekTo = Math\.max\(0, clip\.start - PRE_ROLL_SECONDS\)/.test(nativeBridge)
+    && /seekAndSettle\(created, seekTo\)/.test(nativeBridge) && /\.seekTo\(/.test(nativeBridge));
+  check('a seek that cannot be confirmed is retried, never played from the file head',
+    /return 'retry'/.test(nativeBridge) && !/return true;\s*\}\s*\n\s*await sleep\(60\)/.test(nativeBridge));
+  check('native playback stops at the recorded clip end',
+    /status\.currentTime >= clip\.end \+ tail/.test(nativeBridge) && /clip\.end - seekTo \+ tail/.test(nativeBridge));
   check('the web build keeps using the Audio element, not expo-audio',
     !/from 'expo-audio'/.test(fs.readFileSync(path.join(root, 'lib/germanAudio.ts'), 'utf8'))
     && !/expo-audio/.test(fs.readFileSync(path.join(root, 'lib/germanAudioNative.ts'), 'utf8')));

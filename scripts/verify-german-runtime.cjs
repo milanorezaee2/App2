@@ -20,7 +20,10 @@
  *   NODE_PATH=/path/to/playwright/node_modules node scripts/verify-german-runtime.cjs
  */
 const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
 const path = require('node:path');
+
+const toPersianDigits = value => String(value).replace(/[0-9]/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
 
 function loadPlaywright() {
   for (const name of ['playwright', 'playwright-core']) {
@@ -51,9 +54,8 @@ async function launchBrowser(chromium) {
  *   ?english=1    expose only an English system voice
  *   ?novoices=1   expose no system voices at all
  *   ?nospeech=1   remove the Web Speech API entirely (Firefox for Android)
- *   ?source=auto  clear the learner's voice choice (device voice, else bundled)
- *   ?source=app   force the audio that ships with the app
- *   ?source=device  force the voice installed on the device
+ *   ?source=auto  clear any voice choice saved by an older build
+ *   ?source=device  plant an old "always the device voice" choice, to prove it is ignored
  *   ?audioblocked=1  the browser cannot decode the bundled MP3s
  */
 function browserSetup() {
@@ -61,7 +63,8 @@ function browserSetup() {
   window.__audioBlocked = params.get('audioblocked') === '1';
   // ?nospeech=1 removes the Web Speech API entirely (Firefox for Android).
   const noSpeech = params.get('nospeech') === '1';
-  // ?source=auto|app|device pins the learner's voice choice for the run.
+  // ?source=auto clears an old saved choice; ?source=device plants one so the
+  // test can prove the packaged narrator still wins.
   const source = params.get('source');
   if (source) {
     try {
@@ -285,7 +288,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
 
   // 3. A vocabulary word plays from the lesson's word pack (audio-check page).
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
-  const wordButton = page.getByRole('button', { name: /^شنیدن واژه: / }).first();
+  const wordButton = page.getByRole('button', { name: /^شنیدن یک واژه: / }).first();
   // react-native-web renders this button's label as visible text, not aria-label.
   const wordLabel = (await wordButton.innerText()).trim();
   const word = (wordLabel || '').split(':').pop().trim().toLowerCase();
@@ -368,18 +371,27 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
 
   // 6. The audio-check page demonstrates the bundled voice.
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
-  await page.getByText('بررسی و انتخاب صدای آلمانی', { exact: true }).waitFor();
+  await page.getByText('صدای آلمانی', { exact: true }).waitFor();
   await page.waitForTimeout(900);
   const audioCheckText = await page.locator('body').innerText();
-  check('audio-check presents the chosen German narrator', audioCheckText.includes('گویندهٔ آلمانی انتخاب‌شده در برنامه'));
-  check('audio-check names the chosen narrator tempo', /۱۶۰ کلمه در دقیقه/.test(audioCheckText));
+  const narratorPreset = JSON.parse(readFileSync(path.join(__dirname, '..', 'config', 'german-narrator.json'), 'utf8'));
+  const persianTempo = `${toPersianDigits(narratorPreset.wordsPerMinute)} کلمه در دقیقه`;
+  check('audio-check presents the one German narrator', audioCheckText.includes('۱. گویندهٔ آلمانی درس‌ها'));
+  check('audio-check names the narrator tempo from the preset', audioCheckText.includes(persianTempo));
+  check('audio-check offers no device voice picker',
+    !audioCheckText.includes('صدای آلمانی دستگاه') || audioCheckText.includes('حذف شده است'));
   await clearAudio();
-  await page.getByRole('button', { name: /^شنیدن نمونه:/ }).first().click();
+  await page.getByRole('button', { name: /^شنیدن یک جمله:/ }).first().click();
   await page.waitForTimeout(600);
   const sample = await lastPlay();
   check('audio-check plays the bundled sample', sample?.file === greetingSentences.file);
-  check('audio-check still lists the optional device voices',
-    await page.getByRole('button', { name: /Google Deutsch/ }).count() >= 1);
+  check('audio-check no longer lists the optional device voices',
+    await page.getByRole('button', { name: /Google Deutsch/ }).count() === 0);
+  await clearAudio();
+  await page.getByRole('button', { name: /^شنیدن یک واژه:/ }).first().click();
+  await page.waitForTimeout(600);
+  const wordSample = await lastPlay();
+  check('audio-check plays a bundled word from the same narrator', wordSample?.file === greetingWords.file);
   check('audio-check raises no runtime errors', cleanErrors().length === 0);
 
   // 7. Review screen renders on its own route.
@@ -409,21 +421,27 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
     (await page.locator('body').innerText()).includes('جمله‌های اصلی · مرحلهٔ ۲ از ۹'));
   await context.unroute(/\/audio\/de\//);
 
-  // 9b. The learner can switch to the device voice from the audio-check page.
+  // 9b. A voice choice saved by an older build is deleted, and the lesson keeps
+  //     playing the packaged narrator instead of switching to the phone voice.
+  await page.evaluate(() => {
+    window.localStorage.setItem('german_voice_source_v1', 'device');
+    window.localStorage.setItem('german_voice_preference_v1', 'Google Deutsch');
+  });
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
-  await page.getByText('بررسی و انتخاب صدای آلمانی', { exact: true }).waitFor();
+  await page.getByText('صدای آلمانی', { exact: true }).waitFor();
   await page.waitForTimeout(800);
-  check('audio-check offers the chosen narrator as the default',
-    await page.getByRole('button', { name: /گویندهٔ انتخاب‌شده/ }).count() >= 1);
-  check('audio-check still offers the in-app voice explicitly',
-    await page.getByRole('button', { name: /صدای داخلی برنامه/ }).count() >= 1);
-  await page.getByRole('button', { name: /صدای آلمانی دستگاه/ }).first().click();
-  await page.waitForTimeout(200);
+  check('opening the voice page deletes a choice saved by an older build',
+    await page.evaluate(() => window.localStorage.getItem('german_voice_source_v1') === null
+      && window.localStorage.getItem('german_voice_preference_v1') === null));
+  check('the voice page offers nothing to switch away from the narrator',
+    await page.getByRole('button', { name: /صدای آلمانی دستگاه|صدای داخلی برنامه|گویندهٔ انتخاب‌شده/ }).count() === 0);
+  await page.evaluate(() => window.localStorage.setItem('german_voice_source_v1', 'device'));
   await page.goto(LESSON, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2400);
-  const deviceMode = await deviceSpoken();
-  check('after choosing the device voice the lesson asks the device engine for German',
-    deviceMode.length >= 1 && deviceMode.every(item => String(item.lang).toLowerCase().startsWith('de')));
+  await page.waitForTimeout(2600);
+  const staleChoice = await deviceSpoken();
+  const stalePlay = await lastPlay();
+  check('a stale device choice cannot replace the narrator on a lesson screen',
+    stalePlay?.file === greetingSentences.file && !staleChoice.some(item => item.text === 'Hallo!'));
   await page.evaluate(() => window.localStorage.removeItem('german_voice_source_v1'));
 
   // 10. Fallback B: the files load but this browser cannot decode them.

@@ -1,7 +1,10 @@
 const assert=require('node:assert/strict'),path=require('node:path');
 (async()=>{
- const loc=require.resolve('@sparticuz/chromium');const pack=await import(require('node:url').pathToFileURL(loc).href);await pack.inflate(path.resolve(path.dirname(loc),'../bin/al2023.tar.br'));pack.setupLambdaEnvironment(path.join(require('node:os').tmpdir(),'al2023/lib'));
- const browser=await require('playwright').chromium.launch({headless:true,args:pack.default.args,executablePath:await pack.default.executablePath()});
+ let browser;
+ try{
+  const loc=require.resolve('@sparticuz/chromium');const pack=await import(require('node:url').pathToFileURL(loc).href);await pack.inflate(path.resolve(path.dirname(loc),'../bin/al2023.tar.br'));pack.setupLambdaEnvironment(path.join(require('node:os').tmpdir(),'al2023/lib'));
+  browser=await require('playwright').chromium.launch({headless:true,args:pack.default.args,executablePath:await pack.default.executablePath()});
+ }catch{ browser=await require('playwright').chromium.launch({headless:true}); }
  try{
   let checks=0;const page=await browser.newPage();
   const root=process.env.BROWSER_BASE_URL||'http://127.0.0.1:8081';

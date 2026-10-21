@@ -18,6 +18,13 @@
  *   3. start the player and only then start the stop timer,
  *   4. stop on the real playback position (plus a short natural tail) — never on a
  *      guess, so words are not clipped and nothing overlaps.
+ *
+ * A seek that cannot be confirmed is a *failure*, never a success. The previous
+ * version returned `true` after a 60 ms wait even when the position had not
+ * moved, so a slow phone played the clip from second 0 — the learner asked for
+ * one sentence and heard the first sentence of the lesson, or a fragment of a
+ * neighbouring one. That is the "severely broken sound" report. Such a clip is
+ * now retried once on a fresh player, and only then reported as unplayable.
  */
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import { GERMAN_AUDIO_FILES, GERMAN_AUDIO_MANIFEST } from './germanAudioAssets';
@@ -28,6 +35,12 @@ export { GERMAN_AUDIO_MANIFEST };
 
 /** Extra room after the manifest end so the final consonant is never clipped. */
 const TAIL_SECONDS = 0.12;
+/**
+ * Start slightly inside the silence that precedes every clip. A seek can land a
+ * frame late (~40 ms); beginning early keeps the first consonant intact, and the
+ * 0.35 s / 0.22 s silent gaps guarantee no neighbouring word is heard.
+ */
+const PRE_ROLL_SECONDS = 0.06;
 /** The words pack leaves 0.22 s between two words; stay well inside that. */
 const MAX_TAIL_SECONDS = 0.18;
 
@@ -125,33 +138,43 @@ async function waitForLoaded(target: AudioPlayer, timeoutMs = 3000): Promise<boo
 }
 
 /** Seek, then wait until the player position really moved to the requested time. */
-async function seekAndSettle(target: AudioPlayer, seconds: number, timeoutMs = 1500): Promise<boolean> {
+async function seekAndSettle(target: AudioPlayer, seconds: number, timeoutMs = 1200): Promise<boolean> {
   const tolerance = 0.06;
+  let before = 0;
   try {
-    await target.seekTo(seconds);
+    before = target.currentTime ?? 0;
   } catch {
-    return false;
+    before = 0;
   }
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    let position: number | null = null;
-    try {
-      position = target.currentTime;
-    } catch {
-      position = null;
+  const reached = async (): Promise<boolean> => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      let position: number | null = null;
+      try {
+        position = target.currentTime;
+      } catch {
+        position = null;
+      }
+      // The position must both match the target and differ from where the
+      // player stood before the seek. Without the second half, a dropped seek
+      // looks successful for clips that start near 0 (all first words).
+      const moved = position !== null && Math.abs(position - before) > 0.01;
+      if (position !== null && moved && Math.abs(position - seconds) <= tolerance) return true;
+      await sleep(20);
     }
-    if (position !== null && Math.abs(position - seconds) <= tolerance) return true;
-    await sleep(25);
+    return false;
+  };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await target.seekTo(seconds);
+    } catch {
+      return false;
+    }
+    if (await reached()) return true;
+    // Nothing is audible while we retry: the player has not been started, so a
+    // failed seek costs a moment of silence instead of the wrong sentence.
   }
-  // Some engines only report a position while playing; one more attempt is
-  // better than starting the clip from the wrong place.
-  try {
-    target.currentTime = seconds;
-  } catch {
-    /* read-only on this platform */
-  }
-  await sleep(60);
-  return true;
+  return false;
 }
 
 /**
@@ -173,74 +196,91 @@ export async function playNativeGermanClip(options: {
 
   const request = ++session;
   const isCurrent = () => request === session;
-
-  await ensureAudioMode();
-  releasePlayer();
-  if (!isCurrent()) return true;
-
-  const created = createAudioPlayer(assetId);
-  player = created;
-
+  const seekTo = Math.max(0, clip.start - PRE_ROLL_SECONDS);
   const rate = options.rate ?? 1;
   const speed = rate >= 0.85 ? 1 : rate >= 0.7 ? 0.85 : 0.75;
-  try {
-    created.volume = 1;
-    created.playbackRate = speed;
-  } catch {
-    /* older players expose fewer setters */
-  }
 
-  // Wait for the file, but never treat a slow loader as a failure: a bundled
-  // asset that reports nothing must still be attempted, otherwise a phone with
-  // no German voice would fall back to reading German with a foreign accent.
-  await waitForLoaded(created, 1500);
+  await ensureAudioMode();
   if (!isCurrent()) return true;
 
-  const settled = await seekAndSettle(created, clip.start);
-  if (!isCurrent()) return true;
-  if (!settled) {
+  /**
+   * One attempt: a fresh player, loaded, seeked and started. Returns
+   * `'retry'` when the file or the seek did not become ready in time — the
+   * caller then tries once more on a new player, because opening the MP3 again
+   * is what repairs a stuck decoder on Android.
+   */
+  const attempt = async (): Promise<boolean | 'retry'> => {
     releasePlayer();
-    return false;
-  }
+    if (!isCurrent()) return true;
 
-  const tail = Math.min(TAIL_SECONDS, MAX_TAIL_SECONDS);
-  let finished = false;
-  const finish = () => {
-    if (finished) return;
-    finished = true;
-    clearStopTimer();
-    detachStatus();
-    if (!isCurrent()) return;
-    releasePlayer();
-    options.onDone?.();
+    const created = createAudioPlayer(assetId);
+    player = created;
+    try {
+      created.volume = 1;
+      created.playbackRate = speed;
+    } catch {
+      /* older players expose fewer setters */
+    }
+
+    const loaded = await waitForLoaded(created, 1500);
+    if (!isCurrent()) return true;
+    if (!loaded) return 'retry';
+
+    if (!(await seekAndSettle(created, seekTo))) {
+      if (!isCurrent()) return true;
+      return 'retry';
+    }
+    if (!isCurrent()) return true;
+
+    const tail = Math.min(TAIL_SECONDS, MAX_TAIL_SECONDS);
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearStopTimer();
+      detachStatus();
+      if (!isCurrent()) return;
+      releasePlayer();
+      options.onDone?.();
+    };
+
+    try {
+      statusSub = created.addListener('playbackStatusUpdate', status => {
+        if (!isCurrent() || finished) return;
+        if (status.didJustFinish) {
+          finish();
+          return;
+        }
+        if (status.currentTime >= clip.end + tail) finish();
+      });
+    } catch {
+      /* no status events: the timer below still ends the clip */
+    }
+
+    try {
+      created.play();
+    } catch {
+      releasePlayer();
+      return 'retry';
+    }
+
+    options.onStart?.();
+
+    // Safety net only: the status listener normally ends the clip at its real
+    // end. This timer starts *after* playback began, so the seek latency can no
+    // longer eat into the sentence.
+    const expectedMs = ((clip.end - seekTo + tail) / speed) * 1000;
+    stopTimer = setTimeout(() => finish(), expectedMs + 400);
+    return true;
   };
 
-  try {
-    statusSub = created.addListener('playbackStatusUpdate', status => {
-      if (!isCurrent() || finished) return;
-      if (status.didJustFinish) {
-        finish();
-        return;
-      }
-      if (status.currentTime >= clip.end + tail) finish();
-    });
-  } catch {
-    /* no status events: the timer below still ends the clip */
-  }
-
-  try {
-    created.play();
-  } catch {
-    releasePlayer();
+  const first = await attempt();
+  if (first !== 'retry') return first;
+  if (!isCurrent()) return true;
+  const second = await attempt();
+  if (second === 'retry') {
+    if (isCurrent()) releasePlayer();
     return false;
   }
-
-  options.onStart?.();
-
-  // Safety net only: the status listener normally ends the clip at its real end.
-  // This timer starts *after* playback began, so the seek latency can no longer
-  // eat into the sentence.
-  const expectedMs = ((clip.end - clip.start + tail) / speed) * 1000;
-  stopTimer = setTimeout(() => finish(), expectedMs + 400);
-  return true;
+  return second;
 }

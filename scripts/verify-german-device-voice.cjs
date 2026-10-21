@@ -155,17 +155,24 @@ const ENGLISH_VOICE = { identifier: 'en-us-x-tpf-local', name: 'English United S
   check('a phone that lists no voices at all still speaks German from the app',
     globalThis.__bundled.length === 1 && globalThis.__spoken.length === 0);
 
-  // --- 4. The learner's explicit "always device" choice still works natively. ---
-  app.setGermanVoiceSource('device');
+  // --- 4. There is only one narrator; no saved choice can replace it. ---
   globalThis.__deviceVoices = [GERMAN_VOICE];
   app.registerNativeVoiceFetcher(async () => globalThis.__deviceVoices || []);
+  // An install of an older build may still hold "always the phone voice" and a
+  // chosen device voice (AsyncStorage on Android). The update clears them.
+  await app.setGermanVoicePreference(GERMAN_VOICE.identifier);
+  check('an older build could store a device voice', (await app.loadGermanVoicePreference()) === GERMAN_VOICE.identifier);
+  app.clearLegacyGermanVoiceChoices();
+  await wait(60);
+  check('the update deletes the old voice preference',
+    app.getGermanVoicePreference() === null);
   globalThis.__spoken = [];
   globalThis.__bundled = [];
   app.speakGerman({ text: 'Hallo!', rate: 1 });
   await wait(260);
-  check('the explicit device choice uses the phone voice on Android too',
-    globalThis.__spoken.length === 1 && globalThis.__bundled.length === 0);
-  app.setGermanVoiceSource('auto');
+  check('only the chosen narrator speaks, whatever an old build stored',
+    globalThis.__bundled.length === 1 && globalThis.__spoken.length === 0);
+  check('the source can only ever be the packaged narrator', app.getGermanVoiceSource() === 'app');
 
   console.log(`\n${checks} Android device-voice checks passed (platform=${platform}).`);
 })().catch(error => {

@@ -56,7 +56,11 @@ SPEED = int(PRESET['wordsPerMinute'])
 PITCH = int(PRESET['pitch'])
 PITCH_RANGE = int(PRESET['range'])
 WORD_GAP_PARAM = int(PRESET.get('wordGap', 0))
-BITRATE = 24
+# 48 kbps keeps the full 22.05 kHz band. At 24 kbps LAME silently resamples the
+# stream down to 16 kHz (verified from the frame headers of the old pack), which
+# made every sentence sound muffled and made the eSpeak voice harsh on a phone
+# speaker. `assert_encoded_rate` below refuses to ship that again.
+BITRATE = 48
 LEAD_IN = 0.12
 SENTENCE_GAP = 0.35
 WORD_GAP = 0.22
@@ -122,6 +126,32 @@ def encode_mp3(samples: np.ndarray, path: Path) -> int:
     return len(payload)
 
 
+MPEG_RATES = {3: (44100, 48000, 32000), 2: (22050, 24000, 16000), 0: (11025, 12000, 8000)}
+
+
+def encoded_sample_rate(path: Path) -> int:
+    """Sample rate from the first MP3 frame header, or 0 when none is found."""
+    data = path.read_bytes()
+    for i in range(len(data) - 4):
+        if data[i] != 0xFF or (data[i + 1] & 0xE0) != 0xE0:
+            continue
+        version = (data[i + 1] >> 3) & 3
+        layer = (data[i + 1] >> 1) & 3
+        bitrate_index = (data[i + 2] >> 4) & 0xF
+        rate_index = (data[i + 2] >> 2) & 3
+        if version == 1 or layer != 1 or bitrate_index in (0, 15) or rate_index == 3:
+            continue
+        return MPEG_RATES[version][rate_index]
+    return 0
+
+
+def assert_encoded_rate(path: Path) -> None:
+    rate = encoded_sample_rate(path)
+    if rate != SAMPLE_RATE:
+        sys.exit(f'{path.name}: encoder wrote {rate} Hz but eSpeak speaks at {SAMPLE_RATE} Hz; '
+                 f'raise BITRATE instead of letting LAME downsample the voice')
+
+
 def build_pack(texts: list[str], path: Path, gap: float) -> dict:
     """Concatenate the clips of `texts` and return {key: [start, end]} in seconds."""
     timeline = [silence(LEAD_IN)]
@@ -179,6 +209,8 @@ def main() -> None:
         word_file = f'{lesson_id}.words.mp3'
         sentences = build_pack(sentence_texts, OUT_DIR / sentence_file, SENTENCE_GAP)
         words = build_pack(word_texts, OUT_DIR / word_file, WORD_GAP)
+        assert_encoded_rate(OUT_DIR / sentence_file)
+        assert_encoded_rate(OUT_DIR / word_file)
         total_bytes += (OUT_DIR / sentence_file).stat().st_size + (OUT_DIR / word_file).stat().st_size
         manifest['lessons'][lesson_id] = {
             'sentences': {'file': sentence_file, 'clips': sentences},

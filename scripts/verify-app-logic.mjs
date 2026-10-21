@@ -492,7 +492,7 @@ export { default as asyncStorage } from '${STUBS}/async-storage.js';
     return source.includes('Redirect') && source.includes('/learn/de/library');
   }));
   const germanAudioCheckRoute = readFileSync(path.join(APP, 'app', 'learn', '[language]', 'audio-check.tsx'), 'utf8');
-  check('German audio check lists, tests and remembers real German voices instead of redirecting', germanAudioCheckRoute.includes('listGermanVoices') && germanAudioCheckRoute.includes('speakGerman') && germanAudioCheckRoute.includes('setGermanVoicePreference') && !germanAudioCheckRoute.includes("Redirect href={'/learn/de/library'"));
+  check('German audio check plays the one packaged narrator and offers no voice picker', germanAudioCheckRoute.includes('playGermanClip') && germanAudioCheckRoute.includes('germanNarratorLabel') && germanAudioCheckRoute.includes('clearLegacyGermanVoiceChoices') && !germanAudioCheckRoute.includes('listGermanVoices') && !germanAudioCheckRoute.includes('setGermanVoicePreference') && !germanAudioCheckRoute.includes("Redirect href={'/learn/de/library'"));
   const scopedGermanRoutes = ['unit.tsx', 'practice.tsx', 'review.tsx'].map(file => readFileSync(path.join(APP, 'app', 'learn', '[language]', file), 'utf8'));
   check('only the published three-skill A1 module is reachable through German guided routes', scopedGermanRoutes.every(source => source.includes('de-a1-skills') && source.includes('Redirect') && source.includes('/learn/de/library')));
   const germanHomeSource = readFileSync(path.join(APP, 'components', 'GermanSentenceHome.tsx'), 'utf8');
