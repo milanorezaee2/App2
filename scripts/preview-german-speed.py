@@ -33,13 +33,14 @@ OUT = Path(__file__).resolve().parent.parent / 'docs' / 'voice-samples' / 'speed
 PERSIAN = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
 
 
-def fa_digit(value: int) -> str:
+def fa_digit(value: int | str) -> str:
     return str(value).translate(PERSIAN)
 
 
 def fa_clock(seconds: float) -> str:
     minutes, rest = divmod(int(seconds), 60)
-    return f'{fa_digit(minutes)}:{fa_digit(rest):0>2}'
+    # Zero-pad in Latin first, then translate, so both digits are Persian.
+    return fa_digit(f'{minutes}:{rest:02d}')
 BITRATE = 24
 LEAD_IN = 0.14
 END = 0.32
