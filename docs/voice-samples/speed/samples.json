@@ -1,0 +1,74 @@
+{
+ "lines": [
+  "Hallo! Wie geht es dir?",
+  "Ich heiße Mina. Ich komme aus dem Iran.",
+  "Guten Morgen! Ich möchte einen Kaffee, bitte."
+ ],
+ "options": [
+  {
+   "id": "v1",
+   "file": "v1-current-voice-faster.mp3",
+   "voice": "de+f3",
+   "rate": 160,
+   "pitch": 52,
+   "range": 50,
+   "gap": 0,
+   "fa": "همان گویندهٔ فعلی، یک پله سریع‌تر",
+   "detail": "زن، گرم و متعادل · ۱۶۰ کلمه در دقیقه (اکنون ۱۴۰)",
+   "seconds": 8.03,
+   "bytes": 24408
+  },
+  {
+   "id": "v2",
+   "file": "v2-current-voice-faster-clearer.mp3",
+   "voice": "de+f3",
+   "rate": 158,
+   "pitch": 62,
+   "range": 60,
+   "gap": 0,
+   "fa": "همان گوینده، یک پله سریع‌تر و روشن‌تر",
+   "detail": "همان صدا با تُن بازتر و واضح‌تر · ۱۵۸ کلمه در دقیقه",
+   "seconds": 8.08,
+   "bytes": 24516
+  },
+  {
+   "id": "v3",
+   "file": "v3-brighter-female.mp3",
+   "voice": "de+f1",
+   "rate": 158,
+   "pitch": 55,
+   "range": 54,
+   "gap": 0,
+   "fa": "گویندهٔ زن روشن‌تر و جوان‌تر",
+   "detail": "صدای بازتر و واضح‌تر · ۱۵۸ کلمه در دقیقه",
+   "seconds": 8.32,
+   "bytes": 25272
+  },
+  {
+   "id": "v4",
+   "file": "v4-current-voice-fastest.mp3",
+   "voice": "de+f3",
+   "rate": 172,
+   "pitch": 56,
+   "range": 54,
+   "gap": 0,
+   "fa": "همان گوینده، دو پله سریع‌تر",
+   "detail": "برای کسی که تندتر می‌خواهد · ۱۷۲ کلمه در دقیقه",
+   "seconds": 7.54,
+   "bytes": 22896
+  }
+ ],
+ "reference": {
+  "file": "v0-current-140.mp3",
+  "voice": "de+f3",
+  "rate": 140,
+  "pitch": 52,
+  "range": 50,
+  "fa": "وضعیت فعلی (۱۴۰ کلمه در دقیقه) — فقط برای مقایسه",
+  "seconds": 9.19
+ },
+ "compare": {
+  "file": "compare-all.mp3",
+  "seconds": 41.47
+ }
+}

@@ -40,6 +40,7 @@
     "prebuild:web": "node scripts/check-public-connection.mjs",
     "validate:german-native": "node scripts/verify-german-native-audio.cjs",
     "validate:german-device": "node scripts/verify-german-device-voice.cjs",
+    "validate:german-narrator": "node scripts/verify-german-narrator.cjs",
     "validate:welcome": "node scripts/verify-welcome-voice.cjs",
     "validate:boot": "node scripts/verify-fast-start.cjs"
   },

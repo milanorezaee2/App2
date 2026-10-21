@@ -75,6 +75,9 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
   const [completionError, setCompletionError] = useState('');
   const [speechError, setSpeechError] = useState('');
   const [spokenWord, setSpokenWord] = useState(-1);
+  // The speaker button alternates: the first tap reads the sentence at the
+  // normal (now faster) pace, the second at the slow learning pace, and so on.
+  const [slowNext, setSlowNext] = useState(false);
   const [loadingRetry, setLoadingRetry] = useState(0);
   const [saveRetry, setSaveRetry] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -395,7 +398,13 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
         {stage === 1 && <View style={styles.sentenceStage}>
           <Text style={styles.counter}>جملهٔ {fa(sentenceIndex + 1)} از {fa(lesson.sentences.length)}</Text>
           <View style={styles.sentenceCard}>
-            <Pressable accessibilityRole="button" accessibilityLabel="شنیدن جملهٔ آلمانی" style={styles.soundButton} onPress={() => speak(current.text, NORMAL_RATE)}><Volume2 size={25} color="#FFFFFF" /></Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={slowNext ? 'پخش آهستهٔ جملهٔ آلمانی' : 'پخش معمولی جملهٔ آلمانی'}
+              accessibilityHint="لمس اول معمولی، لمس دوم آهسته"
+              style={styles.soundButton}
+              onPress={() => { speak(current.text, slowNext ? SLOW_RATE : NORMAL_RATE); setSlowNext(!slowNext); }}
+            ><Volume2 size={25} color="#FFFFFF" /></Pressable>
             {renderWordSentence()}
             <Text style={styles.pronunciation}>{current.pronunciation}</Text>
             <View style={styles.divider} />
@@ -403,10 +412,10 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
             {current.pattern ? <View style={styles.pattern}><Text style={styles.patternLabel}>الگوی جمله‌سازی:</Text><Text style={styles.patternText}>{current.pattern}</Text></View> : null}
           </View>
           <View style={styles.replayRow}>
-            <Pressable accessibilityRole="button" accessibilityLabel="پخش آهستهٔ جمله" style={styles.replayButton} onPress={() => speak(current.text, SLOW_RATE)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>آهسته</Text></Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="پخش معمولی جمله" style={styles.replayButton} onPress={() => speak(current.text, NORMAL_RATE)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>معمولی</Text></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="پخش آهستهٔ جمله" style={styles.replayButton} onPress={() => { speak(current.text, SLOW_RATE); setSlowNext(false); }}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>آهسته</Text></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="پخش معمولی جمله" style={styles.replayButton} onPress={() => { speak(current.text, NORMAL_RATE); setSlowNext(true); }}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>معمولی</Text></Pressable>
           </View>
-          <Text style={styles.hint}>جمله خودکار پخش می‌شود. روی هر واژه بزنید تا تلفظ آلمانی همان واژه را جداگانه بشنوید.</Text>
+          <Text style={styles.hint}>جمله خودکار پخش می‌شود. بلندگو را که بزنید، بار اول معمولی و بار دوم آهسته می‌خواند. روی هر واژه هم بزنید تا تلفظ همان واژه را جداگانه بشنوید.</Text>
         </View>}
 
         {stage === 2 && <View style={styles.centerStage}>

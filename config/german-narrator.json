@@ -1,0 +1,12 @@
+{
+  "voice": "de+f3",
+  "descriptionFa": "زن، گرم و متعادل",
+  "wordsPerMinute": 140,
+  "pitch": 52,
+  "range": 50,
+  "wordGap": 0,
+  "deviceRate": 1,
+  "deviceShadowRate": 0.75,
+  "deviceSlowRate": 0.55,
+  "selection": "shipped-140"
+}

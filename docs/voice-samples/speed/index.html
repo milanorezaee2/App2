@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>انتخاب صدای سریع‌تر آلمانی</title>
+<style>
+  :root { --primary:#0f6b57; --line:#e3e8e6; --muted:#6b7672; --bg:#f7faf9; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:18px 14px 60px; background:var(--bg); color:#12211d;
+         font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif; }
+  header, section { max-width:680px; margin:0 auto 12px; }
+  h1 { font-size:19px; margin:0 0 8px; }
+  .lead { font-size:13px; line-height:1.9; color:var(--muted); margin:0; }
+  .de { direction:ltr; unicode-bidi:isolate; font-weight:600; color:#0b3d32; }
+  section { background:#fff; border:1px solid var(--line); border-radius:16px; padding:13px 14px; }
+  .head { display:flex; align-items:center; gap:8px; }
+  .num { width:24px; height:24px; border-radius:999px; background:#e8f3ef; color:var(--primary);
+          font-size:12px; display:inline-flex; align-items:center; justify-content:center; }
+  .name { font-size:14.5px; font-weight:700; }
+  .hint { margin:6px 0 10px; font-size:11.5px; color:var(--muted); }
+  .play { width:100%; border:0; border-radius:12px; background:var(--primary); color:#fff;
+          font-family:inherit; font-size:14px; font-weight:700; padding:13px 10px; cursor:pointer; }
+  .play:active { opacity:.85; }
+  .play.playing { background:#0b4f41; }
+  .all { background:#12211d; }
+  footer { max-width:680px; margin:18px auto 0; font-size:11.5px; color:var(--muted); line-height:2; }
+</style>
+</head>
+<body>
+<header>
+  <h1>صدای آلمانی، یک پله سریع‌تر — چهار نمونه</h1>
+  <p class="lead">
+    هر چهار نمونه با همان موتور صدای داخل برنامه ساخته شده‌اند، پس بعد از انتخاب،
+    دقیقاً همین صدا در درس‌ها پخش می‌شود. جمله‌های واقعی درس:
+    <span class="de">Hallo! Wie geht es dir?</span> ·
+    <span class="de">Ich heiße Mina. Ich komme aus dem Iran.</span> ·
+    <span class="de">Guten Morgen! Ich möchte einen Kaffee, bitte.</span>
+  </p>
+</header>
+    <section class="card">
+      <div class="head"><span class="num">1</span><span class="name">همان گویندهٔ فعلی، یک پله سریع‌تر</span></div>
+      <p class="hint">زن، گرم و متعادل · ۱۶۰ کلمه در دقیقه (اکنون ۱۴۰)</p>
+      <button class="play" type="button" data-src="v1-current-voice-faster.mp3">▶ پخش نمونهٔ ۱</button>
+    </section>
+    <section class="card">
+      <div class="head"><span class="num">2</span><span class="name">همان گوینده، یک پله سریع‌تر و روشن‌تر</span></div>
+      <p class="hint">همان صدا با تُن بازتر و واضح‌تر · ۱۵۸ کلمه در دقیقه</p>
+      <button class="play" type="button" data-src="v2-current-voice-faster-clearer.mp3">▶ پخش نمونهٔ ۲</button>
+    </section>
+    <section class="card">
+      <div class="head"><span class="num">3</span><span class="name">گویندهٔ زن روشن‌تر و جوان‌تر</span></div>
+      <p class="hint">صدای بازتر و واضح‌تر · ۱۵۸ کلمه در دقیقه</p>
+      <button class="play" type="button" data-src="v3-brighter-female.mp3">▶ پخش نمونهٔ ۳</button>
+    </section>
+    <section class="card">
+      <div class="head"><span class="num">4</span><span class="name">همان گوینده، دو پله سریع‌تر</span></div>
+      <p class="hint">برای کسی که تندتر می‌خواهد · ۱۷۲ کلمه در دقیقه</p>
+      <button class="play" type="button" data-src="v4-current-voice-fastest.mp3">▶ پخش نمونهٔ ۴</button>
+    </section>
+<section class="card">
+  <div class="head"><span class="name">همه پشت سر هم</span></div>
+  <p class="hint">نام هر نمونه هم خوانده می‌شود؛ یک‌بار از اول تا آخر گوش کنید.</p>
+  <button class="play all" type="button" data-src="compare-all.mp3">▶ پخش همهٔ نمونه‌ها</button>
+</section>
+<section class="card">
+  <div class="head"><span class="name">وضعیت فعلی برای مقایسه</span></div>
+  <p class="hint">همان گوینده با سرعت امروز (۱۴۰) — نمونه نیست، فقط مرجع.</p>
+  <button class="play" type="button" data-src="v0-current-140.mp3" style="background:#8a9691">▶ پخش صدای فعلی</button>
+</section>
+<footer>
+  هر نمونه سه جملهٔ واقعی درس را می‌خواند. بعد از انتخاب، کل ۹۵ درس و واژه‌ها با همین صدا بازسازی می‌شوند.
+</footer>
+<audio id="player" preload="none"></audio>
+<script>
+  const player = document.getElementById('player');
+  const buttons = [...document.querySelectorAll('.play')];
+  buttons.forEach(button => button.addEventListener('click', () => {
+    const playing = button.classList.contains('playing');
+    buttons.forEach(other => { other.classList.remove('playing'); other.textContent = other.textContent.replace('⏸', '▶'); });
+    if (playing) { player.pause(); return; }
+    player.src = button.dataset.src;
+    player.play();
+    button.classList.add('playing');
+    button.textContent = button.textContent.replace('▶', '⏸');
+  }));
+  player.addEventListener('ended', () => buttons.forEach(other => {
+    other.classList.remove('playing');
+    other.textContent = other.textContent.replace('⏸', '▶');
+  }));
+</script>
+</body>
+</html>

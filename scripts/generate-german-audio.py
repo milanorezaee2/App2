@@ -44,12 +44,18 @@ import espeakng_loader as loader
 
 ROOT = Path(__file__).resolve().parent.parent
 TEXT_JSON = ROOT / 'node_modules/.cache/german-course-text.json'
+PRESET_JSON = ROOT / 'config' / 'german-narrator.json'
 OUT_DIR = ROOT / 'public/audio/de'
 MANIFEST = OUT_DIR / 'manifest.json'
 
-VOICE = 'de+f3'
-SPEED = 140
-PITCH = 52
+# The narrator is chosen by the learner; `config/german-narrator.json` is the
+# single source of truth shared by the app, these clips and the device path.
+PRESET = json.loads(PRESET_JSON.read_text(encoding='utf-8'))
+VOICE = PRESET['voice']
+SPEED = int(PRESET['wordsPerMinute'])
+PITCH = int(PRESET['pitch'])
+PITCH_RANGE = int(PRESET['range'])
+WORD_GAP_PARAM = int(PRESET.get('wordGap', 0))
 BITRATE = 24
 LEAD_IN = 0.12
 SENTENCE_GAP = 0.35
@@ -66,9 +72,11 @@ if SAMPLE_RATE <= 0:
 if lib.espeak_SetVoiceByName(VOICE.encode()) != 0:
     sys.exit(f'eSpeak NG has no voice {VOICE}')
 
-# 1 = rate (words per minute), 3 = pitch
+# 1 = rate (words per minute), 3 = pitch, 4 = pitch range, 5 = word gap
 lib.espeak_SetParameter(1, SPEED, 0)
 lib.espeak_SetParameter(3, PITCH, 0)
+lib.espeak_SetParameter(4, PITCH_RANGE, 0)
+lib.espeak_SetParameter(5, WORD_GAP_PARAM, 0)
 
 _CALLBACK = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.POINTER(ctypes.c_short), ctypes.c_int, ctypes.c_void_p)
 _buffer = bytearray()
@@ -144,6 +152,11 @@ def main() -> None:
     manifest = {
         'version': 1,
         'engine': f'eSpeak NG {VOICE} @ {SPEED} wpm',
+        'voice': VOICE,
+        'wordsPerMinute': SPEED,
+        'pitch': PITCH,
+        'range': PITCH_RANGE,
+        'selection': PRESET.get('selection', ''),
         'sampleRate': SAMPLE_RATE,
         'bitrate': BITRATE,
         'leadInSeconds': LEAD_IN,

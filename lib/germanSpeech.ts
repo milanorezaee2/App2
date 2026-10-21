@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { germanDeviceRate } from './languages/germanNarrator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
 import { getGermanAudioLesson, playGermanClip, stopGermanClip, type GermanClipKind } from './germanAudio';
@@ -37,7 +38,12 @@ export type GermanSpeechRequest = {
   kind?: GermanClipKind;
   /** Defaults to the lesson currently shown on screen. */
   lessonId?: string | null;
-  /** 1 = natural speed. The lesson uses 0.9 natural, 0.55 slow, 0.75 shadowing. */
+  /**
+   * Lesson intent, not a literal engine rate: 0.9 normal, 0.75 shadowing,
+   * 0.55 slow. The chosen narrator's real device rates live in
+   * `config/german-narrator.json`, so the same intent sounds equally fast in
+   * the bundled pack and on the phone.
+   */
   rate?: number;
   onStart?: () => void;
   onDone?: () => void;
@@ -455,12 +461,11 @@ function speakWithDevice(
   void germanSpeechOptions()
     .then(({ germanVoice: _germanVoice, ...target }) => {
       if (request !== sequence) return;
-      // A natural sentence is read at the engine's own normal pace: dragging the
-      // system voice below it is what makes it sound laboured and chopped up.
-      const requestedRate = options.rate ?? NORMAL_RATE;
+      // The course narrator has one tempo. `germanDeviceRate` turns the lesson
+      // intent into the device rate that matches the bundled packs.
       safeSpeechSpeak(text, {
         ...target,
-        rate: requestedRate >= 0.85 ? 1 : requestedRate,
+        rate: germanDeviceRate(options.rate),
         onStart: () => {
           if (request !== sequence) return;
           if (onStarted) onStarted();

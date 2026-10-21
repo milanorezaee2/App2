@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
+const narrator = require(path.join(root, 'config/german-narrator.json'));
 
 // Minimal browser stubs: the speech layer is exercised as it runs on web.
 const storage = new Map();
@@ -135,15 +136,15 @@ await require('esbuild').build({
   check('German speech reaches expo-speech, the same engine the Russian lesson uses', first?.text === 'Guten Morgen!' && globalThis.__expoSpoken.length === 1);
   check('the learner-selected German voice is passed to the engine', first?.voice === 'Google Deutsch');
   check('the request carries the German language tag', String(first?.language || '').toLowerCase().startsWith('de'));
-  check('slow replay keeps its slow rate', first?.rate === 0.55);
+  check('slow replay keeps its slow rate', first?.rate === narrator.deviceSlowRate);
 
   app.setGermanVoicePreference(null);
   app.speakGerman({ text: 'Wie geht es dir?' });
   await wait(160);
   const second = globalThis.__expoSpoken.at(-1);
   check('without a preference an installed German voice is preferred', second?.voice === 'Microsoft Hedda');
-  check('natural speech is read at the engine normal pace so it flows',
-    second?.rate === 1);
+  check('natural speech is read at the chosen narrator tempo so it flows',
+    second?.rate === narrator.deviceRate);
   const events = globalThis.__expoEvents || [];
   const secondSpeak = events.lastIndexOf('speak:Wie geht es dir?');
   check('a sentence that is still speaking is stopped before the next one starts',

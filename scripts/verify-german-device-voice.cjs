@@ -18,6 +18,7 @@ const fs = require('node:fs');
 const esbuild = require('esbuild');
 
 const root = path.resolve(__dirname, '..');
+const narrator = require(path.join(root, 'config/german-narrator.json'));
 const outfile = path.join(root, 'node_modules/.cache/german-device-voice.cjs');
 const platform = process.env.FAKE_PLATFORM || 'android';
 
@@ -113,8 +114,8 @@ const ENGLISH_VOICE = { identifier: 'en-us-x-tpf-local', name: 'English United S
     String(globalThis.__spoken[0]?.language || '').toLowerCase().startsWith('de'));
   check('the installed German voice is passed by identifier',
     globalThis.__spoken[0]?.voice === GERMAN_VOICE.identifier);
-  check('natural speech is asked for at the engine normal pace',
-    globalThis.__spoken[0]?.rate === 1);
+  check('natural speech is asked for at the chosen narrator tempo',
+    globalThis.__spoken[0]?.rate === narrator.deviceRate);
   check('the bundled clip is not played when the phone can speak German',
     globalThis.__bundled.length === 0);
   check('the reported engine is the device voice', app.getGermanVoiceStatus().engine === 'device');
