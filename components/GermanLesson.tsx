@@ -16,6 +16,8 @@ import {
   Volume2,
 } from 'lucide-react-native';
 import { PageNavigation } from '@/components/PageNavigation';
+import { LessonSituationStage } from '@/components/LessonSituation';
+import { levelBadgeLabel } from '@/lib/languages/levelPresentation';
 import { GermanPalette as Palette, GERMAN_LEVEL_GRADIENTS } from '@/components/germanTheme';
 import { GermanSentenceBuilder } from '@/components/GermanSentenceBuilder';
 import GermanDialoguePractice from '@/components/GermanDialoguePractice';
@@ -41,7 +43,6 @@ import {
   primeGermanSpeech,
   speakGerman,
   stopGermanSpeech,
-  subscribeGermanVoiceStatus,
   wordIndexAt,
 } from '@/lib/germanSpeech';
 
@@ -73,7 +74,6 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
   const [sessionError, setSessionError] = useState('');
   const [completionError, setCompletionError] = useState('');
   const [speechError, setSpeechError] = useState('');
-  const [activeEngine, setActiveEngine] = useState<'app' | 'device' | null>(null);
   const [spokenWord, setSpokenWord] = useState(-1);
   const [loadingRetry, setLoadingRetry] = useState(0);
   const [saveRetry, setSaveRetry] = useState(0);
@@ -118,12 +118,6 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
     });
     return patterns;
   }, [lesson]);
-
-  // Which engine is speaking right now: the app's own German audio or the
-  // device voice (see the "صدا" chip in the header).
-  useEffect(() => subscribeGermanVoiceStatus(status => {
-    if (status.engine) setActiveEngine(status.engine);
-  }), []);
 
   const speak = useCallback((text: string, rate = NORMAL_RATE, kind: 'sentence' | 'word' = 'sentence') => {
     setSpeechError('');
@@ -352,7 +346,7 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
         <View style={styles.headerTop}>
           <PageNavigation tone="dark" backFallback="/learn/de" />
           <View style={styles.headerText}>
-            <Text style={styles.headerEyebrow}>LEVEL {level} · {courseLevel.cefr.toUpperCase()} · DEUTSCH</Text>
+            <Text style={styles.headerEyebrow}>{levelBadgeLabel(courseLevel.id, courseLevel.title, courseLevel.cefr)}</Text>
             <Text style={styles.headerTitle}>{lesson.title}</Text>
             <Text style={styles.headerSub}>{stages[stage].labelFa} · مرحلهٔ {fa(stage + 1)} از {fa(stages.length)}</Text>
           </View>
@@ -361,10 +355,6 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
         <View style={styles.headerBottom}>
           <View style={styles.headerInfoChip}><BookOpenCheck size={13} color="#D9F3E8" /><Text style={styles.headerInfoText}>مسیر اصلی جمله‌محور</Text></View>
           <Text style={styles.headerInfoText}>{fa(lesson.sentences.length)} جملهٔ اصلی</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={activeEngine === 'device' ? 'صدای آلمانی دستگاه' : 'صدای آلمانی داخلی برنامه'} accessibilityHint="باز کردن صفحهٔ بررسی صدا" onPress={() => router.push('/learn/de/audio-check' as never)} style={styles.voiceChip}>
-            <View style={[styles.voiceDot, styles.voiceDotReady]} />
-            <Text style={styles.voiceChipText}>{activeEngine === 'device' ? 'صدای دستگاه' : 'صدای آلمانی'}</Text>
-          </Pressable>
         </View>
       </LinearGradient>
 
@@ -381,39 +371,26 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
 
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {stage === 0 && <View style={styles.centerStage}>
-          <View style={styles.bigIcon}><Sparkles size={34} color={Palette.gold} /></View>
-          <Text style={styles.stageEyebrow}>موقعیت واقعی</Text>
-          <Text style={styles.stageTitle}>{lesson.title}</Text>
-          <Text style={styles.situation}>{lesson.situation}</Text>
-          {firstSentence ? <View style={styles.previewCard}>
-            <View style={styles.previewTop}>
-              <View style={styles.previewBadge}><Volume2 size={17} color="#FFFFFF" /></View>
-              <View style={styles.previewTextBlock}>
-                <Text style={styles.previewLabel}>جملهٔ آغازین · خودکار پخش می‌شود</Text>
-                <Text style={styles.previewSentence}>{firstSentence.text}</Text>
-              </View>
-            </View>
-            <Text style={styles.previewFa}>{firstSentence.fa}</Text>
-            <View style={styles.previewActions}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`پخش جملهٔ آلمانی: ${firstSentence.text}`} style={styles.previewButton} onPress={() => speak(firstSentence.text, NORMAL_RATE)}><Volume2 size={15} color="#FFFFFF" /><Text style={styles.previewButtonText}>پخش جمله</Text></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="پخش آهستهٔ جملهٔ آغازین" style={styles.previewButton} onPress={() => speak(firstSentence.text, SLOW_RATE)}><Text style={styles.previewButtonText}>آهسته</Text></Pressable>
-            </View>
-            {!!firstSentence.vocabulary.length && <>
-              <Text style={styles.previewWordsLabel}>واژه‌های کلیدی · برای شنیدن لمس کنید</Text>
-              <View style={styles.previewWords}>{firstSentence.vocabulary.map(item => <Pressable key={`${firstSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`پخش واژهٔ آلمانی: ${item.word}`} style={styles.previewWordChip} onPress={() => speak(item.word, NORMAL_RATE, 'word')}><Volume2 size={13} color={Palette.primary} /><Text style={styles.previewWordText}>{item.word}</Text></Pressable>)}</View>
-            </>}
-          </View> : null}
-          <View style={styles.promiseCard}>
-            <Text style={styles.promiseTitle}>در پایان این درس می‌توانید:</Text>
-            <Text style={styles.promiseText}>با {fa(lesson.sentences.length)} جملهٔ کوتاه، این موقعیت را مدیریت کنید و واژه‌ها را در بافت بشنوید.</Text>
-          </View>
-          {lesson.teachingFa ? <View style={styles.noteCard}><Text style={styles.noteTitle}>نکتهٔ آلمانی به فارسی</Text><Text style={styles.noteText}>{lesson.teachingFa}</Text></View> : null}
-          <View style={styles.voiceReadyCard}>
-            <Volume2 size={18} color={Palette.primary} />
-            <Text style={styles.voiceReadyText}>صداهای این درس همراه برنامه ذخیره شده‌اند؛ جمله‌ها خودکار پخش می‌شوند و هر واژه با لمس خوانده می‌شود.</Text>
-          </View>
-        </View>}
+        {stage === 0 && (
+          <LessonSituationStage
+            title={lesson.title}
+            situation={lesson.situation}
+            sentenceCount={lesson.sentences.length}
+            teaching={lesson.teachingFa}
+            teachingLabel="نکتهٔ آلمانی به فارسی"
+            palette={{
+              primary: Palette.primary,
+              primarySoft: Palette.primarySoft,
+              primaryDark: Palette.primaryDark,
+              border: Palette.border,
+              surface: Palette.surface,
+              text: Palette.text,
+              warning: Palette.gold,
+            }}
+            maxWidth={820}
+          >
+          </LessonSituationStage>
+        )}
 
         {stage === 1 && <View style={styles.sentenceStage}>
           <Text style={styles.counter}>جملهٔ {fa(sentenceIndex + 1)} از {fa(lesson.sentences.length)}</Text>

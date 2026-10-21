@@ -24,6 +24,8 @@ import { EnglishDialoguePractice } from '@/components/EnglishDialoguePractice';
 import { ENGLISH_ENGINE_STEPS, getLessonPatterns, getLessonVocabulary } from '@/lib/englishLearningEngine';
 import { ENGLISH_LEVEL_GRADIENTS } from '@/components/EnglishUI';
 import { PageNavigation } from '@/components/PageNavigation';
+import { LessonSituationStage } from '@/components/LessonSituation';
+import { levelBadgeLabel } from '@/lib/languages/levelPresentation';
 
 import { loadStudy, saveLessonSession, freshSession } from '@/lib/englishStudyState';
 import { loadSupplement } from '@/lib/englishSupplement/progress';
@@ -192,7 +194,7 @@ export default function SentenceLessonScreen() {
         <View style={styles.headerTop}>
           <PageNavigation tone="dark" backFallback="/lang" />
           <View style={styles.headerText}>
-            <Text style={styles.headerEyebrow}>LEVEL {courseLevel.id} · {courseLevel.title.toUpperCase()}</Text>
+            <Text style={styles.headerEyebrow}>{levelBadgeLabel(courseLevel.id, courseLevel.title)}</Text>
             <Text style={styles.headerTitle}>{lesson.title}</Text>
             <Text style={styles.headerSub}>{stages[stage].labelFa} · مرحله {toPersianDigits(stage + 1)} از {toPersianDigits(stages.length)}</Text>
           </View>
@@ -226,16 +228,22 @@ export default function SentenceLessonScreen() {
       {!!(sessionError || timer.error) && <Text style={styles.speechError}>{sessionError || timer.error}</Text>}
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {stage === 0 && (
-          <View style={styles.centerStage}>
-            <View style={styles.bigIcon}><Sparkles size={34} color={Colors.accent[400]} /></View>
-            <Text style={styles.stageEyebrow}>موقعیت واقعی</Text>
-            <Text style={styles.stageTitle}>{lesson.title}</Text>
-            <Text style={styles.situation}>{lesson.situation}</Text>
-            <View style={styles.promiseCard}>
-              <Text style={styles.promiseTitle}>در پایان این درس می‌توانید:</Text>
-              <Text style={styles.promiseText}>با {toPersianDigits(lesson.sentences.length)} جمله کوتاه، این موقعیت را مدیریت کنید.</Text>
-            </View>
-          </View>
+          <LessonSituationStage
+            title={lesson.title}
+            situation={lesson.situation}
+            sentenceCount={lesson.sentences.length}
+            teaching={lesson.teachingFa}
+            teachingLabel="نکتهٔ انگلیسی به فارسی"
+            palette={{
+              primary: Palette.primary,
+              primarySoft: Palette.primarySoft,
+              primaryDark: Palette.primaryDark,
+              border: Palette.border,
+              surface: Palette.surface,
+              text: Palette.text,
+              warning: Colors.accent[400],
+            }}
+          />
         )}
 
         {stage === 1 && (

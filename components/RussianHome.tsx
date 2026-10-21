@@ -12,6 +12,7 @@ import { RUSSIAN_LEVELS, RUSSIAN_LESSONS, russianProgress, type RussianLevelId }
 import type { CourseProgress } from '@/lib/courseProgress';
 import { toPersianDigits as fa } from '@/lib/format';
 import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
+import { levelBadgeLabel, levelStatementFa } from '@/lib/languages/levelPresentation';
 import { Typography } from '@/lib/theme';
 
 export const SHARED_JOURNEY_GRADIENTS: Record<number, [string, string]> = {
@@ -98,7 +99,7 @@ export default function RussianHome() {
             <View pointerEvents="none" style={styles.heroOrbLarge} />
             <View pointerEvents="none" style={styles.heroOrbSmall} />
             <View style={styles.heroTopRow}>
-              <View style={styles.heroLevelBadge}><View style={styles.heroBadgeDot} /><Text style={styles.heroLevelText}>LEVEL {activeLevel.id} · {activeLevel.title.toUpperCase()}</Text></View>
+              <View style={styles.heroLevelBadge}><View style={styles.heroBadgeDot} /><Text style={styles.heroLevelText}>{levelBadgeLabel(activeLevel.id, activeLevel.title)}</Text></View>
               <Text style={styles.heroCourseLabel}>CORE PATH</Text>
             </View>
             <View style={styles.heroCopy}>
@@ -157,7 +158,7 @@ export default function RussianHome() {
             </View>
             <View style={styles.currentLevelRow}>
               <View style={styles.currentLevelCopy}>
-                <Text style={styles.currentLevelEyebrow}>اکنون · سطح {fa(activeLevel.id)}</Text>
+                <Text style={styles.currentLevelEyebrow}>{levelStatementFa(activeLevel.id)}</Text>
                 <Text style={styles.currentLevelName}>{activeLevel.title}</Text>
                 <Text style={styles.currentLevelDescription}>{activeLevel.description}</Text>
               </View>

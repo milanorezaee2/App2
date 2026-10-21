@@ -51,6 +51,8 @@ export interface SentenceLesson {
   subtitle: string;
   situation: string;
   durationMinutes: number;
+  /** Optional Persian teaching note, the same slot the Russian and German lessons use. */
+  teachingFa?: string;
   sentences: CourseSentence[];
   dialogue: Array<{ speaker: 'learner' | 'partner'; text: string; fa: string }>;
   /** Thematic unit metadata is currently populated for Communication English. */

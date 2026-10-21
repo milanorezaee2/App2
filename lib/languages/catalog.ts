@@ -7,7 +7,7 @@ import { createCourseProgressStore } from '../createCourseProgressStore';
 export const LANGUAGES: readonly LanguageDefinition[] = [
   { id: 'en', name: 'انگلیسی', nativeName: 'English', speechLocale: 'en-US', accent: '#6356d9', lessonsCount: SENTENCE_LESSONS.length, description: 'جمله‌های کاربردی، کارگاه تلفظ، مرور و مجموعه ۵۰۴', status: 'available', home: '/lang' },
   { id: 'de', name: 'آلمانی', nativeName: 'Deutsch', speechLocale: 'de-DE', accent: '#087e75', lessonsCount: GERMAN_SENTENCE_LESSONS.length, description: 'درس‌های جمله‌محور، کارگاه تلفظ و تمرین واژگان در چهار مرحله', status: 'available', home: '/learn/de' },
-  { id: 'ru', name: 'روسی', nativeName: 'Русский', speechLocale: 'ru-RU', accent: '#4267a8', lessonsCount: RUSSIAN_LESSONS.length, description: '۱۱۵ درس از Foundation تا Advanced، با بیش از ۳۴۰۰ جمله و واژه‌های پیوندخورده با بافت', status: 'available', home: '/learn/ru' },
+  { id: 'ru', name: 'روسی', nativeName: 'Русский', speechLocale: 'ru-RU', accent: '#4267a8', lessonsCount: RUSSIAN_LESSONS.length, description: 'مسیر آغازین مستقل با خط سیریلیک، جمله‌های کاربردی و مرور محلی', status: 'available', home: '/learn/ru' },
 ];
 export { russianProgress };
 export function findLanguage(id: string | undefined) { return LANGUAGES.find(l => l.id === id); }

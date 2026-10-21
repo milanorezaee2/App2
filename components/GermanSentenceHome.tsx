@@ -24,6 +24,7 @@ import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { GermanBottomNav } from '@/components/GermanBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
 import { SHARED_JOURNEY_GRADIENTS } from '@/components/RussianHome';
+import { levelBadgeLabel, levelRailLabel, levelStatementFa } from '@/lib/languages/levelPresentation';
 import type { CourseLevelId } from '@/lib/courseContent';
 import { toPersianDigits as fa } from '@/lib/format';
 import {
@@ -159,7 +160,7 @@ export default function GermanSentenceHome() {
             <View style={styles.heroTopRow}>
               <View style={styles.heroLevelBadge}>
                 <View style={styles.heroBadgeDot} />
-                <Text style={styles.heroLevelText}>LEVEL {currentLevel.id} · {currentLevel.cefr === 'مقدماتی' ? 'PRE-A1' : currentLevel.cefr}</Text>
+                <Text style={styles.heroLevelText}>{levelBadgeLabel(currentLevel.id, currentLevel.title, currentLevel.cefr)}</Text>
               </View>
               <Text style={styles.heroCourseLabel}>CORE PATH</Text>
             </View>
@@ -226,7 +227,7 @@ export default function GermanSentenceHome() {
             <View style={styles.panelHeadingRow}>
               <View style={styles.panelHeadingText}>
                 <Text style={styles.panelEyebrow}>THE MAIN CURRICULUM</Text>
-                <Text style={styles.panelTitle}>مسیر یادگیری</Text>
+                <Text style={styles.panelTitle}>مسیر یادگیری آلمانی</Text>
               </View>
               <Pressable accessibilityRole="button" style={styles.libraryLink} onPress={() => router.push('/learn/de/library' as never)}>
                 <Text style={styles.libraryLinkText}>کتابخانه</Text>
@@ -238,21 +239,19 @@ export default function GermanSentenceHome() {
               <EnglishLevelRail
                 activeLevelId={currentLevel.id as CourseLevelId}
                 counts={levelCounts}
-                levels={GERMAN_RAIL_LEVELS.map((level, index) => ({ ...level, title: index === 0 ? 'مقدماتی' : level.cefr }))}
-                startLabel="مقدماتی"
+                levels={GERMAN_RAIL_LEVELS.map(level => ({ ...level, cefr: levelRailLabel(level) }))}
                 accessibilityLabelPrefix="فهرست درس‌های"
                 direction="rtl"
                 accentColor={Palette.primary}
                 successColor={Palette.success}
                 activeLabelColor={Palette.primaryDark}
-                numberOffset={1}
                 onSelect={openLevel}
               />
             </View>
 
             <View style={styles.currentLevelRow}>
               <View style={styles.currentLevelCopy}>
-                <Text style={styles.currentLevelEyebrow}>اکنون · {currentLevel.cefr}</Text>
+                <Text style={styles.currentLevelEyebrow}>{levelStatementFa(currentLevel.id)}</Text>
                 <Text style={styles.currentLevelName}>{currentLevel.title}</Text>
                 <Text style={styles.currentLevelDescription}>{currentLevel.description}</Text>
               </View>

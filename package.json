@@ -22,6 +22,7 @@
     "validate:german-lesson": "node scripts/verify-german-lesson-flow.cjs",
     "validate:russian": "node scripts/verify-russian-course.cjs",
     "validate:russian-architecture": "node scripts/verify-russian-architecture.cjs",
+    "validate:russian-voice": "node scripts/verify-russian-voice.cjs",
     "validate:english-supplement": "node scripts/verify-english-supplement.cjs",
     "validate:english-engine": "node scripts/verify-english-engine.cjs",
     "validate:placement": "node scripts/verify-placement.cjs",

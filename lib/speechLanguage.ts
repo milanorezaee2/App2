@@ -133,9 +133,11 @@ export function scoreVoiceForLocale(voice: SpeechVoiceInfo, targetLocale: string
     hay.includes('german') ||
     hay.includes('deutsch') ||
     hay.includes('milena') ||
-    hay.includes('yuri') ||
     hay.includes('irina') ||
-    hay.includes('pavel') ||
+    hay.includes('alena') ||
+    hay.includes('alyona') ||
+    hay.includes('daria') ||
+    hay.includes('svetlana') ||
     hay.includes('russian') ||
     hay.includes('samantha')
   ) {
@@ -229,13 +231,31 @@ export async function waitForSpeechVoices(
  * Never passes an empty or unmatched `voice` string (which on Web causes
  * `expo-speech` to fall back to `voices[0]`, typically English!).
  */
+/**
+ * Russian is narrated by a woman, as it always was. Devices name their Russian
+ * voices, so an identifiable feminine voice is preferred; when the platform
+ * exposes no recognisable name the call falls back to the voices it used
+ * before ranking existed (never a voice that is explicitly male).
+ */
+const feminineRussianVoice = /milena|irina|alena|alyona|anna|katya|katja|daria|dariya|elena|helena|svetlana|female|google русский|google russian|русский.*(жен|woman)/i;
+const masculineRussianVoice = /yuri|pavel|dmitri|dmitry|male\b|google.*(юрий|павел)/i;
+
+function voicesForNarration(voices: readonly SpeechVoiceInfo[], targetLocale: string): readonly SpeechVoiceInfo[] {
+  if (primarySpeechLanguage(targetLocale) !== 'ru') return voices;
+  const naming = (voice: SpeechVoiceInfo) => `${voice.identifier} ${voice.name}`;
+  const feminine = voices.filter(voice => feminineRussianVoice.test(naming(voice)));
+  if (feminine.length) return feminine;
+  const neutral = voices.filter(voice => !masculineRussianVoice.test(naming(voice)));
+  return neutral.length ? neutral : voices;
+}
+
 export async function resolveSpeechOptions(
   targetLocale: string,
 ): Promise<{ language: string; voice?: string }> {
   const language = speechTagFor(targetLocale);
   const voices = await loadAvailableVoices();
   const matching = voicesForLocale(voices, targetLocale);
-  const chosen = selectBestVoiceForLocale(matching, targetLocale);
+  const chosen = selectBestVoiceForLocale(voicesForNarration(matching, targetLocale), targetLocale);
   if (chosen?.identifier) {
     return { language, voice: chosen.identifier };
   }
