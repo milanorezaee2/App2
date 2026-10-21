@@ -10,6 +10,7 @@
  * `verify-german-narrator.cjs` pins the shipped manifest to this file.
  */
 import preset from '../../config/german-narrator.json';
+import { toPersianDigits } from '../format';
 
 export type GermanNarrator = {
   /** eSpeak NG voice used to build the bundled pack, e.g. `de+f3`. */
@@ -48,5 +49,5 @@ export function germanDeviceRate(requestedRate?: number): number {
 
 /** Human-readable one-liner for the voice page and the release notes. */
 export function germanNarratorLabel(): string {
-  return `${GERMAN_NARRATOR.descriptionFa} · ${GERMAN_NARRATOR.wordsPerMinute} کلمه در دقیقه`;
+  return `${GERMAN_NARRATOR.descriptionFa} · ${toPersianDigits(GERMAN_NARRATOR.wordsPerMinute)} کلمه در دقیقه`;
 }

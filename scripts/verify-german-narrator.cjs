@@ -74,7 +74,8 @@ check('both clips of every lesson are shipped', clips === 190);
     app.germanDeviceRate(0.55) === preset.deviceSlowRate
       && preset.deviceSlowRate < preset.deviceShadowRate
       && preset.deviceShadowRate < preset.deviceRate);
-  check('the label states the tempo the learner chose', app.germanNarratorLabel().includes(String(preset.wordsPerMinute)));
+  const faNumber = String(preset.wordsPerMinute).replace(/[0-9]/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
+  check('the label states the tempo the learner chose', app.germanNarratorLabel().includes(faNumber));
 
   // The speech layer must ask for that rate instead of hard-coding 1.
   const speech = fs.readFileSync(path.join(root, 'lib/germanSpeech.ts'), 'utf8');

@@ -17,6 +17,7 @@ import {
 import { selectBestVoiceForLocale, type SpeechVoiceInfo } from '@/lib/speechLanguage';
 import { loadGermanAudioManifest, playGermanClip, setGermanAudioLesson, stopGermanClip } from '@/lib/germanAudio';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
+import { germanNarratorLabel } from '@/lib/languages/germanNarrator';
 
 const NO_VOICE_MESSAGE = 'صدای آلمانی دستگاه در دسترس نیست؛ نگران نباشید، درس‌ها همیشه با صدای آلمانی داخلی برنامه پخش می‌شوند.';
 
@@ -172,7 +173,8 @@ export default function AudioCheck() {
     <Text style={s.notice}>بلندی صدا را بالا ببرید و حالت بی‌صدا را بررسی کنید. جمله‌ها و واژه‌های آلمانی همراه خود برنامه ذخیره شده‌اند؛ برای شنیدنشان نه به نصب زبان آلمانی روی دستگاه نیاز است و نه به اینترنت.</Text>
 
     <View style={s.card}>
-      <Text style={s.heading}>۱. صدای آلمانی داخلی برنامه</Text>
+      <Text style={s.heading}>۱. گویندهٔ آلمانی انتخاب‌شده در برنامه</Text>
+      <Text style={s.small}>گویندهٔ انتخاب‌شده: {germanNarratorLabel()}</Text>
       {bundled ? <>
         <Text style={s.small}>موتور: {bundled.engine} • {bundled.sentences} جمله و {bundled.words} واژه در درس نمونه</Text>
         <CourseButton title={`شنیدن نمونه: ${bundled.sample}`} secondary disabled={active !== null} onPress={() => playBundled('sentence')} />
@@ -182,10 +184,10 @@ export default function AudioCheck() {
       <Text style={s.small}>این صدا همیشه آلمانی است و در همهٔ مرورگرها، از جمله Firefox گوشی، کار می‌کند.</Text>
       <Text style={s.description}>کدام صدا برای درس‌ها استفاده شود؟</Text>
       <CourseButton
-        title={source === 'auto' ? 'انتخاب‌شده: خودکار (پیشنهاد)' : 'خودکار: صدای طبیعی دستگاه، وگرنه صدای برنامه'}
+        title={source === 'auto' ? 'انتخاب‌شده: گویندهٔ انتخاب‌شده (پیشنهاد)' : 'گویندهٔ انتخاب‌شده در همهٔ درس‌ها'}
         secondary={source !== 'auto'}
         disabled={active !== null}
-        onPress={() => { setGermanVoiceSource('auto'); setSource('auto'); setBundledStatus('اگر گوشی صدای آلمانی داشته باشد همان استفاده می‌شود؛ وگرنه صدای داخلی برنامه.'); }}
+        onPress={() => { setGermanVoiceSource('auto'); setSource('auto'); setBundledStatus(`درس‌ها با همان گویندهٔ انتخاب‌شده (${germanNarratorLabel()}) خوانده می‌شوند.`); }}
       />
       <CourseButton
         title={source === 'app' ? 'انتخاب‌شده: صدای داخلی برنامه' : 'همیشه صدای داخلی برنامه'}
@@ -200,7 +202,7 @@ export default function AudioCheck() {
         onPress={() => { setGermanVoiceSource('device'); setSource('device'); setBundledStatus('اگر دستگاه صدای آلمانی داشته باشد، درس‌ها با آن خوانده می‌شوند؛ وگرنه صدای داخلی برنامه.'); }}
       />
       <Text style={s.small}>{source === 'auto'
-        ? 'حالت خودکار: طبیعی‌ترین صدای ممکن انتخاب می‌شود و اگر پخش نشد، خودِ برنامه جمله را با صدای آلمانی داخلی می‌خواند.'
+        ? `حالت پیشنهادی: همهٔ درس‌ها با گویندهٔ انتخاب‌شده (${germanNarratorLabel()}) پخش می‌شوند؛ روی هر گوشی یکسان و بی‌نیاز از نصب زبان.`
         : source === 'app'
           ? 'در این حالت صدا روی همهٔ گوشی‌ها یکسان و همیشه آلمانی است، بدون نیاز به نصب زبان.'
           : 'اگر گوشی صدای آلمانی نداشته باشد، برنامه به‌طور خودکار از صدای داخلی خودش استفاده می‌کند.'}</Text>

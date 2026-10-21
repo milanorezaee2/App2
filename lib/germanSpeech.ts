@@ -59,8 +59,9 @@ const VOICE_SOURCE_MIGRATION_KEY = 'german_voice_source_migrated_v2';
 
 /**
  * Which German voice the lessons use.
- *  - `auto` (default): the phone's own German voice when one is installed (it is
- *    the most natural one available), otherwise the audio that ships with the app.
+ *  - `auto` (default): the narrator the learner chose, shipped with the app, so
+ *    every phone hears the same voice at the same tempo; the device voice covers
+ *    playback only if a clip is unavailable.
  *  - `app`: always the bundled audio — identical on every device and offline.
  *  - `device`: only the voice installed on the phone/browser.
  * Whatever is chosen, playback never stays silent: if the selected engine cannot
@@ -408,12 +409,12 @@ export function speakGerman(options: GermanSpeechRequest): void {
     deviceFirst();
     return;
   }
-  // auto: prefer the phone's own German voice, it is the most natural one.
-  void hasGermanDeviceVoice().then(has => {
-    if (request !== sequence) return;
-    if (has) deviceFirst();
-    else bundledFirst();
-  });
+  // auto: the learner picked this narrator by ear, so the bundled pack is what
+  // the lessons must play. It is the same voice on every phone, offline, and at
+  // the chosen tempo. The device voice still covers any clip the pack cannot
+  // play (see `bundledFirst`), so a lesson is never silent.
+  void hasGermanDeviceVoice().catch(() => false);
+  bundledFirst();
 }
 
 /**

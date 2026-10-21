@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import ctypes
 import json
+import sys
 from pathlib import Path
 
 import lameenc
@@ -160,6 +161,11 @@ REFERENCE = {'file': 'v0-current-140.mp3', 'voice': 'de+f3', 'rate': 140, 'pitch
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
+    if '--page-only' in sys.argv:
+        manifest = json.loads((OUT / 'samples.json').read_text(encoding='utf-8'))
+        write_page(manifest)
+        print(f'page rebuilt from samples.json (chosen: {chosen_id() or "none"})')
+        return
     manifest = {'lines': LINES, 'options': []}
     reference_audio = variant_audio(REFERENCE)
     (OUT / REFERENCE['file']).write_bytes(encode(reference_audio))
@@ -194,10 +200,21 @@ def main() -> None:
     print(f'\ncompare-all.mp3: {all_audio.size / SAMPLE_RATE:.1f}s, {len(manifest["options"])} options in {OUT}')
 
 
+def chosen_id() -> str:
+    """Which option the app currently ships (config/german-narrator.json)."""
+    config = Path(__file__).resolve().parent.parent / 'config' / 'german-narrator.json'
+    try:
+        selection = json.loads(config.read_text(encoding='utf-8')).get('selection', '')
+    except (OSError, ValueError):
+        return ''
+    return selection
+
+
 def write_page(manifest: dict) -> None:
+    chosen = chosen_id()
     cards = '\n'.join(
-        f"""    <section class="card">
-      <div class="head"><span class="num">{index}</span><span class="name">{item['fa']}</span></div>
+        f"""    <section class="card{' chosen' if item['id'] and item['id'] in chosen else ''}">
+      <div class="head"><span class="num">{index}</span><span class="name">{item['fa']}</span>{'<span class="badge">انتخاب‌شده</span>' if item['id'] and item['id'] in chosen else ''}</div>
       <p class="hint">{item['detail']} · در فایل «همه با هم» از {fa_clock(item['at'])}</p>
       <button class="play" type="button" data-src="{item['file']}">▶ پخش نمونهٔ {fa_digit(index)}</button>
     </section>"""
@@ -229,6 +246,9 @@ def write_page(manifest: dict) -> None:
   .play:active {{ opacity:.85; }}
   .play.playing {{ background:#0b4f41; }}
   .all {{ background:#12211d; }}
+  .card.chosen {{ border-color:#0f6b57; box-shadow:0 0 0 2px #cfe8df inset; }}
+  .badge {{ margin-inline-start:auto; font-size:10.5px; color:#0f6b57; background:#e8f3ef;
+            border-radius:999px; padding:3px 9px; }}
   footer {{ max-width:680px; margin:18px auto 0; font-size:11.5px; color:var(--muted); line-height:2; }}
 </style>
 </head>

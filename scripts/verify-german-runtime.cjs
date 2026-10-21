@@ -275,12 +275,19 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   const stage0 = await lastPlay();
   check('the situation stage auto-plays the first German sentence', stage0?.file === greetingSentences.file);
   check('the situation stage does not need the device voice', (await deviceSpoken()).length === 0);
-  check('the situation stage exposes tappable key words',
-    await page.getByRole('button', { name: /^پخش واژهٔ آلمانی:/ }).count() > 0);
+  // The situation stage now follows the Russian layout exactly: promise card and
+  // the Persian teaching note, instead of the German-only word preview card.
+  const stage0Text = await page.locator('body').innerText();
+  check('the situation stage shows the lesson promise like Russian',
+    stage0Text.includes('در پایان این درس می‌توانید'));
+  check('the situation stage keeps its Persian teaching note',
+    stage0Text.includes('نکتهٔ آلمانی به فارسی'));
 
-  // 3. Tapping a word plays that word from the vocabulary pack.
-  const wordButton = page.getByRole('button', { name: /^پخش واژهٔ آلمانی:/ }).first();
-  const wordLabel = await wordButton.getAttribute('aria-label');
+  // 3. A vocabulary word plays from the lesson's word pack (audio-check page).
+  await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
+  const wordButton = page.getByRole('button', { name: /^شنیدن واژه: / }).first();
+  // react-native-web renders this button's label as visible text, not aria-label.
+  const wordLabel = (await wordButton.innerText()).trim();
   const word = (wordLabel || '').split(':').pop().trim().toLowerCase();
   await clearAudio();
   await wordButton.click();
@@ -288,9 +295,19 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   const wordClip = await lastPlay();
   check('tapping a German word plays the word clip from the lesson vocabulary pack',
     wordClip?.file === greetingWords.file && greetingWords.clips[word] !== undefined);
+  // The element is cached and may be re-seeked, so accept every play recorded
+  // for the word pack and require that the word's own offset appears.
+  const tappedWordPlays = await page.evaluate(file =>
+    (window.__audio || []).filter(entry => entry.src.endsWith(file)).flatMap(entry => entry.plays || []),
+    greetingWords.file);
   check('the word clip uses the recorded start of that word',
-    Math.abs((wordClip?.start ?? -1) - greetingWords.clips[word][0]) < 0.05);
+    tappedWordPlays.some(play => Math.abs(play.start - greetingWords.clips[word][0]) < 0.05));
   check('the tapped word is not read by the device voice', (await deviceSpoken()).length === 0);
+
+  // Back into the lesson for the remaining stages.
+  await page.goto(`${LESSON}&source=app`, { waitUntil: 'networkidle' });
+  await page.getByText(/موقعیت · مرحلهٔ ۱ از ۹/).waitFor();
+  await page.waitForTimeout(1200);
 
   // 4. Core sentence stage: natural playback, then slow replay.
   await clearAudio();
@@ -353,7 +370,9 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
   await page.getByText('بررسی و انتخاب صدای آلمانی', { exact: true }).waitFor();
   await page.waitForTimeout(900);
-  check('audio-check presents the in-app German voice', (await page.locator('body').innerText()).includes('صدای آلمانی داخلی برنامه'));
+  const audioCheckText = await page.locator('body').innerText();
+  check('audio-check presents the chosen German narrator', audioCheckText.includes('گویندهٔ آلمانی انتخاب‌شده در برنامه'));
+  check('audio-check names the chosen narrator tempo', /۱۶۰ کلمه در دقیقه/.test(audioCheckText));
   await clearAudio();
   await page.getByRole('button', { name: /^شنیدن نمونه:/ }).first().click();
   await page.waitForTimeout(600);
@@ -394,9 +413,9 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
   await page.getByText('بررسی و انتخاب صدای آلمانی', { exact: true }).waitFor();
   await page.waitForTimeout(800);
-  check('audio-check offers automatic voice selection',
-    await page.getByRole('button', { name: /خودکار/ }).count() >= 1);
-  check('audio-check offers the in-app voice',
+  check('audio-check offers the chosen narrator as the default',
+    await page.getByRole('button', { name: /گویندهٔ انتخاب‌شده/ }).count() >= 1);
+  check('audio-check still offers the in-app voice explicitly',
     await page.getByRole('button', { name: /صدای داخلی برنامه/ }).count() >= 1);
   await page.getByRole('button', { name: /صدای آلمانی دستگاه/ }).first().click();
   await page.waitForTimeout(200);
@@ -416,12 +435,15 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   check('the decode fallback still asks for German',
     decodeFallback.every(item => String(item.lang).toLowerCase().startsWith('de')));
 
-  // 11. Automatic mode: a phone that already has a natural German voice uses it.
+  // 11. Automatic mode: the narrator the learner chose plays on every phone,
+  //     even when a German system voice is installed (the voice must not change
+  //     from device to device).
   await page.goto(`${LESSON}&seed=1&source=auto`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(2600);
   const autoDevice = await deviceSpoken();
-  check('automatic mode prefers the natural German voice installed on the device',
-    autoDevice.some(item => item.text === 'Hallo!' && item.lang === 'de-DE'));
+  const autoPlay = await lastPlay();
+  check('automatic mode plays the chosen narrator instead of a different device voice',
+    autoPlay?.file === greetingSentences.file && !autoDevice.some(item => item.text === 'Hallo!'));
   check('automatic mode never sends the English voice', autoDevice.every(item => !/english/i.test(item.voice || '')));
 
   // 12. Firefox for Android: there is no Web Speech API at all. The bundled

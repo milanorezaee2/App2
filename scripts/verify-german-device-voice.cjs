@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 /**
- * The learner chose "the phone's own voice, exactly like the English section".
+ * The learner chose one German narrator by ear ("the current voice, one step
+ * faster"), and asked that every lesson really speaks with it. These checks
+ * compile `lib/germanSpeech.ts` for **Android** and prove that:
  *
- * The English lessons call `expo-speech` with the device voice; the German APK
- * used to ignore the device completely and always play the bundled clips. These
- * checks compile `lib/germanSpeech.ts` for **Android** and prove that:
- *
- *   - with a German voice installed the lesson speaks through expo-speech and
- *     never plays the bundled clip (that is the natural voice the learner asked for),
- *   - with no German voice installed it plays the bundled clip and never sends
- *     German to a foreign/English system voice,
- *   - it always asks for a German locale, never an English one.
+ *   - the default path plays the chosen narrator from the bundled pack, even on
+ *     a phone that also has a German system voice,
+ *   - if a clip cannot play, the phone's German voice covers it instead of
+ *     leaving the sentence silent (and never an English voice),
+ *   - a phone with no German voice still hears the same narrator,
+ *   - the explicit "always the phone voice" choice from the audio page works.
  */
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -67,6 +66,7 @@ const build = esbuild.build({
               globalThis.__bundled = [];
               export async function playNativeGermanClip(options) {
                 globalThis.__bundled.push({ text: options.text, kind: options.kind });
+                if (globalThis.__bundledFails) return false;
                 if (options.onStart) options.onStart();
                 if (options.onDone) setTimeout(() => options.onDone(), 10);
                 return true;
@@ -102,23 +102,34 @@ const ENGLISH_VOICE = { identifier: 'en-us-x-tpf-local', name: 'English United S
   // exposes the real `registerNativeVoiceFetcher`, so wire it here.
   app.registerNativeVoiceFetcher(async () => globalThis.__deviceVoices || []);
 
-  // --- 1. A phone with a German voice: speak with it, do not play the clip. ---
+  // --- 1. Default: the chosen narrator plays, even next to a German device voice. ---
   globalThis.__deviceVoices = [GERMAN_VOICE, ENGLISH_VOICE];
   globalThis.__spoken = [];
   globalThis.__bundled = [];
+  globalThis.__bundledFails = false;
   app.speakGerman({ text: 'Guten Morgen!', rate: 1 });
   await wait(260);
-  check('on Android the phone German voice is used, like the English section',
-    globalThis.__spoken.length === 1 && globalThis.__spoken[0].text === 'Guten Morgen!');
-  check('the device request carries a German locale, never English',
+  check('on Android the chosen narrator is the one that speaks',
+    globalThis.__bundled.length === 1 && globalThis.__bundled[0].text === 'Guten Morgen!');
+  check('the phone system voice does not replace the chosen narrator',
+    globalThis.__spoken.length === 0);
+  check('the reported engine is the bundled narrator', app.getGermanVoiceStatus().engine === 'app');
+
+  // --- 1b. The pack cannot play a clip: the phone voice covers it, in German. ---
+  globalThis.__bundledFails = true;
+  globalThis.__spoken = [];
+  globalThis.__bundled = [];
+  app.speakGerman({ text: 'Wie heißt du?', rate: 1 });
+  await wait(320);
+  check('a clip the pack cannot play is covered by the phone voice instead of silence',
+    globalThis.__spoken.length === 1 && globalThis.__spoken[0].text === 'Wie heißt du?');
+  check('the cover request carries a German locale, never English',
     String(globalThis.__spoken[0]?.language || '').toLowerCase().startsWith('de'));
-  check('the installed German voice is passed by identifier',
+  check('the cover uses the installed German voice by identifier',
     globalThis.__spoken[0]?.voice === GERMAN_VOICE.identifier);
-  check('natural speech is asked for at the chosen narrator tempo',
+  check('the cover follows the chosen narrator tempo',
     globalThis.__spoken[0]?.rate === narrator.deviceRate);
-  check('the bundled clip is not played when the phone can speak German',
-    globalThis.__bundled.length === 0);
-  check('the reported engine is the device voice', app.getGermanVoiceStatus().engine === 'device');
+  globalThis.__bundledFails = false;
 
   // --- 2. A phone with no German voice: bundled audio, never a foreign voice. ---
   globalThis.__deviceVoices = [ENGLISH_VOICE];
@@ -128,11 +139,11 @@ const ENGLISH_VOICE = { identifier: 'en-us-x-tpf-local', name: 'English United S
   globalThis.__bundled = [];
   app.speakGerman({ text: 'Wie geht es dir?', rate: 1 });
   await wait(260);
-  check('without a German voice the bundled German clip is used',
+  check('without a German voice the same narrator speaks from the pack',
     globalThis.__bundled.length === 1 && globalThis.__bundled[0].text === 'Wie geht es dir?');
   check('German is never handed to an English system voice',
     globalThis.__spoken.length === 0);
-  check('the reported engine is the bundled voice', app.getGermanVoiceStatus().engine === 'app');
+  check('the reported engine is still the bundled narrator', app.getGermanVoiceStatus().engine === 'app');
 
   // --- 3. No voices at all (bare Android image): still guaranteed German. ---
   globalThis.__deviceVoices = [];
