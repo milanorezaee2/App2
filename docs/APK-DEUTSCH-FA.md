@@ -4,23 +4,23 @@
 
 | فایل | برای چه کسی | لینک |
 |---|---|---|
-| **MiloMultilang.apk** | نسخهٔ زبان‌آموز، بدون صفحهٔ ورود (پیشنهاد) | https://github.com/milanorezaee2/App2/releases/download/milo-apks-7/MiloMultilang.apk |
-| **MiloMultilang-Login.apk** | همان نسخه با صفحهٔ ثبت‌نام/ورود | https://github.com/milanorezaee2/App2/releases/download/milo-apks-7/MiloMultilang-Login.apk |
-| **MiloAdmin.apk** | پنل مدیریت خصوصی | https://github.com/milanorezaee2/App2/releases/download/milo-apks-7/MiloAdmin.apk |
+| **MiloMultilang.apk** | نسخهٔ زبان‌آموز، بدون صفحهٔ ورود (پیشنهاد) | https://github.com/milanorezaee2/App2/releases/download/milo-apks-8/MiloMultilang.apk |
+| **MiloMultilang-Login.apk** | همان نسخه با صفحهٔ ثبت‌نام/ورود | https://github.com/milanorezaee2/App2/releases/download/milo-apks-8/MiloMultilang-Login.apk |
+| **MiloAdmin.apk** | پنل مدیریت خصوصی | https://github.com/milanorezaee2/App2/releases/download/milo-apks-8/MiloAdmin.apk |
 
 | مشخصه | مقدار |
 |---|---|
 | حجم هر فایل | ۱۵۷٫۸ مگابایت |
-| صفحهٔ انتشار | https://github.com/milanorezaee2/App2/releases/tag/milo-apks-7 |
-| بیلد | GitHub Actions، اجرای `39588509926` (موفق) |
-| کامیت | `e0e2406` |
+| صفحهٔ انتشار | https://github.com/milanorezaee2/App2/releases/tag/milo-apks-8 |
+| بیلد | GitHub Actions، اجرای `39591847986` (موفق) |
+| کامیت | `ea9d6e1` |
 
 **SHA-256**
 
 ```
-MiloMultilang.apk        57e2afc734f62c9c7fb548f83f463a8faa2df808fc5f5d2406d240dfafa3ab49
-MiloMultilang-Login.apk  cf308e44792286f464b0c7ed04114da9d9690151c64791f7e94d2b90f9852738
-MiloAdmin.apk            0ddc96d6ad03636bc51224b2aa29432b4bf3b0436de443b794f4c050f6eeab09
+MiloMultilang.apk        372fef563d219622e8f24aa174c8a702704c12165323e8678a953420dd5ebccb
+MiloMultilang-Login.apk  2f63d1f3239e59d7671166b63ad56b0b2730e2d44fc26643070b92a8229fb139
+MiloAdmin.apk            38345ba9d18ff83150f4832d1c3bfae059eaef18cffa49df731a6a6739d0fa06
 ```
 
 ## نصب روی گوشی اندروید
@@ -42,6 +42,8 @@ MiloAdmin.apk            0ddc96d6ad03636bc51224b2aa29432b4bf3b0436de443b794f4c05
   حساب تأییدشده از حافظهٔ خود گوشی خوانده می‌شود، اپ فوراً باز می‌شود و بررسی
   سرور در پس‌زمینه انجام می‌شود. اگر واقعاً حساب معتبر نباشد، صفحهٔ ورود برمی‌گردد.
 - گرم‌کردن موتور گفتار از مسیر باز شدن اپ بیرون رفت.
+- اگر اینترنت قطع باشد، کاربر تأییدشده بیرون انداخته نمی‌شود؛ فقط پاسخ قطعی
+  «حساب وجود ندارد» صفحهٔ ورود را برمی‌گرداند.
 
 **۲) صدای عبارت خوش‌آمد انگلیسی**
 - قبلاً یک فایل صوتی با صدای نازک و رباتیک پخش می‌شد. حالا همان عبارت با
@@ -59,7 +61,7 @@ MiloAdmin.apk            0ddc96d6ad03636bc51224b2aa29432b4bf3b0436de443b794f4c05
 
 ```
 validate:welcome            13   ← روی کد قبلی شکست می‌خورد
-validate:boot               16   ← روی کد قبلی شکست می‌خورد
+validate:boot               17   ← روی کد قبلی شکست می‌خورد
 validate:german-device      11
 validate:german-native      10
 validate:german-lesson    1466
