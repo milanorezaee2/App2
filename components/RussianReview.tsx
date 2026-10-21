@@ -3,7 +3,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { Brain, Check, CheckCircle2, Clock3, RefreshCw, Sparkles, Volume2 } from 'lucide-react-native';
-import * as Speech from 'expo-speech';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { RussianBottomNav } from '@/components/RussianBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
@@ -11,7 +10,7 @@ import { RUSSIAN_LESSONS, russianProgress } from '@/lib/languages/russian';
 import type { CourseProgress, ReviewRating, SentenceReviewCard } from '@/lib/courseProgress';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
-import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
+import { primeRussianSpeech, speakRussian, stopRussianSpeech } from '@/lib/russianSpeech';
 
 const ratingOptions: Array<{ id: ReviewRating; label: string; hint: string; color: string }> = [
   { id: 'again', label: 'فراموش کردم', hint: '۱۰ دقیقه', color: Palette.danger },
@@ -51,9 +50,9 @@ export default function RussianReview() {
   }, []);
 
   useFocusEffect(useCallback(() => {
-    void preloadSpeechVoices();
+    primeRussianSpeech();
     void load();
-    return () => { void Speech.stop(); };
+    return () => { stopRussianSpeech(); };
   }, [load]));
 
   const currentCard = sessionCards[cardIndex];
@@ -74,7 +73,7 @@ export default function RussianReview() {
     setSaving(true);
     setError('');
     try {
-      void Speech.stop();
+      stopRussianSpeech();
       await russianProgress.rateReviewCard(currentCard.id, rating);
       if (cardIndex + 1 >= sessionCards.length) {
         setSessionActive(false);
@@ -89,11 +88,15 @@ export default function RussianReview() {
     } finally { setSaving(false); }
   };
 
-  const speak = (text: string) => {
+  const speak = (text: string, lessonId: string) => {
     setError('');
-    void Speech.stop();
-    void resolveSpeechOptions('ru-RU').then(targetVoice => {
-      Speech.speak(text, { ...targetVoice, rate: .78, onError: () => setError('صدای روسی دستگاه در دسترس نیست؛ جمله همچنان برای خواندن نمایش داده می‌شود.') });
+    // The clip comes from the card's own lesson pack, so a review never reads a
+    // sentence with the wrong voice or from the previous card's file.
+    speakRussian({
+      text,
+      lessonId,
+      rate: .78,
+      onError: () => setError('صدای روسی دستگاه در دسترس نیست؛ جمله همچنان برای خواندن نمایش داده می‌شود.'),
     });
   };
 
@@ -111,7 +114,7 @@ export default function RussianReview() {
           {!revealed ? <><Text style={styles.sayHint}>پاسخ روسی را با صدای بلند بگویید.</Text><Pressable accessibilityRole="button" style={styles.revealButton} onPress={() => setRevealed(true)}><Text style={styles.revealButtonText}>نمایش پاسخ</Text></Pressable></> : <View style={styles.answerArea}>
             <View style={styles.answerDivider} /><Text style={styles.reviewRussian}>{sentence.text}</Text><Text style={styles.reviewPronunciation}>{sentence.pronunciation}</Text>
             {sentence.pattern ? <Text style={styles.reviewPattern}>الگوی جمله‌سازی: {sentence.pattern}</Text> : null}
-            <Pressable accessibilityRole="button" style={styles.soundButton} onPress={() => speak(sentence.text)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.soundText}>پخش جمله</Text></Pressable>
+            <Pressable accessibilityRole="button" style={styles.soundButton} onPress={() => speak(sentence.text, lesson.id)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.soundText}>پخش جمله</Text></Pressable>
             {vocabulary ? <View style={styles.vocabChip}><Sparkles size={13} color={Palette.warning} /><Text style={styles.vocabText}>{vocabulary}</Text></View> : null}
           </View>}
         </View>

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
 import { BookOpenCheck, Check, ChevronLeft, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 const RUSSIAN_LESSON_GRADIENTS: Record<number, [string, string]> = {
@@ -16,11 +15,10 @@ import { PageNavigation } from '@/components/PageNavigation';
 import RussianSentenceBuilder from '@/components/RussianSentenceBuilder';
 import RussianDialoguePractice from '@/components/RussianDialoguePractice';
 import { clearRussianLessonSession, loadRussianLessonSession, saveRussianLessonSession } from '@/lib/languages/russianStudyState';
-import { findLanguage } from '@/lib/languages/catalog';
 import { RUSSIAN_LESSONS, RUSSIAN_LEVELS, RUSSIAN_LESSON_STAGES, russianProgress, type RussianCourseLesson } from '@/lib/languages/russian';
 import type { RussianLessonSession } from '@/lib/languages/russianStudyState';
 import { toPersianDigits as fa } from '@/lib/format';
-import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
+import { primeRussianSpeech, speakRussian, stopRussianSpeech } from '@/lib/russianSpeech';
 import { LessonSituationStage } from '@/components/LessonSituation';
 import { levelBadgeLabel } from '@/lib/languages/levelPresentation';
 import { Typography } from '@/lib/theme';
@@ -60,9 +58,10 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
   }, [lesson]);
   const grammarPatterns = lesson.sentences.flatMap(sentence => sentence.pattern ? [{ sentence, pattern: sentence.pattern }] : []);
 
-  // Warm up the device speech engine so the first Russian sentence is not delayed.
+  // Warm the bundled pack and the device cover so the first sentence of the
+  // lesson starts immediately.
   useEffect(() => {
-    void Speech.getAvailableVoicesAsync().catch(() => undefined);
+    primeRussianSpeech();
   }, []);
 
   useEffect(() => {
@@ -71,7 +70,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     setSessionReady(false);
     setSessionError('');
     setCompletionError('');
-    void preloadSpeechVoices();
+    primeRussianSpeech();
     void loadRussianLessonSession(lesson.id).then(saved => {
       if (!alive) return;
       setStage(saved.stage);
@@ -83,7 +82,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     }).catch(() => {
       if (alive) setSessionError('جلسهٔ قبلی خوانده نشد؛ برای حفظ اطلاعات، ذخیره متوقف است. دوباره تلاش کنید.');
     });
-    return () => { alive = false; void Speech.stop(); };
+    return () => { alive = false; stopRussianSpeech(); };
   }, [lesson.id, lesson.sentences.length, loadingRetry]);
 
   useEffect(() => {
@@ -96,20 +95,20 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
 
   const speak = useCallback((text: string, rate = 0.78) => {
     setSpeechError('');
-    void Speech.stop();
-    void resolveSpeechOptions(findLanguage('ru')!.speechLocale).then(targetVoice => {
-      Speech.speak(text, {
-        ...targetVoice,
-        rate,
-        onError: () => setSpeechError('صدای روسی دستگاه در دسترس نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
-      });
+    // The narrator that ships inside the app reads the sentence; the phone's
+    // Russian voice only covers a clip that cannot start at all.
+    speakRussian({
+      text,
+      lessonId: lesson.id,
+      rate,
+      onError: () => setSpeechError('صدای روسی دستگاه در دسترس نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
     });
-  }, []);
+  }, [lesson.id]);
 
   useEffect(() => {
     if (!sessionReady || (stage !== 1 && stage !== 3) || !current?.text) return;
     const timer = setTimeout(() => speak(current.text, NORMAL_SPEECH_RATE), 100);
-    return () => { clearTimeout(timer); void Speech.stop(); };
+    return () => { clearTimeout(timer); stopRussianSpeech(); };
   }, [sessionReady, stage, sentenceIndex, lesson.id, speak]);
 
   const selectSentence = (index: number, rate = 0.72) => {
@@ -121,7 +120,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
 
   const next = async () => {
     if (!sessionReady || sessionError || completing.current || saving) return;
-    void Speech.stop();
+    stopRussianSpeech();
     setCompletionError('');
     if (stage === 1 && sentenceIndex < lesson.sentences.length - 1) {
       const nextIndex = sentenceIndex + 1;

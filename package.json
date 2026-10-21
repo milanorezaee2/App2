@@ -23,6 +23,8 @@
     "validate:russian": "node scripts/verify-russian-course.cjs",
     "validate:russian-architecture": "node scripts/verify-russian-architecture.cjs",
     "validate:russian-voice": "node scripts/verify-russian-voice.cjs",
+    "validate:russian-narrator": "node scripts/verify-russian-narrator.cjs",
+    "validate:russian-native": "node scripts/verify-russian-native-audio.cjs",
     "validate:english-supplement": "node scripts/verify-english-supplement.cjs",
     "validate:english-engine": "node scripts/verify-english-engine.cjs",
     "validate:placement": "node scripts/verify-placement.cjs",

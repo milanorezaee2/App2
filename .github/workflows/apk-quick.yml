@@ -118,8 +118,8 @@ jobs:
               assert any(e.endswith('classes.dex') for e in entries), f'{name}: missing dex'
               assert 'assets/index.android.bundle' in entries, f'{name}: needs Metro, not standalone'
               clips = [e for e in entries if e.endswith('.mp3')]
-              assert len(clips) >= 570, f'{name}: only {len(clips)} German clips bundled (three narrators need 570)'
-              print(f'{name}: standalone JS + {len(clips)} German clips (three narrators)')
+              assert len(clips) >= 708, f'{name}: only {len(clips)} language clips bundled (German + Russian need 708)'
+              print(f'{name}: standalone JS + {len(clips)} bundled language clips')
           PY
           ls -lh MiloMultilang.apk MiloMultilang-Login.apk MiloAdmin.apk
 
@@ -136,9 +136,12 @@ jobs:
             - **MiloMultilang-Login.apk** — نسخهٔ زبان‌آموز با صفحهٔ ثبت‌نام/ورود
             - **MiloAdmin.apk** — پنل مدیریت خصوصی
 
-            هر سه شامل **سه گویندهٔ آلمانی** (هر گوینده ۱۹۰ کلیپ، جمعاً ۵۷۰ کلیپ) داخل خود اپ
-            هستند و بدون اینترنت کار می‌کنند. در صفحهٔ «صدای آلمانی» هر سه را می‌شنوید و
-            خودتان یکی را انتخاب می‌کنید؛ از آن به بعد همهٔ درس‌ها با همان گوینده پخش می‌شوند.
+            هر سه شامل صداهای آمادهٔ داخل اپ هستند و بدون اینترنت کار می‌کنند:
+
+            - **آلمانی:** سه گوینده (۵۷۰ کلیپ)؛ در صفحهٔ «صدای آلمانی» هر سه را می‌شنوید و
+              خودتان یکی را انتخاب می‌کنید.
+            - **روسی:** یک گویندهٔ زن عصبی، آرام و شیوا (۱۳۸ کلیپ) برای هر ۶۹ درس و واژه‌ها؛
+              بدون نیاز به نصب زبان روسی روی گوشی.
             نصب: فایل را دانلود کنید و «نصب از منابع نامشخص» را برای مرورگر اجازه دهید.
           prerelease: true
           files: |
