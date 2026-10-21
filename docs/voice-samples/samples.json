@@ -1,0 +1,207 @@
+{
+ "speakers": [
+  {
+   "id": "f3",
+   "voice": "de+f3",
+   "fa": "زن، گرم و متعادل",
+   "en": "female, warm",
+   "note": "گویندهٔ فعلی درس‌ها"
+  },
+  {
+   "id": "f1",
+   "voice": "de+f1",
+   "fa": "زن، روشن‌تر و جوان‌تر",
+   "en": "female, brighter",
+   "note": ""
+  },
+  {
+   "id": "f2",
+   "voice": "de+f2",
+   "fa": "زن، نرم و کمی بم",
+   "en": "female, soft",
+   "note": ""
+  },
+  {
+   "id": "m3",
+   "voice": "de+m3",
+   "fa": "مرد، معمولی",
+   "en": "male, mid",
+   "note": ""
+  },
+  {
+   "id": "m6",
+   "voice": "de+m6",
+   "fa": "مرد، بم و آرام",
+   "en": "male, deep",
+   "note": ""
+  },
+  {
+   "id": "m7",
+   "voice": "de+m7",
+   "fa": "مرد، سبک و پرانرژی",
+   "en": "male, light",
+   "note": ""
+  }
+ ],
+ "styles": [
+  {
+   "id": "natural",
+   "fa": "طبیعی و روان",
+   "en": "natural",
+   "rate": 150,
+   "pitch": 50,
+   "range": 50,
+   "note": "سرعت گفتار روزمره"
+  },
+  {
+   "id": "clear",
+   "fa": "شمرده و آموزشی",
+   "en": "clear",
+   "rate": 128,
+   "pitch": 47,
+   "range": 44,
+   "note": "آهسته‌تر، مناسب یادگیری"
+  },
+  {
+   "id": "lively",
+   "fa": "پرانرژی و سرزنده",
+   "en": "lively",
+   "rate": 166,
+   "pitch": 58,
+   "range": 62,
+   "note": "شادتر و کمی تندتر"
+  }
+ ],
+ "texts": [
+  "Hallo! Wie geht es dir?",
+  "Mir geht es gut, danke. Und dir?"
+ ],
+ "clips": [
+  {
+   "file": "f3-natural.mp3",
+   "speaker": "f3",
+   "style": "natural",
+   "seconds": 5.06,
+   "bytes": 15444
+  },
+  {
+   "file": "f3-clear.mp3",
+   "speaker": "f3",
+   "style": "clear",
+   "seconds": 5.66,
+   "bytes": 17280
+  },
+  {
+   "file": "f3-lively.mp3",
+   "speaker": "f3",
+   "style": "lively",
+   "seconds": 4.7,
+   "bytes": 14364
+  },
+  {
+   "file": "f1-natural.mp3",
+   "speaker": "f1",
+   "style": "natural",
+   "seconds": 5.08,
+   "bytes": 15552
+  },
+  {
+   "file": "f1-clear.mp3",
+   "speaker": "f1",
+   "style": "clear",
+   "seconds": 5.69,
+   "bytes": 17388
+  },
+  {
+   "file": "f1-lively.mp3",
+   "speaker": "f1",
+   "style": "lively",
+   "seconds": 4.73,
+   "bytes": 14472
+  },
+  {
+   "file": "f2-natural.mp3",
+   "speaker": "f2",
+   "style": "natural",
+   "seconds": 5.12,
+   "bytes": 15660
+  },
+  {
+   "file": "f2-clear.mp3",
+   "speaker": "f2",
+   "style": "clear",
+   "seconds": 5.72,
+   "bytes": 17388
+  },
+  {
+   "file": "f2-lively.mp3",
+   "speaker": "f2",
+   "style": "lively",
+   "seconds": 4.88,
+   "bytes": 14904
+  },
+  {
+   "file": "m3-natural.mp3",
+   "speaker": "m3",
+   "style": "natural",
+   "seconds": 4.83,
+   "bytes": 14796
+  },
+  {
+   "file": "m3-clear.mp3",
+   "speaker": "m3",
+   "style": "clear",
+   "seconds": 5.36,
+   "bytes": 16308
+  },
+  {
+   "file": "m3-lively.mp3",
+   "speaker": "m3",
+   "style": "lively",
+   "seconds": 4.5,
+   "bytes": 13824
+  },
+  {
+   "file": "m6-natural.mp3",
+   "speaker": "m6",
+   "style": "natural",
+   "seconds": 4.91,
+   "bytes": 15012
+  },
+  {
+   "file": "m6-clear.mp3",
+   "speaker": "m6",
+   "style": "clear",
+   "seconds": 5.5,
+   "bytes": 16740
+  },
+  {
+   "file": "m6-lively.mp3",
+   "speaker": "m6",
+   "style": "lively",
+   "seconds": 4.58,
+   "bytes": 14040
+  },
+  {
+   "file": "m7-natural.mp3",
+   "speaker": "m7",
+   "style": "natural",
+   "seconds": 4.9,
+   "bytes": 15012
+  },
+  {
+   "file": "m7-clear.mp3",
+   "speaker": "m7",
+   "style": "clear",
+   "seconds": 5.5,
+   "bytes": 16740
+  },
+  {
+   "file": "m7-lively.mp3",
+   "speaker": "m7",
+   "style": "lively",
+   "seconds": 4.59,
+   "bytes": 14040
+  }
+ ]
+}

@@ -9,6 +9,7 @@
     "build:web": "node scripts/run-expo.mjs export --platform web --clear",
     "serve:web": "PORT=8081 node scripts/serve-preview.mjs",
     "preview:web": "PORT=8081 node scripts/serve-preview.mjs",
+    "preview:voices": "cd docs/voice-samples && python3 -m http.server 8082 --bind 0.0.0.0",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "validate:content": "node scripts/validate-course-content.mjs",
