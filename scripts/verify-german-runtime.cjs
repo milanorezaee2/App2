@@ -176,9 +176,13 @@ const BASE = process.env.BROWSER_BASE_URL || 'http://127.0.0.1:8081';
 const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
 
 (async () => {
-  const response = await fetch(`${BASE}/App1/audio/de/manifest.json`).catch(() => null);
+  const voicesResponse = await fetch(`${BASE}/App1/audio/de/voices.json`).catch(() => null);
+  const voices = voicesResponse && voicesResponse.ok ? await voicesResponse.json() : null;
+  assert.ok(voices && voices.narrators.length === 3, 'the three German narrators must be served from /audio/de/voices.json');
+  const defaultNarrator = voices.default;
+  const response = await fetch(`${BASE}/App1/audio/de/${defaultNarrator}/manifest.json`).catch(() => null);
   const manifest = response && response.ok ? await response.json() : null;
-  assert.ok(manifest, 'the German audio manifest must be served from /audio/de/manifest.json');
+  assert.ok(manifest, `the ${defaultNarrator} audio manifest must be served from /audio/de/${defaultNarrator}/manifest.json`);
   const greetingSentences = manifest.lessons['de-v2-greetings'].sentences;
   const greetingWords = manifest.lessons['de-v2-greetings'].words;
 
@@ -186,7 +190,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   const sampleFiles = [greetingSentences.file, greetingWords.file, ...Object.keys(manifest.lessons).map(id => manifest.lessons[id].sentences.file).slice(0, 3)];
   let staticChecks = 0;
   for (const file of sampleFiles) {
-    const head = await fetch(`${BASE}/App1/audio/de/${file}`);
+    const head = await fetch(`${BASE}/App1/audio/de/${defaultNarrator}/${file}`);
     assert.equal(head.status, 200, `audio file ${file} must be served`);
     assert.match(head.headers.get('content-type') || '', /audio|octet-stream/, `${file} must be served as audio`);
     const bytes = (await head.arrayBuffer()).byteLength;
@@ -228,9 +232,9 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   // 0. The shipped MP3s must really decode in this browser, not just exist.
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
   await page.evaluate(() => { window.__audio = []; window.__spoken = []; });
-  const decode = await page.evaluate(async file => {
+  const decode = await page.evaluate(async ([voice, file]) => {
     const el = document.createElement('audio');
-    el.src = `/App1/audio/de/${file}`;
+    el.src = `/App1/audio/de/${voice}/${file}`;
     el.preload = 'auto';
     const loaded = await new Promise(resolve => {
       el.addEventListener('loadedmetadata', () => resolve(el.duration), { once: true });
@@ -238,11 +242,11 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
       setTimeout(() => resolve(-2), 8000);
     });
     return loaded;
-  }, greetingSentences.file);
+  }, [defaultNarrator, greetingSentences.file]);
   check('the bundled German MP3 decodes in the browser', typeof decode === 'number' && decode > 1);
-  const playResult = await page.evaluate(async file => {
+  const playResult = await page.evaluate(async ([voice, file]) => {
     const el = document.createElement('audio');
-    el.src = `/App1/audio/de/${file}`;
+    el.src = `/App1/audio/de/${voice}/${file}`;
     el.currentTime = 0.12;
     try {
       await el.play();
@@ -253,7 +257,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
     } catch (error) {
       return -1;
     }
-  }, greetingSentences.file);
+  }, [defaultNarrator, greetingSentences.file]);
   check('the bundled German MP3 really advances during playback', typeof playResult === 'number' && playResult > 0.12);
 
   // 1. Home: the key sentence is played from the bundled German pack.
@@ -290,7 +294,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
 
   // 3. A vocabulary word plays from the lesson's word pack (audio-check page).
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
-  const wordButton = page.getByRole('button', { name: /^شنیدن یک واژه: / }).first();
+  const wordButton = page.getByRole('button', { name: /^شنیدن یک واژه با همین صدا: / }).first();
   // react-native-web renders this button's label as visible text, not aria-label.
   const wordLabel = (await wordButton.innerText()).trim();
   const word = (wordLabel || '').split(':').pop().trim().toLowerCase();
@@ -299,12 +303,14 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   await page.waitForTimeout(500);
   const wordClip = await lastPlay();
   check('tapping a German word plays the word clip from the lesson vocabulary pack',
-    wordClip?.file === greetingWords.file && greetingWords.clips[word] !== undefined);
+    wordClip?.file === greetingWords.file && wordClip?.path.includes(`/audio/de/${defaultNarrator}/`)
+    && greetingWords.clips[word] !== undefined);
   // The element is cached and may be re-seeked, so accept every play recorded
   // for the word pack and require that the word's own offset appears.
-  const tappedWordPlays = await page.evaluate(file =>
-    (window.__audio || []).filter(entry => entry.src.endsWith(file)).flatMap(entry => entry.plays || []),
-    greetingWords.file);
+  const tappedWordPlays = await page.evaluate(([file, voice]) =>
+    (window.__audio || []).filter(entry => entry.src.includes(`/audio/de/${voice}/`) && entry.src.endsWith(file))
+      .flatMap(entry => entry.plays || []),
+    [greetingWords.file, defaultNarrator]);
   check('the word clip starts in the guard silence before that word',
     tappedWordPlays.some(play => Math.abs(play.start - Math.max(0, greetingWords.clips[word][0] - 0.25)) < 0.05));
   check('the tapped word is not read by the device voice', (await deviceSpoken()).length === 0);
@@ -393,29 +399,58 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   check('every play-all clip comes from the vocabulary pack',
     sequence.every(entry => entry.file === greetingWords.file || entry.src.endsWith('.words.mp3')));
 
-  // 6. The audio-check page demonstrates the bundled voice.
+  // 6. The audio-check page lets the learner choose between the three narrators.
   await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
   await page.getByText('صدای آلمانی', { exact: true }).waitFor();
   await page.waitForTimeout(900);
   const audioCheckText = await page.locator('body').innerText();
   const narratorPreset = JSON.parse(readFileSync(path.join(__dirname, '..', 'config', 'german-narrator.json'), 'utf8'));
-  const persianTempo = `${toPersianDigits(narratorPreset.wordsPerMinute)} کلمه در دقیقه`;
-  check('audio-check presents the one German narrator', audioCheckText.includes('۱. گویندهٔ آلمانی درس‌ها'));
-  check('audio-check names the narrator tempo from the preset', audioCheckText.includes(persianTempo));
+  check('audio-check offers one button per shipped narrator',
+    (await page.getByRole('button', { name: /^گویندهٔ / }).count()) === narratorPreset.narrators.length);
+  check('audio-check names every narrator and its measured tempo',
+    narratorPreset.narrators.every(item => audioCheckText.includes(item.nameFa)
+      && audioCheckText.includes(`${toPersianDigits(item.wordsPerMinute)} کلمه در دقیقه`)));
   check('audio-check offers no device voice picker',
     !audioCheckText.includes('صدای آلمانی دستگاه') || audioCheckText.includes('حذف شده است'));
+
+  // Choosing another narrator switches the pack that plays, and survives a reload.
+  const chosen = narratorPreset.narrators.find(item => item.id !== narratorPreset.default);
   await clearAudio();
-  await page.getByRole('button', { name: /^شنیدن یک جمله:/ }).first().click();
-  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: new RegExp(`^گویندهٔ ${chosen.nameFa} `) }).click();
+  await page.waitForTimeout(700);
+  const chosenSample = await lastPlay();
+  check('choosing a narrator plays that narrator\'s own pack',
+    chosenSample?.path.includes(`/audio/de/${chosen.id}/`));
+  check('the choice is saved for the next launch',
+    await page.evaluate(() => window.localStorage.getItem('german_narrator_v1')) === chosen.id);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(900);
+  check('the saved narrator is still selected after a reload',
+    (await page.locator('body').innerText()).includes(`${chosen.nameFa} ✓`));
+
+  // A lesson opened afterwards speaks the chosen voice, not the default one.
+  await page.goto(`${LESSON}&seed=1`, { waitUntil: 'networkidle' });
+  await page.getByText(/جمله‌های اصلی · مرحلهٔ ۲ از ۹/).waitFor();
+  await page.waitForTimeout(2000);
+  const lessonClip = await lastPlay();
+  check('the lesson speaks the narrator the learner chose', lessonClip?.path.includes(`/audio/de/${chosen.id}/`));
+
+  // Back to the default so the remaining checks use the shipped sample.
+  await page.evaluate(id => window.localStorage.setItem('german_narrator_v1', id), narratorPreset.default);
+  await page.goto(`${LESSON}&seed=1`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1600);
+  check('the default narrator plays when it is the saved choice',
+    (await lastPlay())?.path.includes(`/audio/de/${narratorPreset.default}/`));
+
+  await page.goto(`${BASE}/learn/de/audio-check`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(700);
+  await clearAudio();
+  await page.getByRole('button', { name: /^گویندهٔ / }).nth(narratorPreset.narrators.indexOf(narratorPreset.narrators.find(item => item.id === narratorPreset.default))).click();
+  await page.waitForTimeout(700);
   const sample = await lastPlay();
-  check('audio-check plays the bundled sample', sample?.file === greetingSentences.file);
+  check('audio-check plays the bundled sample of the selected narrator', sample?.file === greetingSentences.file);
   check('audio-check no longer lists the optional device voices',
     await page.getByRole('button', { name: /Google Deutsch/ }).count() === 0);
-  await clearAudio();
-  await page.getByRole('button', { name: /^شنیدن یک واژه:/ }).first().click();
-  await page.waitForTimeout(600);
-  const wordSample = await lastPlay();
-  check('audio-check plays a bundled word from the same narrator', wordSample?.file === greetingWords.file);
   check('audio-check raises no runtime errors', cleanErrors().length === 0);
 
   // 7. Review screen renders on its own route.

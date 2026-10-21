@@ -2,7 +2,8 @@
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const narrator = require(path.join(root, 'config/german-narrator.json'));
+const preset = require(path.join(root, 'config/german-narrator.json'));
+const narrator = preset.narrators.find(item => item.id === preset.default) ?? preset.narrators[0];
 
 // Minimal browser stubs: the speech layer is exercised as it runs on web.
 const storage = new Map();
@@ -173,49 +174,67 @@ await require('esbuild').build({
   check('after the German voices come back the speech layer reports a German voice again',
     app.getGermanVoiceStatus().german === true && !!app.getGermanVoiceStatus().voiceName);
 
-  // The German voice that ships with the app: every sentence and every word of
-  // every lesson must have a clip, and the referenced files must exist.
+  // The German voices that ship with the app: every sentence and every word of
+  // every lesson must have a clip in **every** narrator pack, and the referenced
+  // files must exist.
   const fs = require('node:fs');
-  const audioDir = path.join(root, 'public/audio/de');
-  const manifest = JSON.parse(fs.readFileSync(path.join(audioDir, 'manifest.json'), 'utf8'));
-  const lessonsWithAudio = Object.keys(manifest.lessons).length;
-  check('the German audio pack covers every lesson', lessonsWithAudio === app.GERMAN_SENTENCE_LESSONS.length);
+  const audioRoot = path.join(root, 'public/audio/de');
+  const narratorIds = preset.narrators.map(item => item.id);
+  const manifests = {};
+  for (const id of narratorIds) {
+    const file = path.join(audioRoot, id, 'manifest.json');
+    check(`the ${id} pack has a manifest`, fs.existsSync(file));
+    if (fs.existsSync(file)) manifests[id] = JSON.parse(fs.readFileSync(file, 'utf8'));
+  }
   let missingSentences = 0;
   let missingWords = 0;
   let badRanges = 0;
+  let shortest = Infinity;
   let missingFiles = 0;
+  let badLessons = 0;
   const checkedFiles = new Set();
-  for (const lesson of app.GERMAN_SENTENCE_LESSONS) {
-    const entry = manifest.lessons[lesson.id];
-    if (!entry) { missingSentences += lesson.sentences.length; continue; }
-    for (const [kind, pack, texts] of [
-      ['sentences', entry.sentences, lesson.sentences.map(item => item.text)],
-      ['words', entry.words, lesson.sentences.flatMap(item => item.vocabulary.map(word => word.word))],
-    ]) {
-      const file = path.join(audioDir, pack.file);
-      if (!checkedFiles.has(pack.file)) {
-        checkedFiles.add(pack.file);
-        if (!fs.existsSync(file) || fs.statSync(file).size < 20000) missingFiles += 1;
-      }
-      for (const text of texts) {
-        const key = text.trim().toLowerCase().replace(/\s+/g, ' ');
-        const range = pack.clips[key];
-        if (!range) { if (kind === 'sentences') missingSentences += 1; else missingWords += 1; continue; }
-        if (!(range[1] > range[0] + 0.15)) badRanges += 1;
+  for (const [id, manifest] of Object.entries(manifests)) {
+    if (Object.keys(manifest.lessons).length !== app.GERMAN_SENTENCE_LESSONS.length) badLessons += 1;
+    for (const lesson of app.GERMAN_SENTENCE_LESSONS) {
+      const entry = manifest.lessons[lesson.id];
+      if (!entry) { missingSentences += lesson.sentences.length; continue; }
+      for (const [kind, pack, texts] of [
+        ['sentences', entry.sentences, lesson.sentences.map(item => item.text)],
+        ['words', entry.words, lesson.sentences.flatMap(item => item.vocabulary.map(word => word.word))],
+      ]) {
+        const file = path.join(audioRoot, id, pack.file);
+        if (!checkedFiles.has(`${id}/${pack.file}`)) {
+          checkedFiles.add(`${id}/${pack.file}`);
+          if (!fs.existsSync(file) || fs.statSync(file).size < 20000) missingFiles += 1;
+        }
+        for (const text of texts) {
+          const key = text.trim().toLowerCase().replace(/\s+/g, ' ');
+          const range = pack.clips[key];
+          if (!range) { if (kind === 'sentences') missingSentences += 1; else missingWords += 1; continue; }
+          // A short function word ("ich") can be ~0.1 s in a fast voice; what
+          // must never happen is an empty or inverted window.
+          if (!(range[1] > range[0] + 0.05)) badRanges += 1;
+          shortest = Math.min(shortest, range[1] - range[0]);
+        }
       }
     }
   }
-  check('every German sentence has its own clip in the shipped audio pack', missingSentences === 0);
-  check('every German vocabulary word has its own clip in the shipped audio pack', missingWords === 0);
-  check('every clip range is a positive, non-empty interval', badRanges === 0);
-  check('every referenced audio file is present and non-trivial', missingFiles === 0 && checkedFiles.size === app.GERMAN_SENTENCE_LESSONS.length * 2);
-  check('the audio pack records which engine produced it', /Piper neural/.test(String(manifest.engine)));
+  check('every narrator pack covers every lesson', badLessons === 0 && Object.keys(manifests).length === narratorIds.length);
+  check('every German sentence has its own clip in every narrator pack', missingSentences === 0);
+  check('every German vocabulary word has its own clip in every narrator pack', missingWords === 0);
+  check('every clip range is a positive, non-empty interval', badRanges === 0 && shortest > 0.05);
+  check('every referenced audio file is present and non-trivial',
+    missingFiles === 0 && checkedFiles.size === app.GERMAN_SENTENCE_LESSONS.length * 2 * narratorIds.length);
+  check('every pack records the neural engine that produced it',
+    Object.values(manifests).every(manifest => /Piper neural/.test(String(manifest.engine))));
 
   // The Android/iOS build cannot fetch the audio over HTTP: every clip must be
   // referenced with a static require so Metro copies it into the APK/IPA.
   const assetsFile = path.join(root, 'lib/germanAudioAssets.ts');
   const assetsSource = fs.readFileSync(assetsFile, 'utf8');
-  const audioFilesOnDisk = fs.readdirSync(audioDir).filter(name => name.endsWith('.mp3')).sort();
+  const audioFilesOnDisk = narratorIds
+    .flatMap(id => fs.readdirSync(path.join(audioRoot, id)).filter(name => name.endsWith('.mp3')).map(name => `${id}/${name}`))
+    .sort();
   const requiredFiles = [...assetsSource.matchAll(/require\('\.\.\/public\/audio\/de\/([^']+\.mp3)'\)/g)].map(match => match[1]).sort();
   check('the native asset map references every bundled MP3 exactly once',
     requiredFiles.length === audioFilesOnDisk.length
@@ -223,8 +242,8 @@ await require('esbuild').build({
     && requiredFiles.every((file, index) => file === audioFilesOnDisk[index]));
   check('the native asset map is generated for all lessons, not a subset',
     Number((assetsSource.match(/GERMAN_AUDIO_FILE_COUNT = (\d+)/) || [])[1]) === audioFilesOnDisk.length);
-  check('the native asset map embeds the same manifest the web build serves',
-    assetsSource.includes("require('../public/audio/de/manifest.json')"));
+  check('the native asset map embeds one manifest per narrator',
+    narratorIds.every(id => assetsSource.includes(`require('../public/audio/de/${id}/manifest.json')`)));
 
   // The native bridge must really use expo-audio and honour clip offsets.
   const nativeBridge = fs.readFileSync(path.join(root, 'lib/germanAudioNative.native.ts'), 'utf8');

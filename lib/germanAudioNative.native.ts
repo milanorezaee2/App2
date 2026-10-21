@@ -27,11 +27,29 @@
  * now retried once on a fresh player, and only then reported as unplayable.
  */
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
-import { GERMAN_AUDIO_FILES, GERMAN_AUDIO_MANIFEST } from './germanAudioAssets';
+import { GERMAN_AUDIO_FILES, GERMAN_AUDIO_MANIFESTS } from './germanAudioAssets';
+import { GERMAN_DEFAULT_NARRATOR_ID, findGermanNarrator } from './languages/germanNarrator';
 
-export type NativeManifest = typeof GERMAN_AUDIO_MANIFEST;
+type SingleManifest = (typeof GERMAN_AUDIO_MANIFESTS)[string];
+export type NativeManifest = SingleManifest;
 
-export { GERMAN_AUDIO_MANIFEST };
+/** Which narrator's pack is played; changed by `setNativeGermanVoice`. */
+let activeVoiceId = GERMAN_DEFAULT_NARRATOR_ID;
+
+export function setNativeGermanVoice(voiceId: string): void {
+  const next = findGermanNarrator(voiceId).id;
+  if (next === activeVoiceId) return;
+  stopNativeGermanClip();
+  activeVoiceId = next;
+}
+
+export function getNativeGermanVoice(): string {
+  return activeVoiceId;
+}
+
+function manifestFor(voiceId: string): SingleManifest {
+  return GERMAN_AUDIO_MANIFESTS[voiceId] ?? GERMAN_AUDIO_MANIFESTS[GERMAN_DEFAULT_NARRATOR_ID];
+}
 
 /** Room after the recorded speech; the pack keeps 0.45-0.55 s of silence there. */
 const TAIL_SECONDS = 0.15;
@@ -110,7 +128,7 @@ export function bundledGermanClip(
   text: string,
 ): { file: string; start: number; end: number } | null {
   if (!lessonId) return null;
-  const lesson = GERMAN_AUDIO_MANIFEST.lessons[lessonId];
+  const lesson = manifestFor(activeVoiceId).lessons[lessonId];
   if (!lesson) return null;
   const pack = kind === 'word' ? lesson.words : lesson.sentences;
   const range = pack?.clips?.[normalize(text)];
@@ -119,7 +137,7 @@ export function bundledGermanClip(
 }
 
 export function hasBundledGermanLesson(lessonId: string | null | undefined): boolean {
-  return !!lessonId && !!GERMAN_AUDIO_MANIFEST.lessons[lessonId];
+  return !!lessonId && !!manifestFor(activeVoiceId).lessons[lessonId];
 }
 
 /** Wait until the freshly created player has loaded its file. */
@@ -195,7 +213,7 @@ export async function playNativeGermanClip(options: {
 }): Promise<boolean> {
   const clip = bundledGermanClip(options.lessonId, options.kind ?? 'sentence', options.text);
   if (!clip) return false;
-  const assetId = GERMAN_AUDIO_FILES[clip.file];
+  const assetId = GERMAN_AUDIO_FILES[`${activeVoiceId}/${clip.file}`];
   if (assetId === undefined) return false;
 
   const request = ++session;

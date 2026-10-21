@@ -17,7 +17,8 @@ const fs = require('node:fs');
 const esbuild = require('esbuild');
 
 const root = path.resolve(__dirname, '..');
-const narrator = require(path.join(root, 'config/german-narrator.json'));
+const preset = require(path.join(root, 'config/german-narrator.json'));
+const narrator = preset.narrators.find(item => item.id === preset.default) ?? preset.narrators[0];
 const outfile = path.join(root, 'node_modules/.cache/german-device-voice.cjs');
 const platform = process.env.FAKE_PLATFORM || 'android';
 
@@ -72,6 +73,7 @@ const build = esbuild.build({
                 return true;
               }
               export function stopNativeGermanClip() {}
+              export function setNativeGermanVoice(id) { globalThis.__nativeVoice = id; }
               export const GERMAN_AUDIO_MANIFEST = { version: 0, lessons: {} };
               export function bundledGermanClip() { return null; }
               export function hasBundledGermanLesson() { return false; }

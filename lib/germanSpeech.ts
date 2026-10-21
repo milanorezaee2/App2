@@ -1,8 +1,19 @@
 import { Platform } from 'react-native';
-import { germanDeviceRate } from './languages/germanNarrator';
+import {
+  GERMAN_DEFAULT_NARRATOR_ID,
+  findGermanNarrator,
+  germanDeviceRate,
+  isGermanNarratorId,
+} from './languages/germanNarrator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Speech from 'expo-speech';
-import { getGermanAudioLesson, playGermanClip, stopGermanClip, type GermanClipKind } from './germanAudio';
+import {
+  getGermanAudioLesson,
+  playGermanClip,
+  setGermanAudioVoice,
+  stopGermanClip,
+  type GermanClipKind,
+} from './germanAudio';
 import {
   loadAvailableVoices,
   preloadSpeechVoices,
@@ -54,20 +65,97 @@ export type GermanSpeechRequest = {
 export const GERMAN_SPEECH_LOCALE = 'de-DE';
 const NORMAL_RATE = 0.9;
 const VOICE_PREFERENCE_KEY = 'german_voice_preference_v1';
+/** Which of the three bundled narrators the learner chose. */
+const NARRATOR_KEY = 'german_narrator_v1';
 /** Keys written by older builds that let the learner pick another voice. */
 const LEGACY_VOICE_KEYS = ['german_voice_source_v1', 'german_voice_source_migrated_v2'];
 
 /**
- * There is exactly **one** German narrator: the voice the learner chose
- * (`config/german-narrator.json`), rendered into the pack that ships with the app.
- * The audio page offers no device voice and no source switch any more, and any
- * preference written by an older build is deleted on first launch, so a stale
- * "use the phone voice" choice can never bring the old, worse voice back.
+ * The German course ships three neural narrators
+ * (`config/german-narrator.json`) and the learner picks one on the
+ * `صدای آلمانی` page. Every German screen then plays that narrator's pack, and
+ * the choice is remembered across launches.
  *
- * The phone's German voice survives only as a *failure cover*: when a clip cannot
- * be played at all, the sentence is read instead of leaving the lesson silent.
+ * There is still no "use the phone's voice" option: a preference written by an
+ * older build is deleted on first launch, so the old, worse voice cannot come
+ * back. The phone's German voice survives only as a *failure cover*: when a clip
+ * cannot be played at all, the sentence is read instead of leaving the lesson
+ * silent.
  */
 export type GermanVoiceSource = 'app';
+
+let activeNarratorId: string = GERMAN_DEFAULT_NARRATOR_ID;
+/**
+ * Reading the saved narrator is asynchronous on a phone (AsyncStorage), so the
+ * first sentence of a cold start could otherwise be spoken by the default voice
+ * and only the second one by the voice the learner chose. German speech waits
+ * for this promise, which makes the very first clip come from the right pack.
+ */
+let narratorLoaded = false;
+let narratorReady: Promise<string> | null = null;
+/** Bumped on every manual choice, so a slow storage read cannot undo it. */
+let narratorChoiceVersion = 0;
+
+/** The narrator currently in use (the default until the saved choice loads). */
+export function getGermanNarratorId(): string {
+  return activeNarratorId;
+}
+
+/** Switch narrator everywhere: bundled packs, device fallback and the UI. */
+export function setGermanNarratorId(narratorId: string): void {
+  activeNarratorId = findGermanNarrator(narratorId).id;
+  narratorLoaded = true;
+  narratorChoiceVersion += 1;
+  setGermanAudioVoice(activeNarratorId);
+  if (Platform.OS === 'web') {
+    if (!webStorageAvailable()) return;
+    try {
+      window.localStorage.setItem(NARRATOR_KEY, activeNarratorId);
+    } catch {
+      /* private browsing: the in-memory choice still applies */
+    }
+    return;
+  }
+  void AsyncStorage.setItem(NARRATOR_KEY, activeNarratorId).catch(() => undefined);
+}
+
+/**
+ * Read the saved narrator and apply it. Called once on the German screens; the
+ * default narrator stays active when nothing (or something unknown) is stored.
+ */
+export async function loadGermanNarratorPreference(): Promise<string> {
+  const version = narratorChoiceVersion;
+  let saved: string | null = null;
+  try {
+    saved = Platform.OS === 'web'
+      ? (webStorageAvailable() ? window.localStorage.getItem(NARRATOR_KEY) : null)
+      : await AsyncStorage.getItem(NARRATOR_KEY);
+  } catch {
+    saved = null;
+  }
+  // The learner tapped another voice while the storage read was in flight: the
+  // tap wins, never the older saved value.
+  if (version === narratorChoiceVersion && isGermanNarratorId(saved)) {
+    activeNarratorId = saved;
+    setGermanAudioVoice(saved);
+  }
+  return activeNarratorId;
+}
+
+/**
+ * The saved narrator, read at most once per launch. Every German screen calls
+ * this before its first clip, so a lesson opened straight from a link already
+ * speaks the chosen voice.
+ */
+export function ensureGermanNarratorLoaded(): Promise<string> {
+  if (narratorLoaded) return Promise.resolve(activeNarratorId);
+  if (!narratorReady) {
+    narratorReady = loadGermanNarratorPreference()
+      .then(id => { narratorLoaded = true; return id; })
+      .catch(() => { narratorLoaded = true; return activeNarratorId; });
+  }
+  return narratorReady;
+}
 
 /**
  * Deletes every voice preference that older builds could have stored.
@@ -340,6 +428,11 @@ export function speakGerman(options: GermanSpeechRequest): void {
 
   const lessonId = options.lessonId === undefined ? getGermanAudioLesson() : options.lessonId;
 
+  // The learner may have just switched narrator; the pack must follow before the
+  // clip is looked up, otherwise the first sentence after the switch would still
+  // come from the previous voice.
+  setGermanAudioVoice(activeNarratorId);
+
   const playBundled = (): Promise<boolean> => playGermanClip({
     text,
     kind: options.kind ?? 'sentence',
@@ -370,7 +463,13 @@ export function speakGerman(options: GermanSpeechRequest): void {
   // One narrator only: always the pack that ships with the app. If a clip
   // cannot start, `bundledFirst` lets the phone's German voice read that one
   // sentence instead of staying silent; that cover is not a voice choice.
-  bundledFirst();
+  // The saved choice is read first so even the very first sentence of a cold
+  // start uses the narrator the learner picked.
+  void ensureGermanNarratorLoaded().then(() => {
+    if (request !== sequence) return;
+    setGermanAudioVoice(activeNarratorId);
+    bundledFirst();
+  });
 }
 
 /**
@@ -422,7 +521,7 @@ function speakWithDevice(
       // intent into the device rate that matches the bundled packs.
       safeSpeechSpeak(text, {
         ...target,
-        rate: germanDeviceRate(options.rate),
+        rate: germanDeviceRate(options.rate, activeNarratorId),
         onStart: () => {
           if (request !== sequence) return;
           if (onStarted) onStarted();
@@ -513,6 +612,8 @@ export function probeGermanVoice(): void {
 
 /** Warm the voice list while a lesson screen is opening (same as Russian). */
 export function primeGermanSpeech(): void {
+  // Start reading the saved narrator in parallel with the voice preload.
+  void ensureGermanNarratorLoaded();
   preloadSpeechVoices();
   if (Platform.OS === 'web' && !webSpeechAvailable()) {
     publishVoiceStatus({ ...voiceStatus, german: false, listed: false, checked: true, deviceSpeech: false });

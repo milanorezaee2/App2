@@ -73,22 +73,26 @@ def apply_biquad(x, kind, freq, gain_db=0.0, q=0.707):
     return lfilter(b, a, x).astype(np.float32)
 
 
+def _follower(x, sample_rate, attack_ms, release_ms):
+    """Asymmetric peak follower, vectorised with two one-pole filters.
+
+    A per-sample Python loop took minutes per pack; the maximum of a fast and a
+    slow one-pole filter is the same shape to within a fraction of a dB and runs
+    in C.
+    """
+    fast = np.exp(-1 / (max(attack_ms, 0.1) / 1000 * sample_rate))
+    slow = np.exp(-1 / (max(release_ms, 0.1) / 1000 * sample_rate))
+    magnitude = np.abs(x)
+    attack_env = lfilter([1 - fast], [1, -fast], magnitude)
+    release_env = lfilter([1 - slow], [1, -slow], magnitude)
+    return np.maximum(attack_env, release_env)
+
+
 def deess(x, sample_rate, threshold=0.05, max_reduction=0.55):
     """Pull down the 5-8 kHz band only while it is loud (German s / sch / z)."""
     b, a = biquad('highpass', 5200, sample_rate)
     high = lfilter(b, a, x).astype(np.float32)
-    b2, a2 = biquad('highpass', 5200, sample_rate, q=0.5)  # unused, keeps API symmetric
-    b3, a3 = biquad('highpass', 5200, sample_rate)
-    envelope = np.abs(high)
-    # 3 ms attack / 90 ms release, computed with a running maximum-ish follower.
-    attack = np.exp(-1 / (0.003 * sample_rate))
-    release = np.exp(-1 / (0.09 * sample_rate))
-    env = np.empty_like(envelope)
-    acc = 0.0
-    for i, value in enumerate(envelope):
-        coef = attack if value > acc else release
-        acc = coef * acc + (1 - coef) * value
-        env[i] = acc
+    env = _follower(high, sample_rate, 3, 90)
     gain = np.clip(threshold / np.maximum(env, 1e-6), 1.0 - max_reduction, 1.0)
     return (x - high + high * gain).astype(np.float32)
 
@@ -96,14 +100,7 @@ def deess(x, sample_rate, threshold=0.05, max_reduction=0.55):
 def compress(x, sample_rate, threshold_db=-18.0, ratio=2.0, attack_ms=8.0, release_ms=140.0):
     """Slow, gentle levelling: the narrator stays calm instead of pumping."""
     threshold = 10 ** (threshold_db / 20)
-    attack = np.exp(-1 / (attack_ms / 1000 * sample_rate))
-    release = np.exp(-1 / (release_ms / 1000 * sample_rate))
-    env = np.empty_like(x)
-    acc = 0.0
-    for i, value in enumerate(np.abs(x)):
-        coef = attack if value > acc else release
-        acc = coef * acc + (1 - coef) * value
-        env[i] = acc
+    env = _follower(x, sample_rate, attack_ms, release_ms)
     over = env > threshold
     gain = np.ones_like(x)
     gain[over] = (threshold + (env[over] - threshold) / ratio) / env[over]

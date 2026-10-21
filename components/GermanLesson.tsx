@@ -40,6 +40,7 @@ import {
 } from '@/lib/languages/germanStudyState';
 import { setGermanAudioLesson } from '@/lib/germanAudio';
 import {
+  loadGermanNarratorPreference,
   primeGermanSpeech,
   speakGerman,
   stopGermanSpeech,
@@ -159,6 +160,9 @@ export default function GermanLesson({ lesson }: { lesson: GermanSentenceCourseL
     setCompletionError('');
     setGermanAudioLesson(lesson.id);
     primeGermanSpeech();
+    // A lesson opened straight from a link still speaks the narrator the learner
+    // chose; the saved value is applied before the first automatic sentence.
+    void loadGermanNarratorPreference();
     void loadGermanLessonSession(lesson.id).then(saved => {
       if (!alive) return;
       setStage(saved.stage);

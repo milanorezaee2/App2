@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
-import { playNativeGermanClip, stopNativeGermanClip } from './germanAudioNative';
+import { playNativeGermanClip, setNativeGermanVoice, stopNativeGermanClip } from './germanAudioNative';
+import { GERMAN_DEFAULT_NARRATOR_ID, findGermanNarrator } from './languages/germanNarrator';
 
 /**
  * In-app German voice.
@@ -32,12 +33,18 @@ export function setGermanAudioFactory(factory: AudioFactory | null): void {
 
 type GermanAudioManifest = {
   version: number;
+  narrator?: string;
   engine?: string;
   generatedAt?: string;
   lessons: Record<string, LessonAudio>;
 };
 
-const MANIFEST_PATH = '/audio/de/manifest.json';
+/**
+ * Every narrator has its own folder and its own manifest:
+ * `/audio/de/<narrator>/manifest.json`. One lesson always plays from one folder,
+ * so choosing a voice can never mix two speakers in the same session.
+ */
+const manifestPath = (voiceId: string) => `/audio/de/${voiceId}/manifest.json`;
 
 /**
  * Playback window around every clip.
@@ -52,8 +59,9 @@ const MANIFEST_PATH = '/audio/de/manifest.json';
 const PREROLL_SECONDS = 0.25;
 const TAIL_SECONDS = 0.15;
 
-let manifestPromise: Promise<GermanAudioManifest | null> | null = null;
+const manifests = new Map<string, Promise<GermanAudioManifest | null>>();
 let activeLessonId: string | null = null;
+let activeVoiceId = GERMAN_DEFAULT_NARRATOR_ID;
 let audioCache = new Map<string, HTMLAudioElement>();
 let currentStop: (() => void) | null = null;
 
@@ -83,20 +91,33 @@ function normalize(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-export async function loadGermanAudioManifest(): Promise<GermanAudioManifest | null> {
+/** The narrator whose audio is played. `setGermanAudioVoice` switches packs. */
+export function setGermanAudioVoice(voiceId: string): void {
+  const next = findGermanNarrator(voiceId).id;
+  if (next === activeVoiceId) return;
+  stopGermanClip();
+  activeVoiceId = next;
+  setNativeGermanVoice(next);
+}
+
+export function getGermanAudioVoice(): string {
+  return activeVoiceId;
+}
+
+export async function loadGermanAudioManifest(voiceId = activeVoiceId): Promise<GermanAudioManifest | null> {
   if (Platform.OS !== 'web') return null;
   if (typeof window === 'undefined' || typeof fetch !== 'function') return null;
-  if (!manifestPromise) {
+  if (!manifests.has(voiceId)) {
     try {
-      manifestPromise = fetch(germanAudioAssetUrl(MANIFEST_PATH))
+      manifests.set(voiceId, fetch(germanAudioAssetUrl(manifestPath(voiceId)))
         .then(response => (response.ok ? response.json() as Promise<GermanAudioManifest> : null))
-        .catch(() => null);
+        .catch(() => null));
     } catch {
       // A relative URL is invalid outside a browser document (tests, SSR).
-      manifestPromise = Promise.resolve(null);
+      manifests.set(voiceId, Promise.resolve(null));
     }
   }
-  return manifestPromise;
+  return manifests.get(voiceId) as Promise<GermanAudioManifest | null>;
 }
 
 export function germanClipFor(
@@ -115,12 +136,14 @@ export function germanClipFor(
 }
 
 function audioFor(file: string): HTMLAudioElement {
-  const cached = audioCache.get(file);
+  // Keyed by narrator as well: the same lesson file name exists once per voice.
+  const key = `${activeVoiceId}/${file}`;
+  const cached = audioCache.get(key);
   if (cached) return cached;
   const create = audioFactory ?? (src => new Audio(src));
-  const audio = create(germanAudioAssetUrl(`/audio/de/${file}`));
+  const audio = create(germanAudioAssetUrl(`/audio/de/${key}`));
   audio.preload = 'auto';
-  audioCache.set(file, audio);
+  audioCache.set(key, audio);
   return audio;
 }
 
@@ -159,8 +182,8 @@ export async function playGermanClip(options: {
     });
   }
   if (typeof window === 'undefined') return false;
-  const manifest = await loadGermanAudioManifest();
-  const clip = germanClipFor(manifest, options.lessonId ?? activeLessonId, options.kind ?? 'sentence', options.text);
+  const voiceId = activeVoiceId;
+  const clip = germanClipFor(await loadGermanAudioManifest(voiceId), options.lessonId ?? activeLessonId, options.kind ?? 'sentence', options.text);
   if (!clip) return false;
 
   stopGermanClip();
@@ -249,6 +272,6 @@ export function germanAudioCacheSize(): number {
 export function resetGermanAudio(): void {
   stopGermanClip();
   audioCache = new Map();
-  manifestPromise = null;
+  manifests.clear();
   activeLessonId = null;
 }

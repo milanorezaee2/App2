@@ -12,6 +12,11 @@ export type NativeManifest = {
 
 export const GERMAN_AUDIO_MANIFEST = { version: 0, lessons: {} } as NativeManifest;
 
+/** The browser keeps the narrator in memory; nothing to load here. */
+export function setNativeGermanVoice(_voiceId: string): void {
+  /* no-op on web */
+}
+
 export function bundledGermanClip(
   _lessonId: string | null | undefined,
   _kind: 'sentence' | 'word',

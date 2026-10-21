@@ -108,8 +108,17 @@ const manifest = {
   },
 };
 fs.writeFileSync(path.join(buildDir, 'germanAudioAssets.js'),
-  `exports.GERMAN_AUDIO_MANIFEST = ${JSON.stringify(manifest)};\n`
-  + `exports.GERMAN_AUDIO_FILES = { 'demo.mp3': 1, 'demo.words.mp3': 2 };\n`);
+  `exports.GERMAN_AUDIO_MANIFESTS = { kerstin: ${JSON.stringify(manifest)} };\n`
+  + `exports.GERMAN_AUDIO_FILES = { 'kerstin/demo.mp3': 1, 'kerstin/demo.words.mp3': 2 };\n`);
+
+// --- stub of the narrator registry (the real one imports a JSON config) ----
+fs.mkdirSync(path.join(buildDir, 'languages'), { recursive: true });
+fs.writeFileSync(path.join(buildDir, 'languages', 'germanNarrator.js'), `
+const IDS = ['kerstin', 'ramona', 'eva'];
+exports.GERMAN_DEFAULT_NARRATOR_ID = 'kerstin';
+exports.GERMAN_NARRATORS = IDS.map(id => ({ id }));
+exports.findGermanNarrator = id => ({ id: IDS.includes(id) ? id : 'kerstin' });
+`);
 
 // --- compile the real module ----------------------------------------------
 const output = ts.transpileModule(source, {
@@ -202,6 +211,27 @@ function check(name, condition) {
   });
   const wordPlayer = getLastPlayer();
   check('a vocabulary word plays from the words pack', wordStarted === true && wordPlayer.assetId === 2);
+
+  // 4b. The narrator decides which file is played; switching is immediate.
+  const evaManifest = {
+    version: 3,
+    lessons: {
+      demo: {
+        sentences: { file: 'demo.mp3', clips: { 'hallo!': [9.0, 10.1] } },
+        words: { file: 'demo.words.mp3', clips: { hallo: [0.12, 0.54] } },
+      },
+    },
+  };
+  const assetsPath = path.join(buildDir, 'germanAudioAssets.js');
+  fs.writeFileSync(assetsPath, fs.readFileSync(assetsPath, 'utf8')
+    .replace('GERMAN_AUDIO_MANIFESTS = { kerstin:', 'GERMAN_AUDIO_MANIFESTS = { eva: ' + JSON.stringify(evaManifest) + ', kerstin:'));
+  delete require.cache[require.resolve(modulePath)];
+  delete require.cache[require.resolve(assetsPath)];
+  const switched = require(modulePath);
+  switched.setNativeGermanVoice('eva');
+  check('switching narrator changes the manifest immediately', switched.getNativeGermanVoice() === 'eva');
+  const evaClip = switched.bundledGermanClip('demo', 'sentence', 'Hallo!');
+  check('the new narrator reads its own clip offsets', evaClip && Math.abs(evaClip.start - 9.0) < 0.001);
   // A word at 0.12 s has no room for the 0.25 s pre-roll, so it starts at the head the
   // pack guarantees to be silent.
   check('a vocabulary word starts in its guard silence, above 0', wordPlayer.log.includes('play@0.00'));
