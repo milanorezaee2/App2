@@ -35,6 +35,11 @@ PERSIAN = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
 
 def fa_digit(value: int) -> str:
     return str(value).translate(PERSIAN)
+
+
+def fa_clock(seconds: float) -> str:
+    minutes, rest = divmod(int(seconds), 60)
+    return f'{fa_digit(minutes)}:{fa_digit(rest):0>2}'
 BITRATE = 24
 LEAD_IN = 0.14
 END = 0.32
@@ -159,6 +164,7 @@ def main() -> None:
     (OUT / REFERENCE['file']).write_bytes(encode(reference_audio))
     manifest['reference'] = {**REFERENCE, 'seconds': round(reference_audio.size / SAMPLE_RATE, 2)}
     combined = [silence(LEAD_IN)]
+    cursor = LEAD_IN
     for option, label in zip(OPTIONS, LABELS):
         audio = variant_audio(option)
         payload = encode(audio)
@@ -168,9 +174,13 @@ def main() -> None:
             'seconds': round(audio.size / SAMPLE_RATE, 2),
             'bytes': len(payload),
         })
-        combined.append(say(label, option['voice'], option['rate'], option['pitch'], option['range'], option['gap']))
+        intro = say(label, option['voice'], option['rate'], option['pitch'], option['range'], option['gap'])
+        combined.append(intro)
         combined.append(silence(0.45))
+        cursor += (intro.size + int(SAMPLE_RATE * 0.45)) / SAMPLE_RATE
+        manifest['options'][-1]['at'] = round(cursor, 1)
         combined.append(audio)
+        cursor += (audio.size + int(SAMPLE_RATE * VARIANT_GAP)) / SAMPLE_RATE
         combined.append(silence(VARIANT_GAP))
         print(f"  {option['id']}  {option['voice']:7s} {option['rate']} wpm  "
               f'{audio.size / SAMPLE_RATE:5.2f}s  {len(payload) / 1024:5.1f} KB')
@@ -187,7 +197,7 @@ def write_page(manifest: dict) -> None:
     cards = '\n'.join(
         f"""    <section class="card">
       <div class="head"><span class="num">{index}</span><span class="name">{item['fa']}</span></div>
-      <p class="hint">{item['detail']}</p>
+      <p class="hint">{item['detail']} · در فایل «همه با هم» از {fa_clock(item['at'])}</p>
       <button class="play" type="button" data-src="{item['file']}">▶ پخش نمونهٔ {fa_digit(index)}</button>
     </section>"""
         for index, item in enumerate(manifest['options'], start=1)
