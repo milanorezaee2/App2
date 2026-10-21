@@ -6,6 +6,12 @@ on:
   push:
     branches:
       - arena/76e3f058-app2
+    # Docs and workflow-only commits do not change the app; rebuilding the APK
+    # for them would publish an identical release and waste ten minutes of CI.
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.github/**'
 
 permissions:
   contents: write
