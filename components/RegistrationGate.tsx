@@ -29,6 +29,10 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   const [generatedCode, setGeneratedCode] = useState('');
   const [registrationReady, setRegistrationReady] = useState(false);
   const holdForCode = useRef(false);
+  // True once this launch opened from the cached profile. A later *network*
+  // failure must not throw an already-verified learner back to the login screen:
+  // the courses work offline, so the gate has to as well.
+  const openedFromCache = useRef(false);
 
   const inspect = useCallback(async () => {
     if (BYPASS_GATE) return;
@@ -38,7 +42,10 @@ export function RegistrationGate({ children }: PropsWithChildren) {
       setReady(complete && !holdForCode.current);
       if (complete) void touchLearnerActivity();
     } catch {
-      setReady(false);
+      // No answer from the server (offline, Wi-Fi captive portal, slow network).
+      // Trust the cached profile rather than locking the learner out; only a
+      // clear "no session" response closes the gate.
+      if (!openedFromCache.current) setReady(false);
     } finally {
       setChecking(false);
     }
@@ -53,6 +60,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
     let alive = true;
     void readCachedRegistration().then(cached => {
       if (!alive || !cached) return;
+      openedFromCache.current = true;
       setReady(current => current || true);
       setChecking(false);
     });

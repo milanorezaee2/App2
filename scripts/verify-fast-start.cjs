@@ -61,6 +61,8 @@ check('registering a new learner clears the previous cached profile',
   /clearCachedRegistration\(\);\s*\n\s*const cleanName/.test(registration));
 // Strip comments first: the docstring explains what must *not* be stored.
 const cacheCode = cacheSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+check('a network failure keeps the cached learner inside the app',
+  /openedFromCache/.test(gate) && /if \(!openedFromCache\.current\) setReady\(false\)/.test(gate));
 check('the cache never stores a token, password or login code',
   !/access_token|refresh_token|password|loginCode/i.test(cacheCode));
 
