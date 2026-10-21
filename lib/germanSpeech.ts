@@ -49,6 +49,7 @@ export const GERMAN_SPEECH_LOCALE = 'de-DE';
 const NORMAL_RATE = 0.9;
 const VOICE_PREFERENCE_KEY = 'german_voice_preference_v1';
 const VOICE_SOURCE_KEY = 'german_voice_source_v1';
+const VOICE_SOURCE_MIGRATION_KEY = 'german_voice_source_migrated_v2';
 
 /**
  * Which German voice the lessons use.
@@ -65,6 +66,18 @@ let voiceSource: GermanVoiceSource | null = null;
 export function getGermanVoiceSource(): GermanVoiceSource {
   if (voiceSource) return voiceSource;
   if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.localStorage) return 'auto';
+  try {
+    // One-time migration: the learner asked for the phone's own voice, exactly
+    // like the English section. A choice saved by an older build (for example
+    // "always the bundled voice" from a voice test) must not keep the natural
+    // device voice switched off after the update. Later choices are respected.
+    if (!window.localStorage.getItem(VOICE_SOURCE_MIGRATION_KEY)) {
+      window.localStorage.removeItem(VOICE_SOURCE_KEY);
+      window.localStorage.setItem(VOICE_SOURCE_MIGRATION_KEY, '1');
+    }
+  } catch {
+    /* private browsing: nothing to migrate */
+  }
   const stored = window.localStorage.getItem(VOICE_SOURCE_KEY);
   voiceSource = stored === 'device' || stored === 'app' ? stored : 'auto';
   return voiceSource;
@@ -397,8 +410,17 @@ export function speakGerman(options: GermanSpeechRequest): void {
   });
 }
 
+/**
+ * Does this phone have its own German voice?
+ *
+ * On the web that means a `de*` entry in `speechSynthesis.getVoices()`; on
+ * Android/iOS it means a German voice installed for the system TTS engine
+ * (`Speech.getAvailableVoicesAsync`). The APK used to skip this check entirely,
+ * so it always fell back to the bundled clips even when the phone could speak
+ * German far more naturally.
+ */
 async function hasGermanDeviceVoice(): Promise<boolean> {
-  if (Platform.OS !== 'web' || !webSpeechAvailable()) return false;
+  if (!webSpeechAvailable()) return false;
   const voices = await loadAvailableVoices();
   const german = voices.some(isGermanVoice);
   publishVoiceStatus({

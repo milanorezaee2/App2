@@ -229,7 +229,7 @@ await require('esbuild').build({
   const nativeBridge = fs.readFileSync(path.join(root, 'lib/germanAudioNative.native.ts'), 'utf8');
   check('native playback uses expo-audio', /from 'expo-audio'/.test(nativeBridge) && /createAudioPlayer/.test(nativeBridge));
   check('native playback waits for the file to load before it seeks',
-    /waitForLoaded\(created\)/.test(nativeBridge) && /isLoaded/.test(nativeBridge));
+    /waitForLoaded\(created/.test(nativeBridge) && /isLoaded/.test(nativeBridge));
   check('native playback seeks to the recorded clip start',
     /seekAndSettle\(created, clip\.start\)/.test(nativeBridge) && /\.seekTo\(/.test(nativeBridge));
   check('native playback stops at the recorded clip end', /clip\.end - clip\.start/.test(nativeBridge));
