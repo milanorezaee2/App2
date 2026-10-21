@@ -76,11 +76,12 @@ if SAMPLE_RATE <= 0:
 if lib.espeak_SetVoiceByName(VOICE.encode()) != 0:
     sys.exit(f'eSpeak NG has no voice {VOICE}')
 
-# 1 = rate (words per minute), 3 = pitch, 4 = pitch range, 5 = word gap
+# eSpeak NG speak_lib.h: 1 = rate (words per minute), 3 = pitch,
+# 4 = pitch range, 7 = word gap (5 is punctuation, not the gap).
 lib.espeak_SetParameter(1, SPEED, 0)
 lib.espeak_SetParameter(3, PITCH, 0)
 lib.espeak_SetParameter(4, PITCH_RANGE, 0)
-lib.espeak_SetParameter(5, WORD_GAP_PARAM, 0)
+lib.espeak_SetParameter(7, WORD_GAP_PARAM, 0)
 
 _CALLBACK = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.POINTER(ctypes.c_short), ctypes.c_int, ctypes.c_void_p)
 _buffer = bytearray()

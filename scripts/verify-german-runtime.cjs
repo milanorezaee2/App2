@@ -338,11 +338,33 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
       && sentenceTiming >= (spokenClip[1] - spokenClip[0]) * 1000 * 0.9);
 
   await clearAudio();
-  await page.getByRole('button', { name: 'پخش آهستهٔ جمله' }).click();
+  await page.getByRole('button', { name: 'پخش آهستهٔ جمله', exact: true }).click();
   await page.waitForTimeout(500);
   const slow = await lastPlay();
   check('slow replay slows the same clip down instead of changing the voice',
     slow?.file === greetingSentences.file && slow.rate < 1);
+
+  // The speaker icon itself starts slow: the learner asked to hear the sentence
+  // read slowly on the first tap and at the normal pace on the second.
+  await page.goto(`${LESSON}&seed=1&source=app`, { waitUntil: 'networkidle' });
+  await page.getByText(/جمله‌های اصلی · مرحلهٔ ۲ از ۹/).waitFor();
+  await page.waitForTimeout(1800);
+  const iconLabel = await page.getByRole('button', { name: /^پخش .*جملهٔ آلمانی$/ }).first().getAttribute('aria-label');
+  check('the lesson speaker icon offers the slow reading first',
+    /^پخش آهستهٔ جملهٔ آلمانی$/.test(iconLabel || ''));
+  await clearAudio();
+  await page.getByRole('button', { name: 'پخش آهستهٔ جملهٔ آلمانی', exact: true }).click();
+  await page.waitForTimeout(500);
+  const firstTap = await lastPlay();
+  check('the first tap of the speaker icon plays the slow reading',
+    firstTap?.file === greetingSentences.file && firstTap.rate < 1);
+  await clearAudio();
+  await page.getByRole('button', { name: 'پخش معمولی جملهٔ آلمانی', exact: true }).click();
+  await page.waitForTimeout(500);
+  const secondTap = await lastPlay();
+  check('the second tap of the speaker icon plays the normal reading',
+    secondTap?.file === greetingSentences.file && secondTap.rate === 1);
+
   check('the core-sentence stage raises no runtime errors', cleanErrors().length === 0);
 
   // 5. Vocabulary stage: first word is automatic, play-all walks the words.

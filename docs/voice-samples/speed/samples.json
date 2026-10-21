@@ -60,6 +60,20 @@
    "seconds": 7.54,
    "bytes": 22896,
    "at": 33.1
+  },
+  {
+   "id": "v5",
+   "file": "v5-narrator-3-thinner-slower.mp3",
+   "voice": "de+f1",
+   "rate": 148,
+   "pitch": 62,
+   "range": 60,
+   "gap": 0,
+   "fa": "گویندهٔ شمارهٔ ۳، یک پله شفاف‌تر و یک پله آرام‌تر",
+   "detail": "همان گویندهٔ شمارهٔ ۳ با تُن بازتر · ۱۴۸ کلمه در دقیقه",
+   "seconds": 8.86,
+   "bytes": 26892,
+   "at": 43.0
   }
  ],
  "reference": {
@@ -73,6 +87,6 @@
  },
  "compare": {
   "file": "compare-all.mp3",
-  "seconds": 41.47
+  "seconds": 52.73
  }
 }

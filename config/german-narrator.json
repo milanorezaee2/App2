@@ -1,12 +1,12 @@
 {
-  "voice": "de+f3",
-  "descriptionFa": "زن، گرم و روشن",
-  "wordsPerMinute": 158,
+  "voice": "de+f1",
+  "descriptionFa": "زن، روشن و آرام",
+  "wordsPerMinute": 148,
   "pitch": 62,
   "range": 60,
   "wordGap": 0,
   "deviceRate": 1,
   "deviceShadowRate": 0.75,
   "deviceSlowRate": 0.55,
-  "selection": "v2-current-voice-faster-clearer"
+  "selection": "v5-narrator-3-thinner-slower"
 }

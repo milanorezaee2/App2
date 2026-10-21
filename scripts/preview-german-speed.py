@@ -59,7 +59,8 @@ LIB.espeak_SetParameter.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
 LIB.espeak_Synth.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_uint, ctypes.c_int,
                              ctypes.c_uint, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p]
 
-RATE, VOLUME, PITCH, RANGE, GAP = 1, 2, 3, 4, 5
+# eSpeak NG speak_lib.h: 7 is the word gap; 5 is punctuation.
+RATE, VOLUME, PITCH, RANGE, GAP = 1, 2, 3, 4, 7
 
 _buffer: list[bytes] = []
 CALLBACK = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.POINTER(ctypes.c_short), ctypes.c_int, ctypes.c_void_p)
@@ -142,9 +143,19 @@ OPTIONS = [
         'fa': 'همان گوینده، دو پله سریع‌تر',
         'detail': 'برای کسی که تندتر می‌خواهد · ۱۷۲ کلمه در دقیقه',
     },
+    {
+        # The voice shipped from set 13 on: narrator #3 (`de+f1`), one step
+        # thinner than v3 (the same brightness step that turned v1 into v2) and
+        # one step slower (148 instead of 158 wpm).
+        'id': 'v5',
+        'file': 'v5-narrator-3-thinner-slower.mp3',
+        'voice': 'de+f1', 'rate': 148, 'pitch': 62, 'range': 60, 'gap': 0,
+        'fa': 'گویندهٔ شمارهٔ ۳، یک پله شفاف‌تر و یک پله آرام‌تر',
+        'detail': 'همان گویندهٔ شمارهٔ ۳ با تُن بازتر · ۱۴۸ کلمه در دقیقه',
+    },
 ]
 
-LABELS = ['Variante eins.', 'Variante zwei.', 'Variante drei.', 'Variante vier.']
+LABELS = ['Variante eins.', 'Variante zwei.', 'Variante drei.', 'Variante vier.', 'Variante fünf.']
 
 
 def variant_audio(option: dict) -> np.ndarray:
@@ -225,7 +236,7 @@ def write_page(manifest: dict) -> None:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>انتخاب صدای سریع‌تر آلمانی</title>
+<title>انتخاب صدای آلمانی</title>
 <style>
   :root {{ --primary:#0f6b57; --line:#e3e8e6; --muted:#6b7672; --bg:#f7faf9; }}
   * {{ box-sizing:border-box; }}
@@ -254,9 +265,9 @@ def write_page(manifest: dict) -> None:
 </head>
 <body>
 <header>
-  <h1>صدای آلمانی، یک پله سریع‌تر — چهار نمونه</h1>
+  <h1>صدای آلمانی — پنج نمونه</h1>
   <p class="lead">
-    هر چهار نمونه با همان موتور صدای داخل برنامه ساخته شده‌اند، پس بعد از انتخاب،
+    هر پنج نمونه با همان موتور صدای داخل برنامه ساخته شده‌اند، پس بعد از انتخاب،
     دقیقاً همین صدا در درس‌ها پخش می‌شود. جمله‌های واقعی درس:
     <span class="de">Hallo! Wie geht es dir?</span> ·
     <span class="de">Ich heiße Mina. Ich komme aus dem Iran.</span> ·

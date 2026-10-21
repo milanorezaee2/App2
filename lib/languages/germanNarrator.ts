@@ -13,7 +13,7 @@ import preset from '../../config/german-narrator.json';
 import { toPersianDigits } from '../format';
 
 export type GermanNarrator = {
-  /** eSpeak NG voice used to build the bundled pack, e.g. `de+f3`. */
+  /** eSpeak NG voice used to build the bundled pack, e.g. `de+f1`. */
   voice: string;
   /** Persian description shown in the app. */
   descriptionFa: string;
