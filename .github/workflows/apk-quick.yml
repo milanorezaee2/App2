@@ -1,13 +1,14 @@
-name: Publish German-audio APK
+name: Build all three APKs
 
-# Builds exactly one installable APK for the current work branch and publishes it
-# as a GitHub release, so it can be downloaded without any extra tooling.
+# Builds the three installable Android packages from this branch and publishes
+# them in one GitHub release:
+#   MiloMultilang.apk        learner (opens straight into the courses)
+#   MiloMultilang-Login.apk  learner with the login/registration screen
+#   MiloAdmin.apk            private management panel
 on:
   push:
     branches:
       - arena/76e3f058-app2
-    # Docs and workflow-only commits do not change the app; rebuilding the APK
-    # for them would publish an identical release and waste ten minutes of CI.
     paths-ignore:
       - 'docs/**'
       - '**.md'
@@ -17,13 +18,13 @@ permissions:
   contents: write
 
 concurrency:
-  group: apk-quick-${{ github.ref }}
+  group: apk-all-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     env:
       CI: "1"
       EXPO_NO_TELEMETRY: "1"
@@ -73,44 +74,86 @@ jobs:
             "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
           fi
 
-      - name: Generate native Android project
-        run: npx expo prebuild --platform android --no-install
-
-      - name: Build release APK
-        working-directory: android
+      - name: Build learner APK
+        shell: bash
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          rm -rf android
+          npx expo prebuild --platform android --no-install
+          (cd android && chmod +x gradlew && ./gradlew assembleRelease --no-daemon)
+          cp android/app/build/outputs/apk/release/app-release.apk MiloMultilang.apk
 
-      - name: Verify the APK contains the JS bundle and the German audio
+      - name: Build learner login APK
+        shell: bash
+        env:
+          EXPO_PUBLIC_LEARNER_LOGIN: "true"
+        run: |
+          rm -rf android
+          EXPO_PUBLIC_LEARNER_LOGIN=true npx expo prebuild --platform android --no-install
+          (cd android && chmod +x gradlew && EXPO_PUBLIC_LEARNER_LOGIN=true ./gradlew assembleRelease --no-daemon)
+          cp android/app/build/outputs/apk/release/app-release.apk MiloMultilang-Login.apk
+
+      - name: Build management APK
+        shell: bash
+        env:
+          MILO_ADMIN_APP: "true"
+          EXPO_PUBLIC_MILO_ADMIN_APP: "true"
+          EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN: "true"
+        run: |
+          rm -rf android
+          MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true \
+            npx expo prebuild --platform android --no-install
+          (cd android && chmod +x gradlew) && (cd android && MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true ./gradlew assembleRelease --no-daemon)
+          cp android/app/build/outputs/apk/release/app-release.apk MiloAdmin.apk
+
+      - name: Verify all three APKs
+        shell: bash
         run: |
           python3 - <<'PY'
           from zipfile import ZipFile
-          apk = 'android/app/build/outputs/apk/release/app-release.apk'
-          with ZipFile(apk) as archive:
-              names = archive.namelist()
-          assert 'AndroidManifest.xml' in names, 'missing manifest'
-          assert any(n.endswith('classes.dex') for n in names), 'missing dex'
-          assert 'assets/index.android.bundle' in names, 'missing standalone JS bundle'
-          clips = [n for n in names if n.endswith('.mp3')]
-          assert len(clips) >= 190, f'only {len(clips)} German clips in the APK'
-          print(f'APK verified: {len(clips)} German clips bundled, standalone JS present.')
+          expected = ['MiloMultilang.apk', 'MiloMultilang-Login.apk', 'MiloAdmin.apk']
+          for name in expected:
+              with ZipFile(name) as archive:
+                  entries = archive.namelist()
+              assert 'AndroidManifest.xml' in entries, f'{name}: missing manifest'
+              assert any(e.endswith('classes.dex') for e in entries), f'{name}: missing dex'
+              assert 'assets/index.android.bundle' in entries, f'{name}: needs Metro, not standalone'
+              clips = [e for e in entries if e.endswith('.mp3')]
+              assert len(clips) >= 190, f'{name}: only {len(clips)} German clips bundled'
+              print(f'{name}: standalone JS + {len(clips)} German clips')
           PY
-          cp android/app/build/outputs/apk/release/app-release.apk "Milo-Deutsch-${{ github.run_number }}.apk"
-          ls -lh "Milo-Deutsch-${{ github.run_number }}.apk"
+          ls -lh MiloMultilang.apk MiloMultilang-Login.apk MiloAdmin.apk
 
-      - name: Publish the APK as a GitHub release
+      - name: Publish the three APKs as a GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: apk-deutsch-${{ github.run_number }}
+          tag_name: milo-apks-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          name: "Milo Deutsch APK #${{ github.run_number }}"
+          name: "Milo APK set #${{ github.run_number }}"
           body: |
-            نصب‌شدنی روی اندروید (سایدلود). صداهای آلمانی همهٔ ۹۵ درس داخل خود APK هستند،
-            پس بخش آلمانی بدون نصب زبان و بدون اینترنت هم درست خوانده می‌شود.
-            برای نصب: فایل APK را دانلود کنید و «نصب از منابع نامشخص» را اجازه دهید.
+            سه فایل نصب‌شدنی اندروید:
+
+            - **MiloMultilang.apk** — نسخهٔ زبان‌آموز (بدون صفحهٔ ورود)
+            - **MiloMultilang-Login.apk** — نسخهٔ زبان‌آموز با صفحهٔ ثبت‌نام/ورود
+            - **MiloAdmin.apk** — پنل مدیریت خصوصی
+
+            هر سه شامل صدای آلمانی (۱۹۰ کلیپ) داخل خود اپ هستند و بدون اینترنت کار می‌کنند.
+            نصب: فایل را دانلود کنید و «نصب از منابع نامشخص» را برای مرورگر اجازه دهید.
           prerelease: true
-          files: Milo-Deutsch-${{ github.run_number }}.apk
+          files: |
+            MiloMultilang.apk
+            MiloMultilang-Login.apk
+            MiloAdmin.apk
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Milo-apks-${{ github.run_number }}
+          path: |
+            MiloMultilang.apk
+            MiloMultilang-Login.apk
+            MiloAdmin.apk
+          if-no-files-found: error
+          retention-days: 7

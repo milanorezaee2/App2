@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import { BookOpenCheck, LogIn, ShieldCheck, UserPlus } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { KeyboardAwareScrollView, KeyboardAvoidingView } from '@/components/KeyboardRuntime';
-import { generateLoginCode, getRegisteredSession, loginLearner, registerLearner, registrationError, touchLearnerActivity } from '@/lib/userRegistration';
+import { generateLoginCode, getRegisteredSession, loginLearner, readCachedRegistration, registerLearner, registrationError, touchLearnerActivity } from '@/lib/userRegistration';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { FEATURES } from '@/lib/features';
 
@@ -46,12 +46,26 @@ export function RegistrationGate({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (BYPASS_GATE) return;
+    // Open the app instantly for a learner we already verified on this phone;
+    // the server check below still runs and shows the gate if it disagrees.
+    // Without this the app sat on "در حال بررسی حساب…" for several seconds on
+    // every launch, waiting for a network round-trip that changes nothing.
+    let alive = true;
+    void readCachedRegistration().then(cached => {
+      if (!alive || !cached) return;
+      setReady(current => current || true);
+      setChecking(false);
+    });
     void inspect();
     const { data } = supabase.auth.onAuthStateChange(() => { void inspect(); });
     const appState = AppState.addEventListener('change', state => {
       if (state === 'active') void inspect();
     });
-    return () => { data.subscription.unsubscribe(); appState.remove(); };
+    return () => {
+      alive = false;
+      data.subscription.unsubscribe();
+      appState.remove();
+    };
   }, [inspect]);
 
   async function submit() {

@@ -38,7 +38,9 @@
     "validate:english-four": "node scripts/verify-english-four.cjs",
     "prebuild:web": "node scripts/check-public-connection.mjs",
     "validate:german-native": "node scripts/verify-german-native-audio.cjs",
-    "validate:german-device": "node scripts/verify-german-device-voice.cjs"
+    "validate:german-device": "node scripts/verify-german-device-voice.cjs",
+    "validate:welcome": "node scripts/verify-welcome-voice.cjs",
+    "validate:boot": "node scripts/verify-fast-start.cjs"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

@@ -56,6 +56,12 @@ stableInput.defaultProps = {
 SplashScreen.preventAutoHideAsync();
 
 let startupChimePlayed = false;
+/**
+ * How long the brand animation stays up before the first screen appears.
+ * Long enough that the logo does not flash, short enough to feel instant
+ * (it used to be a hard 3400 ms on every single launch).
+ */
+const INTRO_DURATION_MS = 700;
 const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
   || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
 
@@ -135,8 +141,11 @@ export default function RootLayout() {
       return;
     }
 
-    // Keep the full MiloMultiLanguage identity visible through its complete
-    // animation before revealing the first screen; no startup state is reset.
+    // The brand animation is a short greeting, not a loading screen: the app used
+    // to stay on it for a fixed 3.4 s on every launch, which is the "app takes
+    // seconds to open" complaint. The first screen now appears as soon as the
+    // animation has played its opening beat, and the chime keeps playing on top
+    // of it instead of blocking it.
     startupChimePlayed = true;
     let player: ReturnType<typeof createAudioPlayer> | null = null;
     try {
@@ -146,12 +155,20 @@ export default function RootLayout() {
     } catch {
       // A device without playback support still receives the same visual intro.
     }
+    // Warm the speech engines off the critical path, right away.
+    warmSpeech('en-US');
+    setTimeout(() => warmSpeech('de-DE'), 350);
     const finish = setTimeout(() => {
-      player?.remove();
       setIntroComplete(true);
-      warmSpeech('en-US');
-      setTimeout(() => warmSpeech('de-DE'), 350);
-    }, 3400);
+      // Silence the short chime once its natural length has passed.
+      setTimeout(() => {
+        try {
+          player?.remove();
+        } catch {
+          /* already released */
+        }
+      }, 1600);
+    }, INTRO_DURATION_MS);
     return () => clearTimeout(finish);
   }, [fontsLoaded, fontError]);
 
