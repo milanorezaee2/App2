@@ -184,9 +184,22 @@ export default function RootLayout() {
   useEffect(() => {
     if (!introComplete || startupRouteLocked.current) return;
     startupRouteLocked.current = true;
-    if (Platform.OS === 'web') return;
     if (pathname !== homeRoute) router.replace(homeRoute as never);
   }, [homeRoute, introComplete, pathname, router]);
+
+  // On web, AppState is unavailable — use page visibility instead so that
+  // returning to the tab also starts from the home screen, not the last
+  // lesson/library/conversation that was open before.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !introComplete) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && pathnameRef.current !== homeRoute) {
+        router.replace(homeRoute as never);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [homeRoute, introComplete, router]);
 
   if (!fontsLoaded && !fontError) return null;
   if (!introComplete) {
