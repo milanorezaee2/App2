@@ -114,6 +114,7 @@ jobs:
           from zipfile import ZipFile
           expected = ['MiloMultilang.apk', 'MiloMultilang-Login.apk', 'MiloAdmin.apk']
           LIMIT = 175 * 1024 * 1024  # 140-150 MB is the goal; fail early if bloat returns
+          rows = {}
           for name in expected:
               with ZipFile(name) as archive:
                   entries = archive.namelist()
@@ -130,7 +131,6 @@ jobs:
               # used to add ~50 MB to every download.
               extra = sorted(set(abis) - {'arm64-v8a'})
               assert not extra, f'{name}: unwanted CPU architectures inside: {extra}'
-              # Same breakdown printed for the learner build so the log explains the size.
               if name == 'MiloMultilang.apk':
                   groups = defaultdict(int)
                   for info in infos:
@@ -138,23 +138,50 @@ jobs:
                           continue
                       path = info.filename
                       if path.startswith('lib/'):
-                          key = 'native libraries (lib/arm64-v8a)'
+                          key = 'کتابخانه‌های بومی (arm64)'
                       elif path.startswith('res/raw/') and path.endswith('.mp3'):
-                          key = 'lesson audio (res/raw mp3)'
+                          key = 'صداهای آمادهٔ درس‌ها'
                       elif path.startswith('res/'):
-                          key = 'res/ (icons, fonts, splash)'
+                          key = 'فونت/آیکن/اسپلش'
                       elif path.startswith('assets/'):
-                          key = 'assets/ (JS bundle)'
+                          key = 'باندل جاوااسکریپت'
                       elif path.endswith('.dex'):
-                          key = 'dex (app code)'
+                          key = 'کد اپ (dex)'
                       else:
                           key = path.split('/')[0]
                       groups[key] += info.file_size
-                  for key, value in sorted(groups.items(), key=lambda item: -item[1])[:10]:
-                      print(f'  {value / 1024 / 1024:7.1f} MB  {key}')
+                  rows = sorted(groups.items(), key=lambda item: -item[1])[:8]
               size = os.path.getsize(name)
               print(f'{name}: {size / 1024 / 1024:.0f} MB, {len(clips)} language clips, native ABIs {dict(abis)}')
               assert size < LIMIT, f'{name}: {size / 1024 / 1024:.0f} MB is over the {LIMIT // 1024 // 1024} MB budget'
+
+          learner = os.path.getsize('MiloMultilang.apk')
+          lines = [
+              'سه فایل نصب‌شدنی اندروید:',
+              '',
+              '- **MiloMultilang.apk** — نسخهٔ زبان‌آموز (بدون صفحهٔ ورود)',
+              '- **MiloMultilang-Login.apk** — نسخهٔ زبان‌آموز با صفحهٔ ثبت‌نام/ورود',
+              '- **MiloAdmin.apk** — پنل مدیریت خصوصی',
+              '',
+              f'حجم هر سه فایل **{learner / 1024 / 1024:.0f} مگابایت** است.',
+              '',
+              'هر سه شامل صداهای آمادهٔ داخل اپ هستند و بدون اینترنت کار می‌کنند:',
+              '',
+              '- **آلمانی:** گویندهٔ زن عصبی «کرستین» (۱۹۰ کلیپ) برای هر ۹۵ درس و واژه‌ها.',
+              '- **روسی:** گویندهٔ زن عصبی «ایرینا» (۱۳۸ کلیپ) برای هر ۶۹ درس و واژه‌ها.',
+              '',
+              'این نسخه فقط برای گوشی‌های **arm64** (همهٔ گوشی‌های اندروید امروزی) ساخته شده',
+              'و کتابخانه‌های سه معماری دیگر داخل فایل نیست.',
+              '',
+              '## داخل فایل چه خبر است',
+              '',
+              '| بخش | حجم |',
+              '| --- | --- |',
+          ]
+          lines += [f'| {key} | {value / 1024 / 1024:.1f} MB |' for key, value in rows]
+          lines += ['', 'نصب: فایل را دانلود کنید و «نصب از منابع نامشخص» را برای مرورگر اجازه دهید.', '']
+          with open('release-body.md', 'w', encoding='utf-8') as handle:
+              handle.write('\n'.join(lines))
           PY
           ls -lh MiloMultilang.apk MiloMultilang-Login.apk MiloAdmin.apk
 
@@ -164,21 +191,7 @@ jobs:
           tag_name: milo-apks-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           name: "Milo APK set #${{ github.run_number }}"
-          body: |
-            سه فایل نصب‌شدنی اندروید:
-
-            - **MiloMultilang.apk** — نسخهٔ زبان‌آموز (بدون صفحهٔ ورود)
-            - **MiloMultilang-Login.apk** — نسخهٔ زبان‌آموز با صفحهٔ ثبت‌نام/ورود
-            - **MiloAdmin.apk** — پنل مدیریت خصوصی
-
-            هر سه شامل صداهای آمادهٔ داخل اپ هستند و بدون اینترنت کار می‌کنند:
-
-            - **آلمانی:** گویندهٔ زن عصبی «کرستین» (۱۹۰ کلیپ) برای هر ۹۵ درس و واژه‌ها.
-            - **روسی:** گویندهٔ زن عصبی «ایرینا» (۱۳۸ کلیپ) برای هر ۶۹ درس و واژه‌ها.
-
-            این نسخه فقط برای گوشی‌های **arm64** (همهٔ گوشی‌های اندروید امروزی) ساخته شده و
-            کتابخانه‌های سه معماری دیگر داخل فایل نیست؛ همین باعث کوچک‌شدن فایل شده است.
-            نصب: فایل را دانلود کنید و «نصب از منابع نامشخص» را برای مرورگر اجازه دهید.
+          body_path: release-body.md
           prerelease: true
           files: |
             MiloMultilang.apk

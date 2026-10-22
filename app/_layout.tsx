@@ -13,8 +13,16 @@ import * as Speech from 'expo-speech';
 import { registerNativeVoiceFetcher } from '@/lib/speechLanguage';
 
 registerNativeVoiceFetcher(() => Speech.getAvailableVoicesAsync());
-import { Inter_400Regular, Inter_600SemiBold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
-import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_700Bold, Vazirmatn_900Black } from '@expo-google-fonts/vazirmatn';
+// Import each weight from its own entry point. Importing from the package root
+// makes Metro bundle every weight of the family (20 Inter + 10 Vazirmatn files,
+// ~7 MB inside the APK) even though only these seven are ever used.
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_800ExtraBold } from '@expo-google-fonts/inter/800ExtraBold';
+import { Vazirmatn_400Regular } from '@expo-google-fonts/vazirmatn/400Regular';
+import { Vazirmatn_500Medium } from '@expo-google-fonts/vazirmatn/500Medium';
+import { Vazirmatn_700Bold } from '@expo-google-fonts/vazirmatn/700Bold';
+import { Vazirmatn_900Black } from '@expo-google-fonts/vazirmatn/900Black';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';

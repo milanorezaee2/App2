@@ -25,7 +25,7 @@ module.exports = function withAndroidSingleAbi(config) {
     if (contents.includes(MARKER)) return androidConfig;
 
     // Insert right after the opening of `defaultConfig {` in the app module.
-    const injected = contents.replace(
+    let injected = contents.replace(
       /(defaultConfig\s*\{)/,
       `$1\n        ${MARKER} — one CPU architecture (see plugins/withAndroidSingleAbi.js)\n        ndk {\n            abiFilters '${ABI}'\n        }\n`,
     );
@@ -35,6 +35,15 @@ module.exports = function withAndroidSingleAbi(config) {
         'withAndroidSingleAbi: could not find `defaultConfig {` in android/app/build.gradle',
       );
     }
+
+    // Native libraries are stored uncompressed in the APK by default. With
+    // `useLegacyPackaging` they are deflated like everything else, which takes
+    // roughly a third off the `.so` payload; Android unpacks them once at
+    // install time (the behaviour every app had before Android 6).
+    injected = injected.replace(
+      /^(android\s*\{)/m,
+      `$1\n    ${MARKER} — deflate the native libraries instead of storing them raw\n    packaging {\n        jniLibs {\n            useLegacyPackaging true\n        }\n    }\n`,
+    );
 
     androidConfig.modResults.contents = injected;
     return androidConfig;
