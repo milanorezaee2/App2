@@ -21,7 +21,7 @@ verify(ruNav.includes("'/learn/ru/pronunciation'") && ruNav.includes("'/conversa
 verify(/flexDirection: 'row-reverse'/.test(ruNav) && /flexDirection: 'row-reverse'/.test(deNav), 'Russian and German navigation remain RTL');
 verify(deNav.includes("'/conversations'"), 'German navigation links to real conversations');
 verify(logo.includes("const SUBTITLE = 'MULTILANGUAGE'"), 'startup logo displays the full MiloMultiLanguage wordmark');
-verify(/setIntroComplete\(true\)/.test(root) && !/},\s*3400\)/.test(root), 'startup reveals the learner screen without a fixed multi-second logo delay');
+verify(!/if\s*\(!fontsLoaded[^)]*\)\s*return null/.test(root) && !/},\s*3400\)/.test(root), 'startup renders the learner route without waiting for bundled fonts or a fixed multi-second delay');
 verify(/"name": "MiloMultiLanguage"/.test(appConfig), 'application display name uses the full brand');
 verify(/admin \? '\/admin' : '\/languages'/.test(entry), 'fresh learner and admin launches go to their home screens');
 verify(!/AsyncStorage\.clear\(/.test(root + conversations), 'normal startup and chat changes do not clear saved learner progress');

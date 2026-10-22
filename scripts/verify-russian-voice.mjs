@@ -31,6 +31,13 @@ const voices = [
 check(speech.selectBestVoiceForLocale(voices, 'ru-RU')?.name === 'Irina',
   'a recognizable female Russian voice wins even when the male voice has higher device quality');
 
+const androidGoogleVoices = [
+  { identifier: 'ru-ru-x-rud-local', name: 'ru-ru-x-rud-local', language: 'ru-RU', quality: 'Enhanced' },
+  { identifier: 'ru-ru-x-ruf-local', name: 'ru-ru-x-ruf-local', language: 'ru-RU', quality: 'Enhanced' },
+];
+check(speech.selectBestVoiceForLocale(androidGoogleVoices, 'ru-RU')?.identifier === 'ru-ru-x-ruf-local',
+  'Android Google TTS female identifier ruf is preferred over male identifier rud');
+
 const cyrillicFemale = [
   { identifier: 'ru-generic-local', name: 'Russian voice', language: 'ru-RU' },
   { identifier: 'ru-other', name: 'Елена', language: 'ru-RU' },

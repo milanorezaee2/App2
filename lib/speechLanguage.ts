@@ -149,11 +149,11 @@ function russianVoiceLabel(voice: SpeechVoiceInfo): string {
 }
 
 function isRecognizablyFeminineRussianVoice(voice: SpeechVoiceInfo): boolean {
-  return /(?:^|[^a-zа-яё])(?:female|feminine|irina|anna|anastasia|anastasiya|elena|alyona|alena|maria|mariya|milena|natalia|natalya|svetlana|olga|oksana|oxana|daria|darya|yulia|julia|tatiana|tatyana|nina|vera|valentina|ekaterina|katya|ирина|анна|анастасия|елена|алёна|алена|мария|милена|наталья|светлана|ольга|оксана|дарья|юлия|татьяна|нина|вера|валентина|екатерина|катя)(?:$|[^a-zа-яё])/i.test(russianVoiceLabel(voice));
+  return /(?:^|[^a-zа-яё])(?:female|feminine|ru-ru-x-ruf|irina|anna|anastasia|anastasiya|elena|alyona|alena|maria|mariya|milena|natalia|natalya|svetlana|olga|oksana|oxana|daria|darya|yulia|julia|tatiana|tatyana|nina|vera|valentina|ekaterina|katya|ирина|анна|анастасия|елена|алёна|алена|мария|милена|наталья|светлана|ольга|оксана|дарья|юлия|татьяна|нина|вера|валентина|екатерина|катя)(?:$|[^a-zа-яё])/i.test(russianVoiceLabel(voice));
 }
 
 function isRecognizablyMasculineRussianVoice(voice: SpeechVoiceInfo): boolean {
-  return /(?:^|[^a-zа-яё])(?:male|masculine|yuri|yuriy|pavel|ivan|dmitri|dmitry|sergei|sergey|nikolai|igor|alexey|alexei|andrei|andrey|mikhail|oleg|vladimir|konstantin|юрий|павел|иван|дмитрий|сергей|николай|игорь|алексей|андрей|михаил|олег|владимир|константин)(?:$|[^a-zа-яё])/i.test(russianVoiceLabel(voice));
+  return /(?:^|[^a-zа-яё])(?:male|masculine|ru-ru-x-rud|yuri|yuriy|pavel|ivan|dmitri|dmitry|sergei|sergey|nikolai|igor|alexey|alexei|andrei|andrey|mikhail|oleg|vladimir|konstantin|юрий|павел|иван|дмитрий|сергей|николай|игорь|алексей|андрей|михаил|олег|владимир|константин)(?:$|[^a-zа-яё])/i.test(russianVoiceLabel(voice));
 }
 
 export function selectBestVoiceForLocale(

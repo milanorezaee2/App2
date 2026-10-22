@@ -4,9 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
-import { AppState, I18nManager, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AppState, I18nManager, Platform, Text, TextInput } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
 import { createAudioPlayer } from 'expo-audio';
 import * as Speech from 'expo-speech';
@@ -101,8 +100,8 @@ export default function RootLayout() {
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
-  const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
-  const [fontsLoaded, fontError] = useFonts({
+  const [introComplete] = useState(true);
+  useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
     // offline and independent of each Android manufacturer's system fonts.
     Vazir: Vazirmatn_400Regular,
@@ -123,20 +122,11 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (!fontsLoaded && !fontError) return;
+    // Render the first route now using Android's system-font fallback while
+    // bundled fonts load; neither fonts nor an intro animation block startup.
     void SplashScreen.hideAsync();
+    if (Platform.OS === 'web' || startupChimePlayed) return;
 
-    if (Platform.OS === 'web') {
-      setIntroComplete(true);
-      return;
-    }
-    if (startupChimePlayed) {
-      setIntroComplete(true);
-      return;
-    }
-
-    // Play the welcome chime without blocking the learner behind a multi-second
-    // brand animation; reveal the first screen as soon as bundled fonts are ready.
     startupChimePlayed = true;
     try {
       const player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
@@ -146,10 +136,9 @@ export default function RootLayout() {
     } catch {
       // A device without playback support still opens the learner home.
     }
-    setIntroComplete(true);
     warmSpeech('en-US');
     setTimeout(() => warmSpeech('de-DE'), 350);
-  }, [fontsLoaded, fontError]);
+  }, []);
 
   useEffect(() => {
     pathnameRef.current = pathname;
@@ -197,17 +186,6 @@ export default function RootLayout() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [homeRoute, introComplete, router]);
 
-  if (!fontsLoaded && !fontError) return null;
-  if (!introComplete) {
-    return (
-      <View style={introStyles.root}>
-        <MiloLogoMotion size="intro" />
-        <View style={introStyles.loader}><View style={introStyles.loaderFill} /></View>
-        <StatusBar style="dark" />
-      </View>
-    );
-  }
-
   return (
     <SafeAreaProvider>
       <KeyboardProvider>
@@ -235,12 +213,3 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
-
-const introStyles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F5FAFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
-  image: { width: 280, height: 280, marginBottom: -12 },
-  brand: { fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 24, lineHeight: 31, fontWeight: '800', letterSpacing: 5, writingDirection: 'ltr' },
-  caption: { fontFamily: 'Inter-ExtraBold', color: '#6882A6', fontSize: 7, fontWeight: '800', letterSpacing: 2.1, writingDirection: 'ltr', marginTop: 2 },
-  loader: { width: 92, height: 3, borderRadius: 99, overflow: 'hidden', backgroundColor: '#DCE9F8', marginTop: 24 },
-  loaderFill: { width: '100%', height: '100%', borderRadius: 99, backgroundColor: '#2878DE' },
-});
