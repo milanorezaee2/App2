@@ -101,7 +101,7 @@ export default function RootLayout() {
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
   const [introComplete] = useState(true);
-  useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
     // offline and independent of each Android manufacturer's system fonts.
     Vazir: Vazirmatn_400Regular,
@@ -122,8 +122,9 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    // Render the first route now using Android's system-font fallback while
-    // bundled fonts load; neither fonts nor an intro animation block startup.
+    // Keep the native splash visible until custom fonts are registered. Text
+    // components apply Vazir globally, so rendering them earlier can crash Android.
+    if (!fontsLoaded && !fontError) return;
     void SplashScreen.hideAsync();
     if (Platform.OS === 'web' || startupChimePlayed) return;
 
@@ -138,7 +139,7 @@ export default function RootLayout() {
     }
     warmSpeech('en-US');
     setTimeout(() => warmSpeech('de-DE'), 350);
-  }, []);
+  }, [fontsLoaded, fontError]);
 
   useEffect(() => {
     pathnameRef.current = pathname;
@@ -185,6 +186,8 @@ export default function RootLayout() {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [homeRoute, introComplete, router]);
+
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
