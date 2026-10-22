@@ -24,6 +24,7 @@
     "validate:english-engine": "node scripts/verify-english-engine.cjs",
     "validate:placement": "node scripts/verify-placement.cjs",
     "validate:speech-policy": "node scripts/verify-speech-policy.mjs",
+    "validate:russian-voice": "node scripts/verify-russian-voice.mjs",
     "validate:app-lock": "node scripts/verify-app-lock.mjs",
     "validate:typography": "node scripts/verify-typography-stability.mjs",
     "validate:chat-notifications": "node scripts/verify-chat-notifications.mjs",

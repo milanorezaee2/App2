@@ -144,13 +144,40 @@ export function scoreVoiceForLocale(voice: SpeechVoiceInfo, targetLocale: string
   return score;
 }
 
+function russianVoiceLabel(voice: SpeechVoiceInfo): string {
+  return `${voice.identifier} ${voice.name}`.toLowerCase();
+}
+
+function isRecognizablyFeminineRussianVoice(voice: SpeechVoiceInfo): boolean {
+  return /(?:^|[^a-zа-яё])(?:female|feminine|irina|anna|anastasia|anastasiya|elena|alyona|alena|maria|mariya|milena|natalia|natalya|svetlana|olga|oksana|oxana|daria|darya|yulia|julia|tatiana|tatyana|nina|vera|valentina|ekaterina|katya|ирина|анна|анастасия|елена|алёна|алена|мария|милена|наталья|светлана|ольга|оксана|дарья|юлия|татьяна|нина|вера|валентина|екатерина|катя)(?:$|[^a-zа-яё])/i.test(russianVoiceLabel(voice));
+}
+
+function isRecognizablyMasculineRussianVoice(voice: SpeechVoiceInfo): boolean {
+  return /(?:^|[^a-zа-яё])(?:male|masculine|yuri|yuriy|pavel|ivan|dmitri|dmitry|sergei|sergey|nikolai|igor|alexey|alexei|andrei|andrey|mikhail|oleg|vladimir|konstantin|юрий|павел|иван|дмитрий|сергей|николай|игорь|алексей|андрей|михаил|олег|владимир|константин)(?:$|[^a-zа-яё])/i.test(russianVoiceLabel(voice));
+}
+
 export function selectBestVoiceForLocale(
   voices: readonly SpeechVoiceInfo[],
   targetLocale: string,
 ): SpeechVoiceInfo | undefined {
+  let candidates = voices;
+  if (targetLocale.replace(/_/g, '-').toLowerCase().split('-')[0] === 'ru') {
+    const matchingVoices = voices.filter(voice => scoreVoiceForLocale(voice, targetLocale) >= 0);
+    const feminineVoices = matchingVoices.filter(isRecognizablyFeminineRussianVoice);
+    if (feminineVoices.length > 0) {
+      // A named female Russian voice takes priority over device quality scores.
+      candidates = feminineVoices;
+    } else {
+      const voicesWithoutKnownMasculineNames = matchingVoices.filter(voice => !isRecognizablyMasculineRussianVoice(voice));
+      // If gender is not clearly exposed, avoid a voice explicitly named as male
+      // whenever the device offers another Russian voice.
+      if (voicesWithoutKnownMasculineNames.length > 0) candidates = voicesWithoutKnownMasculineNames;
+    }
+  }
+
   let best: SpeechVoiceInfo | undefined;
   let bestScore = -1;
-  for (const voice of voices) {
+  for (const voice of candidates) {
     const s = scoreVoiceForLocale(voice, targetLocale);
     if (s > bestScore) {
       bestScore = s;

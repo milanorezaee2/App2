@@ -135,24 +135,20 @@ export default function RootLayout() {
       return;
     }
 
-    // Keep the full MiloMultiLanguage identity visible through its complete
-    // animation before revealing the first screen; no startup state is reset.
+    // Play the welcome chime without blocking the learner behind a multi-second
+    // brand animation; reveal the first screen as soon as bundled fonts are ready.
     startupChimePlayed = true;
-    let player: ReturnType<typeof createAudioPlayer> | null = null;
     try {
-      player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
+      const player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
       player.volume = 0.28;
       player.play();
+      setTimeout(() => player.remove(), 2500);
     } catch {
-      // A device without playback support still receives the same visual intro.
+      // A device without playback support still opens the learner home.
     }
-    const finish = setTimeout(() => {
-      player?.remove();
-      setIntroComplete(true);
-      warmSpeech('en-US');
-      setTimeout(() => warmSpeech('de-DE'), 350);
-    }, 3400);
-    return () => clearTimeout(finish);
+    setIntroComplete(true);
+    warmSpeech('en-US');
+    setTimeout(() => warmSpeech('de-DE'), 350);
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
