@@ -110,14 +110,15 @@ jobs:
         run: |
           python3 - <<'PY'
           import os
-          from collections import Counter
+          from collections import Counter, defaultdict
           from zipfile import ZipFile
           expected = ['MiloMultilang.apk', 'MiloMultilang-Login.apk', 'MiloAdmin.apk']
-          LIMIT = 200 * 1024 * 1024  # the whole point of this release
+          LIMIT = 175 * 1024 * 1024  # 140-150 MB is the goal; fail early if bloat returns
           for name in expected:
               with ZipFile(name) as archive:
                   entries = archive.namelist()
-                  abis = Counter(e.split('/')[1] for e in entries if e.startswith('lib/') and e.count('/') >= 2)
+                  infos = archive.infolist()
+              abis = Counter(e.split('/')[1] for e in entries if e.startswith('lib/') and e.count('/') >= 2)
               assert 'AndroidManifest.xml' in entries, f'{name}: missing manifest'
               assert any(e.endswith('classes.dex') for e in entries), f'{name}: missing dex'
               assert 'assets/index.android.bundle' in entries, f'{name}: needs Metro, not standalone'
@@ -125,10 +126,34 @@ jobs:
               # 190 German clips (one narrator) + 138 Russian clips must be inside.
               assert len(clips) >= 328, f'{name}: only {len(clips)} language clips bundled (328 expected)'
               assert abis.get('arm64-v8a'), f'{name}: no arm64-v8a native libraries'
+              # Exactly one CPU architecture: anything else is dead weight that
+              # used to add ~50 MB to every download.
+              extra = sorted(set(abis) - {'arm64-v8a'})
+              assert not extra, f'{name}: unwanted CPU architectures inside: {extra}'
+              # Same breakdown printed for the learner build so the log explains the size.
+              if name == 'MiloMultilang.apk':
+                  groups = defaultdict(int)
+                  for info in infos:
+                      if info.is_dir():
+                          continue
+                      path = info.filename
+                      if path.startswith('lib/'):
+                          key = 'native libraries (lib/arm64-v8a)'
+                      elif path.startswith('res/raw/') and path.endswith('.mp3'):
+                          key = 'lesson audio (res/raw mp3)'
+                      elif path.startswith('res/'):
+                          key = 'res/ (icons, fonts, splash)'
+                      elif path.startswith('assets/'):
+                          key = 'assets/ (JS bundle)'
+                      elif path.endswith('.dex'):
+                          key = 'dex (app code)'
+                      else:
+                          key = path.split('/')[0]
+                      groups[key] += info.file_size
+                  for key, value in sorted(groups.items(), key=lambda item: -item[1])[:10]:
+                      print(f'  {value / 1024 / 1024:7.1f} MB  {key}')
               size = os.path.getsize(name)
               print(f'{name}: {size / 1024 / 1024:.0f} MB, {len(clips)} language clips, native ABIs {dict(abis)}')
-              # A build that quietly re-adds three unused CPU architectures must fail
-              # here instead of shipping a 390 MB file again.
               assert size < LIMIT, f'{name}: {size / 1024 / 1024:.0f} MB is over the {LIMIT // 1024 // 1024} MB budget'
           PY
           ls -lh MiloMultilang.apk MiloMultilang-Login.apk MiloAdmin.apk

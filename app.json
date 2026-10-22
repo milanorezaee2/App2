@@ -28,6 +28,7 @@
     "plugins": [
       "expo-router",
       "./plugins/withStableLayoutDirection",
+      "./plugins/withAndroidSingleAbi",
       "expo-font",
       [
         "expo-notifications",
@@ -79,7 +80,10 @@
                 "**/libjsc.so",
                 "**/libfbjni.so"
               ]
-            }
+            },
+            "buildArchs": [
+              "arm64-v8a"
+            ]
           }
         }
       ]
