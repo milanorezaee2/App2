@@ -5,6 +5,7 @@ apk_path="MiloMultilang.apk"
 admin_apk_path="MiloAdmin.apk"
 diag_dir="${RUNNER_TEMP:-/tmp}"
 log_file="$diag_dir/milomultilang-emulator-smoke.log"
+full_logcat_file="$diag_dir/milomultilang-emulator-logcat.txt"
 ui_file="$diag_dir/milomultilang-emulator-window.xml"
 screenshot_file="$diag_dir/milomultilang-emulator-screen.png"
 remote_ui_file="/sdcard/milomultilang-window.xml"
@@ -29,7 +30,8 @@ on_exit() {
     activity_summary="$(adb shell dumpsys activity activities 2>&1 | grep -E 'mResumedActivity|topResumedActivity|ResumedActivity' | tail -n 8 | tr '\n' ' ' || true)"
     printf '%s\n' "${activity_summary:-'(no resumed activity reported)'}"
     printf '\n--- Relevant recent logcat ---\n'
-    log_summary="$(adb logcat -d -t 3000 2>&1 | grep -E 'FATAL EXCEPTION|Unable to load script|AppStartupError|ReactNativeJS|AndroidRuntime|ReactNative|SoLoader|ActivityTaskManager' | tail -n 80 || true)"
+    adb logcat -d -v threadtime -t 5000 >"$full_logcat_file" 2>&1
+    log_summary="$(grep -E 'FATAL EXCEPTION|Unable to load script|AppStartupError|ReactNativeJS|AndroidRuntime|ReactNative|SoLoader|ActivityTaskManager' "$full_logcat_file" | tail -n 80 || true)"
     printf '%s\n' "${log_summary:-'(no matching Android or React Native errors)'}"
     ui_summary='(UI hierarchy unavailable)'
     if [[ -f "$ui_file" ]]; then

@@ -190,6 +190,7 @@ jobs:
           name: android-emulator-smoke-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/milomultilang-emulator-smoke.log
+            ${{ runner.temp }}/milomultilang-emulator-logcat.txt
             ${{ runner.temp }}/milomultilang-emulator-window.xml
             ${{ runner.temp }}/milomultilang-emulator-screen.png
           if-no-files-found: warn

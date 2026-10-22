@@ -21,7 +21,7 @@ verify(ruNav.includes("'/learn/ru/pronunciation'") && ruNav.includes("'/conversa
 verify(/flexDirection: 'row-reverse'/.test(ruNav) && /flexDirection: 'row-reverse'/.test(deNav), 'Russian and German navigation remain RTL');
 verify(deNav.includes("'/conversations'"), 'German navigation links to real conversations');
 verify(logo.includes("const SUBTITLE = 'MULTILANGUAGE'"), 'startup logo displays the full MiloMultiLanguage wordmark');
-verify(/const \[fontsLoaded, fontError\] = useFonts/.test(root) && /if\s*\(!fontsLoaded && !fontError\)\s*return null/.test(root) && !/},\s*3400\)/.test(root), 'startup waits only for safe custom-font registration, not a fixed multi-second logo delay');
+verify(/const \[introComplete, setIntroComplete\] = useState\(Platform\.OS === 'web'\)/.test(root) && /const \[fontsLoaded, fontError\] = useFonts/.test(root) && /if \(!fontsLoaded && !fontError\) return;[\s\S]*?setIntroComplete\(true\)/.test(root) && /if\s*\(!fontsLoaded && !fontError\)\s*return null/.test(root) && !/},\s*3400\)/.test(root), 'startup mounts the Stack after fonts without early route replacement or a fixed logo delay');
 verify(/"name": "MiloMultiLanguage"/.test(appConfig), 'application display name uses the full brand');
 verify(/admin \? '\/admin' : '\/languages'/.test(entry), 'fresh learner and admin launches go to their home screens');
 verify(!/AsyncStorage\.clear\(/.test(root + conversations), 'normal startup and chat changes do not clear saved learner progress');

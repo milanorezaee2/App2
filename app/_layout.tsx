@@ -100,7 +100,7 @@ export default function RootLayout() {
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
-  const [introComplete] = useState(true);
+  const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   const [fontsLoaded, fontError] = useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
     // offline and independent of each Android manufacturer's system fonts.
@@ -126,7 +126,14 @@ export default function RootLayout() {
     // components apply Vazir globally, so rendering them earlier can crash Android.
     if (!fontsLoaded && !fontError) return;
     void SplashScreen.hideAsync();
-    if (Platform.OS === 'web' || startupChimePlayed) return;
+    if (Platform.OS === 'web') {
+      setIntroComplete(true);
+      return;
+    }
+    if (startupChimePlayed) {
+      setIntroComplete(true);
+      return;
+    }
 
     startupChimePlayed = true;
     try {
@@ -137,6 +144,7 @@ export default function RootLayout() {
     } catch {
       // A device without playback support still opens the learner home.
     }
+    setIntroComplete(true);
     warmSpeech('en-US');
     setTimeout(() => warmSpeech('de-DE'), 350);
   }, [fontsLoaded, fontError]);
