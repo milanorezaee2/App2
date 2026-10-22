@@ -22,8 +22,14 @@ const check = (label, value) => { assert.ok(value, label); checks += 1; };
 
 // --- the shipped packs --------------------------------------------------------
 const manifests = Object.fromEntries(narratorIds.map(id => [id, manifestOf(id)]));
-check('three narrators ship together', narratorIds.length === 3
-  && fs.readFileSync(path.join(root, 'public/audio/de/voices.json'), 'utf8').includes('"narrators"'));
+// The config decides how many voices ship. One is the size-conscious build (a
+// 40 kbps pack per voice is ~95 MB); adding a voice is a config entry plus a
+// render, and this suite then covers the extra pack automatically.
+check('every configured narrator ships with its own pack',
+  narratorIds.length >= 1
+  && fs.readFileSync(path.join(root, 'public/audio/de/voices.json'), 'utf8').includes('"narrators"')
+  && JSON.parse(fs.readFileSync(path.join(root, 'public/audio/de/voices.json'), 'utf8'))
+    .narrators.map(n => n.id).join(',') === narratorIds.join(','));
 check('every pack was built by its own neural voice',
   narratorIds.every(id => manifests[id].engine.startsWith(`Piper neural ${preset.narrators.find(n => n.id === id).voice} `)));
 check('every pack records its narrator id', narratorIds.every(id => manifests[id].narrator === id));
@@ -118,5 +124,5 @@ check('both clips of every lesson are shipped for every narrator', clips === 190
     && /setGermanAudioVoice\(activeNarratorId\)/.test(speech));
   check('German speech no longer freezes every sentence at rate 1', !/requestedRate >= 0\.85 \? 1/.test(speech));
 
-  console.log(`${checks} German narrator checks passed (three packs, guard silence, the saved choice and both players follow config/german-narrator.json).`);
+  console.log(`${checks} German narrator checks passed (${narratorIds.length} pack(s), guard silence, the saved choice and both players follow config/german-narrator.json).`);
 })().catch(error => { console.error(error); process.exit(1); });

@@ -17,14 +17,17 @@ import { toPersianDigits } from '@/lib/format';
 /**
  * The German voice page.
  *
- * Three neural narrators ship inside the app (`config/german-narrator.json`),
- * each rendered into its own pack under `public/audio/de/<id>/`. The learner
- * hears a sample of each and picks one; the choice is saved and every lesson,
- * word and review then plays that voice — always the same speaker, never a mix.
+ * The neural narrators that ship inside the app (`config/german-narrator.json`)
+ * each have their own pack under `public/audio/de/<id>/`. The learner hears a
+ * sample of each and picks one; the choice is saved and every lesson, word and
+ * review then plays that voice — always the same speaker, never a mix.
+ *
+ * The page follows the config: when the build ships one narrator it presents
+ * that one, and adding another voice later needs no change here.
  *
  * Earlier builds also listed the phone's own German voices. That is still gone:
- * the only alternatives are the three packs that ship with the app, so a phone
- * with a bad German voice cannot sneak back into the lessons.
+ * the only alternatives are the packs that ship with the app, so a phone with a
+ * bad German voice cannot sneak back into the lessons.
  */
 export default function AudioCheck() {
   const { language } = useLocalSearchParams<{ language: string }>();
@@ -91,12 +94,23 @@ export default function AudioCheck() {
 
   if (language !== 'de') return <CoursePage title="بررسی صدا پیدا نشد">{null}</CoursePage>;
 
-  return <CoursePage title="صدای آلمانی" subtitle="سه گوینده؛ شما انتخاب می‌کنید" back="/learn/de">
-    <Text style={s.notice}>بلندی صدا را بالا ببرید و حالت بی‌صدا را بررسی کنید. هر سه گوینده همراه خود برنامه ذخیره شده‌اند؛ برای شنیدنشان نه به نصب زبان آلمانی روی دستگاه نیاز است و نه به اینترنت.</Text>
+  const narratorCount = GERMAN_NARRATORS.length;
+  const choices = narratorCount > 1;
+  const subtitle = choices
+    ? `${toPersianDigits(narratorCount)} گوینده؛ شما انتخاب می‌کنید`
+    : 'گویندهٔ درس‌ها، همراه خود برنامه';
+  const notice = choices
+    ? 'بلندی صدا را بالا ببرید و حالت بی‌صدا را بررسی کنید. همهٔ گوینده‌ها همراه خود برنامه ذخیره شده‌اند؛ برای شنیدنشان نه به نصب زبان آلمانی روی دستگاه نیاز است و نه به اینترنت.'
+    : 'بلندی صدا را بالا ببرید و حالت بی‌صدا را بررسی کنید. این گوینده همراه خود برنامه ذخیره شده است؛ برای شنیدنش نه به نصب زبان آلمانی روی دستگاه نیاز است و نه به اینترنت.';
+
+  return <CoursePage title="صدای آلمانی" subtitle={subtitle} back="/learn/de">
+    <Text style={s.notice}>{notice}</Text>
 
     <View style={s.card}>
-      <Text style={s.heading}>۱. گوینده را انتخاب کنید</Text>
-      <Text style={s.small}>روی هر گزینه بزنید تا همان جملهٔ نمونه را با آن صدا بشنوید. همان لحظه انتخاب می‌شود و از این به بعد همهٔ درس‌ها با همین صدا خوانده می‌شوند.</Text>
+      <Text style={s.heading}>{choices ? '۱. گوینده را انتخاب کنید' : '۱. گویندهٔ آلمانی درس‌ها'}</Text>
+      <Text style={s.small}>{choices
+        ? 'روی هر گزینه بزنید تا همان جملهٔ نمونه را با آن صدا بشنوید. همان لحظه انتخاب می‌شود و از این به بعد همهٔ درس‌ها با همین صدا خوانده می‌شوند.'
+        : 'روی گزینه بزنید تا همان جملهٔ نمونه را با صدای درس‌ها بشنوید. همهٔ جمله‌ها، واژه‌ها و مرورها با همین صدا خوانده می‌شوند.'}</Text>
       {GERMAN_NARRATORS.map(narrator => {
         const isSelected = narrator.id === selected;
         return (
@@ -120,7 +134,7 @@ export default function AudioCheck() {
               {playing === narrator.id ? '🔊 ' : ''}{narrator.nameFa}{isSelected ? ' ✓' : ''}
             </Text>
             <Text style={s.small}>{narrator.descriptionFa} · {toPersianDigits(narrator.wordsPerMinute)} کلمه در دقیقه</Text>
-            <Text style={s.small}>{isSelected ? 'انتخاب‌شده' : 'برای شنیدن و انتخاب بزنید'}</Text>
+            <Text style={s.small}>{isSelected ? (choices ? 'انتخاب‌شده' : 'گویندهٔ فعال') : (choices ? 'برای شنیدن و انتخاب بزنید' : 'برای شنیدن نمونه بزنید')}</Text>
           </Pressable>
         );
       })}

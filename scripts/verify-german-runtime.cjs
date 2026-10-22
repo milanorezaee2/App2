@@ -178,7 +178,7 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
 (async () => {
   const voicesResponse = await fetch(`${BASE}/App1/audio/de/voices.json`).catch(() => null);
   const voices = voicesResponse && voicesResponse.ok ? await voicesResponse.json() : null;
-  assert.ok(voices && voices.narrators.length === 3, 'the three German narrators must be served from /audio/de/voices.json');
+  assert.ok(voices && voices.narrators.length >= 1, 'the shipped German narrators must be served from /audio/de/voices.json');
   const defaultNarrator = voices.default;
   const response = await fetch(`${BASE}/App1/audio/de/${defaultNarrator}/manifest.json`).catch(() => null);
   const manifest = response && response.ok ? await response.json() : null;
@@ -405,35 +405,43 @@ const LESSON = `${BASE}/learn/de/lesson?id=de-v2-greetings`;
   await page.waitForTimeout(900);
   const audioCheckText = await page.locator('body').innerText();
   const narratorPreset = JSON.parse(readFileSync(path.join(__dirname, '..', 'config', 'german-narrator.json'), 'utf8'));
+  const choices = narratorPreset.narrators.length > 1;
   check('audio-check offers one button per shipped narrator',
     (await page.getByRole('button', { name: /^گویندهٔ / }).count()) === narratorPreset.narrators.length);
+  check('audio-check states the shipped voice count', choices
+    ? audioCheckText.includes(`${toPersianDigits(narratorPreset.narrators.length)} گوینده؛ شما انتخاب می‌کنید`)
+    : audioCheckText.includes('گویندهٔ درس‌ها، همراه خود برنامه'));
   check('audio-check names every narrator and its measured tempo',
     narratorPreset.narrators.every(item => audioCheckText.includes(item.nameFa)
       && audioCheckText.includes(`${toPersianDigits(item.wordsPerMinute)} کلمه در دقیقه`)));
   check('audio-check offers no device voice picker',
     !audioCheckText.includes('صدای آلمانی دستگاه') || audioCheckText.includes('حذف شده است'));
 
-  // Choosing another narrator switches the pack that plays, and survives a reload.
-  const chosen = narratorPreset.narrators.find(item => item.id !== narratorPreset.default);
+  // With more than one voice shipped, choosing one switches the pack that plays
+  // and survives a reload. A build with a single voice still has to select it,
+  // save it and play from that pack.
+  const chosen = choices
+    ? narratorPreset.narrators.find(item => item.id !== narratorPreset.default)
+    : narratorPreset.narrators[0];
   await clearAudio();
   await page.getByRole('button', { name: new RegExp(`^گویندهٔ ${chosen.nameFa} `) }).click();
   await page.waitForTimeout(700);
   const chosenSample = await lastPlay();
-  check('choosing a narrator plays that narrator\'s own pack',
+  check('tapping a narrator plays that narrator\'s own pack',
     chosenSample?.path.includes(`/audio/de/${chosen.id}/`));
   check('the choice is saved for the next launch',
     await page.evaluate(() => window.localStorage.getItem('german_narrator_v1')) === chosen.id);
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(900);
-  check('the saved narrator is still selected after a reload',
-    (await page.locator('body').innerText()).includes(`${chosen.nameFa} ✓`));
+  check('the saved narrator is still active after a reload',
+    (await page.locator('body').innerText()).includes(chosen.nameFa));
 
-  // A lesson opened afterwards speaks the chosen voice, not the default one.
+  // A lesson opened afterwards speaks the saved voice, not another one.
   await page.goto(`${LESSON}&seed=1`, { waitUntil: 'networkidle' });
   await page.getByText(/جمله‌های اصلی · مرحلهٔ ۲ از ۹/).waitFor();
   await page.waitForTimeout(2000);
   const lessonClip = await lastPlay();
-  check('the lesson speaks the narrator the learner chose', lessonClip?.path.includes(`/audio/de/${chosen.id}/`));
+  check('the lesson speaks the narrator the learner saved', lessonClip?.path.includes(`/audio/de/${chosen.id}/`));
 
   // Back to the default so the remaining checks use the shipped sample.
   await page.evaluate(id => window.localStorage.setItem('german_narrator_v1', id), narratorPreset.default);

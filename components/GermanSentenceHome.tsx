@@ -365,9 +365,9 @@ export default function GermanSentenceHome() {
               <View style={styles.quickCopy}><Text style={styles.quickTitle}>پیداکردن نقطهٔ شروع</Text><Text style={styles.quickDesc}>سنجش کوتاه و اختیاری برای انتخاب سطح آلمانی</Text></View>
               <ChevronLeft size={17} color={Palette.muted} />
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="انتخاب صدای آلمانی درس‌ها" accessibilityHint="سه گوینده؛ روی هر کدام بزنید تا نمونه را بشنوید و همان را انتخاب کنید" style={styles.quickCard} onPress={() => router.push('/learn/de/audio-check' as never)}>
+            <Pressable accessibilityRole="button" accessibilityLabel="صدای آلمانی درس‌ها" accessibilityHint="شنیدن نمونهٔ گوینده‌ای که همهٔ جمله‌ها را می‌خواند" style={styles.quickCard} onPress={() => router.push('/learn/de/audio-check' as never)}>
               <View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><Volume2 size={19} color={Palette.primary} /></View>
-              <View style={styles.quickCopy}><Text style={styles.quickTitle}>صدای آلمانی</Text><Text style={styles.quickDesc}>انتخاب گوینده از سه صدا و شنیدن نمونه</Text></View>
+              <View style={styles.quickCopy}><Text style={styles.quickTitle}>صدای آلمانی</Text><Text style={styles.quickDesc}>شنیدن نمونهٔ گویندهٔ درس‌ها</Text></View>
               <ChevronLeft size={17} color={Palette.muted} />
             </Pressable>
             <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/de/backup' as never)}>
