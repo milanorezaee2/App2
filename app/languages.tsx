@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { createAudioPlayer } from 'expo-audio';
 import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -13,9 +12,12 @@ import { SENTENCE_LESSONS } from '@/lib/courseContent';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
+import { playWelcomeVoice } from '@/lib/welcomeVoice';
 
 // The welcome voice plays once per app session, when the main language screen appears.
 let welcomeVoicePlayed = false;
+/** Long enough for the startup chime (1.65 s from launch) to finish first. */
+const WELCOME_DELAY_MS = 1100;
 
 const languageMeta = {
   en: { flag: '🇬🇧', code: 'EN', nativeName: 'English', tint: '#EAF2FF', border: '#CFE0FF' },
@@ -50,18 +52,15 @@ export default function LanguagesHome() {
   useEffect(() => {
     if (welcomeVoicePlayed) return;
     welcomeVoicePlayed = true;
-    // Start after the intro chime has fully finished, so the two never overlap.
+    // The startup chime lasts ~1.65 s from app launch and this screen appears at
+    // ~0.7 s, so waiting 1.1 s here means the greeting starts right after the
+    // chime has finished instead of talking over it. The greeting itself uses the
+    // phone's own English voice (see lib/welcomeVoice.ts); the bundled clip is
+    // only the fallback for browsers without a speech engine.
     const start = setTimeout(() => {
-      try {
-        const player = createAudioPlayer(require('../assets/audio/welcome-voice.wav'));
-        player.volume = 0.9;
-        player.play();
-        setTimeout(() => player.remove(), 4000);
-      } catch {
-        // Devices without audio playback still show the screen normally.
-      }
-    }, 400);
-    void start;
+      void playWelcomeVoice();
+    }, WELCOME_DELAY_MS);
+    return () => clearTimeout(start);
   }, []);
 
   const openSupport = () => {

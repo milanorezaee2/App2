@@ -10,7 +10,7 @@ export type LearningLanguage = 'en' | 'de' | 'ru';
 
 const routes: Record<LearningLanguage, { home: string; pronunciation: string; library: string; review: string }> = {
   en: { home: '/lang', pronunciation: '/learn/en/pronunciation', library: '/lang/library', review: '/review' },
-  de: { home: '/learn/de', pronunciation: '/learn/de/pronunciation', library: '/learn/de/library', review: '/learn/de/reviews' },
+  de: { home: '/learn/de', pronunciation: '/learn/de/pronunciation', library: '/learn/de/library', review: '/learn/de/review' },
   ru: { home: '/learn/ru', pronunciation: '/learn/ru/pronunciation', library: '/learn/ru/library', review: '/learn/ru/review' },
 };
 

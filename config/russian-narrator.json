@@ -1,0 +1,21 @@
+{
+  "default": "irina",
+  "selection": "single-narrator",
+  "narrators": [
+    {
+      "id": "irina",
+      "engine": "piper",
+      "voice": "ru_RU-irina-medium",
+      "model": "scripts/voice-models/ru_RU-irina-medium.onnx",
+      "modelConfig": "scripts/voice-models/ru_RU-irina-medium.onnx.json",
+      "modelMirror": "Achotna/Vocodio:piper_voices",
+      "speakerId": 0,
+      "lengthScale": 0.9,
+      "noiseScale": 0.667,
+      "noiseW": 0.8,
+      "nameFa": "ایرینا",
+      "descriptionFa": "زن، آرام، مهربان و شیوا",
+      "wordsPerMinute": 147
+    }
+  ]
+}

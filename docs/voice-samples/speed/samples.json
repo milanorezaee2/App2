@@ -1,0 +1,57 @@
+{
+ "lines": [
+  "Hallo! Wie geht es dir?",
+  "Ich heiße Mina. Ich komme aus dem Iran.",
+  "Guten Morgen! Ich möchte einen Kaffee, bitte."
+ ],
+ "targetWordsPerMinute": 138,
+ "selection": "three-narrators",
+ "options": [
+  {
+   "id": "v6",
+   "file": "v6-kerstin-warm.mp3",
+   "model": "de_DE-kerstin-low",
+   "narrator": "kerstin",
+   "lengthScale": 1.35,
+   "wordsPerMinute": 155,
+   "packWordsPerMinute": 141,
+   "fa": "کرستین — زن، نرم و گرم و مهربان",
+   "detail": "صدای زنانهٔ آرام و مهربان",
+   "seconds": 8.94,
+   "bytes": 53916,
+   "at": 1.5
+  },
+  {
+   "id": "v7",
+   "file": "v7-ramona-warm.mp3",
+   "model": "de_DE-ramona-low",
+   "narrator": "ramona",
+   "lengthScale": 1.45,
+   "wordsPerMinute": 155,
+   "packWordsPerMinute": 149,
+   "fa": "رامونا — زن، روشن و شاداب",
+   "detail": "تُن کمی بالاتر و شاداب‌تر",
+   "seconds": 8.66,
+   "bytes": 52192,
+   "at": 12.4
+  },
+  {
+   "id": "v8",
+   "file": "v8-eva-bright.mp3",
+   "model": "de_DE-eva_k-x_low",
+   "narrator": "eva",
+   "lengthScale": 1.0,
+   "wordsPerMinute": 139,
+   "packWordsPerMinute": 151,
+   "fa": "اِوا — زن جوان و بسیار واضح",
+   "detail": "وضوح بیشتر، کمی خشک‌تر",
+   "seconds": 10.07,
+   "bytes": 60656,
+   "at": 23.1
+  }
+ ],
+ "compare": {
+  "file": "compare-all.mp3",
+  "seconds": 33.92
+ }
+}

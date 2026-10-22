@@ -6,6 +6,23 @@ import { BookOpenCheck } from 'lucide-react-native';
 const LETTERS = ['M', 'i', 'l', 'o'];
 const SUBTITLE = 'MULTILANGUAGE';
 
+/**
+ * Timing budget.
+ *
+ * The intro screen lives exactly `INTRO_DURATION_MS` (1200 ms) in `app/_layout.tsx`.
+ * Older values finished the animation just before the intro ended, so the app
+ * opened while the learner was still reading: only "Milo" had registered and
+ * the MULTILANGUAGE line flashed past. The whole brand now finishes at ~615 ms,
+ * which leaves ~0.6 s of stillness on "Milo / MULTILANGUAGE" — long enough to
+ * read, still far shorter than a second of waiting.
+ */
+const MARK_MS = 160;
+const SHEEN_MS = 260;
+const LETTER_STAGGER_MS = 45;
+const LETTER_MS = 150;
+const TAGLINE_DELAY_MS = 30;
+const TAGLINE_MS = 140;
+
 type Props = {
   /** `intro` is the large startup logo; `header` is the compact in-app logo. */
   size?: 'intro' | 'header';
@@ -34,12 +51,21 @@ export function MiloLogoMotion({ size = 'intro', play = true, onDone }: Props) {
   useEffect(() => {
     if (!play) return;
     const sequence = Animated.sequence([
-      Animated.spring(mark, { toValue: 1, friction: 6, tension: 70, useNativeDriver: true }),
+      Animated.timing(mark, { toValue: 1, duration: MARK_MS, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.parallel([
-        Animated.timing(sheen, { toValue: 1, duration: 760, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.stagger(120, letters.map(value => Animated.spring(value, { toValue: 1, friction: 7, tension: 95, useNativeDriver: true }))),
+        Animated.timing(sheen, { toValue: 1, duration: SHEEN_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.stagger(
+          LETTER_STAGGER_MS,
+          letters.map(value => Animated.timing(value, {
+            toValue: 1,
+            duration: LETTER_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          })),
+        ),
       ]),
-      Animated.timing(tagline, { toValue: 1, duration: 380, useNativeDriver: true }),
+      Animated.delay(TAGLINE_DELAY_MS),
+      Animated.timing(tagline, { toValue: 1, duration: TAGLINE_MS, useNativeDriver: true }),
     ]);
     sequence.start(({ finished }) => { if (finished) doneRef.current?.(); });
     return () => sequence.stop();

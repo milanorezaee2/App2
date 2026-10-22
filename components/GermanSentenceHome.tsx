@@ -1,8 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import {
   BookOpen,
   BookOpenCheck,
@@ -25,6 +24,7 @@ import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { GermanBottomNav } from '@/components/GermanBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
 import { SHARED_JOURNEY_GRADIENTS } from '@/components/RussianHome';
+import { levelBadgeLabel, levelRailLabel, levelStatementFa } from '@/lib/languages/levelPresentation';
 import type { CourseLevelId } from '@/lib/courseContent';
 import { toPersianDigits as fa } from '@/lib/format';
 import {
@@ -36,7 +36,8 @@ import {
 import { germanProgress } from '@/lib/languages/catalog';
 import { syncPersonalLearningData } from '@/lib/personalLearningSync';
 import type { CourseProgress } from '@/lib/createCourseProgressStore';
-import { preloadSpeechVoices, resolveRequiredSpeechOptions } from '@/lib/speechLanguage';
+import { primeGermanSpeech, probeGermanVoice, speakGerman, stopGermanSpeech, subscribeGermanVoiceStatus, loadGermanNarratorPreference } from '@/lib/germanSpeech';
+import { setGermanAudioLesson } from '@/lib/germanAudio';
 import { germanHomeStyles as styles } from './germanHomeStyles';
 
 const GERMAN_RAIL_LEVELS = GERMAN_SENTENCE_LEVELS.map((level, index) => ({
@@ -54,7 +55,11 @@ export default function GermanSentenceHome() {
 
   useFocusEffect(useCallback(() => {
     let alive = true;
-    void preloadSpeechVoices();
+    primeGermanSpeech();
+    probeGermanVoice();
+    // Apply the narrator the learner picked last time before the first clip of
+    // this visit is requested.
+    void loadGermanNarratorPreference();
     const refreshLocal = () => Promise.all([germanProgress.getCourseProgress(), germanProgress.getDueReviewCards()])
       .then(([nextProgress, due]) => {
         if (!alive) return;
@@ -68,17 +73,20 @@ export default function GermanSentenceHome() {
       if (result.status === 'synced') return refreshLocal();
       return undefined;
     }).catch(() => undefined);
-    return () => { alive = false; void Speech.stop(); };
+    return () => { alive = false; void stopGermanSpeech(); };
   }, [retry]));
 
-  const speakGerman = useCallback((text: string) => {
-    void Speech.stop();
-    void resolveRequiredSpeechOptions('de-DE').then(targetVoice => {
-      if (!targetVoice) {
-        setError('صدای آلمانیِ آفلاین پیدا نشد؛ در تنظیمات گفتار دستگاه، صدای آلمانی (آلمان) را دانلود کنید و دوباره امتحان کنید.');
-        return;
-      }
-      Speech.speak(text, { ...targetVoice, rate: 0.78 });
+  useEffect(() => subscribeGermanVoiceStatus(() => undefined), []);
+
+  const playGerman = useCallback((text: string, kind: 'sentence' | 'word' = 'sentence') => {
+    // The hero card always shows the resume lesson; the effect below keeps the
+    // audio context pointed at that lesson's pack.
+    setError('');
+    speakGerman({
+      text,
+      kind,
+      rate: 0.9,
+      onError: () => setError('پخش صدای آلمانی انجام نشد؛ بلندی صدا و حالت بی‌صدا را بررسی کنید و دوباره تلاش کنید.'),
     });
   }, []);
 
@@ -107,6 +115,28 @@ export default function GermanSentenceHome() {
   const isCourseComplete = lessonCount > 0 && completed === lessonCount;
   const heroGradient = SHARED_JOURNEY_GRADIENTS[currentLevel.id] ?? SHARED_JOURNEY_GRADIENTS[0];
 
+  // The Russian home fills its core-sentence card with the first sentence's
+  // pattern and vocabulary. A German first sentence often carries a single word
+  // ("Hallo!"), which made the German card look empty by comparison. Fill it the
+  // same way, using the current sentence first and then the lesson's own words.
+  const heroPattern = currentSentence.pattern
+    ?? currentLesson.sentences.find(sentence => sentence.pattern)?.pattern
+    ?? '';
+  const heroWords: { word: string; meaning: string }[] = [];
+  const seenHeroWords = new Set<string>();
+  for (const sentence of currentLesson.sentences) {
+    for (const item of sentence.vocabulary) {
+      const key = item.word.toLowerCase();
+      if (seenHeroWords.has(key)) continue;
+      seenHeroWords.add(key);
+      heroWords.push({ word: item.word, meaning: item.meaning });
+      if (heroWords.length === 7) break;
+    }
+    if (heroWords.length === 7) break;
+  }
+
+  useEffect(() => { setGermanAudioLesson(currentLesson.id); }, [currentLesson.id]);
+
   const openLevel = (levelId: number) => router.push(`/learn/de/library?level=${levelId}` as never);
   const openLesson = (id: string) => router.push({ pathname: '/learn/[language]/lesson', params: { language: 'de', id } } as never);
 
@@ -133,7 +163,7 @@ export default function GermanSentenceHome() {
             <View style={styles.heroTopRow}>
               <View style={styles.heroLevelBadge}>
                 <View style={styles.heroBadgeDot} />
-                <Text style={styles.heroLevelText}>LEVEL {currentLevel.id} · {currentLevel.cefr === 'مقدماتی' ? 'PRE-A1' : currentLevel.cefr}</Text>
+                <Text style={styles.heroLevelText}>{levelBadgeLabel(currentLevel.id, currentLevel.title, currentLevel.cefr)}</Text>
               </View>
               <Text style={styles.heroCourseLabel}>CORE PATH</Text>
             </View>
@@ -146,25 +176,26 @@ export default function GermanSentenceHome() {
 
             {currentSentence ? (
               <View style={styles.sentenceShowcase}>
-                <Pressable accessibilityRole="button" accessibilityLabel={`پخش تلفظ آلمانی: ${currentSentence.text}`} style={styles.sentenceShowcaseTop} onPress={() => speakGerman(currentSentence.text)}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`پخش تلفظ آلمانی: ${currentSentence.text}`} style={styles.sentenceShowcaseTop} onPress={() => playGerman(currentSentence.text)}>
                   <View style={styles.sentenceLabelIcon}><Volume2 size={14} color="#C8C9FF" /></View>
                   <Text style={styles.sentenceLabel}>جملهٔ کلیدی این درس</Text>
                   <Text style={styles.sentenceLabelEn}>CORE SENTENCE</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جمله: ${currentSentence.text}`} onPress={() => speakGerman(currentSentence.text)}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جمله: ${currentSentence.text}`} onPress={() => playGerman(currentSentence.text)}>
                   <Text style={styles.sentenceGerman}>{currentSentence.text}</Text>
                 </Pressable>
                 <Text style={styles.sentencePersian}>{currentSentence.fa}</Text>
-                {currentSentence.pattern ? (
+                <Text style={styles.sentencePronunciation}>{currentSentence.pronunciation}</Text>
+                {heroPattern ? (
                   <View style={styles.sentencePattern}>
                     <Text style={styles.sentencePatternLabel}>الگوی جمله‌سازی:</Text>
-                    <Text style={styles.sentencePatternText}>{currentSentence.pattern}</Text>
+                    <Text style={styles.sentencePatternText}>{heroPattern}</Text>
                   </View>
                 ) : null}
-                {!!currentSentence.vocabulary.length && (
+                {!!heroWords.length && (
                   <View style={styles.wordChipRow}>
-                    {currentSentence.vocabulary.map(item => (
-                      <Pressable key={`${currentSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`تلفظ واژه آلمانی: ${item.word}`} style={styles.wordChip} onPress={() => speakGerman(item.word)}>
+                    {heroWords.map(item => (
+                      <Pressable key={`${currentSentence.id}-${item.word}`} accessibilityRole="button" accessibilityLabel={`تلفظ واژه آلمانی: ${item.word}`} style={styles.wordChip} onPress={() => playGerman(item.word, 'word')}>
                         <Text style={styles.wordChipEn}>{item.word}</Text>
                         <Text style={styles.wordChipDivider}>·</Text>
                         <Text style={styles.wordChipFa}>{item.meaning}</Text>
@@ -199,7 +230,7 @@ export default function GermanSentenceHome() {
             <View style={styles.panelHeadingRow}>
               <View style={styles.panelHeadingText}>
                 <Text style={styles.panelEyebrow}>THE MAIN CURRICULUM</Text>
-                <Text style={styles.panelTitle}>مسیر یادگیری</Text>
+                <Text style={styles.panelTitle}>مسیر یادگیری آلمانی</Text>
               </View>
               <Pressable accessibilityRole="button" style={styles.libraryLink} onPress={() => router.push('/learn/de/library' as never)}>
                 <Text style={styles.libraryLinkText}>کتابخانه</Text>
@@ -211,21 +242,19 @@ export default function GermanSentenceHome() {
               <EnglishLevelRail
                 activeLevelId={currentLevel.id as CourseLevelId}
                 counts={levelCounts}
-                levels={GERMAN_RAIL_LEVELS.map((level, index) => ({ ...level, title: index === 0 ? 'مقدماتی' : level.cefr }))}
-                startLabel="مقدماتی"
+                levels={GERMAN_RAIL_LEVELS.map(level => ({ ...level, cefr: levelRailLabel(level) }))}
                 accessibilityLabelPrefix="فهرست درس‌های"
                 direction="rtl"
                 accentColor={Palette.primary}
                 successColor={Palette.success}
                 activeLabelColor={Palette.primaryDark}
-                numberOffset={1}
                 onSelect={openLevel}
               />
             </View>
 
             <View style={styles.currentLevelRow}>
               <View style={styles.currentLevelCopy}>
-                <Text style={styles.currentLevelEyebrow}>اکنون · {currentLevel.cefr}</Text>
+                <Text style={styles.currentLevelEyebrow}>{levelStatementFa(currentLevel.id)}</Text>
                 <Text style={styles.currentLevelName}>{currentLevel.title}</Text>
                 <Text style={styles.currentLevelDescription}>{currentLevel.description}</Text>
               </View>
@@ -311,7 +340,7 @@ export default function GermanSentenceHome() {
           </View>
 
           <View style={styles.quickRow}>
-            <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/de/reviews' as never)}>
+            <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/de/review' as never)}>
               <View style={[styles.quickIcon, { backgroundColor: Palette.tealSoft }]}><RefreshCw size={19} color={Palette.teal} /></View>
               <View style={styles.quickCopy}><Text style={styles.quickTitle}>مرور امروز</Text><Text style={styles.quickDesc}>جمله‌های آلمانی با موعد مرور</Text></View>
               <ChevronLeft size={17} color={Palette.muted} />
@@ -334,6 +363,11 @@ export default function GermanSentenceHome() {
             <Pressable accessibilityRole="button" accessibilityLabel="سنجش آغازین آلمانی برای انتخاب نقطهٔ شروع" style={styles.quickCard} onPress={() => router.push({ pathname: '/placement', params: { language: 'de' } } as never)}>
               <View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><Compass size={19} color={Palette.primary} /></View>
               <View style={styles.quickCopy}><Text style={styles.quickTitle}>پیداکردن نقطهٔ شروع</Text><Text style={styles.quickDesc}>سنجش کوتاه و اختیاری برای انتخاب سطح آلمانی</Text></View>
+              <ChevronLeft size={17} color={Palette.muted} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="صدای آلمانی درس‌ها" accessibilityHint="شنیدن نمونهٔ گوینده‌ای که همهٔ جمله‌ها را می‌خواند" style={styles.quickCard} onPress={() => router.push('/learn/de/audio-check' as never)}>
+              <View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><Volume2 size={19} color={Palette.primary} /></View>
+              <View style={styles.quickCopy}><Text style={styles.quickTitle}>صدای آلمانی</Text><Text style={styles.quickDesc}>شنیدن نمونهٔ گویندهٔ درس‌ها</Text></View>
               <ChevronLeft size={17} color={Palette.muted} />
             </Pressable>
             <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/de/backup' as never)}>

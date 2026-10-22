@@ -13,8 +13,16 @@ import * as Speech from 'expo-speech';
 import { registerNativeVoiceFetcher } from '@/lib/speechLanguage';
 
 registerNativeVoiceFetcher(() => Speech.getAvailableVoicesAsync());
-import { Inter_400Regular, Inter_600SemiBold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
-import { Vazirmatn_400Regular, Vazirmatn_500Medium, Vazirmatn_700Bold, Vazirmatn_900Black } from '@expo-google-fonts/vazirmatn';
+// Import each weight from its own entry point. Importing from the package root
+// makes Metro bundle every weight of the family (20 Inter + 10 Vazirmatn files,
+// ~7 MB inside the APK) even though only these seven are ever used.
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_800ExtraBold } from '@expo-google-fonts/inter/800ExtraBold';
+import { Vazirmatn_400Regular } from '@expo-google-fonts/vazirmatn/400Regular';
+import { Vazirmatn_500Medium } from '@expo-google-fonts/vazirmatn/500Medium';
+import { Vazirmatn_700Bold } from '@expo-google-fonts/vazirmatn/700Bold';
+import { Vazirmatn_900Black } from '@expo-google-fonts/vazirmatn/900Black';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';
@@ -25,6 +33,7 @@ import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
 import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
+import { clearLegacyGermanVoiceChoices } from '@/lib/germanSpeech';
 import { RUSSIAN_ONLY_BUILD } from '@/lib/features';
 
 // Android native mirroring is disabled in withStableLayoutDirection. Persian
@@ -56,6 +65,16 @@ stableInput.defaultProps = {
 SplashScreen.preventAutoHideAsync();
 
 let startupChimePlayed = false;
+/**
+ * How long the brand animation stays up before the first screen appears.
+ *
+ * The animation itself finishes at ~615 ms (see `components/MiloLogoMotion.tsx`),
+ * so this leaves ~0.6 s in which "Milo / MULTILANGUAGE" sits still and can be
+ * read. It used to be 900 ms — the learner only caught the word "Milo" before
+ * the app opened — and before that a hard 3400 ms on every launch, which is why
+ * this is a single explicit number rather than an open-ended splash.
+ */
+const INTRO_DURATION_MS = 1200;
 const IS_ADMIN_APP = Constants.expoConfig?.extra?.appRole === 'admin'
   || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
 
@@ -122,6 +141,13 @@ export default function RootLayout() {
     'Vazirmatn-Bold': Vazirmatn_700Bold,
   });
 
+  // An install that was upgraded from a build with a voice picker may still hold
+  // the old device-voice choice. The German course has one narrator now, so that
+  // stored choice is deleted once, off the startup path.
+  useEffect(() => {
+    clearLegacyGermanVoiceChoices();
+  }, []);
+
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
     void SplashScreen.hideAsync();
@@ -135,8 +161,12 @@ export default function RootLayout() {
       return;
     }
 
-    // Keep the full MiloMultiLanguage identity visible through its complete
-    // animation before revealing the first screen; no startup state is reset.
+    // The brand animation is a short greeting, not a loading screen: the app used
+    // to stay on it for a fixed 3.4 s on every launch, which is the "app takes
+    // seconds to open" complaint. It now stays exactly as long as the complete
+    // logo needs — the mark, the whole word "Milo" and the MULTILANGUAGE line
+    // underneath — so the name is never cut off after a flash of "Milo" only.
+    // The chime keeps playing on top of the first screen instead of blocking it.
     startupChimePlayed = true;
     let player: ReturnType<typeof createAudioPlayer> | null = null;
     try {
@@ -146,12 +176,20 @@ export default function RootLayout() {
     } catch {
       // A device without playback support still receives the same visual intro.
     }
+    // Warm the speech engines off the critical path, right away.
+    warmSpeech('en-US');
+    setTimeout(() => warmSpeech('de-DE'), 350);
     const finish = setTimeout(() => {
-      player?.remove();
       setIntroComplete(true);
-      warmSpeech('en-US');
-      setTimeout(() => warmSpeech('de-DE'), 350);
-    }, 3400);
+      // Silence the short chime once its natural length has passed.
+      setTimeout(() => {
+        try {
+          player?.remove();
+        } catch {
+          /* already released */
+        }
+      }, 1600);
+    }, INTRO_DURATION_MS);
     return () => clearTimeout(finish);
   }, [fontsLoaded, fontError]);
 

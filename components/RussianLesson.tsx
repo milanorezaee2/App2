@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
 import { BookOpenCheck, Check, ChevronLeft, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 const RUSSIAN_LESSON_GRADIENTS: Record<number, [string, string]> = {
@@ -16,11 +15,12 @@ import { PageNavigation } from '@/components/PageNavigation';
 import RussianSentenceBuilder from '@/components/RussianSentenceBuilder';
 import RussianDialoguePractice from '@/components/RussianDialoguePractice';
 import { clearRussianLessonSession, loadRussianLessonSession, saveRussianLessonSession } from '@/lib/languages/russianStudyState';
-import { findLanguage } from '@/lib/languages/catalog';
 import { RUSSIAN_LESSONS, RUSSIAN_LEVELS, RUSSIAN_LESSON_STAGES, russianProgress, type RussianCourseLesson } from '@/lib/languages/russian';
 import type { RussianLessonSession } from '@/lib/languages/russianStudyState';
 import { toPersianDigits as fa } from '@/lib/format';
-import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
+import { primeRussianSpeech, speakRussian, stopRussianSpeech } from '@/lib/russianSpeech';
+import { LessonSituationStage } from '@/components/LessonSituation';
+import { levelBadgeLabel } from '@/lib/languages/levelPresentation';
 import { Typography } from '@/lib/theme';
 
 const stages = RUSSIAN_LESSON_STAGES;
@@ -58,9 +58,10 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
   }, [lesson]);
   const grammarPatterns = lesson.sentences.flatMap(sentence => sentence.pattern ? [{ sentence, pattern: sentence.pattern }] : []);
 
-  // Warm up the device speech engine so the first Russian sentence is not delayed.
+  // Warm the bundled pack and the device cover so the first sentence of the
+  // lesson starts immediately.
   useEffect(() => {
-    void Speech.getAvailableVoicesAsync().catch(() => undefined);
+    primeRussianSpeech();
   }, []);
 
   useEffect(() => {
@@ -69,7 +70,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     setSessionReady(false);
     setSessionError('');
     setCompletionError('');
-    void preloadSpeechVoices();
+    primeRussianSpeech();
     void loadRussianLessonSession(lesson.id).then(saved => {
       if (!alive) return;
       setStage(saved.stage);
@@ -81,7 +82,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     }).catch(() => {
       if (alive) setSessionError('جلسهٔ قبلی خوانده نشد؛ برای حفظ اطلاعات، ذخیره متوقف است. دوباره تلاش کنید.');
     });
-    return () => { alive = false; void Speech.stop(); };
+    return () => { alive = false; stopRussianSpeech(); };
   }, [lesson.id, lesson.sentences.length, loadingRetry]);
 
   useEffect(() => {
@@ -94,20 +95,20 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
 
   const speak = useCallback((text: string, rate = 0.78) => {
     setSpeechError('');
-    void Speech.stop();
-    void resolveSpeechOptions(findLanguage('ru')!.speechLocale).then(targetVoice => {
-      Speech.speak(text, {
-        ...targetVoice,
-        rate,
-        onError: () => setSpeechError('صدای روسی دستگاه در دسترس نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
-      });
+    // The narrator that ships inside the app reads the sentence; the phone's
+    // Russian voice only covers a clip that cannot start at all.
+    speakRussian({
+      text,
+      lessonId: lesson.id,
+      rate,
+      onError: () => setSpeechError('صدای روسی دستگاه در دسترس نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
     });
-  }, []);
+  }, [lesson.id]);
 
   useEffect(() => {
     if (!sessionReady || (stage !== 1 && stage !== 3) || !current?.text) return;
     const timer = setTimeout(() => speak(current.text, NORMAL_SPEECH_RATE), 100);
-    return () => { clearTimeout(timer); void Speech.stop(); };
+    return () => { clearTimeout(timer); stopRussianSpeech(); };
   }, [sessionReady, stage, sentenceIndex, lesson.id, speak]);
 
   const selectSentence = (index: number, rate = 0.72) => {
@@ -119,7 +120,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
 
   const next = async () => {
     if (!sessionReady || sessionError || completing.current || saving) return;
-    void Speech.stop();
+    stopRussianSpeech();
     setCompletionError('');
     if (stage === 1 && sentenceIndex < lesson.sentences.length - 1) {
       const nextIndex = sentenceIndex + 1;
@@ -161,7 +162,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
         <View style={styles.headerTop}>
           <PageNavigation tone="dark" backFallback="/learn/ru" />
           <View style={styles.headerText}>
-            <Text style={styles.headerEyebrow}>LEVEL {courseLevel.id} · {courseLevel.title.toUpperCase()}</Text>
+            <Text style={styles.headerEyebrow}>{levelBadgeLabel(courseLevel.id, courseLevel.title)}</Text>
             <Text style={styles.headerTitle}>{lesson.title}</Text>
             <Text style={styles.headerSub}>{stages[stage].labelFa} · مرحلهٔ {fa(stage + 1)} از {fa(stages.length)}</Text>
           </View>
@@ -181,14 +182,24 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
 
       {!!(sessionError || speechError) && <Text accessibilityRole="alert" style={styles.error}>{sessionError || speechError}</Text>}
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {stage === 0 && <View style={styles.centerStage}>
-          <View style={styles.bigIcon}><Sparkles size={34} color={Palette.warning} /></View>
-          <Text style={styles.stageEyebrow}>موقعیت واقعی</Text>
-          <Text style={styles.stageTitle}>{lesson.title}</Text>
-          <Text style={styles.situation}>{lesson.situation}</Text>
-          <View style={styles.promiseCard}><Text style={styles.promiseTitle}>در پایان این درس می‌توانید:</Text><Text style={styles.promiseText}>با {fa(lesson.sentences.length)} جملهٔ کوتاه، این موقعیت را مدیریت کنید.</Text></View>
-          {lesson.teachingFa ? <View style={styles.noteCard}><Text style={styles.noteTitle}>نکتهٔ روسی به فارسی</Text><Text style={styles.noteText}>{lesson.teachingFa}</Text></View> : null}
-        </View>}
+        {stage === 0 && (
+          <LessonSituationStage
+            title={lesson.title}
+            situation={lesson.situation}
+            sentenceCount={lesson.sentences.length}
+            teaching={lesson.teachingFa}
+            teachingLabel="نکتهٔ روسی به فارسی"
+            palette={{
+              primary: Palette.primary,
+              primarySoft: Palette.primarySoft,
+              primaryDark: Palette.primaryDark,
+              border: Palette.border,
+              surface: Palette.surface,
+              text: Palette.text,
+              warning: Palette.warning,
+            }}
+          />
+        )}
 
         {stage === 1 && <View style={styles.sentenceStage}>
           <Text style={styles.counter}>جملهٔ {fa(sentenceIndex + 1)} از {fa(lesson.sentences.length)}</Text>

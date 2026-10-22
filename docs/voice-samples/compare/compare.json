@@ -1,0 +1,39 @@
+{
+ "speed": 140,
+ "pitch": 52,
+ "lines": [
+  "Hallo! Wie geht es dir?",
+  "Mir geht es gut, danke. Und dir?",
+  "Guten Morgen! Ich möchte einen Kaffee, bitte.",
+  "Bis bald! Schönen Tag noch."
+ ],
+ "clips": [
+  {
+   "id": "a",
+   "voice": "de+f3",
+   "fa": "گویندهٔ فعلی برنامه",
+   "detail": "زن، گرم و متعادل",
+   "file": "a.mp3",
+   "seconds": 11.5,
+   "bytes": 34776
+  },
+  {
+   "id": "b",
+   "voice": "de+f1",
+   "fa": "گزینهٔ دوم",
+   "detail": "زن، روشن‌تر و جوان‌تر",
+   "file": "b.mp3",
+   "seconds": 11.72,
+   "bytes": 35424
+  },
+  {
+   "id": "c",
+   "voice": "de+m3",
+   "fa": "گزینهٔ سوم",
+   "detail": "مرد، آرام و شمرده",
+   "file": "c.mp3",
+   "seconds": 11.14,
+   "bytes": 33696
+  }
+ ]
+}

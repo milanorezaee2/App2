@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
 import { BookOpen, BookOpenCheck, Check, ChevronDown, ChevronLeft, ChevronUp, Compass, Flame, MessageCircle, Play, RefreshCw, Sparkles, Volume2 } from 'lucide-react-native';
 import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel } from '@/components/EnglishUI';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
@@ -11,7 +10,8 @@ import { RussianBottomNav } from '@/components/RussianBottomNav';
 import { RUSSIAN_LEVELS, RUSSIAN_LESSONS, russianProgress, type RussianLevelId } from '@/lib/languages/russian';
 import type { CourseProgress } from '@/lib/courseProgress';
 import { toPersianDigits as fa } from '@/lib/format';
-import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
+import { primeRussianSpeech, speakRussian, stopRussianSpeech } from '@/lib/russianSpeech';
+import { levelBadgeLabel, levelStatementFa } from '@/lib/languages/levelPresentation';
 import { Typography } from '@/lib/theme';
 
 export const SHARED_JOURNEY_GRADIENTS: Record<number, [string, string]> = {
@@ -32,7 +32,7 @@ export default function RussianHome() {
 
   useFocusEffect(useCallback(() => {
     let alive = true;
-    void preloadSpeechVoices();
+    primeRussianSpeech();
     void Promise.all([russianProgress.getCourseProgress(), russianProgress.getDueReviewCards()])
       .then(([nextProgress, cards]) => {
         if (!alive) return;
@@ -41,15 +41,8 @@ export default function RussianHome() {
         setError('');
       })
       .catch(() => { if (alive) setError('پیشرفت روسی خوانده نشد؛ اطلاعات قبلی تغییر نکرده است. دوباره تلاش کنید.'); });
-    return () => { alive = false; void Speech.stop(); };
+    return () => { alive = false; stopRussianSpeech(); };
   }, [retry]));
-
-  const speakRussian = useCallback((text: string) => {
-    void Speech.stop();
-    void resolveSpeechOptions('ru-RU').then(targetVoice => {
-      Speech.speak(text, { ...targetVoice, rate: 0.8 });
-    });
-  }, []);
 
   const completedIds = progress?.completedLessonIds ?? [];
   const completedSet = useMemo(() => new Set(completedIds), [completedIds]);
@@ -62,6 +55,14 @@ export default function RussianHome() {
   const sentenceCount = RUSSIAN_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0);
   const uniqueWords = new Set(RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size;
   const firstSentence = heroLesson.sentences[0];
+
+  /**
+   * The hero sentence and its words come from the resume lesson, so they are
+   * read from that lesson's pack: the bundled narrator, never the phone's voice.
+   */
+  const playRussian = useCallback((text: string, kind: 'sentence' | 'word' = 'sentence') => {
+    speakRussian({ text, kind, lessonId: heroLesson.id, rate: 0.8 });
+  }, [heroLesson.id]);
   const levelCounts = {} as Partial<Record<RussianLevelId, { completed: number; total: number; sentences: number; words: number }>>;
   RUSSIAN_LEVELS.forEach(level => {
     const lessons = RUSSIAN_LESSONS.filter(lesson => lesson.levelId === level.id);
@@ -98,7 +99,7 @@ export default function RussianHome() {
             <View pointerEvents="none" style={styles.heroOrbLarge} />
             <View pointerEvents="none" style={styles.heroOrbSmall} />
             <View style={styles.heroTopRow}>
-              <View style={styles.heroLevelBadge}><View style={styles.heroBadgeDot} /><Text style={styles.heroLevelText}>LEVEL {activeLevel.id} · {activeLevel.title.toUpperCase()}</Text></View>
+              <View style={styles.heroLevelBadge}><View style={styles.heroBadgeDot} /><Text style={styles.heroLevelText}>{levelBadgeLabel(activeLevel.id, activeLevel.title)}</Text></View>
               <Text style={styles.heroCourseLabel}>CORE PATH</Text>
             </View>
             <View style={styles.heroCopy}>
@@ -107,12 +108,12 @@ export default function RussianHome() {
               <Text style={styles.heroDescription}>{nextLesson ? heroLesson.subtitle : 'درس‌های موجود را مرور کنید یا نقشهٔ سطح‌های بعدی را ببینید.'}</Text>
             </View>
             <View style={styles.sentenceShowcase}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`پخش تلفظ روسی: ${firstSentence.text}`} style={styles.sentenceShowcaseTop} onPress={() => speakRussian(firstSentence.text)}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`پخش تلفظ روسی: ${firstSentence.text}`} style={styles.sentenceShowcaseTop} onPress={() => playRussian(firstSentence.text)}>
                 <View style={styles.sentenceLabelIcon}><Volume2 size={14} color="#C8C9FF" /></View>
                 <Text style={styles.sentenceLabel}>جملهٔ کلیدی این درس</Text>
                 <Text style={styles.sentenceLabelEn}>CORE SENTENCE</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جمله: ${firstSentence.text}`} onPress={() => speakRussian(firstSentence.text)}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جمله: ${firstSentence.text}`} onPress={() => playRussian(firstSentence.text)}>
                 <Text style={styles.sentenceRussian}>{firstSentence.text}</Text>
               </Pressable>
               <Text style={styles.sentencePersian}>{firstSentence.fa}</Text>
@@ -126,7 +127,7 @@ export default function RussianHome() {
               {!!firstSentence.vocabulary.length && (
                 <View style={styles.wordChipRow}>
                   {firstSentence.vocabulary.map(item => (
-                    <Pressable key={item.word} accessibilityRole="button" accessibilityLabel={`تلفظ واژه: ${item.word}`} style={styles.wordChip} onPress={() => speakRussian(item.word)}>
+                    <Pressable key={item.word} accessibilityRole="button" accessibilityLabel={`تلفظ واژه: ${item.word}`} style={styles.wordChip} onPress={() => playRussian(item.word, 'word')}>
                       <Text style={styles.wordChipRussian}>{item.word}</Text>
                       <Text style={styles.wordChipDivider}>·</Text>
                       <Text style={styles.wordChipFa}>{item.meaning}</Text>
@@ -157,7 +158,7 @@ export default function RussianHome() {
             </View>
             <View style={styles.currentLevelRow}>
               <View style={styles.currentLevelCopy}>
-                <Text style={styles.currentLevelEyebrow}>اکنون · سطح {fa(activeLevel.id)}</Text>
+                <Text style={styles.currentLevelEyebrow}>{levelStatementFa(activeLevel.id)}</Text>
                 <Text style={styles.currentLevelName}>{activeLevel.title}</Text>
                 <Text style={styles.currentLevelDescription}>{activeLevel.description}</Text>
               </View>

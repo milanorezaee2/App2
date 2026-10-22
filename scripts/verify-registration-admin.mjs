@@ -37,9 +37,12 @@ check(/com\.devicecontrol\.miloadmin/.test(appConfig) && /com\.devicecontrol\.co
 check(/MiloAdmin\.apk/.test(workflow) && /MiloMultilang\.apk/.test(workflow), 'CI builds and publishes both standalone APKs');
 check(/EXPO_PUBLIC_MILO_ADMIN_APP/.test(read('app/index.tsx')), 'the management APK boots directly into its protected panel');
 check(/پیام‌های خصوصی/.test(gate) && /پیام‌های خصوصی/.test(admin), 'both apps disclose and preserve private-message boundaries');
-check(/learnerLogin: process\.env\.EXPO_PUBLIC_LEARNER_LOGIN === 'true'/.test(read('lib/features.ts')), 'learner login is a build-time switch that defaults to off');
+check(/learnerLogin: Constants\.expoConfig\?\.extra\?\.learnerLogin === true\s*\|\| process\.env\.EXPO_PUBLIC_LEARNER_LOGIN === 'true'/.test(read('lib/features.ts')) && !/"learnerLogin":\s*true/.test(read('app.json')), 'learner login is a build-time switch that defaults to off');
 check(/MiloMultilang-Login\.apk/.test(workflow) && /EXPO_PUBLIC_LEARNER_LOGIN=true/.test(workflow), 'CI builds and publishes the learner login APK');
-check(/com\.devicecontrol\.milomultilang/.test(appConfig) && /name: 'MiloMultiLanguage Admin'/.test(appConfig), 'login APK keeps its own package and management branding includes MiloMultiLanguage');
+check(/com\.devicecontrol\.milomultilang/.test(appConfig)
+  && /appRole: 'admin'/.test(appConfig)
+  && /com\.devicecontrol\.miloadmin/.test(appConfig),
+  'login APK keeps its own package and the management build keeps its admin role and package');
 check(/is_education_admin/.test(read('supabase/functions/admin-delete-user/index.ts')) && /deleteUser\(/.test(read('supabase/functions/admin-delete-user/index.ts')), 'account deletion is manager-only and runs on the server');
 check(/deleteRegisteredUser/.test(read('app/admin/index.tsx')) && /downloadRegisteredUsers/.test(read('app/admin/index.tsx')), 'manager app can delete users and export users');
 check(/MANAGEMENT_BUILD \? adminClient\(\) : supabase/.test(read('lib/conversations.ts')), 'the manager APK sends chat as the manager, not an anonymous learner');
@@ -47,5 +50,5 @@ check(/Intentionally silent/.test(read('lib/responsiveSpeech.ts')) && !/Speech\.
 check(/welcome-chime\.wav/.test(read('app/_layout.tsx')), 'the original startup sound is kept');
 check(/ensureSupportConversation/.test(read('app/languages.tsx')) && /ensureSupportConversation/.test(read('app/conversations/index.tsx')), 'learners reach the manager through the support button');
 check(/MiloLogoMotion/.test(read('app/_layout.tsx')) && /MiloLogoMotion/.test(read('app/languages.tsx')), 'the Milo logo motion is used in the intro and the home header');
-check(/welcome-voice\.wav/.test(read('app/languages.tsx')) && /welcome-chime\.wav/.test(read('app/_layout.tsx')), 'Welcome plays on the main screen and the startup sound is kept');
+check(/playWelcomeVoice/.test(read('app/languages.tsx')) && /playWelcomeVoice/.test(read('lib/welcomeVoice.ts')) && /welcome-chime\.wav/.test(read('app/_layout.tsx')), 'Welcome plays on the main screen through the natural device voice and the startup sound is kept');
 console.log(`${count} registration and private management checks passed.`);

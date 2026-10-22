@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import { BookOpenCheck, LogIn, ShieldCheck, UserPlus } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { KeyboardAwareScrollView, KeyboardAvoidingView } from '@/components/KeyboardRuntime';
-import { generateLoginCode, getRegisteredSession, loginLearner, registerLearner, registrationError, touchLearnerActivity } from '@/lib/userRegistration';
+import { generateLoginCode, getRegisteredSession, loginLearner, readCachedRegistration, registerLearner, registrationError, touchLearnerActivity } from '@/lib/userRegistration';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { FEATURES } from '@/lib/features';
 
@@ -29,6 +29,10 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   const [generatedCode, setGeneratedCode] = useState('');
   const [registrationReady, setRegistrationReady] = useState(false);
   const holdForCode = useRef(false);
+  // True once this launch opened from the cached profile. A later *network*
+  // failure must not throw an already-verified learner back to the login screen:
+  // the courses work offline, so the gate has to as well.
+  const openedFromCache = useRef(false);
 
   const inspect = useCallback(async () => {
     if (BYPASS_GATE) return;
@@ -38,7 +42,10 @@ export function RegistrationGate({ children }: PropsWithChildren) {
       setReady(complete && !holdForCode.current);
       if (complete) void touchLearnerActivity();
     } catch {
-      setReady(false);
+      // No answer from the server (offline, Wi-Fi captive portal, slow network).
+      // Trust the cached profile rather than locking the learner out; only a
+      // clear "no session" response closes the gate.
+      if (!openedFromCache.current) setReady(false);
     } finally {
       setChecking(false);
     }
@@ -46,12 +53,27 @@ export function RegistrationGate({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (BYPASS_GATE) return;
+    // Open the app instantly for a learner we already verified on this phone;
+    // the server check below still runs and shows the gate if it disagrees.
+    // Without this the app sat on "در حال بررسی حساب…" for several seconds on
+    // every launch, waiting for a network round-trip that changes nothing.
+    let alive = true;
+    void readCachedRegistration().then(cached => {
+      if (!alive || !cached) return;
+      openedFromCache.current = true;
+      setReady(current => current || true);
+      setChecking(false);
+    });
     void inspect();
     const { data } = supabase.auth.onAuthStateChange(() => { void inspect(); });
     const appState = AppState.addEventListener('change', state => {
       if (state === 'active') void inspect();
     });
-    return () => { data.subscription.unsubscribe(); appState.remove(); };
+    return () => {
+      alive = false;
+      data.subscription.unsubscribe();
+      appState.remove();
+    };
   }, [inspect]);
 
   async function submit() {

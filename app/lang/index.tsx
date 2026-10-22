@@ -25,6 +25,7 @@ import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel } from '@/components/EnglishUI';
 import { PageNavigation } from '@/components/PageNavigation';
 import { SHARED_JOURNEY_GRADIENTS } from '@/components/RussianHome';
+import { levelBadgeLabel, levelRailLabel, levelStatementFa } from '@/lib/languages/levelPresentation';
 import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
 import { getCourseProgress, type CourseProgress } from '@/lib/courseProgress';
 import { syncPersonalLearningData } from '@/lib/personalLearningSync';
@@ -120,7 +121,7 @@ export default function LearningHome() {
             <View style={styles.heroTopRow}>
               <View style={styles.heroLevelBadge}>
                 <View style={styles.heroBadgeDot} />
-                <Text style={styles.heroLevelText}>LEVEL {currentLevel.id} · {currentLevel.cefr === 'پایه' || currentLevel.id === 0 ? 'FOUNDATION' : currentLevel.cefr}</Text>
+                <Text style={styles.heroLevelText}>{levelBadgeLabel(currentLevel.id, currentLevel.title, currentLevel.cefr)}</Text>
               </View>
               <Text style={styles.heroCourseLabel}>CORE PATH</Text>
             </View>
@@ -193,12 +194,18 @@ export default function LearningHome() {
             </View>
 
             <View style={styles.railWrap}>
-              <EnglishLevelRail activeLevelId={currentLevel.id} levels={ENGLISH_RAIL_LEVELS} counts={levelCounts} direction="rtl" onSelect={openLevel} />
+              <EnglishLevelRail
+                activeLevelId={currentLevel.id}
+                levels={ENGLISH_RAIL_LEVELS.map(level => ({ ...level, cefr: levelRailLabel(level) }))}
+                counts={levelCounts}
+                direction="rtl"
+                onSelect={openLevel}
+              />
             </View>
 
             <View style={styles.currentLevelRow}>
               <View style={styles.currentLevelCopy}>
-                <Text style={styles.currentLevelEyebrow}>اکنون · سطح {toPersianDigits(currentLevel.id)}</Text>
+                <Text style={styles.currentLevelEyebrow}>{levelStatementFa(currentLevel.id)}</Text>
                 <Text style={styles.currentLevelName}>{currentLevel.title}</Text>
                 <Text style={styles.currentLevelDescription}>{currentLevel.description}</Text>
               </View>

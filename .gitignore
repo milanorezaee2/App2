@@ -35,3 +35,8 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+__pycache__/
+
+# Neural voice weights (63 MB, only needed to rebuild the German audio pack).
+# Fetch with: node scripts/fetch-german-voice-model.cjs
+scripts/voice-models/

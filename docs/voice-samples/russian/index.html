@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>صدای روسی</title>
+<style>
+  :root { --primary:#5b4bb7; --line:#e3e3ee; --muted:#6b6b80; --bg:#f7f7fb; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:18px 14px 60px; background:var(--bg); color:#16162a;
+         font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif; }
+  header, section { max-width:680px; margin:0 auto 12px; }
+  h1 { font-size:19px; margin:0 0 8px; }
+  .lead { font-size:13px; line-height:1.9; color:var(--muted); margin:0; }
+  .ru { direction:ltr; unicode-bidi:isolate; font-weight:600; color:#2c2360; }
+  section { background:#fff; border:1px solid var(--line); border-radius:16px; padding:13px 14px; }
+  .name { font-size:14.5px; font-weight:700; }
+  .hint { margin:6px 0 10px; font-size:11.5px; color:var(--muted); line-height:1.9; }
+  .play { width:100%; border:0; border-radius:12px; background:var(--primary); color:#fff;
+          font-family:inherit; font-size:14px; font-weight:700; padding:13px 10px; cursor:pointer; }
+  .play:active { opacity:.85; }
+  .play.playing { background:#3f3387; }
+  footer { max-width:680px; margin:18px auto 0; font-size:11.5px; color:var(--muted); line-height:2; }
+  ul { margin:6px 0 0; padding-inline-start:18px; font-size:12px; line-height:2; }
+</style>
+</head>
+<body>
+<header>
+  <h1>صدای روسی — گویندهٔ زن عصبی</h1>
+  <p class="lead">
+    این همان گوینده‌ای است که <b>داخل خود برنامه</b> هست؛ هر ۶۹ درس و همهٔ واژه‌ها با همین
+    صدا خوانده می‌شوند، بدون اینترنت و بدون نصب زبان روسی روی گوشی.
+    صدا با همان موتور و همان پردازش درس‌ها ساخته شده و با سرعت
+    <b>۱۴۷ کلمه در دقیقه</b> خوانده می‌شود.
+  </p>
+</header>
+
+<section>
+  <div class="name">جمله‌های درس اول</div>
+  <p class="hint">
+    <span class="ru">Приве́т!</span> · <span class="ru">Здра́вствуйте!</span> ·
+    <span class="ru">До́брое у́тро!</span> · <span class="ru">Как дела́?</span> ·
+    <span class="ru">Спаси́бо, хорошо́.</span>
+    <br>مدت: ۸.۳ ثانیه
+  </p>
+  <button class="play" type="button" data-src="irina-sentences.mp3">▶ پخش جمله‌ها</button>
+</section>
+
+<section>
+  <div class="name">واژه‌های همان درس</div>
+  <p class="hint">
+    <span class="ru">привет</span> · <span class="ru">здравствуйте</span> ·
+    <span class="ru">утро</span> · <span class="ru">спасибо</span> ·
+    <span class="ru">пожалуйста</span> · <span class="ru">до свидания</span>
+    <br>مدت: ۸.۲ ثانیه
+  </p>
+  <button class="play" type="button" data-src="irina-words.mp3">▶ پخش واژه‌ها</button>
+</section>
+
+<footer>
+  هر جمله و هر واژه جداگانه ضبط شده و قبل و بعدش سکوت کامل دارد؛ بنابراین هیچ واژه‌ای
+  روی جملهٔ قبلی یا بعدی نمی‌افتد. در درس، «آهسته» همان ضبط را کندتر پخش می‌کند، نه با
+  صدایی دیگر.
+</footer>
+<audio id="player" preload="none"></audio>
+<script>
+  const player = document.getElementById('player');
+  const buttons = [...document.querySelectorAll('.play')];
+  buttons.forEach(button => button.addEventListener('click', () => {
+    const playing = button.classList.contains('playing');
+    buttons.forEach(other => { other.classList.remove('playing'); other.textContent = other.textContent.replace('⏸', '▶'); });
+    if (playing) { player.pause(); return; }
+    player.src = button.dataset.src;
+    player.play();
+    button.classList.add('playing');
+    button.textContent = button.textContent.replace('▶', '⏸');
+  }));
+  player.addEventListener('ended', () => buttons.forEach(other => {
+    other.classList.remove('playing');
+    other.textContent = other.textContent.replace('⏸', '▶');
+  }));
+</script>
+</body>
+</html>

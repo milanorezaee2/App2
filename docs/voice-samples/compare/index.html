@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مقایسهٔ گویندهٔ آلمانی — انتخاب شما</title>
+<style>
+  :root { --primary:#0f6b57; --line:#e1e8e5; --muted:#68746f; --ink:#12211d; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:16px 13px 48px; background:#f6faf8; color:var(--ink);
+         font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif; }
+  header, main { max-width:720px; margin:0 auto; }
+  h1 { font-size:18px; margin:0 0 7px; }
+  .lead { font-size:12.5px; line-height:1.95; color:var(--muted); margin:0 0 16px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:13px;
+          margin-bottom:11px; }
+  .card.current { border-color:var(--primary); box-shadow:0 0 0 2px #e6f2ee; }
+  .top { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
+  .badge { width:30px; height:30px; flex:0 0 30px; border-radius:50%; background:#e8f3ef;
+           color:var(--primary); font-weight:700; font-size:14px; display:grid; place-items:center; }
+  .card.current .badge { background:var(--primary); color:#fff; }
+  .name { font-size:14.5px; font-weight:700; }
+  .sub { font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .tag { margin-inline-start:auto; font-size:10.5px; background:#e8f3ef; color:var(--primary);
+         border-radius:999px; padding:3px 8px; white-space:nowrap; }
+  audio { width:100%; height:38px; margin:2px 0 7px; }
+  .lines { font-size:11.5px; color:#41504b; line-height:1.85; direction:ltr; text-align:left;
+           background:#f8fbfa; border-radius:10px; padding:8px 10px; }
+  .lines b { color:#0b3d32; }
+  footer { max-width:720px; margin:16px auto 0; font-size:12px; color:var(--muted); line-height:2; }
+  .how { background:#fff8e8; border:1px solid #f0e2c2; border-radius:12px; padding:11px 12px;
+         font-size:12px; line-height:1.95; color:#6b5320; }
+</style>
+</head>
+<body>
+<header>
+  <h1>کدام گوینده را برای درس‌های آلمانی می‌خواهید؟</h1>
+  <p class="lead">
+    هر سه گزینه <b>دقیقاً یک متن</b> را می‌خوانند (چهار جملهٔ واقعی درس) با همان سرعت و لحن.
+    پس تنها چیزی که فرق می‌کند، خودِ گوینده است. یکی را انتخاب کنید تا همان روی کل ۹۵ درس
+    اعمال شود.
+  </p>
+</header>
+<main id="list"></main>
+<footer>
+  <div class="how">
+    <b>نکتهٔ مهم برای شبیه‌شدن به گویندهٔ انگلیسی:</b>
+    بخش انگلیسی از صدای TTS خودِ گوشی استفاده می‌کند، نه از صدای ضبط‌شده.
+    برای آلمانی هم اگر گوشی‌تان صدای آلمانی داشته باشد، حالت «خودکار» همان صدا را به کار
+    می‌برد و طبیعی‌ترین نتیجه است. گزینه‌های زیر صدای <b>داخل خود برنامه</b> هستند که
+    همیشه و همه‌جا کار می‌کنند. اگر گوشی شما صدای آلمانی دارد و می‌خواهید مقایسه کنید،
+    در صفحهٔ «بررسی صدا» دکمهٔ «همیشه صدای آلمانی دستگاه» را بزنید.
+  </div>
+</footer>
+<script>
+const CLIPS = [
+  { id:'a', fa:'گویندهٔ فعلی برنامه', detail:'زن، گرم و متعادل', voice:'de+f3', current:true },
+  { id:'b', fa:'گزینهٔ دوم', detail:'زن، روشن‌تر و جوان‌تر', voice:'de+f1' },
+  { id:'c', fa:'گزینهٔ سوم', detail:'مرد، آرام و شمرده', voice:'de+m3' },
+];
+const LINES = [
+  ['Hallo! Wie geht es dir?', 'سلام! حالت چطور است؟'],
+  ['Mir geht es gut, danke. Und dir?', 'من خوبم، ممنون. تو چطور؟'],
+  ['Guten Morgen! Ich möchte einen Kaffee, bitte.', 'صبح بخیر! یک قهوه می‌خواهم، لطفاً.'],
+  ['Bis bald! Schönen Tag noch.', 'تا بعد! روز خوبی داشته باشی.'],
+];
+const list = document.getElementById('list');
+CLIPS.forEach(clip => {
+  const card = document.createElement('section');
+  card.className = 'card' + (clip.current ? ' current' : '');
+  card.innerHTML = `
+    <div class="top">
+      <div class="badge">${clip.id.toUpperCase()}</div>
+      <div>
+        <div class="name">${clip.fa}</div>
+        <div class="sub">${clip.detail} • شناسهٔ صدا: ${clip.voice}</div>
+      </div>
+      ${clip.current ? '<span class="tag">الان در اپ</span>' : ''}
+    </div>
+    <audio controls preload="metadata" src="./${clip.id}.mp3"></audio>
+    <div class="lines">${LINES.map(([de, fa]) => `<b>${de}</b> — ${fa}`).join('<br>')}</div>`;
+  list.appendChild(card);
+});
+</script>
+</body>
+</html>

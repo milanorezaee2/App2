@@ -3,6 +3,10 @@ import * as Application from 'expo-application';
 import * as Crypto from 'expo-crypto';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { clearCachedRegistration, writeCachedRegistration } from './registrationCache';
+
+export { readCachedRegistration } from './registrationCache';
+export type { CachedRegistration } from './registrationCache';
 
 export type RegistrationProfile = {
   user_id: string;
@@ -51,6 +55,20 @@ export async function getRegisteredSession(): Promise<{ session: Session | null;
       return getRegisteredSession();
     }
   }
+  if (profile) {
+    await writeCachedRegistration({
+      userId: session.user.id,
+      email: session.user.email ?? profile.email,
+      createdAt: Date.now(),
+      profile: {
+        user_id: profile.user_id,
+        full_name: profile.full_name,
+        email: profile.email,
+        registered_at: profile.registered_at,
+        last_seen_at: profile.last_seen_at,
+      },
+    });
+  }
   return { session, profile: (profile || null) as RegistrationProfile | null };
 }
 
@@ -67,6 +85,9 @@ function toAuthPassword(loginCode: string): string {
 }
 
 export async function registerLearner(fullName: string, email: string, loginCode: string): Promise<'ready'> {
+  // A different learner may sign up on this phone: never boot into the cached
+  // profile of the previous account.
+  await clearCachedRegistration();
   const cleanName = fullName.trim();
   const cleanEmail = email.trim().toLowerCase();
   if (cleanName.length < 2 || cleanName.length > 80) throw new Error('NAME_INVALID');

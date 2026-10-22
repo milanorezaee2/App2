@@ -1,0 +1,24 @@
+{
+  "default": "kerstin",
+  "selection": "single-narrator-shipped",
+  "narrators": [
+    {
+      "id": "kerstin",
+      "engine": "piper",
+      "voice": "de_DE-kerstin-low",
+      "model": "scripts/voice-models/de_DE-kerstin-low.onnx",
+      "modelConfig": "scripts/voice-models/de_DE-kerstin-low.onnx.json",
+      "modelMirror": "bottrading-bot/trading-bot:shorts_assets/voices/piper",
+      "speakerId": 0,
+      "lengthScale": 1.35,
+      "noiseScale": 0.667,
+      "noiseW": 0.8,
+      "nameFa": "کرستین",
+      "descriptionFa": "زن، نرم و گرم و مهربان",
+      "wordsPerMinute": 141,
+      "deviceRate": 1,
+      "deviceShadowRate": 0.75,
+      "deviceSlowRate": 0.55
+    }
+  ]
+}

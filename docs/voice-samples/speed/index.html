@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>انتخاب صدای آلمانی</title>
+<style>
+  :root { --primary:#0f6b57; --line:#e3e8e6; --muted:#6b7672; --bg:#f7faf9; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:18px 14px 60px; background:var(--bg); color:#12211d;
+         font-family:'Vazirmatn','Segoe UI',Tahoma,sans-serif; }
+  header, section { max-width:680px; margin:0 auto 12px; }
+  h1 { font-size:19px; margin:0 0 8px; }
+  .lead { font-size:13px; line-height:1.9; color:var(--muted); margin:0; }
+  .de { direction:ltr; unicode-bidi:isolate; font-weight:600; color:#0b3d32; }
+  section { background:#fff; border:1px solid var(--line); border-radius:16px; padding:13px 14px; }
+  .head { display:flex; align-items:center; gap:8px; }
+  .num { width:24px; height:24px; border-radius:999px; background:#e8f3ef; color:var(--primary);
+          font-size:12px; display:inline-flex; align-items:center; justify-content:center; }
+  .name { font-size:14.5px; font-weight:700; }
+  .hint { margin:6px 0 10px; font-size:11.5px; color:var(--muted); }
+  .play { width:100%; border:0; border-radius:12px; background:var(--primary); color:#fff;
+          font-family:inherit; font-size:14px; font-weight:700; padding:13px 10px; cursor:pointer; }
+  .play:active { opacity:.85; }
+  .play.playing { background:#0b4f41; }
+  .all { background:#12211d; }
+  .card.chosen { border-color:#0f6b57; box-shadow:0 0 0 2px #cfe8df inset; }
+  .badge { margin-inline-start:auto; font-size:10.5px; color:#0f6b57; background:#e8f3ef;
+            border-radius:999px; padding:3px 9px; }
+  footer { max-width:680px; margin:18px auto 0; font-size:11.5px; color:var(--muted); line-height:2; }
+</style>
+</head>
+<body>
+<header>
+  <h1>صدای آلمانی — سه گویندهٔ عصبی</h1>
+  <p class="lead">
+    <b>هر سه گوینده داخل برنامه هستند</b> و انتخاب در صفحهٔ «صدای آلمانی» انجام می‌شود؛
+    هر درس کامل با همان گویندهٔ انتخابی پخش می‌شود، بدون اینترنت و بدون نصب زبان آلمانی.
+    این نمونه‌ها با همان موتور و همان پردازش صدایی ساخته شده‌اند که داخل برنامه پخش می‌شود.
+    جمله‌های واقعی درس:
+    <span class="de">Hallo! Wie geht es dir?</span> ·
+    <span class="de">Ich heiße Mina. Ich komme aus dem Iran.</span> ·
+    <span class="de">Guten Morgen! Ich möchte einen Kaffee, bitte.</span>
+  </p>
+</header>
+    <section class="card chosen">
+      <div class="head"><span class="num">1</span><span class="name">کرستین — زن، نرم و گرم و مهربان</span><span class="badge">پیش‌فرض برنامه</span></div>
+      <p class="hint">صدای زنانهٔ آرام و مهربان · در برنامه ۱۴۱ کلمه در دقیقه · در فایل «همه با هم» از ۰:۰۱</p>
+      <button class="play" type="button" data-src="v6-kerstin-warm.mp3">▶ پخش نمونهٔ ۱</button>
+    </section>
+    <section class="card">
+      <div class="head"><span class="num">2</span><span class="name">رامونا — زن، روشن و شاداب</span></div>
+      <p class="hint">تُن کمی بالاتر و شاداب‌تر · در برنامه ۱۴۹ کلمه در دقیقه · در فایل «همه با هم» از ۰:۱۲</p>
+      <button class="play" type="button" data-src="v7-ramona-warm.mp3">▶ پخش نمونهٔ ۲</button>
+    </section>
+    <section class="card">
+      <div class="head"><span class="num">3</span><span class="name">اِوا — زن جوان و بسیار واضح</span></div>
+      <p class="hint">وضوح بیشتر، کمی خشک‌تر · در برنامه ۱۵۱ کلمه در دقیقه · در فایل «همه با هم» از ۰:۲۳</p>
+      <button class="play" type="button" data-src="v8-eva-bright.mp3">▶ پخش نمونهٔ ۳</button>
+    </section>
+<section class="card">
+  <div class="head"><span class="name">همه پشت سر هم</span></div>
+  <p class="hint">نام هر نمونه هم خوانده می‌شود؛ یک‌بار از اول تا آخر گوش کنید.</p>
+  <button class="play all" type="button" data-src="compare-all.mp3">▶ پخش همهٔ نمونه‌ها</button>
+</section>
+<section class="card">
+  <div class="head"><span class="name">گویندهٔ قبلی برای مقایسه</span></div>
+  <p class="hint">همان صدای مصنوعی قبلی (eSpeak) — نمونه نیست، فقط مرجع.</p>
+  <button class="play" type="button" data-src="v0-current-140.mp3" style="background:#8a9691">▶ پخش صدای قبلی</button>
+</section>
+<footer>
+  هر سه بسته با هم در برنامه نصب می‌شوند (هر کدام ۱۹۰ کلیپ، همهٔ ۹۵ درس و واژه‌ها).
+  انتخاب کاربر ذخیره می‌شود و از دفعهٔ بعد هم همان گوینده می‌خواند.
+  تغییر «پیش‌فرض» یا سرعت فقط یک خط در <code>config/german-narrator.json</code> است.
+</footer>
+<audio id="player" preload="none"></audio>
+<script>
+  const player = document.getElementById('player');
+  const buttons = [...document.querySelectorAll('.play')];
+  buttons.forEach(button => button.addEventListener('click', () => {
+    const playing = button.classList.contains('playing');
+    buttons.forEach(other => { other.classList.remove('playing'); other.textContent = other.textContent.replace('⏸', '▶'); });
+    if (playing) { player.pause(); return; }
+    player.src = button.dataset.src;
+    player.play();
+    button.classList.add('playing');
+    button.textContent = button.textContent.replace('▶', '⏸');
+  }));
+  player.addEventListener('ended', () => buttons.forEach(other => {
+    other.classList.remove('playing');
+    other.textContent = other.textContent.replace('⏸', '▶');
+  }));
+</script>
+</body>
+</html>
