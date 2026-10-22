@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Stack, usePathname, useRouter } from 'expo-router';
+import { Stack, usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
@@ -96,6 +96,7 @@ export default function RootLayout() {
   useFrameworkReady();
   const router = useRouter();
   const pathname = usePathname();
+  const rootNavigationState = useRootNavigationState();
   const homeRoute = IS_ADMIN_APP ? '/admin' : RUSSIAN_ONLY_BUILD ? '/learn/ru' : '/languages';
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
@@ -172,14 +173,13 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, [homeRoute, introComplete, router]);
 
-  // Android can restore the last native navigation state (including a chat
-  // route) instead of mounting index.tsx. Always normalize the first route of
-  // a fresh app process to the correct home screen.
+  // Wait for the root navigator before normalizing an Android-restored route.
+  // AppLockGate/RegistrationGate can temporarily defer mounting the Stack.
   useEffect(() => {
-    if (!introComplete || startupRouteLocked.current) return;
+    if (!introComplete || !rootNavigationState?.key || startupRouteLocked.current) return;
     startupRouteLocked.current = true;
     if (pathname !== homeRoute) router.replace(homeRoute as never);
-  }, [homeRoute, introComplete, pathname, router]);
+  }, [homeRoute, introComplete, pathname, rootNavigationState?.key, router]);
 
   // On web, AppState is unavailable — use page visibility instead so that
   // returning to the tab also starts from the home screen, not the last
