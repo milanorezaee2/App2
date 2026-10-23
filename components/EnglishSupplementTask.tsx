@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
+import { NARRATION_ENABLED } from '@/lib/narration';
 import { isCorrect, SKILLS, type Task } from '@/lib/englishSupplement/content';
 import { Typography } from '@/lib/theme';
 import { recordEvidence, type SupplementProgress } from '@/lib/englishSupplement/progress';
@@ -118,6 +119,9 @@ export function EnglishSupplementTask({
   }, []);
 
   async function listen() {
+    // Narration is off: there is no audio to wait for, so the answer can be
+    // submitted straight away instead of blocking on a playback callback.
+    if (!NARRATION_ENABLED) { setHeard(true); setPlaying(false); setError(''); return; }
     const token = ++run.current;
     setError('');
     setPlaying(true);
@@ -138,15 +142,16 @@ export function EnglishSupplementTask({
   }
 
   async function submit() {
-    if (saving.current || !answer.trim() || (task.audio && !heard)) return;
+    if (saving.current || !answer.trim() || (task.audio && !heard && NARRATION_ENABLED)) return;
     saving.current = true;
     setBusy(true);
     setError('');
     try {
       const correct = isCorrect(task, answer);
-      if (onSave) await onSave(task, correct, heard);
+      const heardForRecord = heard || !NARRATION_ENABLED;
+      if (onSave) await onSave(task, correct, heardForRecord);
       else {
-        const progress = await recordEvidence(task, correct, heard);
+        const progress = await recordEvidence(task, correct, heardForRecord);
         onResult?.(progress, correct);
       }
       setResult(correct);
@@ -170,7 +175,7 @@ export function EnglishSupplementTask({
     {task.options
       ? task.options.map(option => <Pressable key={option} accessibilityRole="radio" accessibilityState={{ checked: answer === option, disabled: locked }} disabled={locked} style={[s.input, { minHeight: 48, justifyContent: 'center', backgroundColor: answer === option ? EnglishPalette.primarySoft : EnglishPalette.surfaceMuted, borderColor: answer === option ? EnglishPalette.primary : EnglishPalette.border }]} onPress={() => { setAnswer(option); setResult(null); }}><Text style={s.english}>{option}</Text></Pressable>)
       : <TextInput accessibilityLabel={task.prompt} editable={!locked} style={s.input} value={answer} onChangeText={value => { setAnswer(value); setResult(null); }} placeholder="پاسخ خود را بنویسید" placeholderTextColor={EnglishPalette.muted} autoCapitalize="none" autoCorrect={false} maxLength={500} />}
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: locked || !answer.trim() || (!!task.audio && !heard) }} disabled={locked || !answer.trim() || (!!task.audio && !heard)} style={[s.button, (locked || !answer.trim() || (!!task.audio && !heard)) && s.disabled]} onPress={() => void submit()}><Text style={s.buttonText}>{busy ? 'در حال ذخیره…' : 'بررسی پاسخ'}</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled: locked || !answer.trim() || (!!task.audio && !heard && NARRATION_ENABLED) }} disabled={locked || !answer.trim() || (!!task.audio && !heard && NARRATION_ENABLED)} style={[s.button, (locked || !answer.trim() || (!!task.audio && !heard && NARRATION_ENABLED)) && s.disabled]} onPress={() => void submit()}><Text style={s.buttonText}>{busy ? 'در حال ذخیره…' : 'بررسی پاسخ'}</Text></Pressable>
     {result !== null && !deferFeedback ? <Text accessibilityLiveRegion="polite" style={result ? s.success : s.error}>{result ? 'پاسخ درست ثبت شد.' : `هنوز درست نیست. ${task.explanation} دوباره پاسخ دهید.`}</Text> : null}
     {error ? <Text accessibilityLiveRegion="polite" style={s.error}>{error}</Text> : null}
   </View>;

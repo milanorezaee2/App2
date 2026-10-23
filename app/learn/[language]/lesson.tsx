@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Volume2 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
 import { CoursePage } from '@/components/LanguageCourseUI';
 import { GermanCoursePage, GermanCourseButton, germanCourseStyles } from '@/components/GermanCourseUI';
 import { findGermanLesson, germanProgress } from '@/lib/languages/catalog';

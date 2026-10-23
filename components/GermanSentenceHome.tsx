@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
+import { NARRATION_ENABLED } from '@/lib/narration';
 import {
   BookOpen,
   BookOpenCheck,
@@ -72,6 +73,7 @@ export default function GermanSentenceHome() {
   }, [retry]));
 
   const speakGerman = useCallback((text: string) => {
+    if (!NARRATION_ENABLED) return;
     void Speech.stop();
     void resolveRequiredSpeechOptions('de-DE').then(targetVoice => {
       if (!targetVoice) {

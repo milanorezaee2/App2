@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,

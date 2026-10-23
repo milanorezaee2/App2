@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { Brain, Check, CheckCircle2, Clock3, RefreshCw, Sparkles, Volume2 } from 'lucide-react-native';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { RussianBottomNav } from '@/components/RussianBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';

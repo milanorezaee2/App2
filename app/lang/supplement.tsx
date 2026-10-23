@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PageNavigation } from '@/components/PageNavigation';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
+import { NARRATION_ENABLED } from '@/lib/narration';
 import { ENGLISH_A1_COURSE_UNITS, ENGLISH_FOUNDATION_UNITS, ENGLISH_SUPPLEMENT, SKILLS, type EnglishUnitLevel, type Skill } from '@/lib/englishSupplement/content';
 import {
   a1CoursePassed,
@@ -65,6 +66,7 @@ function Draft({ id, title, prompt, sample, rubric, initial, initialChecks }: {
 function RolePlay({ item, initial, initialChecks }: { item: typeof speakingPrompts[number]; initial: string; initialChecks: Record<string, boolean> }) {
   const [playing, setPlaying] = useState(false), [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [checks, setChecks] = useState(initialChecks), [notes, setNotes] = useState(initial);
   function speak() {
+    if (!NARRATION_ENABLED) return;
     setPlaying(true);
     Speech.speak(item.partner, { language: 'en-US', rate: 0.78, onDone: () => setPlaying(false), onStopped: () => setPlaying(false), onError: () => { setPlaying(false); setMessage('صدا پخش نشد؛ تنظیمات صدای دستگاه را بررسی کنید.'); } });
   }

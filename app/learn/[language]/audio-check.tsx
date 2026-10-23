@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Redirect, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
+import { NARRATION_ENABLED } from '@/lib/narration';
 import { speechTagFor } from '@/lib/speechLanguage';
 import { GermanCourseButton as CourseButton, GermanCoursePage as CoursePage, germanCourseStyles as s } from '@/components/GermanCourseUI';
 import { A1_AUDIO_SAMPLES, AUDIO_OBSERVATIONS, audioCheckReport, isGermanVoice, type AudioObservation } from '@/lib/languages/a1AudioCheck';
@@ -34,6 +35,7 @@ export default function AudioCheck(){
   return()=>{focused.current=false;generation.current++;loadGeneration.current++;clearTimer();if(voiceTimer.current)clearTimeout(voiceTimer.current);void Speech.stop().catch(()=>undefined);};
  },[language,loadVoices]));
  const play=async(id:string,text:string)=>{
+  if(!NARRATION_ENABLED)return;
   if(!selected||!focused.current)return;const request=++generation.current;clearTimer();
   setObservations(o=>{const copy={...o};delete copy[id];return copy;});setActive(id);setStatus('درخواست پخش ارسال شد؛ هنوز شروع آن گزارش نشده است.');
   const valid=()=>focused.current&&generation.current===request;

@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
 import { BookOpen, BookOpenCheck, Check, ChevronDown, ChevronLeft, ChevronUp, Compass, Flame, MessageCircle, Play, RefreshCw, Sparkles, Volume2 } from 'lucide-react-native';
 import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel } from '@/components/EnglishUI';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
