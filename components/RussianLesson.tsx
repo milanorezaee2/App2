@@ -104,11 +104,8 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     });
   }, []);
 
-  useEffect(() => {
-    if (!sessionReady || (stage !== 1 && stage !== 3) || !current?.text) return;
-    const timer = setTimeout(() => speak(current.text, NORMAL_SPEECH_RATE), 100);
-    return () => { clearTimeout(timer); void Speech.stop(); };
-  }, [sessionReady, stage, sentenceIndex, lesson.id, speak]);
+  // Narrator removed: the sentence is no longer played automatically.
+  // Audio starts only when the learner presses a play button.
 
   const selectSentence = (index: number, rate = 0.72) => {
     setSentenceIndex(index);
@@ -204,7 +201,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
             <Pressable accessibilityRole="button" accessibilityLabel="پخش آهستهٔ جمله" style={styles.replayButton} onPress={() => speak(current.text, SLOW_SPEECH_RATE)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>آهسته</Text></Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="پخش معمولی جمله" style={styles.replayButton} onPress={() => speak(current.text, NORMAL_SPEECH_RATE)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>معمولی</Text></Pressable>
           </View>
-          <Text style={styles.hint}>جمله به‌صورت خودکار پخش می‌شود. می‌توانید آهسته یا معمولی دوباره بشنوید و با صدای بلند تکرار کنید.</Text>
+          <Text style={styles.hint}>برای شنیدن جمله، دکمهٔ پخش را بزنید. می‌توانید آهسته یا معمولی بشنوید و با صدای بلند تکرار کنید.</Text>
         </View>}
 
         {stage === 2 && <View style={styles.centerStage}>
