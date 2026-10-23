@@ -14,6 +14,7 @@ const RUSSIAN_LESSON_GRADIENTS: Record<number, [string, string]> = {
   4: ['#D58A62', '#954A2B'],
 };
 import { PageNavigation } from '@/components/PageNavigation';
+import { LessonNarrator } from '@/components/LessonNarrator';
 import RussianSentenceBuilder from '@/components/RussianSentenceBuilder';
 import RussianDialoguePractice from '@/components/RussianDialoguePractice';
 import { clearRussianLessonSession, loadRussianLessonSession, saveRussianLessonSession } from '@/lib/languages/russianStudyState';
@@ -180,6 +181,15 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
 
       {!!(sessionError || speechError) && <Text accessibilityRole="alert" style={styles.error}>{sessionError || speechError}</Text>}
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Professional narrator: warm female Russian voice, automatic on the sentence stages. */}
+        <LessonNarrator
+          locale="ru-RU"
+          text={current.text}
+          enabled={stage <= 2}
+          accent="#8175F2"
+          accentDeep="#4036A8"
+          accentSoft="#EFECFE"
+        />
         {stage === 0 && <View style={styles.centerStage}>
           <View style={styles.bigIcon}><Sparkles size={34} color={Palette.warning} /></View>
           <Text style={styles.stageEyebrow}>موقعیت واقعی</Text>

@@ -10,6 +10,7 @@ import { findRussianLesson, type RussianCourseLesson } from '@/lib/languages/rus
 import RussianLesson from '@/components/RussianLesson';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { GermanSentenceBuilder } from '@/components/GermanSentenceBuilder';
+import { LessonNarrator } from '@/components/LessonNarrator';
 import { clearGermanSentenceSession, loadGermanSentenceSession, saveGermanSentenceSession } from '@/lib/languages/germanSentenceSession';
 import type { GermanSentenceStage } from '@/lib/languages/germanSentenceSession';
 import type { LearningLesson } from '@/lib/languages/types';
@@ -204,6 +205,15 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
         </View>
       ) : null}
       {(sessionState === 'ready' || sessionState === 'unsaved') && <>
+        {/* Professional narrator: warm female German voice, automatic on the sentence stages. */}
+        <LessonNarrator
+          locale="de-DE"
+          text={current.text}
+          enabled={stage <= 2}
+          accent="#1769D2"
+          accentDeep="#0F4C8C"
+          accentSoft="#E9F1FB"
+        />
         {resumed ? (
           <View style={s.card}>
             <Text style={s.pill}>جلسهٔ ذخیره‌شده بازیابی شد</Text>

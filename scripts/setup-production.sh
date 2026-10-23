@@ -30,8 +30,16 @@ for fn in emma-chat speech-evaluate human-chat-assist; do
 done
 # Database webhooks authenticate with CHAT_WEBHOOK_SECRET instead of a user JWT.
 "${SUPABASE[@]}" functions deploy chat-push --no-verify-jwt
+# The lesson narrator is called from the app without a learner login and only
+# accepts a capped lesson sentence, so it runs without JWT verification.
+"${SUPABASE[@]}" functions deploy narration-tts --no-verify-jwt
 
 echo "Production backend setup finished."
+echo
+echo "Lesson narrator (optional human-sounding female voice for EN/DE/RU):"
+echo "  npx supabase secrets set OPENAI_API_KEY=sk-..."
+echo "Without that secret the app automatically uses the best neural voice installed on the device."
+echo "To force device voices only, build with EXPO_PUBLIC_NARRATOR_CLOUD=off."
 echo
 echo "For push delivery while the app is closed, set a strong webhook secret:"
 echo "  npx supabase secrets set CHAT_WEBHOOK_SECRET=YOUR_RANDOM_SECRET"
