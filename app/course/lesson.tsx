@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
@@ -103,13 +103,8 @@ export default function SentenceLessonScreen() {
     playResponsiveSpeech({ text, locale: 'en-US', rate });
   };
 
-  // Read every sentence when it becomes the active sentence, matching the
-  // sentence-first behaviour of the Russian course.
-  useEffect(() => {
-    if (!sessionReady || stage !== 1 || !current?.en) return;
-    const timer = setTimeout(() => speak(current.en, NORMAL_SPEECH_RATE), 100);
-    return () => { clearTimeout(timer); void Speech.stop(); };
-  }, [sessionReady, stage, sentenceIndex, lesson.id]);
+  // Narrator removed: sentences are no longer read aloud automatically.
+  // Speech only starts when the learner presses a play button.
 
   const startSpeechPractice = async () => {
     if (!PAID_AI_ENABLED) { setSpeechError(PAID_AI_DISABLED_MESSAGE); return; }
@@ -256,7 +251,7 @@ export default function SentenceLessonScreen() {
               <Pressable accessibilityRole="button" style={styles.replayButton} onPress={() => speak(current.en, SLOW_SPEECH_RATE)}><Volume2 size={17} color={Palette.primary} /><Text style={styles.replayText}>آهسته</Text></Pressable>
               <Pressable accessibilityRole="button" style={styles.replayButton} onPress={() => speak(current.en, NORMAL_SPEECH_RATE)}><Volume2 size={17} color={Palette.primary} /><Text style={styles.replayText}>معمولی</Text></Pressable>
             </View>
-            <Text style={styles.hint}>جمله به‌صورت خودکار پخش می‌شود؛ می‌توانید آهسته یا معمولی دوباره بشنوید و با صدای بلند تکرار کنید.</Text>
+            <Text style={styles.hint}>برای شنیدن جمله، دکمهٔ پخش را بزنید؛ می‌توانید آهسته یا معمولی بشنوید و با صدای بلند تکرار کنید.</Text>
           </View>
         )}
 

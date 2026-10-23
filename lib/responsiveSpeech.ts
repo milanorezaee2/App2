@@ -1,4 +1,5 @@
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
+import { NARRATION_ENABLED } from '@/lib/narration';
 import { preloadSpeechVoices, registerNativeVoiceFetcher, resolveRequiredSpeechOptions, resolveSpeechOptions } from './speechLanguage';
 
 registerNativeVoiceFetcher(() => Speech.getAvailableVoicesAsync());
@@ -42,6 +43,9 @@ export function playResponsiveSpeech({
   onDone?: () => void;
   onError?: () => void;
 }) {
+  // Narration is off across the three language tracks: nothing is spoken and
+  // no error is reported for a voice that is intentionally not used.
+  if (!NARRATION_ENABLED) return;
   const currentRequest = ++requestId;
   const selectedRate = rate ?? alternatingRate(locale, text);
   const start = async () => {

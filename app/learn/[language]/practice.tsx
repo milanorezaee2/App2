@@ -4,7 +4,8 @@ import { LtrDirection } from '@/lib/theme';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
+import { NARRATION_ENABLED } from '@/lib/narration';
 import { preloadSpeechVoices, resolveRequiredSpeechOptions, resolveSpeechOptions } from '@/lib/speechLanguage';
 import { GermanCoursePage as CoursePage, GermanCourseButton as CourseButton, germanCourseStyles as s } from '@/components/GermanCourseUI';
 import { FIRST_MEETING } from '@/lib/languages/germanFirstMeeting';
@@ -89,6 +90,9 @@ function PracticeSession({ unit, lesson, initial }: { unit: LearningUnit; lesson
   useEffect(() => { actionLock.current = false; }, [index, feedback, stage]);
   useEffect(() => { void preloadSpeechVoices(); return () => { activeAudio.current = null; void Speech.stop(); }; }, []);
   const speak = (text: string, listeningId?: string) => {
+    // Narration is off: pressing the play control unlocks the listening
+    // question instead of waiting for a playback callback that never comes.
+    if (!NARRATION_ENABLED) { if (listeningId) setPlayed(true); return; }
     // Each playback has its own token: a cancelled/error callback cannot unlock a later replay.
     const token={};activeAudio.current=token;setAudioError('');void Speech.stop();
     const targetLocale = unit.language==='en'?'en-US':'de-DE';

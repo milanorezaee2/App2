@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { createAudioPlayer } from 'expo-audio';
 import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -14,8 +13,7 @@ import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
 
-// The welcome voice plays once per app session, when the main language screen appears.
-let welcomeVoicePlayed = false;
+// Narrator removed: no welcome voice plays when the language screen appears.
 
 const languageMeta = {
   en: { flag: '🇬🇧', code: 'EN', nativeName: 'English', tint: '#EAF2FF', border: '#CFE0FF' },
@@ -46,23 +44,6 @@ const productFeatures = [
 export default function LanguagesHome() {
   const router = useRouter();
   const [openingSupport, setOpeningSupport] = useState(false);
-
-  useEffect(() => {
-    if (welcomeVoicePlayed) return;
-    welcomeVoicePlayed = true;
-    // Start after the intro chime has fully finished, so the two never overlap.
-    const start = setTimeout(() => {
-      try {
-        const player = createAudioPlayer(require('../assets/audio/welcome-voice.wav'));
-        player.volume = 0.9;
-        player.play();
-        setTimeout(() => player.remove(), 4000);
-      } catch {
-        // Devices without audio playback still show the screen normally.
-      }
-    }, 400);
-    void start;
-  }, []);
 
   const openSupport = () => {
     if (openingSupport) return;

@@ -4,7 +4,7 @@ import type { LearningUnit } from '@/lib/languages/learningDesign';
 import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Redirect, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
 import { CoursePage, CourseButton, courseStyles } from '@/components/LanguageCourseUI';
 import { GermanCoursePage, GermanCourseButton, germanCourseStyles } from '@/components/GermanCourseUI';
 import RussianReview from '@/components/RussianReview';

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
 import { ChevronLeft, Volume2 } from 'lucide-react-native';
 import type { SentenceLesson } from '@/lib/courseContent';
 import { EnglishPalette as Palette } from './EnglishSupplementTask';

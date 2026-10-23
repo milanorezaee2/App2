@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
+import { NARRATION_ENABLED } from '@/lib/narration';
 import { BookOpenCheck, Check, ChevronLeft, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 const RUSSIAN_LESSON_GRADIENTS: Record<number, [string, string]> = {
@@ -93,6 +94,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
   }, [lesson.id, sessionReady, stage, sentenceIndex, revealed, answers, showCheckAnswers, saveRetry]);
 
   const speak = useCallback((text: string, rate = 0.78) => {
+    if (!NARRATION_ENABLED) return;
     setSpeechError('');
     void Speech.stop();
     void resolveSpeechOptions(findLanguage('ru')!.speechLocale).then(targetVoice => {
@@ -104,11 +106,8 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     });
   }, []);
 
-  useEffect(() => {
-    if (!sessionReady || (stage !== 1 && stage !== 3) || !current?.text) return;
-    const timer = setTimeout(() => speak(current.text, NORMAL_SPEECH_RATE), 100);
-    return () => { clearTimeout(timer); void Speech.stop(); };
-  }, [sessionReady, stage, sentenceIndex, lesson.id, speak]);
+  // Narrator removed: the sentence is no longer played automatically.
+  // Audio starts only when the learner presses a play button.
 
   const selectSentence = (index: number, rate = 0.72) => {
     setSentenceIndex(index);
@@ -204,7 +203,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
             <Pressable accessibilityRole="button" accessibilityLabel="پخش آهستهٔ جمله" style={styles.replayButton} onPress={() => speak(current.text, SLOW_SPEECH_RATE)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>آهسته</Text></Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="پخش معمولی جمله" style={styles.replayButton} onPress={() => speak(current.text, NORMAL_SPEECH_RATE)}><Volume2 size={18} color={Palette.primary} /><Text style={styles.replayText}>معمولی</Text></Pressable>
           </View>
-          <Text style={styles.hint}>جمله به‌صورت خودکار پخش می‌شود. می‌توانید آهسته یا معمولی دوباره بشنوید و با صدای بلند تکرار کنید.</Text>
+          <Text style={styles.hint}>برای شنیدن جمله، دکمهٔ پخش را بزنید. می‌توانید آهسته یا معمولی بشنوید و با صدای بلند تکرار کنید.</Text>
         </View>}
 
         {stage === 2 && <View style={styles.centerStage}>

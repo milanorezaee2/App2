@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Volume2 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
 import { CoursePage } from '@/components/LanguageCourseUI';
 import { GermanCoursePage, GermanCourseButton, germanCourseStyles } from '@/components/GermanCourseUI';
 import { findGermanLesson, germanProgress } from '@/lib/languages/catalog';
@@ -225,6 +225,15 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
       </View>}
       {stage === 1 && <View style={s.card}>
         <Text style={s.small}>جمله {fa(index + 1)} از {fa(lesson.sentences.length)}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`شنیدن جملهٔ آلمانی: ${current.text}`}
+          accessibilityHint="جملهٔ این مرحله را با تلفظ آلمانی پخش می‌کند"
+          style={({ pressed }) => [soundButtonStyles.button, pressed && soundButtonStyles.pressed]}
+          onPress={() => speak(current.text, NORMAL_SPEECH_RATE)}
+        >
+          <Volume2 size={25} color="#FFFFFF" />
+        </Pressable>
         <Text style={s.target} onPress={() => speak(current.text, NORMAL_SPEECH_RATE)}>{current.text}</Text>
         <Text style={s.pronunciation}>{current.pronunciation}</Text>
         <View style={s.divider} />
@@ -286,3 +295,23 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
     </GermanCoursePage>
   );
 }
+
+// دکمهٔ گرد آبی پخش جمله در مرحلهٔ «جمله‌ها» — فقط ظاهر بخش آلمانی.
+const soundButtonStyles = StyleSheet.create({
+  button: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#1769D2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginVertical: 4,
+    shadowColor: '#1769D2',
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  pressed: { opacity: 0.85, transform: [{ scale: 0.97 }] },
+});

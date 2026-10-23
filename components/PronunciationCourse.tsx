@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import type { ViewStyle } from 'react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import * as Speech from 'expo-speech';
+import * as Speech from '@/lib/narration';
+import { NARRATION_ENABLED } from '@/lib/narration';
 import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw, Volume2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { AppBottomNav } from '@/components/AppBottomNav';
@@ -135,6 +136,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
   };
 
   const speak = async (text: string, rate: 'slow' | 'normal') => {
+    if (!NARRATION_ENABLED) return;
     const request = ++speechGeneration.current;
     setSpeaking(true);
     setSpeechMessage(`درخواست پخش ${rate === 'slow' ? 'آهسته' : 'عادی'} ارسال شد؛ منتظر صدای دستگاه هستیم.`);
