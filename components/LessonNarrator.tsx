@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AudioLines, Pause, Play, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
 import { useLessonNarrator } from '@/lib/narrator/useLessonNarrator';
-import { NARRATOR_LANGUAGE_LABEL, type NarratorLocale } from '@/lib/narrator/voiceCast';
+import type { NarratorLocale } from '@/lib/narrator/voiceCast';
 import { Radius, Typography } from '@/lib/theme';
 
 /**
@@ -35,7 +35,6 @@ export function LessonNarrator({
   const { status, engine, auto, speed, voiceLabel, cloudAvailable, cloudChecked } = narrator;
   const speaking = status === 'speaking' || status === 'loading';
   const paused = status === 'paused';
-  const language = NARRATOR_LANGUAGE_LABEL[locale];
 
   const halo = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -81,11 +80,11 @@ export function LessonNarrator({
       ? 'نورال دستگاه'
       : 'در حال بررسی صدا';
 
-  const mainLabel = speaking ? 'توقف موقت نریتور' : paused ? 'ادامهٔ خواندن جمله' : `خواندن جملهٔ ${language}`;
+  const mainLabel = speaking ? 'توقف موقت خواندن' : paused ? 'ادامهٔ خواندن جمله' : 'خواندن جمله';
 
   return (
     <View
-      accessibilityLabel={`نریتور ${language}. ${statusText}`}
+      accessibilityLabel={`نریتور درس. ${statusText}`}
       style={[styles.card, { borderColor: `${accent}2E` }]}
     >
       <View style={styles.top}>
@@ -108,7 +107,7 @@ export function LessonNarrator({
 
         <View style={styles.titleBox}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>نریتور {language}</Text>
+            <Text style={styles.title}>نریتور درس</Text>
             <View style={[styles.liveDot, { backgroundColor: speaking ? accent : '#CBD5E1' }]} />
           </View>
           <Text style={styles.status} numberOfLines={2}>{statusText}</Text>

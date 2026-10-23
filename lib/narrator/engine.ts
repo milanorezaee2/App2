@@ -10,6 +10,7 @@ import {
   NarratorCloudUnavailableError,
   pauseCloudNarration,
   playCloudNarration,
+  prefetchCloudNarration,
   resumeCloudNarration,
   stopCloudNarration,
   unlockCloudPlayback,
@@ -241,6 +242,9 @@ export async function narrate(
   const speed = options.speed ?? snapshot.speed;
 
   haltPlayback();
+  // `speechSynthesis.cancel()` needs a tick to settle; speaking immediately
+  // clips the first syllable and makes even a good voice sound broken.
+  if (Platform.OS === 'web') await delay(45);
   await prepareAudioSession();
   if (id !== requestId) return;
 
@@ -260,7 +264,7 @@ export async function narrate(
       await playCloudNarration({
         text: clean,
         locale,
-        speed: speed === 'slow' ? 0.82 : 1,
+        playbackRate: speed === 'slow' ? 0.8 : 1,
         cancelled: () => id !== requestId,
       });
       if (id !== requestId) return;
@@ -344,11 +348,17 @@ export function setNarratorSpeed(speed: NarratorSpeed): void {
 }
 
 /** Warms the voice list and the cloud availability check before the first word. */
-export async function primeNarrator(locale: NarratorLocale): Promise<void> {
+export async function primeNarrator(locale: NarratorLocale, text?: string): Promise<void> {
   const profile = await resolveNarratorVoice(locale);
   if (profile.label) update({ voiceLabel: profile.label, qualityLabel: profile.quality });
   const cloud = await checkCloudNarrator();
   update({ cloudAvailable: cloud, cloudChecked: true });
+  if (cloud && text) void prefetchCloudNarration(text, locale);
+}
+
+/** Warms the sentence audio ahead of the automatic reading. */
+export function prefetchSentence(text: string, locale: NarratorLocale): void {
+  void prefetchCloudNarration(text, locale);
 }
 
 export function isNarratorBusy(): boolean {

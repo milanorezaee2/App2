@@ -18,17 +18,11 @@ export type NarratorSpeed = 'normal' | 'slow';
 
 export const NARRATOR_LOCALES: readonly NarratorLocale[] = ['en-US', 'de-DE', 'ru-RU'];
 
-export const NARRATOR_LANGUAGE_LABEL: Record<NarratorLocale, string> = {
-  'en-US': 'انگلیسی',
-  'de-DE': 'آلمانی',
-  'ru-RU': 'روسی',
-};
-
 /** Names of voices that are recognisably female on Windows, Android, iOS and Chrome. */
 const FEMININE_NAMES: Record<NarratorLocale, RegExp> = {
-  'en-US': /(?:^|[^a-z])(?:aria|jenny|ava|emma|michelle|sonia|libby|natasha|clara|samantha|karen|moira|tessa|victoria|allison|susan|zoe|serena|kate|stephanie|olivia|amy|joanna|salli|kimberly|ivy|kendra|nicole|female|woman|google us english|google uk english female)(?:$|[^a-z])/i,
-  'de-DE': /(?:^|[^a-z])(?:amala|seraphina|katja|hedda|anna|petra|helena|marlene|vicki|ingrid|maja|steffi|eva|claudia|klarissa|louisa|female|frau|de-de-x-deb)(?:$|[^a-z])/i,
-  'ru-RU': /(?:^|[^a-zа-яё])(?:svetlana|dariya|daria|milena|irina|anna|anastasia|anastasiya|elena|alyona|alena|maria|mariya|natalia|natalya|olga|oksana|oxana|yulia|julia|tatiana|tatyana|nina|vera|valentina|ekaterina|katya|polina|ksenia|female|женский|ru-ru-x-ruf)(?:$|[^a-zа-яё])/i,
+  'en-US': /(?:^|[^a-z])(?:aria|jenny|ava|emma|michelle|sonia|libby|natasha|clara|samantha|karen|moira|tessa|victoria|allison|susan|zoe|zira|hazel|serena|kate|stephanie|olivia|amy|joanna|salli|kimberly|ivy|kendra|nicole|female|woman|google us english|google uk english female)(?:$|[^a-z])/i,
+  'de-DE': /(?:^|[^a-z])(?:amala|seraphina|katja|hedda|anna|petra|helena|marlene|vicki|ingrid|maja|steffi|eva|claudia|klarissa|louisa|google deutsch|female|frau|de-de-x-deb)(?:$|[^a-z])/i,
+  'ru-RU': /(?:^|[^a-zа-яё])(?:svetlana|dariya|daria|milena|irina|anna|anastasia|anastasiya|elena|alyona|alena|maria|mariya|natalia|natalya|olga|oksana|oxana|yulia|julia|tatiana|tatyana|nina|vera|valentina|ekaterina|katya|polina|ksenia|google русский|female|женский|ru-ru-x-ruf)(?:$|[^a-zа-яё])/i,
 };
 
 /** Names that are clearly male; they are never chosen for the narrator. */
@@ -41,16 +35,18 @@ const MASCULINE_NAMES: Record<NarratorLocale, RegExp> = {
 /** Neural / cloud voices sound human; they outrank compact robotic engines. */
 const NATURAL_QUALITY = /natural|neural|online|premium|enhanced|wavenet|studio|siri|google|multilingual|expressive|hd voice/i;
 const LOW_QUALITY = /compact|espeak|eloquence|novelty|robotic|pico|festival/i;
+/** Old SAPI/desktop engines: usable on a bare device, but never the first pick. */
+const LEGACY_QUALITY = /microsoft (?:david|zira|mark|hazel|george|linda|richard|sean)/i;
 
 /** Delivery is unhurried but never sluggish: a teacher reading to a learner. */
 export const NARRATOR_PROSODY: Record<NarratorLocale, { rate: number; pitch: number; gapMs: number }> = {
-  'en-US': { rate: 0.93, pitch: 1.04, gapMs: 160 },
-  'de-DE': { rate: 0.89, pitch: 1.03, gapMs: 180 },
-  'ru-RU': { rate: 0.87, pitch: 1.05, gapMs: 180 },
+  'en-US': { rate: 1, pitch: 1, gapMs: 70 },
+  'de-DE': { rate: 0.97, pitch: 1, gapMs: 70 },
+  'ru-RU': { rate: 0.96, pitch: 1, gapMs: 70 },
 };
 
 /** The cloud narrator uses the same persona in every language. */
-export const NARRATOR_PERSONA_TAG = 'warm-female-teacher-v1';
+export const NARRATOR_PERSONA_TAG = 'warm-female-teacher-v2';
 
 function voiceText(voice: SpeechVoiceInfo): string {
   return `${voice.identifier} ${voice.name}`.toLowerCase();
@@ -89,7 +85,7 @@ export function scoreNarratorVoice(voice: SpeechVoiceInfo, locale: NarratorLocal
   if (isMasculineVoice(voice, locale)) score -= 200;
   if (NATURAL_QUALITY.test(hay)) score += 55;
   if (LOW_QUALITY.test(hay)) score -= 120;
-  if (String(voice.quality || '').toLowerCase() === 'enhanced') score += 20;
+  if (LEGACY_QUALITY.test(hay)) score -= 35;
 
   const normalized = locale.replace(/_/g, '-').toLowerCase();
   const voiceLanguage = (voice.language || '').replace(/_/g, '-').toLowerCase();
@@ -184,18 +180,21 @@ export function narratorVoicesResolved(): boolean {
 export function splitForNarration(text: string): string[] {
   const clean = text.replace(/\s+/g, ' ').trim();
   if (!clean) return [];
-  if (clean.length <= 150) return [clean];
+  // A lesson sentence is almost always short. Reading it as ONE utterance is
+  // what makes the voice sound connected instead of stitched-together; only
+  // genuinely long paragraphs are split, and then only at sentence ends.
+  if (clean.length <= 320) return [clean];
 
   const parts = clean
-    .split(/(?<=[.!?…؟;:،])\s+/)
-    .flatMap(part => (part.length > 170 ? part.split(/(?<=[,،—–-])\s+/) : [part]))
+    .split(/(?<=[.!?…؟])\s+/)
+    .flatMap(part => (part.length > 220 ? part.split(/(?<=[,;:،—–])\s+/) : [part]))
     .map(part => part.trim())
     .filter(Boolean);
 
   const merged: string[] = [];
   for (const part of parts) {
     const last = merged[merged.length - 1];
-    if (last && (last + ' ' + part).length <= 150) merged[merged.length - 1] = `${last} ${part}`;
+    if (last && (last + ' ' + part).length <= 240) merged[merged.length - 1] = `${last} ${part}`;
     else merged.push(part);
   }
   return merged.length ? merged : [clean];
@@ -203,5 +202,5 @@ export function splitForNarration(text: string): string[] {
 
 export const narratorRateFor = (locale: NarratorLocale, speed: NarratorSpeed): number => {
   const base = NARRATOR_PROSODY[locale].rate;
-  return speed === 'slow' ? Math.max(0.55, Number((base * 0.68).toFixed(2))) : base;
+  return speed === 'slow' ? Math.max(0.6, Number((base * 0.8).toFixed(2))) : base;
 };

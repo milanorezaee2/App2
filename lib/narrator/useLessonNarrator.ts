@@ -5,6 +5,7 @@ import {
   getNarratorSnapshot,
   narrate,
   pauseNarration,
+  prefetchSentence,
   primeNarrator,
   resumeNarration,
   setNarratorAuto,
@@ -46,6 +47,11 @@ export function useLessonNarrator(params: {
   useEffect(() => {
     void primeNarrator(locale).catch(() => undefined);
   }, [locale]);
+
+  // Warm the sentence audio ahead of the automatic reading.
+  useEffect(() => {
+    if (cleanText) prefetchSentence(cleanText, locale);
+  }, [cleanText, locale]);
 
   useEffect(() => {
     if (!enabled || !cleanText) return;

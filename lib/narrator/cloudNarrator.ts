@@ -32,7 +32,7 @@ export class NarratorCloudUnavailableError extends Error {
 }
 
 const HEALTH_KEY = 'mml_narrator_cloud_health_v1';
-const HEALTH_TTL_MS = 30 * 60 * 1000;
+const HEALTH_TTL_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 9000;
 /** ~40 ms of silence, used to unlock playback inside a tap handler. */
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=';
@@ -89,14 +89,16 @@ function languageCode(locale: NarratorLocale): string {
   return locale.slice(0, 2).toLowerCase();
 }
 
-function buildUrl(text: string, locale: NarratorLocale, speed: number): string {
+function buildUrl(text: string, locale: NarratorLocale): string {
   const endpoint = cloudNarratorEndpoint();
   if (!endpoint) throw new NarratorCloudUnavailableError('Cloud narrator is not configured.');
   // Built by hand: Hermes on Android has no URLSearchParams.
+  // The voice is always synthesised at its natural pace; "slow" is applied at
+  // playback (pitch-preserving) so the prosody stays fully human.
   const params = [
     `lang=${encodeURIComponent(languageCode(locale))}`,
     `text=${encodeURIComponent(text)}`,
-    `speed=${encodeURIComponent(speed.toFixed(2))}`,
+    `speed=1`,
     `persona=${encodeURIComponent(NARRATOR_PERSONA_TAG)}`,
   ];
   const token = (process.env.EXPO_PUBLIC_NARRATION_TTS_TOKEN || '').trim();
@@ -248,7 +250,7 @@ export function stopCloudNarration(): void {
   finish?.();
 }
 
-function playWeb(url: string, cancelled: () => boolean): Promise<void> {
+function playWeb(url: string, cancelled: () => boolean, playbackRate: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const audio = ensureWebAudio();
     let settled = false;
@@ -266,6 +268,12 @@ function playWeb(url: string, cancelled: () => boolean): Promise<void> {
 
     audio.crossOrigin = 'anonymous';
     audio.src = url;
+    try {
+      audio.preservesPitch = true;
+      audio.playbackRate = playbackRate;
+    } catch {
+      // Older engines ignore pitch-preserving playback rate.
+    }
     audio.onended = () => finish();
     audio.onerror = () => finish(new NarratorCloudUnavailableError('Narrator audio could not be decoded.'));
 
@@ -295,7 +303,7 @@ function playWeb(url: string, cancelled: () => boolean): Promise<void> {
   });
 }
 
-function playNative(url: string, speed: number, cancelled: () => boolean): Promise<void> {
+function playNative(url: string, cancelled: () => boolean, playbackRate: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const player = createAudioPlayer({ uri: url }, { updateInterval: 250, downloadFirst: true });
     nativePlayer = player;
@@ -321,7 +329,7 @@ function playNative(url: string, speed: number, cancelled: () => boolean): Promi
     });
 
     try {
-      player.playbackRate = speed;
+      player.playbackRate = playbackRate;
       player.play();
       playing = true;
     } catch {
@@ -339,19 +347,43 @@ function playNative(url: string, speed: number, cancelled: () => boolean): Promi
 export async function playCloudNarration(params: {
   text: string;
   locale: NarratorLocale;
-  speed: number;
+  playbackRate?: number;
   cancelled: () => boolean;
 }): Promise<void> {
-  const { text, locale, speed, cancelled } = params;
+  const { text, locale, playbackRate = 1, cancelled } = params;
   if (!(await checkCloudNarrator())) throw new NarratorCloudUnavailableError();
   if (cancelled()) return;
 
-  const url = buildUrl(text, locale, speed);
+  const url = buildUrl(text, locale);
   const preflight = await fetchWithTimeout(url);
   if (!preflight.ok) throw new NarratorCloudUnavailableError(`Narrator responded ${preflight.status}.`);
   if (cancelled()) return;
 
   stopCloudNarration();
-  if (Platform.OS === 'web') return playWeb(url, cancelled);
-  return playNative(url, speed, cancelled);
+  if (Platform.OS === 'web') return playWeb(url, cancelled, playbackRate);
+  return playNative(url, cancelled, playbackRate);
+}
+
+const prefetched = new Set<string>();
+
+/**
+ * Warms the sentence audio while the lesson screen is still settling so the
+ * narrator starts instantly, in one continuous human phrase.
+ */
+export async function prefetchCloudNarration(text: string, locale: NarratorLocale): Promise<void> {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (!clean || clean.length > 320) return;
+  const key = `${locale}|${clean}`;
+  if (prefetched.has(key)) return;
+  prefetched.add(key);
+  if (prefetched.size > 60) {
+    const oldest = prefetched.values().next().value;
+    if (oldest) prefetched.delete(oldest);
+  }
+  try {
+    if (!(await checkCloudNarrator())) return;
+    await fetchWithTimeout(buildUrl(clean, locale));
+  } catch {
+    // Prefetch is an optimisation only; playback has its own error handling.
+  }
 }

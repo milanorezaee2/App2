@@ -41,7 +41,7 @@ export const speak = (text, options = {}) => {
   setTimeout(() => {
     globalThis.__SPEAKING__ = false;
     options.onDone?.();
-  }, 25);
+  }, globalThis.__SPEECH_DURATION_MS__ ?? 25);
 };
 export const stop = async () => {
   globalThis.__SPEAKING__ = false;
@@ -77,6 +77,7 @@ export {
   stopNarration,
   getNarratorSnapshot,
   setNarratorAuto,
+  setNarratorSpeed,
   primeNarrator,
 } from '@/lib/narrator/engine';
 export * as Speech from '@/lib/narration';
@@ -186,6 +187,7 @@ globalThis.Audio = class FakeAudio {
 };
 globalThis.fetch = async url => {
   const text = String(url);
+  (globalThis.__FETCH_URLS__ ||= []).push(text);
   if (text.includes('health=1')) {
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } });
   }
@@ -225,11 +227,15 @@ check('Slow narration is faster to follow than normal narration',
   device.narratorRateFor('de-DE', 'slow') < device.narratorRateFor('de-DE', 'normal'));
 
 const shortSentence = 'Guten Morgen! Wie geht es dir?';
-const longSentence = 'Guten Morgen! Wie geht es dir heute? Ich freue mich sehr, dich wiederzusehen, und hoffe, dass du einen ruhigen und angenehmen Tag hattest, so wie wir ihn geplant haben.';
+const longSentence = 'Guten Morgen! Wie geht es dir heute? Ich freue mich sehr, dich wiederzusehen, und hoffe, dass du einen ruhigen und angenehmen Tag hattest, so wie wir ihn geplant haben.'.repeat(3);
+const punctuatedSentence = 'Guten Morgen! Wie geht es dir heute? Mir geht es gut, danke, und ich freue mich auf unseren ruhigen Tag zusammen.';
 check('A short sentence stays in one breath group', device.splitForNarration(shortSentence).length === 1);
+check('A punctuated sentence is still read as ONE connected phrase',
+  device.splitForNarration(punctuatedSentence).length === 1,
+  String(device.splitForNarration(punctuatedSentence).length));
 check('A long sentence is split into breath-sized groups',
   device.splitForNarration(longSentence).length >= 2
-  && device.splitForNarration(longSentence).every(part => part.length <= 170),
+  && device.splitForNarration(longSentence).every(part => part.length <= 260),
   String(device.splitForNarration(longSentence).length));
 
 section('Automatic reading (device engine)');
@@ -239,18 +245,23 @@ const firstCall = globalThis.__SPEECH_CALLS__[0];
 check('The narrator speaks the sentence automatically', globalThis.__SPEECH_CALLS__.length === 1);
 check('The narrator uses the feminine German voice', firstCall?.options?.voice === 'de-DE-KatjaNeural', firstCall?.options?.voice);
 check('The narrator language targets German', String(firstCall?.options?.language).toLowerCase().startsWith('de'), firstCall?.options?.language);
-check('The narrator reads at a warm, unhurried pace', firstCall?.options?.rate === device.narratorRateFor('de-DE', 'normal'));
+check('The narrator reads at a natural pace with no pitch artefacts',
+  firstCall?.options?.rate === device.narratorRateFor('de-DE', 'normal')
+  && firstCall?.options?.pitch === 1,
+  `${firstCall?.options?.rate} / ${firstCall?.options?.pitch}`);
 check('Narration reports itself as speaking', device.getNarratorSnapshot().status === 'speaking' || true);
 await wait(150);
 check('After the sentence the narrator returns to idle', device.getNarratorSnapshot().status === 'idle', device.getNarratorSnapshot().status);
 
 section('Interruption by the existing speaker controls');
 globalThis.__SPEECH_CALLS__ = [];
+globalThis.__SPEECH_DURATION_MS__ = 600;
 void device.narrate('Ich fahre morgen mit dem Zug nach Berlin.', 'de-DE');
-await wait(10);
-check('Narrator is speaking before the interruption', device.getNarratorSnapshot().status === 'speaking');
+await wait(160);
+check('Narrator is speaking before the interruption', device.getNarratorSnapshot().status === 'speaking', device.getNarratorSnapshot().status);
 await device.Speech.stop();
-await wait(60);
+await wait(320);
+globalThis.__SPEECH_DURATION_MS__ = 25;
 check('A screen calling Speech.stop() also silences the narrator bar',
   device.getNarratorSnapshot().status === 'idle',
   device.getNarratorSnapshot().status);
@@ -280,13 +291,26 @@ await cloud.primeNarrator('en-US');
 check('The cloud narrator is discovered from the Supabase project', cloud.getNarratorSnapshot().cloudAvailable === true);
 
 void cloud.narrate('Good morning! How are you today?', 'en-US');
-await wait(20);
+await wait(140);
 const cloudSnapshot = cloud.getNarratorSnapshot();
 check('Cloud narration takes priority over the device voice', cloudSnapshot.engine === 'cloud', String(cloudSnapshot.engine));
 check('The cloud voice is presented as a human narrator', cloudSnapshot.qualityLabel === 'انسانی', cloudSnapshot.qualityLabel);
 check('Audio is actually requested from the narrator function', (globalThis.__AUDIOS__ ?? []).some(audio => audio.playCount > 0));
-await wait(120);
+await wait(160);
 check('Cloud narration finishes back at idle', cloud.getNarratorSnapshot().status === 'idle', cloud.getNarratorSnapshot().status);
+check('Cloud voice is synthesised at its natural pace (speed=1)',
+  (globalThis.__FETCH_URLS__ ?? []).some(url => url.includes('text=') && url.includes('speed=1')),
+  (globalThis.__FETCH_URLS__ ?? []).find(url => url.includes('text=')));
+
+void cloud.narrate('Guten Morgen! Wie geht es dir heute?', 'de-DE');
+await wait(140);
+cloud.setNarratorSpeed('slow');
+await wait(280);
+const slowAudio = (globalThis.__AUDIOS__ ?? []).at(-1);
+check('Slow mode stays human: natural synthesis, pitch-preserving slower playback',
+  slowAudio?.playbackRate === 0.8,
+  String(slowAudio?.playbackRate));
+cloud.setNarratorSpeed('normal');
 
 section('Automatic narration switch');
 cloud.setNarratorAuto(false);

@@ -61,9 +61,45 @@ function readWebVoicesSync(): SpeechVoiceInfo[] {
   }));
 }
 
+/**
+ * Browsers publish their voice list asynchronously. Reading it too early used
+ * to return nothing, so the first (and sometimes only) sentence was spoken by
+ * the browser's default voice — often a robotic system voice in the wrong
+ * language. Wait briefly for the real list before choosing a voice.
+ */
+function waitForWebVoices(timeoutMs = 700): Promise<SpeechVoiceInfo[]> {
+  const engine = getWebSynthesis();
+  if (!engine || typeof engine.getVoices !== 'function') return Promise.resolve([]);
+  const synth = engine;
+  const immediate = readWebVoicesSync();
+  if (immediate.length > 0) return Promise.resolve(immediate);
+  return new Promise(resolve => {
+    let settled = false;
+    const timer = setTimeout(finish, timeoutMs);
+    function finish() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (typeof synth.removeEventListener === 'function') {
+        synth.removeEventListener('voiceschanged', onChange);
+      }
+      resolve(readWebVoicesSync());
+    }
+    function onChange() {
+      if (readWebVoicesSync().length > 0) finish();
+    }
+    if (typeof synth.addEventListener === 'function') {
+      synth.addEventListener('voiceschanged', onChange);
+    }
+    // A few engines fill the list on the next tick without firing an event.
+    setTimeout(onChange, 140);
+  });
+}
+
 export async function loadAvailableVoices(): Promise<SpeechVoiceInfo[]> {
   if (Platform.OS === 'web') {
-    const voices = readWebVoicesSync();
+    let voices = readWebVoicesSync();
+    if (voices.length === 0) voices = await waitForWebVoices();
     if (voices.length > 0) cachedVoices = voices;
     return voices;
   }
