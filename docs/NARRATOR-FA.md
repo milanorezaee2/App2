@@ -69,10 +69,9 @@ npx supabase secrets set OPENAI_API_KEY=sk-...
 
 یا فقط `./scripts/setup-production.sh` را اجرا کنید؛ تابع هم منتشر می‌شود.
 
-اگر به ترمینال دسترسی ندارید، از داشبورد Supabase:
-`Edge Functions → New function → narration-tts` و محتوای
-`supabase/functions/narration-tts/index.ts` را کپی کنید؛ سپس
-`Project Settings → Edge Functions → Secrets` کلید را ثبت کنید.
+اگر به ترمینال دسترسی ندارید، راهنمای ساده و تصویری‌قدم‌به‌قدم (فقط با مرورگر)
+در `docs/NARRATOR-RAH-ANDAZI-FA.md` آمده است: ساخت تابع از داشبورد، خاموش‌کردن
+Verify JWT، ثبت Secret و آزمایش با آدرس `?health=1`.
 
 بررسی سلامت:
 
