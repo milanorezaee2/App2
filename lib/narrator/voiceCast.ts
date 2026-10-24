@@ -18,6 +18,17 @@ export type NarratorSpeed = 'normal' | 'slow';
 
 export const NARRATOR_LOCALES: readonly NarratorLocale[] = ['en-US', 'de-DE', 'ru-RU'];
 
+
+export const SELECTED_NARRATOR_CAST: Record<NarratorLocale, { voiceId: string; locale: string; label: string }> = {
+  'en-US': { voiceId: 'en-au-storyteller-4', locale: 'en-AU', label: 'English · Sydney native' },
+  'de-DE': { voiceId: 'de-de-storyteller-1', locale: 'de-DE', label: 'Deutsch · native warm' },
+  'ru-RU': { voiceId: 'Erinome', locale: 'ru-RU', label: 'Русский · clear female' },
+};
+
+export function selectedNarratorLabel(locale: NarratorLocale): string {
+  return SELECTED_NARRATOR_CAST[locale].label;
+}
+
 /** Names of voices that are recognisably female on Windows, Android, iOS and Chrome. */
 const FEMININE_NAMES: Record<NarratorLocale, RegExp> = {
   'en-US': /(?:^|[^a-z])(?:aria|jenny|ava|emma|michelle|sonia|libby|natasha|clara|samantha|karen|moira|tessa|victoria|allison|susan|zoe|zira|hazel|serena|kate|stephanie|olivia|amy|joanna|salli|kimberly|ivy|kendra|nicole|female|woman|google us english|google uk english female)(?:$|[^a-z])/i,

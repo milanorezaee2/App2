@@ -1,10 +1,9 @@
 // Professional lesson narrator — human-sounding female neural voice.
 //
 // The app asks this function for one sentence before reading it. When the
-// function answers, the learner hears one consistent warm female narrator in
-// English, German and Russian on every device and browser. When it is not
-// deployed, the app silently falls back to the best neural voice installed on
-// the device, so the three learning tracks always have sound.
+// function answers, the learner hears the approved cloud/CDN narrator in
+// English, German and Russian on every device and browser. The client never
+// falls back to a device speech engine; a missing asset is reported clearly.
 //
 // Providers (first one that has a key wins, or set NARRATION_PROVIDER):
 //   openai      OPENAI_API_KEY              gpt-4o-mini-tts, warm female voice

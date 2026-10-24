@@ -238,51 +238,21 @@ check('A long sentence is split into breath-sized groups',
   && device.splitForNarration(longSentence).every(part => part.length <= 260),
   String(device.splitForNarration(longSentence).length));
 
-section('Automatic reading (device engine)');
+section('Device fallback protection');
 globalThis.__SPEECH_CALLS__ = [];
 await device.narrate('Guten Morgen! Wie geht es dir?', 'de-DE');
-const firstCall = globalThis.__SPEECH_CALLS__[0];
-check('The narrator speaks the sentence automatically', globalThis.__SPEECH_CALLS__.length === 1);
-check('The narrator uses the feminine German voice', firstCall?.options?.voice === 'de-DE-KatjaNeural', firstCall?.options?.voice);
-check('The narrator language targets German', String(firstCall?.options?.language).toLowerCase().startsWith('de'), firstCall?.options?.language);
-check('The narrator reads at a natural pace with no pitch artefacts',
-  firstCall?.options?.rate === device.narratorRateFor('de-DE', 'normal')
-  && firstCall?.options?.pitch === 1,
-  `${firstCall?.options?.rate} / ${firstCall?.options?.pitch}`);
-check('Narration reports itself as speaking', device.getNarratorSnapshot().status === 'speaking' || true);
-await wait(150);
-check('After the sentence the narrator returns to idle', device.getNarratorSnapshot().status === 'idle', device.getNarratorSnapshot().status);
+check('Device speech is never used when cloud/CDN is unavailable', globalThis.__SPEECH_CALLS__.length === 0);
+check('Unavailable cloud/CDN narration reports an actionable error', device.getNarratorSnapshot().status === 'error');
 
-section('Interruption by the existing speaker controls');
-globalThis.__SPEECH_CALLS__ = [];
-globalThis.__SPEECH_DURATION_MS__ = 600;
-void device.narrate('Ich fahre morgen mit dem Zug nach Berlin.', 'de-DE');
-await wait(160);
-check('Narrator is speaking before the interruption', device.getNarratorSnapshot().status === 'speaking', device.getNarratorSnapshot().status);
-await device.Speech.stop();
-await wait(320);
-globalThis.__SPEECH_DURATION_MS__ = 25;
-check('A screen calling Speech.stop() also silences the narrator bar',
-  device.getNarratorSnapshot().status === 'idle',
-  device.getNarratorSnapshot().status);
-
-section('Russian track (device engine)');
+section('Russian and English remain device-free');
 globalThis.__SPEECH_CALLS__ = [];
 await device.narrate('Доброе утро! Как дела?', 'ru-RU');
-check('Russian sentences use the feminine Russian voice',
-  globalThis.__SPEECH_CALLS__[0]?.options?.voice === 'ru-RU-SvetlanaNeural',
-  globalThis.__SPEECH_CALLS__[0]?.options?.voice);
-check('Russian language tag targets Russian', String(globalThis.__SPEECH_CALLS__[0]?.options?.language).toLowerCase().startsWith('ru'), globalThis.__SPEECH_CALLS__[0]?.options?.language);
-
-section('English track (device engine)');
-globalThis.__SPEECH_CALLS__ = [];
 await device.narrate('Good morning! How are you today?', 'en-US');
-check('English sentences use the feminine English voice',
-  globalThis.__SPEECH_CALLS__[0]?.options?.voice === 'en-US-AriaNeural',
-  globalThis.__SPEECH_CALLS__[0]?.options?.voice);
+check('Russian narration never calls the device engine', globalThis.__SPEECH_CALLS__.length === 0);
+check('English narration never calls the device engine', globalThis.__SPEECH_CALLS__.length === 0);
 
 // --------------------------------------------------------------------- cloud ---
-section('Cloud narrator (human voice) with automatic fallback');
+section('Cloud/CDN narrator (human voice, no device fallback)');
 const cloud = await bundle('cloud', { cloud: 'auto' });
 globalThis.__AUDIOS__ = [];
 globalThis.__SPEECH_CALLS__ = [];
@@ -294,7 +264,7 @@ void cloud.narrate('Good morning! How are you today?', 'en-US');
 await wait(140);
 const cloudSnapshot = cloud.getNarratorSnapshot();
 check('Cloud narration takes priority over the device voice', cloudSnapshot.engine === 'cloud', String(cloudSnapshot.engine));
-check('The cloud voice is presented as a human narrator', cloudSnapshot.qualityLabel === 'انسانی', cloudSnapshot.qualityLabel);
+check('The cloud voice is presented as a human narrator', cloudSnapshot.qualityLabel === 'CDN/ابری تأییدشده', cloudSnapshot.qualityLabel);
 check('Audio is actually requested from the narrator function', (globalThis.__AUDIOS__ ?? []).some(audio => audio.playCount > 0));
 await wait(160);
 check('Cloud narration finishes back at idle', cloud.getNarratorSnapshot().status === 'idle', cloud.getNarratorSnapshot().status);

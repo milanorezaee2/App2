@@ -50,6 +50,12 @@ export function cloudNarratorMode(): CloudNarratorMode {
   return 'auto';
 }
 
+export function narratorCdnEndpoint(): string | null {
+  const configured = (process.env.EXPO_PUBLIC_NARRATOR_CDN_URL || '').trim();
+  if (!configured || /placeholder|example\.com/i.test(configured)) return null;
+  return configured.replace(/\/+$/, '');
+}
+
 export function cloudNarratorEndpoint(): string | null {
   if (cloudNarratorMode() === 'off') return null;
   const configured = (process.env.EXPO_PUBLIC_NARRATION_TTS_URL || '').trim();
@@ -106,6 +112,30 @@ function buildUrl(text: string, locale: NarratorLocale): string {
   return `${endpoint}?${params.join('&')}`;
 }
 
+
+function stableAudioKey(text: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function buildCdnUrl(text: string, locale: NarratorLocale): string | null {
+  const base = narratorCdnEndpoint();
+  if (!base) return null;
+  const extension = (process.env.EXPO_PUBLIC_NARRATOR_CDN_FORMAT || 'mp3').trim().toLowerCase();
+  const safeExtension = extension === 'm4a' || extension === 'opus' ? extension : 'mp3';
+  return `${base}/${languageCode(locale)}/${stableAudioKey(text)}.${safeExtension}`;
+}
+
+function audioUrls(text: string, locale: NarratorLocale): string[] {
+  const urls = [buildCdnUrl(text, locale)];
+  if (cloudNarratorEndpoint()) urls.push(buildUrl(text, locale));
+  return urls.filter((url): url is string => Boolean(url));
+}
+
 async function fetchWithTimeout(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
@@ -122,13 +152,13 @@ async function fetchWithTimeout(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Pr
 
 /** Asks the Edge Function once per session whether a human voice is available. */
 export async function checkCloudNarrator(): Promise<boolean> {
-  if (!cloudNarratorEndpoint()) return false;
+  if (!cloudNarratorEndpoint() && !narratorCdnEndpoint()) return false;
   const stored = readStoredHealth();
   if (stored !== null) return stored;
 
   try {
     const endpoint = cloudNarratorEndpoint();
-    if (!endpoint) return false;
+    if (!endpoint) { storeHealth(true); return true; }
     const response = await fetchWithTimeout(`${endpoint}?health=1`, 5000);
     let ok = false;
     if (response.ok) {
@@ -354,14 +384,19 @@ export async function playCloudNarration(params: {
   if (!(await checkCloudNarrator())) throw new NarratorCloudUnavailableError();
   if (cancelled()) return;
 
-  const url = buildUrl(text, locale);
-  const preflight = await fetchWithTimeout(url);
-  if (!preflight.ok) throw new NarratorCloudUnavailableError(`Narrator responded ${preflight.status}.`);
+  const urls = audioUrls(text, locale);
+  if (!urls.length) throw new NarratorCloudUnavailableError('No CDN or cloud narrator endpoint is configured.');
+  let selectedUrl: string | null = null;
+  for (const url of urls) {
+    const preflight = await fetchWithTimeout(url);
+    if (preflight.ok) { selectedUrl = url; break; }
+  }
+  if (!selectedUrl) throw new NarratorCloudUnavailableError('Narrator audio is unavailable.');
   if (cancelled()) return;
 
   stopCloudNarration();
-  if (Platform.OS === 'web') return playWeb(url, cancelled, playbackRate);
-  return playNative(url, cancelled, playbackRate);
+  if (Platform.OS === 'web') return playWeb(selectedUrl, cancelled, playbackRate);
+  return playNative(selectedUrl, cancelled, playbackRate);
 }
 
 const prefetched = new Set<string>();
@@ -382,7 +417,8 @@ export async function prefetchCloudNarration(text: string, locale: NarratorLocal
   }
   try {
     if (!(await checkCloudNarrator())) return;
-    await fetchWithTimeout(buildUrl(clean, locale));
+    const url = audioUrls(clean, locale)[0];
+    if (url) await fetchWithTimeout(url);
   } catch {
     // Prefetch is an optimisation only; playback has its own error handling.
   }

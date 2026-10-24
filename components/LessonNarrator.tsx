@@ -58,8 +58,8 @@ export function LessonNarrator({
       ? 'نریتور در حال آماده‌کردن صدا…'
       : status === 'speaking'
         ? engine === 'cloud'
-          ? `در حال خواندن جمله با صدای انسانی…`
-          : 'در حال خواندن جمله…'
+          ? `در حال خواندن جمله با صدای CDN/ابری…`
+          : 'در حال آماده‌سازی صدای تأییدشده…'
         : paused
           ? 'موقتاً متوقف شد؛ برای ادامه دوباره بزنید.'
           : status === 'blocked'
@@ -71,14 +71,14 @@ export function LessonNarrator({
                 : 'نریتور خودکار خاموش است؛ با دکمهٔ پخش بشنوید.';
 
   const voiceTag = engine === 'cloud' || (cloudAvailable && cloudChecked)
-    ? 'صدای انسانی ابری'
+    ? 'صدای تأییدشدهٔ CDN/ابری'
     : voiceLabel;
 
   const engineTag = engine === 'cloud'
-    ? 'انسانی · ابری'
+    ? 'CDN/ابری · تأییدشده'
     : cloudChecked && !cloudAvailable
-      ? 'نورال دستگاه'
-      : 'در حال بررسی صدا';
+      ? 'صوت تأییدشده در دسترس نیست'
+      : 'در حال بررسی CDN';
 
   const mainLabel = speaking ? 'توقف موقت خواندن' : paused ? 'ادامهٔ خواندن جمله' : 'خواندن جمله';
 
@@ -186,7 +186,7 @@ export function LessonNarrator({
         >
           <Volume2 size={15} color={accentDeep} />
           <Text style={[styles.blockedText, { color: accentDeep }]}>
-            برای شروع نریتور یک‌بار همین‌جا بزنید
+            برای شروع پخش صوت یک‌بار همین‌جا بزنید
           </Text>
         </Pressable>
       ) : null}

@@ -16,12 +16,9 @@ import {
   unlockCloudPlayback,
 } from './cloudNarrator';
 import {
-  NARRATOR_PROSODY,
-  narratorRateFor,
-  resolveNarratorVoice,
-  splitForNarration,
   type NarratorLocale,
   type NarratorSpeed,
+  selectedNarratorLabel,
 } from './voiceCast';
 
 /**
@@ -29,13 +26,13 @@ import {
  *
  * One warm female voice per language reads the sentence a learner is looking
  * at. It prefers the human-sounding cloud narrator when it is deployed and
- * falls back to the best neural voice on the device otherwise. All lesson
- * screens share this single engine, so a tap on any speaker control and the
- * automatic narrator can never talk over each other.
+ * never falls back to the device speech engine. All lesson screens share this
+ * single engine, so a tap on any speaker control and the automatic narrator can
+ * never talk over each other.
  */
 
 export type NarratorStatus = 'idle' | 'loading' | 'speaking' | 'paused' | 'blocked' | 'error';
-export type NarratorEngineKind = 'cloud' | 'device' | null;
+export type NarratorEngineKind = 'cloud' | null;
 
 export interface NarratorSnapshot {
   status: NarratorStatus;
@@ -132,82 +129,6 @@ async function prepareAudioSession(): Promise<void> {
 
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
-async function speakWithDevice(
-  text: string,
-  locale: NarratorLocale,
-  speed: NarratorSpeed,
-  id: number,
-): Promise<void> {
-  const profile = await resolveNarratorVoice(locale);
-  if (id !== requestId) return;
-
-  update({
-    status: 'speaking',
-    engine: 'device',
-    voiceLabel: profile.label,
-    qualityLabel: profile.quality,
-    locale,
-  });
-
-  const rate = narratorRateFor(locale, speed);
-  const { pitch, gapMs } = NARRATOR_PROSODY[locale];
-  const chunks = splitForNarration(text);
-
-  for (let index = 0; index < chunks.length; index += 1) {
-    if (id !== requestId) return;
-    await new Promise<void>(resolve => {
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        resolve();
-      };
-      try {
-        Speech.speak(chunks[index], {
-          language: profile.language,
-          voice: profile.voice,
-          rate,
-          pitch,
-          onDone: finish,
-          onStopped: finish,
-          onError: finish,
-        } as Parameters<typeof Speech.speak>[1]);
-      } catch {
-        // A device without a usable engine must not freeze the narrator bar.
-        if (id === requestId) {
-          update({ status: 'error', message: 'صدای دستگاه در دسترس نیست؛ متن درس همچنان خوانده می‌شود.' });
-        }
-        finish();
-      }
-
-      if (Platform.OS === 'web') {
-        // Safari/Chrome block speech without a gesture and never call back.
-        setTimeout(() => {
-          if (settled) return;
-          void Speech.isSpeakingAsync()
-            .then(speaking => {
-              if (!speaking) {
-                if (id === requestId) {
-                  update({
-                    status: 'blocked',
-                    message: 'مرورگر برای پخش صدا نیاز به یک لمس دارد.',
-                  });
-                }
-                finish();
-              }
-            })
-            .catch(finish);
-        }, 1400);
-      }
-    });
-    if (index < chunks.length - 1) await delay(gapMs);
-  }
-
-  if (id !== requestId) return;
-  if (snapshot.status === 'blocked') return;
-  update({ status: 'idle' });
-}
-
 /**
  * True while the engine itself calls `Speech.stop()`. The registered cleanup
  * must not mistake that internal stop for a learner pressing another button.
@@ -250,17 +171,13 @@ export async function narrate(
 
   update({ status: 'loading', message: '', locale, text: clean });
 
-  const deviceProfile = await resolveNarratorVoice(locale);
-  if (id !== requestId) return;
-  update({ voiceLabel: deviceProfile.label, qualityLabel: deviceProfile.quality });
-
   const cloud = await checkCloudNarrator();
   if (id !== requestId) return;
   update({ cloudAvailable: cloud, cloudChecked: true });
 
   if (cloud) {
     try {
-      update({ status: 'speaking', engine: 'cloud', voiceLabel: 'نریتور حرفه‌ای', qualityLabel: 'انسانی' });
+      update({ status: 'speaking', engine: 'cloud', voiceLabel: selectedNarratorLabel(locale), qualityLabel: 'CDN/ابری تأییدشده' });
       await playCloudNarration({
         text: clean,
         locale,
@@ -276,14 +193,14 @@ export async function narrate(
         update({ status: 'blocked', message: 'برای شنیدن نریتور، یک‌بار دکمهٔ پخش را لمس کنید.' });
         return;
       }
-      // Any other cloud problem: fall back to the device voice without a pause.
-      update({ cloudAvailable: false, message: '' });
+      update({ cloudAvailable: false, status: 'error', engine: null, message: 'فایل صوتی تأییدشدهٔ این جمله در CDN یا سرویس نریتور در دسترس نیست.' });
+      return;
     }
   }
 
-  if (id !== requestId) return;
-  update({ status: 'loading' });
-  await speakWithDevice(clean, locale, speed, id);
+  if (id === requestId) {
+    update({ status: 'error', engine: null, message: 'نریتور ابری/CDN پیکربندی نشده است؛ صدای دستگاه عمداً استفاده نمی‌شود.' });
+  }
 }
 
 /** Stops narration and clears the current request. */
@@ -297,13 +214,7 @@ export function stopNarration(): void {
 /** Pauses the narrator (cloud audio or device speech). */
 export async function pauseNarration(): Promise<void> {
   if (snapshot.status !== 'speaking' && snapshot.status !== 'loading') return;
-  if (!pauseCloudNarration()) {
-    try {
-      Speech.pause();
-    } catch {
-      // Speech engines that cannot pause simply keep reading the sentence.
-    }
-  }
+  pauseCloudNarration();
   update({ status: 'paused' });
 }
 
@@ -313,13 +224,6 @@ export async function resumeNarration(): Promise<void> {
   if (resumeCloudNarration()) {
     update({ status: 'speaking', engine: 'cloud' });
     return;
-  }
-  try {
-    Speech.resume();
-    update({ status: 'speaking' });
-    return;
-  } catch {
-    // Fall through to a clean replay.
   }
   if (lastRequest) await narrate(lastRequest.text, lastRequest.locale);
 }
@@ -349,8 +253,6 @@ export function setNarratorSpeed(speed: NarratorSpeed): void {
 
 /** Warms the voice list and the cloud availability check before the first word. */
 export async function primeNarrator(locale: NarratorLocale, text?: string): Promise<void> {
-  const profile = await resolveNarratorVoice(locale);
-  if (profile.label) update({ voiceLabel: profile.label, qualityLabel: profile.quality });
   const cloud = await checkCloudNarrator();
   update({ cloudAvailable: cloud, cloudChecked: true });
   if (cloud && text) void prefetchCloudNarration(text, locale);
@@ -374,16 +276,5 @@ registerNarrationStopHandler(() => {
   if (internalStop) return;
   if (snapshot.engine === 'cloud' && snapshot.status !== 'blocked') {
     update({ status: 'idle', engine: null });
-  }
-  if (snapshot.engine === 'device' && snapshot.status === 'speaking') {
-    const id = requestId;
-    setTimeout(() => {
-      if (requestId !== id || snapshot.status !== 'speaking' || snapshot.engine !== 'device') return;
-      void Speech.isSpeakingAsync()
-        .then(speaking => {
-          if (!speaking && requestId === id) update({ status: 'idle', engine: null });
-        })
-        .catch(() => undefined);
-    }, 180);
   }
 });
