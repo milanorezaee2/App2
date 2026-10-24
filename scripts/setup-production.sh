@@ -38,8 +38,8 @@ echo "Production backend setup finished."
 echo
 echo "Lesson narrator (optional human-sounding female voice for EN/DE/RU):"
 echo "  npx supabase secrets set OPENAI_API_KEY=sk-..."
-echo "Without that secret the app automatically uses the best neural voice installed on the device."
-echo "To force device voices only, build with EXPO_PUBLIC_NARRATOR_CLOUD=off."
+echo "The app never falls back to device speech; configure CDN or the Edge Function before release."
+echo "For batch generation: npm run narration:manifest then npm run narration:generate."
 echo
 echo "For push delivery while the app is closed, set a strong webhook secret:"
 echo "  npx supabase secrets set CHAT_WEBHOOK_SECRET=YOUR_RANDOM_SECRET"

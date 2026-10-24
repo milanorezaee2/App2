@@ -1,16 +1,16 @@
 import { Platform } from 'react-native';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { SUPABASE_PUBLIC_URL } from '@/lib/supabaseConfig';
+import { cacheAudioFile } from './audioCache';
 import { NARRATOR_PERSONA_TAG, type NarratorLocale } from './voiceCast';
 
 /**
  * Optional cloud narrator.
  *
- * When the `narration-tts` Edge Function is deployed on the same Supabase
- * project, the lesson narrator speaks with a human-sounding female neural
- * voice. The function is discovered automatically: if it is missing, offline,
- * or not configured, the narrator silently falls back to the best neural voice
- * installed on the device, so a lesson never becomes silent.
+ * When the `narration-tts` Edge Function or approved CDN is available, the
+ * lesson narrator speaks with the selected cloud voice. The function is
+ * discovered automatically. The narrator never falls back to device speech;
+ * unavailable audio is reported clearly.
  *
  * Only the sentence being taught is sent — never learner data or audio.
  */
@@ -153,6 +153,10 @@ async function fetchWithTimeout(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Pr
 /** Asks the Edge Function once per session whether a human voice is available. */
 export async function checkCloudNarrator(): Promise<boolean> {
   if (!cloudNarratorEndpoint() && !narratorCdnEndpoint()) return false;
+  // A configured CDN is itself a valid narrator source. Its individual file
+  // is checked in playCloudNarration, so a failing Edge health endpoint must
+  // never block already-published CDN audio.
+  if (narratorCdnEndpoint()) return true;
   const stored = readStoredHealth();
   if (stored !== null) return stored;
 
@@ -395,8 +399,12 @@ export async function playCloudNarration(params: {
   if (cancelled()) return;
 
   stopCloudNarration();
-  if (Platform.OS === 'web') return playWeb(selectedUrl, cancelled, playbackRate);
-  return playNative(selectedUrl, cancelled, playbackRate);
+  const playableUrl = Platform.OS === 'web'
+    ? selectedUrl
+    : await cacheAudioFile(selectedUrl, `${languageCode(locale)}-${stableAudioKey(text)}`);
+  if (cancelled()) return;
+  if (Platform.OS === 'web') return playWeb(playableUrl, cancelled, playbackRate);
+  return playNative(playableUrl, cancelled, playbackRate);
 }
 
 const prefetched = new Set<string>();
@@ -418,7 +426,12 @@ export async function prefetchCloudNarration(text: string, locale: NarratorLocal
   try {
     if (!(await checkCloudNarrator())) return;
     const url = audioUrls(clean, locale)[0];
-    if (url) await fetchWithTimeout(url);
+    if (url) {
+      const response = await fetchWithTimeout(url);
+      if (response.ok && Platform.OS !== 'web') {
+        await cacheAudioFile(url, `${languageCode(locale)}-${stableAudioKey(clean)}`);
+      }
+    }
   } catch {
     // Prefetch is an optimisation only; playback has its own error handling.
   }

@@ -35,3 +35,7 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+# generated narration output
+/audio-manifest.json
+/audio-manifest.json.generated.json
+/generated-audio/

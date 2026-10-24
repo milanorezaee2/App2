@@ -52,6 +52,14 @@ export const resume = () => {};
 export const isSpeakingAsync = async () => !!globalThis.__SPEAKING__;
 `;
 
+const FILESYSTEM_STUB = `
+export const cacheDirectory = 'file:///cache/';
+export const makeDirectoryAsync = async () => {};
+export const getInfoAsync = async () => ({ exists: false, size: 0 });
+export const downloadAsync = async (uri, fileUri) => ({ status: 200, uri: fileUri });
+export const deleteAsync = async () => {};
+`;
+
 const AUDIO_STUB = `
 export const setAudioModeAsync = async () => {};
 export const createAudioPlayer = () => ({
@@ -117,8 +125,10 @@ async function bundle(name, env) {
           b.onResolve({ filter: /^react-native$/ }, () => ({ path: path.join(STUBS, 'react-native.js') }));
           b.onResolve({ filter: /^expo-speech$/ }, () => ({ path: 'speech-stub.js', namespace: 'narrator' }));
           b.onResolve({ filter: /^expo-audio$/ }, () => ({ path: 'audio-stub.js', namespace: 'narrator' }));
+          b.onResolve({ filter: /^expo-file-system\/legacy$/ }, () => ({ path: 'filesystem-stub.js', namespace: 'narrator' }));
           b.onLoad({ filter: /^speech-stub\.js$/, namespace: 'narrator' }, () => ({ contents: SPEECH_STUB, loader: 'js' }));
           b.onLoad({ filter: /^audio-stub\.js$/, namespace: 'narrator' }, () => ({ contents: AUDIO_STUB, loader: 'js' }));
+          b.onLoad({ filter: /^filesystem-stub\.js$/, namespace: 'narrator' }, () => ({ contents: FILESYSTEM_STUB, loader: 'js' }));
         },
       },
     ],
