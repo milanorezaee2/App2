@@ -26,6 +26,8 @@ import { germanProgress } from '@/lib/languages/catalog';
 import type { CourseProgress } from '@/lib/createCourseProgressStore';
 import { Typography } from '@/lib/theme';
 
+const LESSONS_PER_GROUP = 10;
+
 function resolveLevel(value?: string): GermanSentenceLevelId | null {
   if (value === undefined) return null;
   const byLabel = GERMAN_SENTENCE_LEVELS.find(level => level.cefr === value || level.title === value);
@@ -66,7 +68,9 @@ export default function GermanCourseLibrary() {
   );
   const lessonGroups = useMemo(() => {
     const groups: typeof selectedLessons[] = [];
-    for (let index = 0; index < selectedLessons.length; index += 5) groups.push(selectedLessons.slice(index, index + 5));
+    for (let index = 0; index < selectedLessons.length; index += LESSONS_PER_GROUP) {
+      groups.push(selectedLessons.slice(index, index + LESSONS_PER_GROUP));
+    }
     return groups;
   }, [selectedLessons]);
   const completedIds = progress?.completedLessonIds ?? [];

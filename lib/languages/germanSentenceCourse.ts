@@ -644,7 +644,7 @@ const BASE_GERMAN_SENTENCE_LESSONS: GermanSentenceCourseLesson[] = [
   ]),
 
   // A2 · Everyday
-  lesson(2, 1, 'de-v2-weekend-past', 'آخر هفته و گذشته', 'تجربه دیروز را روایت کنید.', 'با دوستی درباره آخر هفته گذشته صحبت می‌کنید و چند کار را به‌ترتیب تعریف می‌کنید.', 'برای بسیاری از فعل‌ها، گذشته محاوره‌ای با haben یا sein و Partizip II ساخته می‌شود. حرکت به مقصد معمولاً با sein می‌آید: Wir sind gegangen.', [
+  lesson(2, 1, 'de-v2-weekend-past', 'روایت آخر هفته و تجربه گذشته', 'تجربه دیروز را روایت کنید.', 'با دوستی درباره آخر هفته گذشته صحبت می‌کنید و چند کار را به‌ترتیب تعریف می‌کنید.', 'برای بسیاری از فعل‌ها، گذشته محاوره‌ای با haben یا sein و Partizip II ساخته می‌شود. حرکت به مقصد معمولاً با sein می‌آید: Wir sind gegangen.', [
     sentence('de-v2-weekend-s1', 'Am Samstag habe ich meine Freunde besucht.', 'شنبه به دیدن دوستانم رفتم.', 'اَم زامستاگ هابِه ایش ماینِه فرویندِه بِزوخت', 'besuchen', 'دیدار کردن', 'haben + Partizip II.'),
     sentence('de-v2-weekend-s2', 'Wir sind im Park spazieren gegangen.', 'در پارک قدم زدیم.', 'ویر زینت ایم پارک شپاتسیرِن گِگانگِن', 'spazieren gehen', 'قدم زدن'),
     sentence('de-v2-weekend-s3', 'Danach haben wir zusammen gegessen.', 'بعد از آن با هم غذا خوردیم.', 'داناک هابِن ویر تسوزامن گِگِسِن', 'zusammen', 'با هم'),
@@ -656,7 +656,7 @@ const BASE_GERMAN_SENTENCE_LESSONS: GermanSentenceCourseLesson[] = [
     { speaker: 'طرف مقابل', text: 'Und am Sonntag?', fa: 'و یکشنبه؟' },
     { speaker: 'شما', text: 'Da bin ich zu Hause geblieben.', fa: 'آن روز در خانه ماندم.' },
   ]),
-  lesson(2, 2, 'de-v2-travel-stay', 'سفر و اقامت', 'در سفر درخواست روشن‌تری بسازید.', 'در هتل درباره رزرو، صبحانه و رفت‌وآمد به ایستگاه سؤال می‌کنید.', 'برای درخواست مؤدبانه می‌توان از Konjunktiv II استفاده کرد: Könnten Sie …? زمان گذشته در angekommen با sein ساخته شده است.', [
+  lesson(2, 2, 'de-v2-travel-stay', 'سفر و اقامت پیشرفته', 'در سفر درخواست روشن‌تری بسازید.', 'در هتل درباره رزرو، صبحانه و رفت‌وآمد به ایستگاه سؤال می‌کنید.', 'برای درخواست مؤدبانه می‌توان از Konjunktiv II استفاده کرد: Könnten Sie …? زمان گذشته در angekommen با sein ساخته شده است.', [
     sentence('de-v2-travel-s1', 'Ich habe ein Zimmer für zwei Nächte reserviert.', 'برای دو شب یک اتاق رزرو کرده‌ام.', 'ایش هابِه آین تسیمِر فور تسوای نِشتِه رِزِرویِرت', 'reservieren', 'رزرو کردن'),
     sentence('de-v2-travel-s2', 'Gibt es Frühstück?', 'صبحانه هم هست؟', 'گیبت اِس فروشتوک؟', 'das Frühstück', 'صبحانه'),
     sentence('de-v2-travel-s3', 'Wann fährt der Zug nach München?', 'قطار به مونیخ چه زمانی حرکت می‌کند؟', 'وان فِرت دِر تسوگ ناخ مونشِن؟', 'der Zug', 'قطار'),
@@ -690,7 +690,7 @@ const BASE_GERMAN_SENTENCE_LESSONS: GermanSentenceCourseLesson[] = [
     { speaker: 'صاحب‌خانه', text: 'Seit wann gibt es das Problem?', fa: 'از چه زمانی این مشکل وجود دارد؟' },
     { speaker: 'شما', text: 'Seit heute Morgen. Können Sie den Handwerker morgen schicken?', fa: 'از صبح امروز. می‌توانید فردا تعمیرکار را بفرستید؟' },
   ]),
-  lesson(2, 5, 'de-v2-invitations-plans', 'دعوت و برنامه‌ریزی', 'برای قرار، زمان جایگزین پیشنهاد دهید.', 'دوستتان را به سینما دعوت می‌کنید و زمانی را پیدا می‌کنید که برای هر دوی شما مناسب باشد.', 'برای پیشنهاد از könnten wir …? استفاده کنید. فعل وجهی صرف‌شده جایگاه دوم می‌گیرد و مصدر به پایان جمله می‌رود.', [
+  lesson(2, 5, 'de-v2-invitations-plans', 'دعوت و هماهنگی برنامه', 'برای قرار، زمان جایگزین پیشنهاد دهید.', 'دوستتان را به سینما دعوت می‌کنید و زمانی را پیدا می‌کنید که برای هر دوی شما مناسب باشد.', 'برای پیشنهاد از könnten wir …? استفاده کنید. فعل وجهی صرف‌شده جایگاه دوم می‌گیرد و مصدر به پایان جمله می‌رود.', [
     sentence('de-v2-plans-s1', 'Hast du am Freitag Zeit?', 'جمعه وقت داری؟', 'هاست دو اَم فرایتاک تسایت؟', 'Zeit haben', 'وقت داشتن'),
     sentence('de-v2-plans-s2', 'Wir könnten zusammen ins Kino gehen.', 'می‌توانیم با هم به سینما برویم.', 'ویر کونتِن تسوزامِن اینس کینو گِیِن', 'zusammen', 'با هم', 'Wir könnten … gehen.'),
     sentence('de-v2-plans-s3', 'Ich muss bis sechs Uhr arbeiten.', 'باید تا ساعت شش کار کنم.', 'ایش موس بیس زِکس اور آربایتِن', 'müssen', 'باید'),
@@ -1250,6 +1250,7 @@ const BASE_GERMAN_SENTENCE_LESSONS: GermanSentenceCourseLesson[] = [
 
 
 // Preserve all existing lessons and samples in place; append additions only to the requested foundation bands.
+const seenGermanSentenceForms = new Set<string>();
 export const GERMAN_SENTENCE_LESSONS: GermanSentenceCourseLesson[] = BASE_GERMAN_SENTENCE_LESSONS.map(item => {
   if (item.levelId === 0) {
     const additions = PRE_A1_SENTENCE_ADDITIONS[item.id] ?? [];
@@ -1286,6 +1287,19 @@ export const GERMAN_SENTENCE_LESSONS: GermanSentenceCourseLesson[] = BASE_GERMAN
     } : item;
   }
   return item;
+}).map(lessonItem => {
+  // Keep the first contextual teaching occurrence and remove exact repeats added by later expansion packs.
+  const sentences = lessonItem.sentences.filter((item, index) => {
+    const key = item.text.normalize('NFC').toLocaleLowerCase('de-DE').replace(/[!?.,:;"“”„‚’'()\-]/g, '').replace(/\s+/g, ' ').trim();
+    if (index < 5) {
+      seenGermanSentenceForms.add(key);
+      return true;
+    }
+    if (seenGermanSentenceForms.has(key)) return false;
+    seenGermanSentenceForms.add(key);
+    return true;
+  });
+  return sentences.length === lessonItem.sentences.length ? lessonItem : { ...lessonItem, sentences };
 });
 
 const PRE_A1_EXTRA_VOCABULARY: Record<string, Array<{ word: string; meaning: string }>> = {
