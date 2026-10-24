@@ -388,12 +388,15 @@ export async function playCloudNarration(params: {
   if (!(await checkCloudNarrator())) throw new NarratorCloudUnavailableError();
   if (cancelled()) return;
 
-  const urls = audioUrls(text, locale);
-  if (!urls.length) throw new NarratorCloudUnavailableError('No CDN or cloud narrator endpoint is configured.');
-  let selectedUrl: string | null = null;
-  for (const url of urls) {
-    const preflight = await fetchWithTimeout(url);
-    if (preflight.ok) { selectedUrl = url; break; }
+  const key = `${locale}|${text}`;
+  let selectedUrl = prefetchedPlayableUrls.get(key) ?? null;
+  if (!selectedUrl) {
+    const urls = audioUrls(text, locale);
+    if (!urls.length) throw new NarratorCloudUnavailableError('No CDN or cloud narrator endpoint is configured.');
+    // Do not make a second health/download request before playback. The audio
+    // element/player reports decode or network failure and the prefetch cache
+    // will handle the next visit without adding a full extra round trip.
+    selectedUrl = urls[0] ?? null;
   }
   if (!selectedUrl) throw new NarratorCloudUnavailableError('Narrator audio is unavailable.');
   if (cancelled()) return;
@@ -408,6 +411,7 @@ export async function playCloudNarration(params: {
 }
 
 const prefetched = new Set<string>();
+const prefetchedPlayableUrls = new Map<string, string>();
 
 /**
  * Warms the sentence audio while the lesson screen is still settling so the
@@ -421,15 +425,28 @@ export async function prefetchCloudNarration(text: string, locale: NarratorLocal
   prefetched.add(key);
   if (prefetched.size > 60) {
     const oldest = prefetched.values().next().value;
-    if (oldest) prefetched.delete(oldest);
+    if (oldest) {
+      prefetched.delete(oldest);
+      const oldUrl = prefetchedPlayableUrls.get(oldest);
+      if (oldUrl?.startsWith('blob:') && typeof URL !== 'undefined') URL.revokeObjectURL(oldUrl);
+      prefetchedPlayableUrls.delete(oldest);
+    }
   }
   try {
     if (!(await checkCloudNarrator())) return;
     const url = audioUrls(clean, locale)[0];
     if (url) {
       const response = await fetchWithTimeout(url);
-      if (response.ok && Platform.OS !== 'web') {
-        await cacheAudioFile(url, `${languageCode(locale)}-${stableAudioKey(clean)}`);
+      if (response.ok) {
+        if (Platform.OS !== 'web') {
+          await cacheAudioFile(url, `${languageCode(locale)}-${stableAudioKey(clean)}`);
+          prefetchedPlayableUrls.set(key, url);
+        } else if (typeof URL !== 'undefined' && typeof response.blob === 'function') {
+          const blob = await response.blob();
+          prefetchedPlayableUrls.set(key, URL.createObjectURL(blob));
+        } else {
+          prefetchedPlayableUrls.set(key, url);
+        }
       }
     }
   } catch {

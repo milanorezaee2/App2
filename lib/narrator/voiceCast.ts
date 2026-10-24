@@ -51,9 +51,9 @@ const LEGACY_QUALITY = /microsoft (?:david|zira|mark|hazel|george|linda|richard|
 
 /** Delivery is unhurried but never sluggish: a teacher reading to a learner. */
 export const NARRATOR_PROSODY: Record<NarratorLocale, { rate: number; pitch: number; gapMs: number }> = {
-  'en-US': { rate: 1, pitch: 1, gapMs: 70 },
-  'de-DE': { rate: 0.97, pitch: 1, gapMs: 70 },
-  'ru-RU': { rate: 0.96, pitch: 1, gapMs: 70 },
+  'en-US': { rate: 0.86, pitch: 1, gapMs: 85 },
+  'de-DE': { rate: 0.84, pitch: 1, gapMs: 85 },
+  'ru-RU': { rate: 0.84, pitch: 1, gapMs: 85 },
 };
 
 /** The cloud narrator uses the same persona in every language. */
@@ -213,7 +213,7 @@ export function splitForNarration(text: string): string[] {
 
 export const narratorRateFor = (locale: NarratorLocale, speed: NarratorSpeed): number => {
   const base = NARRATOR_PROSODY[locale].rate;
-  if (speed === 'slow') return Math.max(0.6, Number((base * 0.8).toFixed(2)));
-  if (speed === 'fast') return Math.min(1.25, Number((base * 1.15).toFixed(2)));
+  if (speed === 'slow') return Math.max(0.6, Number((base * 0.84).toFixed(2)));
+  if (speed === 'fast') return Math.min(1.1, Number((base * 1.16).toFixed(2)));
   return base;
 };

@@ -24,6 +24,7 @@ import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
 import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
+import { primeNarrator } from '@/lib/narrator/engine';
 import { RUSSIAN_ONLY_BUILD } from '@/lib/features';
 
 // Android native mirroring is disabled in withStableLayoutDirection. Persian
@@ -148,6 +149,13 @@ export default function RootLayout() {
     setIntroComplete(true);
     warmSpeech('en-US');
     setTimeout(() => warmSpeech('de-DE'), 350);
+    // Resolve the cloud narrator health check before the learner opens a lesson.
+    // This keeps the first automatic sentence from waiting on a network probe.
+    void Promise.all([
+      primeNarrator('en-US'),
+      primeNarrator('de-DE'),
+      primeNarrator('ru-RU'),
+    ]).catch(() => undefined);
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {

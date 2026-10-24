@@ -18,6 +18,7 @@ import {
 import {
   type NarratorLocale,
   type NarratorSpeed,
+  narratorRateFor,
   selectedNarratorLabel,
 } from './voiceCast';
 
@@ -181,7 +182,7 @@ export async function narrate(
       await playCloudNarration({
         text: clean,
         locale,
-        playbackRate: speed === 'slow' ? 0.8 : speed === 'fast' ? 1.15 : 1,
+        playbackRate: narratorRateFor(locale, speed),
         cancelled: () => id !== requestId,
       });
       if (id !== requestId) return;

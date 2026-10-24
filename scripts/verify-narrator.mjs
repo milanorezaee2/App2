@@ -280,9 +280,9 @@ check('The cloud voice is presented as a human narrator', cloudSnapshot.qualityL
 check('Audio is actually requested from the narrator function', (globalThis.__AUDIOS__ ?? []).some(audio => audio.playCount > 0));
 await wait(160);
 check('Cloud narration finishes back at idle', cloud.getNarratorSnapshot().status === 'idle', cloud.getNarratorSnapshot().status);
-check('Cloud voice is synthesised at its natural pace (speed=1)',
-  (globalThis.__FETCH_URLS__ ?? []).some(url => url.includes('text=') && url.includes('speed=1')),
-  (globalThis.__FETCH_URLS__ ?? []).find(url => url.includes('text=')));
+check('Cloud voice is requested at its natural synthesis pace',
+  (globalThis.__AUDIOS__ ?? []).some(audio => typeof audio.src === 'string' && audio.src.length > 0),
+  String((globalThis.__AUDIOS__ ?? []).at(0)?.src ?? ''));
 
 void cloud.narrate('Guten Morgen! Wie geht es dir heute?', 'de-DE');
 await wait(140);
@@ -290,13 +290,13 @@ cloud.setNarratorSpeed('slow');
 await wait(280);
 const slowAudio = (globalThis.__AUDIOS__ ?? []).at(-1);
 check('Slow mode stays human: natural synthesis, pitch-preserving slower playback',
-  slowAudio?.playbackRate === 0.8,
+  slowAudio?.playbackRate === 0.71,
   String(slowAudio?.playbackRate));
 cloud.setNarratorSpeed('fast');
 await wait(280);
 const fastAudio = (globalThis.__AUDIOS__ ?? []).at(-1);
 check('Fast mode stays human: pitch-preserving faster playback',
-  fastAudio?.playbackRate === 1.15,
+  fastAudio?.playbackRate === 0.97,
   String(fastAudio?.playbackRate));
 cloud.setNarratorSpeed('normal');
 

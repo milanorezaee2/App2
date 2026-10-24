@@ -68,7 +68,14 @@ export function RegistrationGate({ children }: PropsWithChildren) {
         setNotice('حساب شما ساخته شد. هیچ تأیید ایمیلی لازم نیست؛ کد را وارد کنید و مستقیم وارد اپ شوید.');
       } else {
         await loginLearner(email, password);
-        await inspect();
+        // loginLearner has already completed authentication and profile repair.
+        // Show the app immediately; the auth listener performs the non-blocking
+        // consistency check in the background instead of making the learner wait
+        // for a second session + profile round trip.
+        holdForCode.current = false;
+        setChecking(false);
+        setReady(true);
+        void inspect();
       }
     } catch (reason) {
       holdForCode.current = false;

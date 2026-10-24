@@ -148,17 +148,25 @@ export function LessonNarrator({
           <Text style={[styles.chipText, auto && { color: accentDeep }]}>خودکار</Text>
         </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={speed === 'slow' ? 'سرعت نریتور: آهسته. برای معمولی بزنید' : speed === 'normal' ? 'سرعت نریتور: معمولی. برای سریع بزنید' : 'سرعت نریتور: سریع. برای آهسته بزنید'}
-          onPress={narrator.toggleSpeed}
-          style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-        >
-          <Volume2 size={14} color={speed === 'normal' ? '#64748B' : accent} />
-          <Text style={[styles.chipText, speed !== 'normal' && { color: accentDeep }]}>
-            {speed === 'slow' ? 'آهسته' : speed === 'fast' ? 'سریع' : 'معمولی'}
-          </Text>
-        </Pressable>
+        <View style={styles.speedGroup} accessibilityRole="radiogroup" accessibilityLabel="سرعت نریتور">
+          {(['slow', 'normal', 'fast'] as const).map(option => {
+            const label = option === 'slow' ? 'آهسته' : option === 'normal' ? 'معمولی' : 'سریع';
+            const selected = speed === option;
+            return (
+              <Pressable
+                key={option}
+                accessibilityRole="radio"
+                accessibilityLabel={`سرعت نریتور: ${label}`}
+                accessibilityState={{ selected }}
+                onPress={() => narrator.setSpeed(option)}
+                style={({ pressed }) => [styles.speedButton, selected && { backgroundColor: accentSoft, borderColor: `${accent}55` }, pressed && styles.pressed]}
+              >
+                {option === 'normal' ? <Volume2 size={13} color={selected ? accent : '#64748B'} /> : null}
+                <Text style={[styles.speedText, selected && { color: accentDeep }]}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         <Pressable
           accessibilityRole="button"
@@ -281,10 +289,36 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.97 }],
   },
   controls: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     flexWrap: 'wrap',
+  },
+  speedGroup: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    padding: 3,
+    borderRadius: 999,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  speedButton: {
+    minHeight: 30,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  speedText: {
+    fontFamily: Typography.fontFamily,
+    color: '#64748B',
+    fontSize: 10,
   },
   chip: {
     flexDirection: 'row',

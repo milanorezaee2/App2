@@ -14,7 +14,7 @@ import {
   unlockAndReplay,
   type NarratorSnapshot,
 } from './engine';
-import type { NarratorLocale } from './voiceCast';
+import type { NarratorLocale, NarratorSpeed } from './voiceCast';
 
 /**
  * Bind one lesson screen to the shared narrator.
@@ -28,6 +28,7 @@ export interface LessonNarratorControls extends NarratorSnapshot {
   stop: () => void;
   togglePause: () => void;
   setAuto: (auto: boolean) => void;
+  setSpeed: (speed: NarratorSpeed) => void;
   toggleSpeed: () => void;
   isAutomatic: boolean;
 }
@@ -64,7 +65,7 @@ export function useLessonNarrator(params: {
       if (isCloudNarratorActive()) return;
       lastRead.current = readKey;
       void narrate(cleanText, locale).catch(() => undefined);
-    }, 320);
+    }, 10);
     return () => clearTimeout(timer);
   }, [readKey, cleanText, enabled, locale, snapshot.auto, snapshot.settingsReady]);
 
@@ -108,12 +109,17 @@ export function useLessonNarrator(params: {
     setNarratorSpeed(next);
   }, [snapshot.speed]);
 
+  const setSpeed = useCallback((speed: NarratorSpeed) => {
+    setNarratorSpeed(speed);
+  }, []);
+
   return {
     ...snapshot,
     replay,
     stop,
     togglePause,
     setAuto,
+    setSpeed,
     toggleSpeed,
     isAutomatic: snapshot.auto && enabled,
   };
