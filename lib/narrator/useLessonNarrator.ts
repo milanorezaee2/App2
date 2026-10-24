@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
-import * as Speech from '@/lib/narration';
 import { isCloudNarratorActive } from './cloudNarrator';
 import {
   getNarratorSnapshot,
@@ -59,15 +58,12 @@ export function useLessonNarrator(params: {
     if (lastRead.current === readKey) return;
 
     const timer = setTimeout(() => {
-      // A manual speaker button on the same screen may already be talking;
-      // never let the automatic narrator speak over the learner's own tap.
-      void Speech.isSpeakingAsync()
-        .catch(() => false)
-        .then(speaking => {
-          if (speaking || isCloudNarratorActive()) return;
-          lastRead.current = readKey;
-          void narrate(cleanText, locale).catch(() => undefined);
-        });
+      // The lesson narrator is cloud/CDN-only. Do not inspect or depend on the
+      // device speech engine: it can report unrelated app audio and create a
+      // race that clips the approved native recording.
+      if (isCloudNarratorActive()) return;
+      lastRead.current = readKey;
+      void narrate(cleanText, locale).catch(() => undefined);
     }, 320);
     return () => clearTimeout(timer);
   }, [readKey, cleanText, enabled, locale, snapshot.auto, snapshot.settingsReady]);

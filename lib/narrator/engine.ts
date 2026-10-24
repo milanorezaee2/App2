@@ -211,7 +211,7 @@ export function stopNarration(): void {
   update({ status: 'idle', message: '', engine: null });
 }
 
-/** Pauses the narrator (cloud audio or device speech). */
+/** Pauses the approved cloud/CDN narrator. */
 export async function pauseNarration(): Promise<void> {
   if (snapshot.status !== 'speaking' && snapshot.status !== 'loading') return;
   pauseCloudNarration();
@@ -268,8 +268,8 @@ export function isNarratorBusy(): boolean {
 }
 
 /**
- * Any screen that calls `Speech.stop()` — every existing speaker button does —
- * also silences the cloud narrator, so the two voices never overlap.
+ * Any screen that calls the shared narration stop hook also silences the cloud
+ * narrator, so lesson audio is never left playing behind a new sentence.
  */
 registerNarrationStopHandler(() => {
   stopCloudNarration();

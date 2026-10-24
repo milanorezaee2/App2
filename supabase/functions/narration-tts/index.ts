@@ -194,7 +194,10 @@ Deno.serve(async request => {
   if (!provider) return json({ error: 'Narrator is not configured', code: 'NARRATION_NOT_CONFIGURED' }, 503);
 
   const langRaw = (url.searchParams.get('lang') || 'en').toLowerCase();
-  const lang: LanguageCode = langRaw === 'de' ? 'de' : langRaw === 'ru' ? 'ru' : 'en';
+  if (!['en', 'de', 'ru'].includes(langRaw)) {
+    return json({ error: 'Unsupported narration language', code: 'UNSUPPORTED_LANGUAGE' }, 400);
+  }
+  const lang = langRaw as LanguageCode;
   const text = normalizeText(url.searchParams.get('text'));
   if (!text) return json({ error: 'text is required', code: 'TEXT_REQUIRED' }, 400);
   if (text.length > MAX_TEXT) return json({ error: 'Sentence is too long', code: 'TEXT_TOO_LONG' }, 413);

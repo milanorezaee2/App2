@@ -22,8 +22,8 @@ import { findLanguage } from '@/lib/languages/catalog';
 import { RUSSIAN_LESSONS, RUSSIAN_LEVELS, RUSSIAN_LESSON_STAGES, russianProgress, type RussianCourseLesson } from '@/lib/languages/russian';
 import type { RussianLessonSession } from '@/lib/languages/russianStudyState';
 import { toPersianDigits as fa } from '@/lib/format';
-import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
 import { Typography } from '@/lib/theme';
+import { narrate } from '@/lib/narrator/engine';
 
 const stages = RUSSIAN_LESSON_STAGES;
 
@@ -60,18 +60,12 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
   }, [lesson]);
   const grammarPatterns = lesson.sentences.flatMap(sentence => sentence.pattern ? [{ sentence, pattern: sentence.pattern }] : []);
 
-  // Warm up the device speech engine so the first Russian sentence is not delayed.
-  useEffect(() => {
-    void Speech.getAvailableVoicesAsync().catch(() => undefined);
-  }, []);
-
   useEffect(() => {
     let alive = true;
     completing.current = false;
     setSessionReady(false);
     setSessionError('');
     setCompletionError('');
-    void preloadSpeechVoices();
     void loadRussianLessonSession(lesson.id).then(saved => {
       if (!alive) return;
       setStage(saved.stage);
@@ -97,18 +91,9 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
   const speak = useCallback((text: string, rate = 0.78) => {
     if (!NARRATION_ENABLED) return;
     setSpeechError('');
-    void Speech.stop();
-    void resolveSpeechOptions(findLanguage('ru')!.speechLocale).then(targetVoice => {
-      Speech.speak(text, {
-        ...targetVoice,
-        rate,
-        onError: () => setSpeechError('صدای روسی دستگاه در دسترس نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
-      });
-    });
+    void narrate(text, 'ru-RU', { speed: rate < 0.7 ? 'slow' : 'normal' })
+      .catch(() => setSpeechError('فایل صوتی تأییدشدهٔ روسی در دسترس نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'));
   }, []);
-
-  // Narrator removed: the sentence is no longer played automatically.
-  // Audio starts only when the learner presses a play button.
 
   const selectSentence = (index: number, rate = 0.72) => {
     setSentenceIndex(index);

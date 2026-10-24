@@ -31,7 +31,7 @@ import { loadSupplement } from '@/lib/englishSupplement/progress';
 import { CORE_LESSON_EVIDENCE, isCoreLessonEvidenceComplete } from '@/lib/englishFoundationEvidence';
 import { useEnglishStudyTimer } from '@/components/useEnglishStudyTimer';
 import { PAID_AI_ENABLED, PAID_AI_DISABLED_MESSAGE } from '@/lib/paidAI';
-import { playResponsiveSpeech, warmSpeech } from '@/lib/responsiveSpeech';
+import { narrate } from '@/lib/narrator/engine';
 
 const stages = ENGLISH_ENGINE_STEPS;
 const NORMAL_SPEECH_RATE = 0.85;
@@ -98,14 +98,9 @@ export default function SentenceLessonScreen() {
   const vocabulary = getLessonVocabulary(lesson);
   const grammarPatterns = getLessonPatterns(lesson);
 
-  useEffect(() => warmSpeech('en-US'), []);
-
   const speak = (text: string, rate?: number) => {
-    playResponsiveSpeech({ text, locale: 'en-US', rate });
+    void narrate(text, 'en-US', { speed: rate !== undefined && rate < 0.7 ? 'slow' : 'normal' });
   };
-
-  // Narrator removed: sentences are no longer read aloud automatically.
-  // Speech only starts when the learner presses a play button.
 
   const startSpeechPractice = async () => {
     if (!PAID_AI_ENABLED) { setSpeechError(PAID_AI_DISABLED_MESSAGE); return; }

@@ -15,7 +15,7 @@ import { clearGermanSentenceSession, loadGermanSentenceSession, saveGermanSenten
 import type { GermanSentenceStage } from '@/lib/languages/germanSentenceSession';
 import type { LearningLesson } from '@/lib/languages/types';
 import { toPersianDigits as fa } from '@/lib/format';
-import { playResponsiveSpeech, warmSpeech } from '@/lib/responsiveSpeech';
+import { narrate } from '@/lib/narrator/engine';
 
 const stages = ['موقعیت', 'جمله‌ها', 'شنیدن', 'جمله‌سازی', 'مکالمه', 'لغات'];
 const PAGE_SIZE = 5;
@@ -100,17 +100,12 @@ function GermanLesson({ lesson }: { lesson: LearningLesson }) {
   }, [sessionState, lesson.id, stage, index, finishing]);
 
   useEffect(() => {
-    warmSpeech('de-DE');
     return () => { void Speech.stop(); };
   }, []);
   const speak = (text: string, rate = NORMAL_SPEECH_RATE) => {
     setError('');
-    playResponsiveSpeech({
-      text,
-      locale: 'de-DE',
-      rate,
-      onError: () => setError('پخش انجام نشد. صدای آلمانی دستگاه یا مرورگر را بررسی کنید؛ متن درس همچنان در دسترس است.'),
-    });
+    void narrate(text, 'de-DE', { speed: rate < 0.7 ? 'slow' : 'normal' })
+      .catch(() => setError('فایل صوتی تأییدشدهٔ آلمانی در دسترس نیست؛ متن درس همچنان در دسترس است.'));
   };
 
   const previousPage = () => {
