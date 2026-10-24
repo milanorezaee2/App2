@@ -60,8 +60,8 @@ const ELEVEN_VOICE_SETTINGS: Record<LanguageCode, {
   style: number;
 }> = {
   en: { stability: 0.50, similarity_boost: 0.85, style: 0.20 },
-  de: { stability: 0.42, similarity_boost: 0.80, style: 0.28 },
-  ru: { stability: 0.42, similarity_boost: 0.80, style: 0.28 },
+  de: { stability: 0.50, similarity_boost: 0.85, style: 0.20 },
+  ru: { stability: 0.50, similarity_boost: 0.85, style: 0.20 },
 };
 
 const LANGUAGE_NAME: Record<LanguageCode, string> = {
