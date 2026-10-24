@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist');
 const port = parseInt(process.env.PORT || '8081', 10);
-const baseUrl = '/App1';
+const baseUrl = '/App2';
 
 function contentType(p) {
   if (p.endsWith('.html')) return 'text/html; charset=UTF-8';
