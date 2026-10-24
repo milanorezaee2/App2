@@ -15,7 +15,6 @@
     "android": "node scripts/run-expo.mjs run:android",
     "ios": "node scripts/run-expo.mjs run:ios",
     "validate:logic": "node scripts/verify-app-logic.mjs",
-    "validate:narrator": "node scripts/verify-narrator.mjs",
     "validate:admin": "node scripts/verify-education-admin.mjs",
     "validate:a1": "node scripts/verify-a1-editorial.cjs",
     "validate:german-levels": "node scripts/verify-german-completion.cjs",

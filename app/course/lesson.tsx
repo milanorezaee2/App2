@@ -18,7 +18,6 @@ import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { toPersianDigits } from '@/lib/format';
 
-import { LessonNarrator } from '@/components/LessonNarrator';
 import { EnglishLessonEvidence } from '@/components/EnglishLessonEvidence';
 import { EnglishSentenceBuilder } from '@/components/EnglishSentenceBuilder';
 import { EnglishDialoguePractice } from '@/components/EnglishDialoguePractice';
@@ -221,15 +220,6 @@ export default function SentenceLessonScreen() {
 
       {!!(sessionError || timer.error) && <Text style={styles.speechError}>{sessionError || timer.error}</Text>}
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Professional narrator: reads the English sentence on entry and on every new sentence. */}
-        <LessonNarrator
-          locale="en-US"
-          text={current.en}
-          enabled={stage <= 3}
-          accent={Palette.primary}
-          accentDeep={Palette.primaryDark}
-          accentSoft={Palette.primarySoft}
-        />
         {stage === 0 && (
           <View style={styles.centerStage}>
             <View style={styles.bigIcon}><Sparkles size={34} color={Colors.accent[400]} /></View>
