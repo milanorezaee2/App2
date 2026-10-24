@@ -17,6 +17,11 @@ const headers = {
 };
 const encoded = value => value.split('/').map(encodeURIComponent).join('/');
 const publicRoot = `${projectUrl}/storage/v1/object/public/${encodeURIComponent(bucket)}`;
+function stableAudioKey(text) {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) { hash ^= text.charCodeAt(index); hash = Math.imul(hash, 16777619); }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
 
 async function filesIn(folder) {
   const entries = await readdir(folder, { withFileTypes: true });
@@ -44,17 +49,21 @@ async function upload(localFile, objectPath) {
   if (!response.ok) throw new Error(`${objectPath}: ${response.status} ${(await response.text()).slice(0, 300)}`);
 }
 
+const manifest = JSON.parse(await readFile(input, 'utf8'));
+const byId = new Map(manifest.sentences.map(sentence => [sentence.id, sentence]));
 const files = await filesIn(audioRoot);
 for (const localFile of files) {
   const language = path.basename(path.dirname(localFile));
   const filename = path.basename(localFile);
-  const objectPath = `${version}/${language}/${filename}`;
+  const sentenceId = filename.replace(/\.mp3$/, '');
+  const sentence = byId.get(sentenceId);
+  if (!sentence) throw new Error(`No manifest sentence for ${sentenceId}`);
+  const objectPath = `${version}/${language}/${stableAudioKey(sentence.text)}.mp3`; 
   await upload(localFile, objectPath);
   const size = (await stat(localFile)).size;
   console.log(`published ${objectPath} (${size} bytes)`);
 }
 
-const manifest = JSON.parse(await readFile(input, 'utf8'));
 const published = {
   ...manifest,
   version,
@@ -63,7 +72,7 @@ const published = {
     ...sentence,
     status: 'published',
     audio: {
-      mp3: `${publicRoot}/${version}/${sentence.language}/${sentence.id}.mp3`,
+      mp3: `${publicRoot}/${version}/${sentence.language}/${stableAudioKey(sentence.text)}.mp3`,
     },
   })),
 };
