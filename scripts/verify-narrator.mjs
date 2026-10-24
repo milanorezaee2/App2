@@ -235,6 +235,8 @@ check('Voice labels are human readable',
   device.narratorVoiceLabel(VOICES[1]));
 check('Slow narration is faster to follow than normal narration',
   device.narratorRateFor('de-DE', 'slow') < device.narratorRateFor('de-DE', 'normal'));
+check('Fast narration is faster than normal narration',
+  device.narratorRateFor('en-US', 'fast') > device.narratorRateFor('en-US', 'normal'));
 
 const shortSentence = 'Guten Morgen! Wie geht es dir?';
 const longSentence = 'Guten Morgen! Wie geht es dir heute? Ich freue mich sehr, dich wiederzusehen, und hoffe, dass du einen ruhigen und angenehmen Tag hattest, so wie wir ihn geplant haben.'.repeat(3);
@@ -290,6 +292,12 @@ const slowAudio = (globalThis.__AUDIOS__ ?? []).at(-1);
 check('Slow mode stays human: natural synthesis, pitch-preserving slower playback',
   slowAudio?.playbackRate === 0.8,
   String(slowAudio?.playbackRate));
+cloud.setNarratorSpeed('fast');
+await wait(280);
+const fastAudio = (globalThis.__AUDIOS__ ?? []).at(-1);
+check('Fast mode stays human: pitch-preserving faster playback',
+  fastAudio?.playbackRate === 1.15,
+  String(fastAudio?.playbackRate));
 cloud.setNarratorSpeed('normal');
 
 section('Automatic narration switch');

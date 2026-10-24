@@ -100,7 +100,12 @@ export function useLessonNarrator(params: {
   }, []);
 
   const toggleSpeed = useCallback(() => {
-    setNarratorSpeed(snapshot.speed === 'slow' ? 'normal' : 'slow');
+    const next = snapshot.speed === 'slow'
+      ? 'normal'
+      : snapshot.speed === 'normal'
+        ? 'fast'
+        : 'slow';
+    setNarratorSpeed(next);
   }, [snapshot.speed]);
 
   return {

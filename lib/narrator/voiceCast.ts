@@ -14,7 +14,7 @@ import { loadAvailableVoices, speechTagFor, type SpeechVoiceInfo } from '@/lib/s
  */
 
 export type NarratorLocale = 'en-US' | 'de-DE' | 'ru-RU';
-export type NarratorSpeed = 'normal' | 'slow';
+export type NarratorSpeed = 'slow' | 'normal' | 'fast';
 
 export const NARRATOR_LOCALES: readonly NarratorLocale[] = ['en-US', 'de-DE', 'ru-RU'];
 
@@ -213,5 +213,7 @@ export function splitForNarration(text: string): string[] {
 
 export const narratorRateFor = (locale: NarratorLocale, speed: NarratorSpeed): number => {
   const base = NARRATOR_PROSODY[locale].rate;
-  return speed === 'slow' ? Math.max(0.6, Number((base * 0.8).toFixed(2))) : base;
+  if (speed === 'slow') return Math.max(0.6, Number((base * 0.8).toFixed(2)));
+  if (speed === 'fast') return Math.min(1.25, Number((base * 1.15).toFixed(2)));
+  return base;
 };

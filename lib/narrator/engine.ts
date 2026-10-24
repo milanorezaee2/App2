@@ -105,7 +105,7 @@ async function loadSettings(): Promise<void> {
     const parsed = raw ? (JSON.parse(raw) as PersistedSettings) : {};
     update({
       auto: parsed.auto !== false,
-      speed: parsed.speed === 'slow' ? 'slow' : 'normal',
+      speed: parsed.speed === 'slow' || parsed.speed === 'fast' ? parsed.speed : 'normal',
       settingsReady: true,
     });
   } catch {
@@ -181,7 +181,7 @@ export async function narrate(
       await playCloudNarration({
         text: clean,
         locale,
-        playbackRate: speed === 'slow' ? 0.8 : 1,
+        playbackRate: speed === 'slow' ? 0.8 : speed === 'fast' ? 1.15 : 1,
         cancelled: () => id !== requestId,
       });
       if (id !== requestId) return;

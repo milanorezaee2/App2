@@ -54,6 +54,16 @@ const ELEVEN_VOICE_ENV: Record<LanguageCode, string> = {
 
 const DEFAULT_ELEVEN_VOICE = 'EXAVITQu4vr4xnSDxMaL';
 
+const ELEVEN_VOICE_SETTINGS: Record<LanguageCode, {
+  stability: number;
+  similarity_boost: number;
+  style: number;
+}> = {
+  en: { stability: 0.50, similarity_boost: 0.85, style: 0.20 },
+  de: { stability: 0.42, similarity_boost: 0.80, style: 0.28 },
+  ru: { stability: 0.42, similarity_boost: 0.80, style: 0.28 },
+};
+
 const LANGUAGE_NAME: Record<LanguageCode, string> = {
   en: 'American English',
   de: 'Standard German (Hochdeutsch)',
@@ -141,7 +151,7 @@ async function synthesizeOpenAI(apiKey: string, lang: LanguageCode, text: string
   return new Uint8Array(await response.arrayBuffer());
 }
 
-async function synthesizeElevenLabs(apiKey: string, text: string, voice: string): Promise<Uint8Array> {
+async function synthesizeElevenLabs(apiKey: string, lang: LanguageCode, text: string, voice: string): Promise<Uint8Array> {
   const model = Deno.env.get('ELEVENLABS_MODEL') || 'eleven_multilingual_v2';
   const response = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}?output_format=mp3_44100_128`,
@@ -151,12 +161,7 @@ async function synthesizeElevenLabs(apiKey: string, text: string, voice: string)
       body: JSON.stringify({
         text,
         model_id: model,
-        voice_settings: {
-          stability: 0.42,
-          similarity_boost: 0.8,
-          style: 0.28,
-          use_speaker_boost: true,
-        },
+        voice_settings: { ...ELEVEN_VOICE_SETTINGS[lang], use_speaker_boost: true },
       }),
     },
   );
@@ -221,7 +226,7 @@ Deno.serve(async request => {
 
   try {
     const audio = provider === 'elevenlabs'
-      ? await synthesizeElevenLabs(Deno.env.get('ELEVENLABS_API_KEY') || '', text, voice)
+      ? await synthesizeElevenLabs(Deno.env.get('ELEVENLABS_API_KEY') || '', lang, text, voice)
       : await synthesizeOpenAI(Deno.env.get('OPENAI_API_KEY') || '', lang, text, voice);
 
     if (!audio.byteLength) return json({ error: 'Empty narrator audio', code: 'TTS_EMPTY' }, 502);

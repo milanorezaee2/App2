@@ -150,13 +150,13 @@ export function LessonNarrator({
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={speed === 'normal' ? 'سرعت نریتور: معمولی. برای آهسته بزنید' : 'سرعت نریتور: آهسته. برای معمولی بزنید'}
+          accessibilityLabel={speed === 'slow' ? 'سرعت نریتور: آهسته. برای معمولی بزنید' : speed === 'normal' ? 'سرعت نریتور: معمولی. برای سریع بزنید' : 'سرعت نریتور: سریع. برای آهسته بزنید'}
           onPress={narrator.toggleSpeed}
           style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
         >
-          <Volume2 size={14} color={speed === 'slow' ? accent : '#64748B'} />
-          <Text style={[styles.chipText, speed === 'slow' && { color: accentDeep }]}>
-            {speed === 'slow' ? 'آهسته' : 'معمولی'}
+          <Volume2 size={14} color={speed === 'normal' ? '#64748B' : accent} />
+          <Text style={[styles.chipText, speed !== 'normal' && { color: accentDeep }]}>
+            {speed === 'slow' ? 'آهسته' : speed === 'fast' ? 'سریع' : 'معمولی'}
           </Text>
         </Pressable>
 
