@@ -39,7 +39,8 @@
     "prebuild:web": "node scripts/check-public-connection.mjs",
     "narration:manifest": "node scripts/export-narration-manifest.mjs",
     "narration:generate": "node scripts/generate-narration.mjs",
-    "narration:check": "ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 generated-audio/**/*.mp3"
+    "narration:check": "ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 generated-audio/**/*.mp3",
+    "narration:publish": "node scripts/publish-narration-supabase.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
