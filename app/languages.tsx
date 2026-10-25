@@ -166,14 +166,31 @@ export default function LanguagesHome() {
 
           <View style={[styles.hero, compact && styles.heroCompact]}>
             <View pointerEvents="none" style={styles.heroGoldEdge} />
-            <View style={styles.heroTopline}>
+            <View style={[styles.heroTopline, compact && styles.heroToplineCompact]}>
               <View style={styles.eyebrow}>
                 <Sparkles size={13} color={LuxuryPalette.goldLight} />
                 <Text style={styles.eyebrowText}>آکادمی چندزبانهٔ میلو</Text>
               </View>
             </View>
 
+            {/*
+              Compact (mobile) uses a plain column with visual-first JSX order instead of
+              column-reverse: some Android Paper Yoga builds drop the card's horizontal padding
+              for reversed subtrees, which pushed this block (and its CTA) flush to the card
+              edges. The visual-first order with a normal column renders identically.
+            */}
             <View style={[styles.heroMain, compact && styles.heroMainCompact]}>
+              <View style={[styles.heroVisual, compact && styles.heroVisualCompact]}>
+                <LinearGradient colors={['#315FD4', '#10265D']} style={styles.heroArtDisk} />
+                <View pointerEvents="none" style={styles.heroArtRing} />
+                <Image
+                  source={require('../assets/images/milo-hero-sculpture-cutout.png')}
+                  resizeMode="contain"
+                  accessibilityLabel="کتاب باز با جریان طلایی و سه حباب گفت‌وگو"
+                  style={styles.heroArtwork}
+                />
+              </View>
+
               <View style={[styles.heroCopy, !compact && styles.heroCopyDesktop]}>
                 <Text accessibilityRole="header" style={[styles.heroTitle, tiny && styles.heroTitleTiny]}>
                   با جمله‌های واقعی،{`\n`}روان‌تر حرف بزن
@@ -190,17 +207,6 @@ export default function LanguagesHome() {
                   <Text style={styles.heroCtaText}>شروع مسیر یادگیری</Text>
                   <ArrowLeft size={16} color="#F5D993" strokeWidth={2.7} />
                 </Pressable>
-              </View>
-
-              <View style={[styles.heroVisual, compact && styles.heroVisualCompact]}>
-                <LinearGradient colors={['#315FD4', '#10265D']} style={styles.heroArtDisk} />
-                <View pointerEvents="none" style={styles.heroArtRing} />
-                <Image
-                  source={require('../assets/images/milo-hero-sculpture-cutout.png')}
-                  resizeMode="contain"
-                  accessibilityLabel="کتاب باز با جریان طلایی و سه حباب گفت‌وگو"
-                  style={styles.heroArtwork}
-                />
               </View>
             </View>
 
@@ -473,10 +479,13 @@ const styles = StyleSheet.create({
   },
   heroCompact: {
     borderRadius: 22,
-    paddingHorizontal: 16,
+    // Horizontal padding is intentionally 0 on compact: the topline and heroMain carry
+    // their own horizontal margins so Android Paper Yoga cannot drop the insets.
+    paddingHorizontal: 0,
     paddingVertical: 16,
     gap: 7,
   },
+  heroToplineCompact: { marginHorizontal: 16 },
   heroGoldEdge: {
     position: 'absolute',
     top: 0,
@@ -512,15 +521,19 @@ const styles = StyleSheet.create({
   },
   heroMain: {
     minHeight: 270,
-    flexDirection: 'row-reverse',
+    // JSX order is visual-first, copy-second, so a plain row keeps visual on the left
+    // and copy on the right (previously achieved with row-reverse + reversed JSX).
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
   },
   heroMainCompact: {
     minHeight: 0,
-    flexDirection: 'column-reverse',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     gap: 0,
+    marginHorizontal: 16,
   },
   heroCopy: {
     flex: 1,
@@ -582,7 +595,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   heroVisualCompact: {
-    width: '100%',
+    // Stretched by heroMainCompact (alignItems: 'stretch'); no percentage width, which
+    // also resolves against the wrong box on some Android Yoga builds.
     height: 218,
     marginTop: -5,
     marginBottom: 2,

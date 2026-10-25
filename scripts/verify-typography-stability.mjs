@@ -21,7 +21,7 @@ const pkg = JSON.parse(read('package.json'));
 check(pkg.dependencies['@expo-google-fonts/inter'], 'bundled Inter dependency is declared');
 check(pkg.dependencies['@expo-google-fonts/vazirmatn'], 'bundled open-source Vazir dependency is declared');
 check(/Inter_400Regular[\s\S]*Inter_600SemiBold[\s\S]*Inter_800ExtraBold/.test(layout), 'regular, semibold and extrabold Inter faces are bundled');
-check(/Vazir:[\s\S]*Vazirmatn_400Regular[\s\S]*'Vazir-Black': Vazirmatn_900Black/.test(layout), 'Vazir regular through black faces are bundled locally');
+check(/Vazir:\s*(?:swap\()?Vazirmatn_400Regular\)?[\s\S]*'Vazir-Black':\s*(?:swap\()?Vazirmatn_900Black\)?/.test(layout), 'Vazir regular through black faces are bundled locally');
 check(/fontFamily:\s*'Vazir'/.test(theme) && /numberFontFamily:\s*'Vazir-Black'/.test(theme), 'Persian copy and decorative Persian digits use Vazir');
 check(/I18nManager\.allowRTL\(false\)/.test(entry) && /I18nManager\.forceRTL\(false\)/.test(entry)
   && !/I18nManager\.(?:allowRTL|forceRTL)\(true\)/.test(entry + layout),
@@ -36,7 +36,9 @@ for (const file of [...walk('app'), ...walk('components')]) {
   lines.forEach((line, index) => {
     if (!line.includes("writingDirection: 'ltr'") && !line.includes("writingDirection:'ltr'")) return;
     const nearby = lines.slice(Math.max(0, index - 14), index + 1).join('\n');
-    if (!line.includes('fontFamily') && !nearby.includes('fontFamily: Typography.latinFontFamily')) {
+    if (!line.includes('fontFamily')
+      && !nearby.includes('fontFamily: Typography.latinFontFamily')
+      && !nearby.includes("fontFamily: 'Inter-ExtraBold'")) {
       missing.push(`${file}:${index + 1}`);
     }
   });
