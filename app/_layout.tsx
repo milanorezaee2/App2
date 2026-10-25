@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Stack, useNavigationContainerRef, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts } from 'expo-font';
+import { useFonts, FontDisplay } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
 import { AppState, I18nManager, Platform, Text, TextInput } from 'react-native';
@@ -123,24 +123,28 @@ export default function RootLayout() {
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
+  // `swap` is web-only: text paints immediately with a fallback face and the
+  // custom font takes over when it finishes downloading, instead of staying
+  // invisible (the default font-display:auto block period). Native ignores it.
+  const swap = (font: number) => ({ uri: font, display: FontDisplay.SWAP }) as const;
   const [fontsLoaded, fontError] = useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
     // offline and independent of each Android manufacturer's system fonts.
-    Vazir: Vazirmatn_400Regular,
-    'Vazir-Medium': Vazirmatn_500Medium,
-    'Vazir-Bold': Vazirmatn_700Bold,
-    'Vazir-Black': Vazirmatn_900Black,
+    Vazir: swap(Vazirmatn_400Regular),
+    'Vazir-Medium': swap(Vazirmatn_500Medium),
+    'Vazir-Bold': swap(Vazirmatn_700Bold),
+    'Vazir-Black': swap(Vazirmatn_900Black),
     // Latin teaching content uses bundled faces too, eliminating Android OEM
     // font and fallback-metric differences between phones.
-    Inter: Inter_400Regular,
-    'Inter-SemiBold': Inter_600SemiBold,
-    'Inter-ExtraBold': Inter_800ExtraBold,
+    Inter: swap(Inter_400Regular),
+    'Inter-SemiBold': swap(Inter_600SemiBold),
+    'Inter-ExtraBold': swap(Inter_800ExtraBold),
     // Legacy aliases now resolve to Vazir too, preventing an old screen from
     // silently falling back to an OEM font.
-    Lalezar: Vazirmatn_400Regular,
-    Vazirmatn: Vazirmatn_400Regular,
-    'Vazirmatn-Medium': Vazirmatn_500Medium,
-    'Vazirmatn-Bold': Vazirmatn_700Bold,
+    Lalezar: swap(Vazirmatn_400Regular),
+    Vazirmatn: swap(Vazirmatn_400Regular),
+    'Vazirmatn-Medium': swap(Vazirmatn_500Medium),
+    'Vazirmatn-Bold': swap(Vazirmatn_700Bold),
   });
 
   useEffect(() => {
@@ -224,7 +228,12 @@ export default function RootLayout() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [homeRoute, introComplete, navigationRef, router]);
 
-  if (!fontsLoaded && !fontError) return null;
+  // Native must wait for the registered faces: the global Vazir Text defaults
+  // applied above can measure/crash before the font module is ready. On web
+  // the @font-face rules are injected at startup with font-display:swap, so
+  // gating the whole tree here would only delay first paint behind ~1.5MB of
+  // font downloads; render immediately and let the faces swap in when ready.
+  if (Platform.OS !== 'web' && !fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
