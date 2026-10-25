@@ -6,11 +6,11 @@ import { toPersianDigits } from '@/lib/format';
 import { Typography } from '@/lib/theme';
 
 export const ENGLISH_LEVEL_GRADIENTS: Record<CourseLevelId, [string, string]> = {
-  0: ['#6555E9', '#29246F'],
-  1: ['#27A1D6', '#164D8C'],
-  2: ['#19A88B', '#0D5A53'],
-  3: ['#E4A436', '#99501D'],
-  4: ['#9A68E8', '#4C318A'],
+  0: ['#2558E0', '#14348F'],
+  1: ['#15996B', '#0B6646'],
+  2: ['#2179C2', '#114D7D'],
+  3: ['#6546D1', '#3D268A'],
+  4: ['#C48123', '#7D4E10'],
 };
 
 export function displayEnglishModuleLabel(label: string) {
@@ -123,16 +123,16 @@ const styles = StyleSheet.create({
   railRtl: { flexDirection: 'row-reverse' },
   railItem: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   railItemRtl: { flexDirection: 'row-reverse' },
-  railPressable: { width: 40, alignItems: 'center', gap: 5 },
-  railNode: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
-  railNodeActive: { backgroundColor: Palette.primary, borderColor: Palette.primary, shadowColor: Palette.primary, shadowOpacity: 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  railPressable: { width: 46, alignItems: 'center', gap: 6 },
+  railNode: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
+  railNodeActive: { backgroundColor: Palette.primary, borderColor: Palette.primary, shadowColor: Palette.primary, shadowOpacity: 0.26, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   railNodeDone: { backgroundColor: Palette.success, borderColor: Palette.success },
-  railNodeText: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-  railNodeTextActive: { color: '#FFFFFF' },
-  railLabel: { fontFamily: 'Inter-ExtraBold', maxWidth: 42, color: Palette.muted, fontSize: 6, fontWeight: '800', textAlign: 'center', writingDirection: 'ltr' },
-  railLabelRtl: { fontFamily: Typography.fontFamily, maxWidth: 46, fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
-  railLabelActive: { color: Palette.primaryDark },
-  railConnector: { height: 3, flex: 1, borderRadius: 99, backgroundColor: Palette.border, marginTop: 15 },
+  railNodeText: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 12, fontWeight: '700', writingDirection: 'rtl' },
+  railNodeTextActive: { color: '#FFFFFF', fontWeight: '900' },
+  railLabel: { fontFamily: 'Inter-ExtraBold', maxWidth: 48, color: Palette.muted, fontSize: 10, fontWeight: '800', textAlign: 'center', writingDirection: 'ltr' },
+  railLabelRtl: { fontFamily: Typography.fontFamily, maxWidth: 50, fontSize: 10, fontWeight: '700', writingDirection: 'rtl' },
+  railLabelActive: { color: Palette.primaryDark, fontWeight: '900' },
+  railConnector: { height: 3, flex: 1, borderRadius: 99, backgroundColor: Palette.border, marginTop: 16 },
   railConnectorActive: { backgroundColor: Palette.success },
   sectionHeading: { gap: 3, alignItems: 'flex-end' },
   sectionEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1, textAlign: 'right', writingDirection: 'ltr' },

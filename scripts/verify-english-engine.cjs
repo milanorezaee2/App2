@@ -38,6 +38,17 @@ const esbuild = require('esbuild');
     && lesson.sentences.map(sentence => sentence.id).join('|') === Array.from({ length: 50 }, (_, index) => `s${index + 1}`).join('|')));
   check(foundation.map(lesson => lesson.id).join('|') === ['foundation-introducing-yourself', 'foundation-asking-for-help', 'foundation-buying-something', ...app.FOUNDATION_EXPANSION_LESSON_IDS].join('|'));
   check(app.FOUNDATION_EXPANSION_LESSON_IDS.length === 7 && foundation.slice(3).every(lesson => lesson.dialogue.length >= 6));
+  const greetingLesson = foundation[0];
+  check(greetingLesson.title === 'سلام و معرفی خود و دیگران'
+    && ['Good morning!', 'How are you today?', 'This is my friend, Mina.', 'See you later.']
+      .every(text => greetingLesson.dialogue.some(turn => turn.text.includes(text))));
+  check(['greeting-listening', 'introducing-people-reading', 'polite-goodbye-writing']
+    .every(id => app.CORE_LESSON_EVIDENCE[greetingLesson.id].some(task => task.id.endsWith(id))));
+  const routineLesson = foundation.find(lesson => lesson.id === 'foundation-everyday-routine');
+  check(['and', 'but', 'so', 'because', 'then'].every(connector =>
+    routineLesson.sentences.some(sentence => new RegExp(`\\b${connector}\\b`, 'i').test(sentence.en))));
+  check(['connector-grammar', 'connector-writing']
+    .every(id => app.CORE_LESSON_EVIDENCE[routineLesson.id].some(task => task.id.endsWith(id))));
   check(survival.length === 19 && survival.reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 950);
   check(survival.every(lesson => lesson.sentences.length === 50 && lesson.durationMinutes === 35
     && lesson.sentences.every(sentence => !!sentence.fa && !!sentence.pronunciation && sentence.vocabulary.length > 0)
@@ -114,7 +125,7 @@ const esbuild = require('esbuild');
     'survival-past-and-future-plans',
   ].join('|'));
   const topicChecks = [
-    ['foundation-introducing-yourself', ['How do you spell your name?', 'The English alphabet has twenty-six letters: A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, and Z.', 'A, E, I, O, and U are vowels.', 'The letter B makes the first sound in the word book.', 'The letters P, D, and T start pen, dog, and ten.', 'S, F, V, H, and R start sun, fan, van, hat, and red.', 'J, Y, K, L, M, and N start jam, yes, key, leg, man, and nose.', 'C can sound like K in cat and like S in city.', 'G can sound like G in go and like J in giant.', 'Q starts queen, W starts water, X ends box, and Z starts zoo.', 'The letter pair TH has two sounds, as in think and this.', 'I have one brother and one sister.', 'I get up at six every day.']],
+    ['foundation-introducing-yourself', ['Good morning.', 'How are you today?', 'I am a student.', 'I speak a little English.', 'This is my friend, Ali.', 'See you later.']],
     ['foundation-asking-for-help', ['What time is it?', 'It is half past seven.', 'My phone number is 555-0142.', 'There are twelve months in a year: January, February, March, April, May, June, July, August, September, October, November, and December.', 'The bus leaves at eight thirty a.m.', 'Turn left at the corner.', 'I need the number five bus.']],
     ['foundation-buying-something', ['I need two apples.', 'These apples cost three dollars.', 'How much is a kilo of rice?', 'I need a loaf of bread.', 'Could I have a sandwich, please?', 'Can I pay in cash?', 'Your change is three dollars.']],
     ['survival-job-interview', ['I take the number five bus to work.', 'I start work at eight.', 'Can we meet on Monday?', 'I have one year of experience in customer service.', 'I can help customers and answer questions.', 'Is this a full-time or part-time job?', 'What is the hourly pay?', 'I can work from Monday to Friday.', 'I can start next Monday.', 'Could you repeat the question, please?', 'The interview is on Tuesday at ten a.m.']],
@@ -122,12 +133,12 @@ const esbuild = require('esbuild');
   ];
   check(topicChecks.every(([id, sentences]) => sentences.every(text => app.getSentenceLesson(id).sentences.some(sentence => sentence.en === text))));
   const foundationExpansionTopics = [
-    ['foundation-alphabet-and-spelling', ['Can you spell your last name?', 'The sign says Open.', 'I can read the label now.']],
+    ['foundation-alphabet-and-spelling', ['Can you spell your last name?', 'The sign says Open.', 'I can read the label now.', 'The English alphabet has twenty-six letters: A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, and Z.', 'The letter A has a short sound in cat.', 'The letters S and H make one sound in ship.', 'The letter pair TH has two sounds, as in think and this.']],
     ['foundation-pronouns-and-be', ['I am a student.', 'Are you from this city?', 'Where are they?']],
     ['foundation-numbers-and-contact', ['My email address is sara@example.com.', 'My postal code has five digits.', 'Please send me a text message.']],
     ['foundation-family-and-possessions', ['I have a small family.', 'Whose book is this?', 'We love our family.']],
     ['foundation-time-and-calendar', ['It is eight o’clock in the morning.', 'My appointment is on Wednesday.', 'I write the date on my calendar.']],
-    ['foundation-everyday-routine', ['I wake up early.', 'Does he work on Saturdays?', 'Every day, I practice one new sentence.']],
+    ['foundation-everyday-routine', ['I wake up early.', 'Does he work on Saturdays?', 'Every day, I practice one new sentence.', 'I cook dinner, and my brother washes the dishes.', 'I am tired, but I finish my homework.', 'The bus is late, so I walk to work.', 'I make my bed first, and then I get dressed.', 'I stay at home because I feel sick.']],
     ['foundation-objects-and-places', ['There is a lamp on the table.', 'The bank is between the café and the shop.', 'The exit is beside the door.']],
   ];
   check(foundationExpansionTopics.every(([id, texts]) => {
@@ -208,13 +219,13 @@ const esbuild = require('esbuild');
   check(counts.reduce((sum, item) => sum + item.completedLessonCount, 0) === 1);
   check(counts.every(item => item.patternCount <= item.sentenceCount && item.vocabularyCount > 0));
   check(counts.reduce((sum, item) => sum + item.patternCount, 0) === 3121);
-  check(counts.find(item => item.levelId === 0).vocabularyCount === 491);
+  check(counts.find(item => item.levelId === 0).vocabularyCount === 490);
   check(counts.find(item => item.levelId === 2).sentenceCount === 1000
     && counts.find(item => item.levelId === 2).vocabularyCount === 1774);
   check(counts.find(item => item.levelId === 3).lessonCount === 15
     && counts.find(item => item.levelId === 3).sentenceCount === 750
     && counts.find(item => item.levelId === 3).vocabularyCount === 1410);
-  check(counts.reduce((sum, item) => sum + item.vocabularyCount, 0) === 5559);
+  check(counts.reduce((sum, item) => sum + item.vocabularyCount, 0) === 5558);
 
   for (const lesson of app.SENTENCE_LESSONS) {
     const core = app.buildEnglishLessonCore(lesson);
@@ -239,5 +250,5 @@ const esbuild = require('esbuild');
     check(app.getLessonPatterns(lesson).length === lesson.sentences.filter(sentence => !!sentence.pattern).length);
   }
 
-  console.log(`${checks} engine checks passed; 5 levels, 9 ordered lesson stages, 174 lesson records (the original 168 retained), 3862 sentences (500 Foundation with 491 distinct linked words, 950 Survival across 19 fifty-example lessons with ${survivalVocabulary.size} unique vocabulary entries, 1000 Everyday across 20 fifty-example lessons with 1774 unique linked vocabulary entries, and 750 Communication across 15 fifty-example lessons and 8 thematic units with 1410 linked vocabulary entries), 264 goal-based checks across Foundation, Survival and the 15 new Everyday lessons, and sentence-linked vocabulary/review mappings.`);
+  console.log(`${checks} engine checks passed; 5 levels, 9 ordered lesson stages, 174 lesson records (the original 168 retained), 3862 sentences (500 Foundation with 490 distinct linked words, 950 Survival across 19 fifty-example lessons with ${survivalVocabulary.size} unique vocabulary entries, 1000 Everyday across 20 fifty-example lessons with 1774 unique linked vocabulary entries, and 750 Communication across 15 fifty-example lessons and 8 thematic units with 1410 linked vocabulary entries), 264 goal-based checks across Foundation, Survival and the 15 new Everyday lessons, and sentence-linked vocabulary/review mappings.`);
 })().catch(error => { console.error(error); process.exit(1); });

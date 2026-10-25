@@ -22,7 +22,7 @@ export function PageNavigation({
 }) {
   const router = useRouter();
   const dark = tone === 'dark';
-  const iconColor = dark ? '#F7F5FF' : accentColor ?? '#4F438D';
+  const iconColor = dark ? '#F8FAFF' : accentColor ?? '#143599';
 
   return (
     <View style={[styles.row, style]}>
@@ -50,8 +50,8 @@ export function PageNavigation({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  button: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  buttonLight: { backgroundColor: '#FFFFFF', borderColor: '#E7E2F2' },
-  buttonDark: { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.18)' },
-  pressed: { opacity: .72, transform: [{ scale: .96 }] },
+  button: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  buttonLight: { backgroundColor: '#FFFFFF', borderColor: '#E2EAF6', shadowColor: '#0B1838', shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
+  buttonDark: { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.22)' },
+  pressed: { opacity: .76, transform: [{ scale: .96 }] },
 });

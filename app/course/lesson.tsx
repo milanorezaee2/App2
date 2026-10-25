@@ -10,7 +10,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { BookOpenCheck, Check, ChevronLeft, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Square, Volume2 } from 'lucide-react-native';
+import { BookOpenCheck, Check, ChevronLeft, ChevronRight, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Square, Volume2 } from 'lucide-react-native';
 import { COURSE_LEVELS, getSentenceLesson, SENTENCE_LESSONS } from '@/lib/courseContent';
 import { completeSentenceLesson } from '@/lib/courseProgress';
 import { evaluateSpokenSentence, type SpeechEvaluation } from '@/lib/speechPractice';
@@ -31,7 +31,7 @@ import { loadSupplement } from '@/lib/englishSupplement/progress';
 import { CORE_LESSON_EVIDENCE, isCoreLessonEvidenceComplete } from '@/lib/englishFoundationEvidence';
 import { useEnglishStudyTimer } from '@/components/useEnglishStudyTimer';
 import { PAID_AI_ENABLED, PAID_AI_DISABLED_MESSAGE } from '@/lib/paidAI';
-import { narrate } from '@/lib/narrator/engine';
+import { narrate, stopNarration } from '@/lib/narrator/engine';
 
 const stages = ENGLISH_ENGINE_STEPS;
 const NORMAL_SPEECH_RATE = 0.85;
@@ -146,6 +146,64 @@ export default function SentenceLessonScreen() {
     speak(lesson.sentences[index].en);
   };
 
+  const lessonIndex = SENTENCE_LESSONS.findIndex(item => item.id === lesson.id);
+  const firstLesson = SENTENCE_LESSONS[0];
+  const prevLesson = lessonIndex > 0 ? SENTENCE_LESSONS[lessonIndex - 1] : undefined;
+  const canGoBackInSentence = (stage === 1 || stage === 3 || stage === 4) && sentenceIndex > 0;
+  const canGoBack = canGoBackInSentence || stage > 0 || Boolean(prevLesson);
+  const previousLabel = canGoBackInSentence
+    ? 'جملهٔ قبلی'
+    : stage > 0
+      ? 'مرحلهٔ قبلی'
+      : 'درس قبلی';
+
+  const restartCurrentLesson = () => {
+    if (recorderState.isRecording || evaluatingSpeech || saving) return;
+    stopNarration();
+    void Speech.stop();
+    setStage(0);
+    setSentenceIndex(0);
+    setRevealed(false);
+    setSpeechResult(null);
+    setSpeechError(null);
+  };
+
+  const goToFirstLesson = () => {
+    if (recorderState.isRecording || evaluatingSpeech || saving) return;
+    stopNarration();
+    void Speech.stop();
+    void saveLessonSession(firstLesson.id, freshSession()).catch(() => undefined).finally(() => {
+      if (lesson.id === firstLesson.id) {
+        restartCurrentLesson();
+      } else {
+        router.replace({ pathname: '/course/lesson', params: { id: firstLesson.id } } as never);
+      }
+    });
+  };
+
+  const previous = () => {
+    if (!sessionReady || sessionError || completing.current || saving || recorderState.isRecording || evaluatingSpeech) return;
+    stopNarration();
+    void Speech.stop();
+    setSpeechResult(null);
+    setSpeechError(null);
+    if (canGoBackInSentence) {
+      setSentenceIndex(value => Math.max(0, value - 1));
+      setRevealed(false);
+      return;
+    }
+    if (stage > 0) {
+      const targetStage = stage - 1;
+      setStage(targetStage);
+      setSentenceIndex(targetStage === 1 ? Math.max(0, lesson.sentences.length - 1) : 0);
+      setRevealed(false);
+      return;
+    }
+    if (prevLesson) {
+      router.replace({ pathname: '/course/lesson', params: { id: prevLesson.id } } as never);
+    }
+  };
+
   const next = async () => {
     if (!sessionReady || sessionError || completing.current) return;
     if (stage === 1 && sentenceIndex < lesson.sentences.length - 1) {
@@ -209,8 +267,41 @@ export default function SentenceLessonScreen() {
           </View>
         </View>
         <View style={styles.stepSegments}>
-          {stages.map((item, index) => <View key={item.id} accessibilityLabel={`${item.labelEn} ${index + 1} از ${stages.length}`} style={[styles.stepSegment, index <= stage && styles.stepSegmentDone, index === stage && styles.stepSegmentCurrent]} />)}
+          {stages.map((item, index) => (
+            <Pressable
+              key={item.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.labelFa} · مرحله ${toPersianDigits(index + 1)} از ${toPersianDigits(stages.length)}`}
+              style={styles.stepSegmentBtn}
+              onPress={() => {
+                if (!sessionReady || sessionError || saving || recorderState.isRecording || evaluatingSpeech) return;
+                stopNarration();
+                void Speech.stop();
+                setStage(index);
+                setSentenceIndex(0);
+                setRevealed(false);
+              }}
+            >
+              <View style={[styles.stepSegment, index <= stage && styles.stepSegmentDone, index === stage && styles.stepSegmentCurrent]} />
+            </Pressable>
+          ))}
         </View>
+        {(stage > 0 || sentenceIndex > 0 || lesson.id !== firstLesson.id) ? (
+          <View style={styles.stepperQuickRow}>
+            {(stage > 0 || sentenceIndex > 0) ? (
+              <Pressable accessibilityRole="button" style={styles.stepperQuickPill} onPress={restartCurrentLesson}>
+                <RotateCcw size={13} color={Palette.primaryDark} />
+                <Text style={styles.stepperQuickText}>از ابتدای این درس</Text>
+              </Pressable>
+            ) : null}
+            {lesson.id !== firstLesson.id ? (
+              <Pressable accessibilityRole="button" style={styles.stepperQuickPill} onPress={goToFirstLesson}>
+                <RotateCcw size={13} color={Palette.primary} />
+                <Text style={styles.stepperQuickText}>بازگشت به درس اول</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
         <View style={styles.stepperEnds}><Text style={styles.stepperEndText}>Situation</Text><Text style={styles.stepperEndText}>Spaced Review</Text></View>
       </View>
 
@@ -227,7 +318,7 @@ export default function SentenceLessonScreen() {
         />
         {stage === 0 && (
           <View style={styles.centerStage}>
-            <View style={styles.bigIcon}><Sparkles size={34} color={Colors.accent[400]} /></View>
+            <View style={styles.bigIcon}><Sparkles size={30} color={Palette.warning} /></View>
             <Text style={styles.stageEyebrow}>موقعیت واقعی</Text>
             <Text style={styles.stageTitle}>{lesson.title}</Text>
             <Text style={styles.situation}>{lesson.situation}</Text>
@@ -320,6 +411,31 @@ export default function SentenceLessonScreen() {
               ) : null}
               {speechError ? <Text style={styles.speechError}>{speechError}</Text> : null}
             </View>
+            <View style={styles.sentenceStepRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: sentenceIndex === 0 }}
+                disabled={sentenceIndex === 0}
+                style={[styles.sentenceStepBtn, sentenceIndex === 0 && styles.sentenceStepBtnDisabled]}
+                onPress={() => selectListeningSentence(Math.max(0, sentenceIndex - 1))}
+              >
+                <ChevronRight size={16} color={Palette.primaryDark} />
+                <Text style={styles.sentenceStepText}>جملهٔ قبلی</Text>
+              </Pressable>
+              <Text style={styles.sentenceStepCounter}>
+                جمله {toPersianDigits(sentenceIndex + 1)} از {toPersianDigits(lesson.sentences.length)}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: sentenceIndex >= lesson.sentences.length - 1 }}
+                disabled={sentenceIndex >= lesson.sentences.length - 1}
+                style={[styles.sentenceStepBtn, sentenceIndex >= lesson.sentences.length - 1 && styles.sentenceStepBtnDisabled]}
+                onPress={() => selectListeningSentence(Math.min(lesson.sentences.length - 1, sentenceIndex + 1))}
+              >
+                <Text style={styles.sentenceStepText}>جملهٔ بعدی</Text>
+                <ChevronLeft size={16} color={Palette.primaryDark} />
+              </Pressable>
+            </View>
             <View style={styles.dots}>
               {lesson.sentences.map((sentence, index) => (
                 <Pressable key={sentence.id} accessibilityRole="button" accessibilityLabel={`جمله ${index + 1}`} onPress={() => selectListeningSentence(index)} style={[styles.dot, index === sentenceIndex && styles.dotActive]} />
@@ -333,7 +449,32 @@ export default function SentenceLessonScreen() {
             <View style={styles.bigIcon}><RotateCcw size={33} color={Colors.success[400]} /></View>
             <Text style={styles.stageTitle}>ساخت جمله</Text>
             <Text style={styles.stageDesc}>معنی جمله را بخوانید و واژه‌های همان جمله را به ترتیب بچینید.</Text>
-            <EnglishSentenceBuilder sentence={current} />
+            <EnglishSentenceBuilder key={current.id} sentence={current} />
+            <View style={styles.sentenceStepRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: sentenceIndex === 0 }}
+                disabled={sentenceIndex === 0}
+                style={[styles.sentenceStepBtn, sentenceIndex === 0 && styles.sentenceStepBtnDisabled]}
+                onPress={() => setSentenceIndex(value => Math.max(0, value - 1))}
+              >
+                <ChevronRight size={16} color={Palette.primaryDark} />
+                <Text style={styles.sentenceStepText}>جملهٔ قبلی</Text>
+              </Pressable>
+              <Text style={styles.sentenceStepCounter}>
+                جمله {toPersianDigits(sentenceIndex + 1)} از {toPersianDigits(lesson.sentences.length)}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: sentenceIndex >= lesson.sentences.length - 1 }}
+                disabled={sentenceIndex >= lesson.sentences.length - 1}
+                style={[styles.sentenceStepBtn, sentenceIndex >= lesson.sentences.length - 1 && styles.sentenceStepBtnDisabled]}
+                onPress={() => setSentenceIndex(value => Math.min(lesson.sentences.length - 1, value + 1))}
+              >
+                <Text style={styles.sentenceStepText}>جملهٔ بعدی</Text>
+                <ChevronLeft size={16} color={Palette.primaryDark} />
+              </Pressable>
+            </View>
             <View style={styles.dots}>
               {lesson.sentences.map((sentence, index) => (
                 <Pressable key={sentence.id} accessibilityRole="button" accessibilityLabel={`جمله ${index + 1}`} onPress={() => setSentenceIndex(index)} style={[styles.dot, index === sentenceIndex && styles.dotActive]} />
@@ -412,10 +553,24 @@ export default function SentenceLessonScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || !!sessionError || (stage === stages.length - 1 && !evidencePassed) }} disabled={saving || !!sessionError || (stage === stages.length - 1 && !evidencePassed)} style={[styles.nextButton, (saving || (stage === stages.length - 1 && !evidencePassed)) && { opacity: .45 }]} onPress={() => void next()}>
-          <Text style={styles.nextText}>{stage === stages.length - 1 ? 'پایان درس' : stage === 1 && sentenceIndex < lesson.sentences.length - 1 ? 'جمله بعدی' : 'ادامه'}</Text>
-          {stage === stages.length - 1 ? <Check size={20} color={Colors.onColor} /> : <ChevronLeft size={20} color={Colors.onColor} />}
-        </Pressable>
+        <View style={styles.footerInner}>
+          {canGoBack ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving || !!sessionError }}
+              disabled={saving || !!sessionError}
+              style={[styles.prevButton, (saving || !!sessionError) && { opacity: .45 }]}
+              onPress={previous}
+            >
+              <ChevronRight size={18} color={Palette.primaryDark} />
+              <Text style={styles.prevText}>{previousLabel}</Text>
+            </Pressable>
+          ) : null}
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || !!sessionError || (stage === stages.length - 1 && !evidencePassed) }} disabled={saving || !!sessionError || (stage === stages.length - 1 && !evidencePassed)} style={[styles.nextButton, (saving || (stage === stages.length - 1 && !evidencePassed)) && { opacity: .45 }]} onPress={() => void next()}>
+            <Text style={styles.nextText}>{stage === stages.length - 1 ? 'پایان درس' : stage === 1 && sentenceIndex < lesson.sentences.length - 1 ? 'جمله بعدی' : 'ادامه'}</Text>
+            {stage === stages.length - 1 ? <Check size={20} color={Colors.onColor} /> : <ChevronLeft size={20} color={Colors.onColor} />}
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -423,106 +578,117 @@ export default function SentenceLessonScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.canvas },
-  // Match the German lesson player's 900px canvas and vertical safe area.
-  header: { width: '100%', maxWidth: 900, minHeight: 64, alignSelf: 'center', paddingTop: 12, paddingHorizontal: 15, paddingBottom: 7, gap: 8, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
-  headerTop: { width: '100%', maxWidth: 900, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
-  headerText: { flex: 1, alignItems: 'flex-end', gap: 2 },
-  headerEyebrow: { fontFamily: 'Inter-ExtraBold', color: 'rgba(255,255,255,0.72)', fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
-  headerTitle: { fontFamily: Typography.fontFamily, fontSize: 20, lineHeight: 27, fontWeight: '400', color: '#FFFFFF', textAlign: 'right', writingDirection: 'rtl' },
-  headerSub: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '400', color: 'rgba(255,255,255,0.78)', textAlign: 'right', writingDirection: 'rtl' },
-  percentBadge: { minWidth: 50, height: 50, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
-  percent: { fontFamily: Typography.fontFamily, fontSize: 16, lineHeight: 18, fontWeight: '400', color: '#FFFFFF', writingDirection: 'rtl' },
-  percentLabel: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.72)', fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
-  headerBottom: { width: '100%', maxWidth: 900, alignSelf: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
+  header: { width: '100%', paddingTop: 18, paddingHorizontal: 18, paddingBottom: 16, gap: 10, borderBottomLeftRadius: 26, borderBottomRightRadius: 26, shadowColor: '#091533', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  headerTop: { width: '100%', maxWidth: 840, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  headerText: { flex: 1, alignItems: 'flex-end', gap: 3 },
+  headerEyebrow: { fontFamily: 'Inter-ExtraBold', color: '#F6D992', fontSize: 10, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
+  headerTitle: { fontFamily: Typography.fontFamily, fontSize: 19, lineHeight: 28, fontWeight: '900', color: '#FFFFFF', textAlign: 'right', writingDirection: 'rtl' },
+  headerSub: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.84)', textAlign: 'right', writingDirection: 'rtl' },
+  percentBadge: { minWidth: 52, height: 44, paddingHorizontal: 10, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.24)' },
+  percent: { fontFamily: Typography.fontFamily, fontSize: 14, lineHeight: 18, fontWeight: '900', color: '#FFFFFF', writingDirection: 'rtl' },
+  percentLabel: { display: 'none', fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.72)', fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
+  headerBottom: { display: 'none', width: '100%', maxWidth: 840, alignSelf: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
   headerInfoChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
   headerInfoText: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-  stepperCard: { width: '100%', maxWidth: 900, alignSelf: 'center', marginTop: 12, paddingHorizontal: 20, paddingVertical: 13, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10, shadowColor: '#20264A', shadowOpacity: .04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
+  stepperCard: { width: '94%', maxWidth: 840, alignSelf: 'center', marginTop: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 8, shadowColor: '#0B1838', shadowOpacity: .045, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
   stepperHeading: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  stepperEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
-  stepperTitle: { fontFamily: Typography.fontFamily, fontSize: 14, lineHeight: 18, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
+  stepperEyebrow: { display: 'none', fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 8, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
+  stepperTitle: { fontFamily: Typography.fontFamily, fontSize: 12.5, lineHeight: 18, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
   stepperNow: { alignItems: 'flex-end', gap: 1 },
-  stepperNowEn: { fontFamily: 'Inter-ExtraBold', color: Palette.primaryDark, fontSize: 9, fontWeight: '800', writingDirection: 'ltr' },
-  stepperNowFa: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
-  stepSegments: { flexDirection: 'row-reverse', gap: 4 },
-  stepSegment: { flex: 1, height: 5, borderRadius: 999, backgroundColor: Palette.border },
-  stepSegmentDone: { backgroundColor: Palette.primary },
-  stepSegmentCurrent: { height: 8, marginTop: -1.5, backgroundColor: Palette.teal },
-  stepperEnds: { flexDirection: 'row-reverse', justifyContent: 'space-between' },
+  stepperNowEn: { display: 'none', fontFamily: 'Inter-ExtraBold', color: Palette.primaryDark, fontSize: 9, fontWeight: '800', writingDirection: 'ltr' },
+  stepperNowFa: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 12, fontWeight: '800', writingDirection: 'rtl' },
+  stepSegments: { flexDirection: 'row-reverse', gap: 5 },
+  stepSegmentBtn: { flex: 1, paddingVertical: 4 },
+  stepSegment: { width: '100%', height: 5, borderRadius: 999, backgroundColor: Palette.surfaceMuted },
+  stepSegmentDone: { backgroundColor: Palette.success },
+  stepSegmentCurrent: { backgroundColor: Palette.primary },
+  stepperQuickRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, paddingTop: 2 },
+  stepperQuickPill: { minHeight: 32, flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 11, borderRadius: 999, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
+  stepperQuickText: { fontFamily: Typography.fontFamily, fontSize: 11.5, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  sentenceStepRow: { width: '100%', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 14 },
+  sentenceStepBtn: { minHeight: 40, flexDirection: 'row-reverse', alignItems: 'center', gap: 4, paddingHorizontal: 13, borderRadius: 12, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
+  sentenceStepBtnDisabled: { opacity: 0.38 },
+  sentenceStepText: { fontFamily: Typography.fontFamily, fontSize: 12.5, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  sentenceStepCounter: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '700', color: Palette.muted, writingDirection: 'rtl' },
+  stepperEnds: { display: 'none', flexDirection: 'row-reverse', justifyContent: 'space-between' },
   stepperEndText: { fontFamily: 'Inter-ExtraBold', color: Palette.muted, fontSize: 8, fontWeight: '800', writingDirection: 'ltr' },
-  content: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 9, paddingBottom: 22, gap: 11 },
+  content: { width: '100%', maxWidth: 840, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 32, gap: 14 },
   centerStage: { alignItems: 'center', width: '100%' },
-  bigIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#DDE2FF', alignItems: 'center', justifyContent: 'center', marginVertical: Spacing.lg },
-  stageEyebrow: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.primary, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  stageTitle: { fontFamily: Typography.fontFamily, fontSize: 27, lineHeight: 36, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  stageDesc: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 23, marginTop: Spacing.sm },
-  situation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 27, marginTop: Spacing.md },
-  promiseCard: { width: '100%', borderRadius: Radius.xl, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#DDE2FF', padding: Spacing.lg, marginTop: Spacing.xl },
-  promiseTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
-  promiseText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 23, marginTop: 5 },
-  sentenceStage: { alignItems: 'center', paddingTop: Spacing.lg, width: '100%' },
-  counter: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, marginBottom: Spacing.md, alignSelf: 'flex-end', textAlign: 'right', writingDirection: 'rtl' },
-  sentenceCard: { width: '100%', borderRadius: Radius.xl, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: Spacing.xl, alignItems: 'center', shadowColor: '#172033', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  replayRow: { width: '100%', flexDirection: 'row-reverse', justifyContent: 'center', gap: 10, marginTop: Spacing.md },
-  replayButton: { minHeight: 42, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 17, borderRadius: Radius.full, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: Palette.border },
-  replayText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: '400', color: Palette.primaryDark, writingDirection: 'rtl' },
-  soundButton: { width: 54, height: 54, borderRadius: 27, backgroundColor: Palette.primary, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
-  english: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 25, lineHeight: 36, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  pronunciation: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.primaryDark, textAlign: 'center', writingDirection: 'rtl', marginTop: 8 },
-  divider: { width: '70%', height: 1, backgroundColor: Palette.border, marginVertical: Spacing.lg },
-  persian: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.lg + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  pattern: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', gap: 8, alignSelf: 'flex-end', backgroundColor: Palette.warningSoft, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.full, marginTop: Spacing.md },
-  patternLabel: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.warning, writingDirection: 'rtl' },
-  patternEnglish: { fontFamily: 'Inter-ExtraBold', fontSize: Typography.sizes.xs + 2, fontWeight: '800', color: Palette.warning, textAlign: 'right', writingDirection: 'ltr' },
-  hint: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.md },
-  listenList: { width: '100%', gap: Spacing.sm, marginTop: Spacing.xl },
-  listenRow: { minHeight: 62, borderRadius: Radius.lg, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: Spacing.md, flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.sm },
+  bigIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#D6E4FF', alignItems: 'center', justifyContent: 'center', marginVertical: 14 },
+  stageEyebrow: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '800', color: Palette.primary, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  stageTitle: { fontFamily: Typography.fontFamily, fontSize: 23, lineHeight: 34, fontWeight: '900', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  stageDesc: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '500', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 23, marginTop: 6 },
+  situation: { fontFamily: Typography.fontFamily, fontSize: 15, fontWeight: '500', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 27, marginTop: 10 },
+  promiseCard: { width: '100%', borderRadius: 20, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#D6E4FF', padding: 18, marginTop: 18 },
+  promiseTitle: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '800', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
+  promiseText: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '500', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 23, marginTop: 5 },
+  sentenceStage: { alignItems: 'center', paddingTop: 10, width: '100%' },
+  counter: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '700', color: Palette.muted, marginBottom: 10, alignSelf: 'flex-end', textAlign: 'right', writingDirection: 'rtl' },
+  sentenceCard: { width: '100%', borderRadius: 24, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 24, alignItems: 'center', shadowColor: '#0B1838', shadowOpacity: 0.055, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  replayRow: { width: '100%', flexDirection: 'row-reverse', justifyContent: 'center', gap: 10, marginTop: 14 },
+  replayButton: { minHeight: 44, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 18, borderRadius: 999, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
+  replayText: { fontFamily: Typography.fontFamily, fontSize: 13, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  soundButton: { width: 56, height: 56, borderRadius: 20, backgroundColor: Palette.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 18, shadowColor: Palette.primary, shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
+  english: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 23, lineHeight: 34, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  pronunciation: { fontFamily: Typography.fontFamily, fontSize: 13, fontWeight: '600', color: Palette.primaryDark, textAlign: 'center', writingDirection: 'rtl', marginTop: 10 },
+  divider: { width: '100%', height: 1, backgroundColor: Palette.border, marginVertical: 18 },
+  persian: { fontFamily: Typography.fontFamily, fontSize: 17, fontWeight: '700', lineHeight: 28, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  pattern: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', gap: 8, alignSelf: 'flex-end', backgroundColor: Palette.warningSoft, borderWidth: 1, borderColor: '#F1DFB6', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, marginTop: 14 },
+  patternLabel: { fontFamily: Typography.fontFamily, fontSize: 11.5, fontWeight: '800', color: Palette.warning, writingDirection: 'rtl' },
+  patternEnglish: { fontFamily: 'Inter-ExtraBold', fontSize: 12.5, fontWeight: '800', color: Palette.warning, textAlign: 'left', writingDirection: 'ltr' },
+  hint: { display: 'none', fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.md },
+  listenList: { width: '100%', gap: 10, marginTop: 18 },
+  listenRow: { minHeight: 62, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: 15, flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   listenRowActive: { borderColor: Palette.primary, backgroundColor: Palette.primarySoft },
-  listenNumber: { width: 30, height: 30, borderRadius: 15, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  listenNumberText: { fontFamily: Typography.numberFontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.primaryDark, writingDirection: 'rtl' },
-  listenEnglish: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 15, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  speechPractice: { width: '100%', borderRadius: Radius.xl, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: Spacing.lg, alignItems: 'center', marginTop: Spacing.lg, shadowColor: '#172033', shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
-  speechTitle: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md + 2, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  speechSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 19, lineHeight: 28, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr', marginTop: Spacing.sm },
-  speechHint: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 19, marginTop: 6 },
-  recordButton: { minHeight: 48, minWidth: 155, borderRadius: Radius.full, paddingHorizontal: Spacing.lg, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: Spacing.md },
+  listenNumber: { width: 32, height: 32, borderRadius: 12, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  listenNumberText: { fontFamily: Typography.numberFontFamily, fontSize: 12, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  listenEnglish: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 15, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  speechPractice: { width: '100%', borderRadius: 24, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 20, alignItems: 'center', marginTop: 16, shadowColor: '#0B1838', shadowOpacity: 0.045, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  speechTitle: { fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '800', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  speechSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 19, lineHeight: 29, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr', marginTop: 10 },
+  speechHint: { display: 'none', fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 19, marginTop: 6 },
+  recordButton: { minHeight: 48, minWidth: 170, borderRadius: 14, paddingHorizontal: 18, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 14 },
   recordButtonActive: { backgroundColor: Palette.danger },
-  recordButtonDisabled: { opacity: .55 },
-  recordButtonText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Colors.onColor, writingDirection: 'rtl' },
-  speechResult: { width: '100%', borderRadius: Radius.lg, backgroundColor: Palette.successSoft, borderWidth: 1, borderColor: '#BBF7D0', padding: Spacing.md, marginTop: Spacing.md },
+  recordButtonDisabled: { opacity: .48 },
+  recordButtonText: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '800', color: Colors.onColor, writingDirection: 'rtl' },
+  speechResult: { width: '100%', borderRadius: 16, backgroundColor: Palette.successSoft, borderWidth: 1, borderColor: '#BBF7D0', padding: 14, marginTop: 14 },
   scoreRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
-  scoreLabel: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
-  scoreValue: { fontFamily: Typography.numberFontFamily, fontSize: Typography.sizes.lg + 2, fontWeight: '400', color: Palette.success, writingDirection: 'rtl' },
-  recognizedLabel: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: Spacing.sm },
-  recognizedText: { fontFamily: 'Inter-ExtraBold', fontSize: 15, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr', marginTop: 3 },
-  feedbackText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.success, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.sm },
-  missingWords: { fontFamily: 'Inter-ExtraBold', fontSize: 12, fontWeight: '800', color: Palette.warning, textAlign: 'right', writingDirection: 'ltr', marginTop: Spacing.sm },
-  speechError: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.danger, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: Spacing.sm },
-  shadowTip: { width: '100%', marginTop: Spacing.md, borderRadius: Radius.lg, backgroundColor: Palette.warningSoft, padding: Spacing.md, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  scoreLabel: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '700', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
+  scoreValue: { fontFamily: Typography.numberFontFamily, fontSize: 18, fontWeight: '900', color: Palette.success, writingDirection: 'rtl' },
+  recognizedLabel: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '700', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: 8 },
+  recognizedText: { fontFamily: 'Inter-ExtraBold', fontSize: 15, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr', marginTop: 3 },
+  feedbackText: { fontFamily: Typography.fontFamily, fontSize: 12.5, fontWeight: '700', color: Palette.success, textAlign: 'right', writingDirection: 'rtl', lineHeight: 20, marginTop: 8 },
+  missingWords: { fontFamily: 'Inter-ExtraBold', fontSize: 12, fontWeight: '800', color: Palette.warning, textAlign: 'left', writingDirection: 'ltr', marginTop: 8 },
+  speechError: { fontFamily: Typography.fontFamily, fontSize: 12.5, fontWeight: '700', color: Palette.danger, textAlign: 'right', writingDirection: 'rtl', lineHeight: 20, marginTop: 8 },
+  shadowTip: { display: 'none', width: '100%', marginTop: Spacing.md, borderRadius: Radius.lg, backgroundColor: Palette.warningSoft, padding: Spacing.md, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   shadowText: { flex: 1, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19 },
-  practiceCard: { width: '100%', minHeight: 230, borderRadius: Radius.xl, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: Spacing.xl, marginTop: Spacing.xl, alignItems: 'center', justifyContent: 'center', shadowColor: '#172033', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  practiceFa: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xl + 2, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 32 },
-  revealButton: { marginTop: Spacing.xl, minHeight: 44, paddingHorizontal: Spacing.xl, borderRadius: Radius.full, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  revealText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.primaryDark, writingDirection: 'rtl' },
-  answerBox: { marginTop: Spacing.xl, padding: Spacing.md, borderRadius: Radius.lg, backgroundColor: Palette.successSoft, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  answerText: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 18, fontWeight: '800', color: Palette.success, textAlign: 'right', writingDirection: 'ltr' },
-  dots: { flexDirection: 'row', gap: 8, marginTop: Spacing.lg },
+  practiceCard: { width: '100%', minHeight: 230, borderRadius: 24, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 24, marginTop: 18, alignItems: 'center', justifyContent: 'center', shadowColor: '#0B1838', shadowOpacity: 0.05, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  practiceFa: { fontFamily: Typography.fontFamily, fontSize: 20, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 32 },
+  revealButton: { marginTop: 18, minHeight: 46, paddingHorizontal: 20, borderRadius: 999, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  revealText: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  answerBox: { marginTop: 18, padding: 14, borderRadius: 16, backgroundColor: Palette.successSoft, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  answerText: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 17, fontWeight: '800', color: Palette.success, textAlign: 'left', writingDirection: 'ltr' },
+  dots: { flexDirection: 'row', gap: 8, marginTop: 16 },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Palette.border },
   dotActive: { width: 24, backgroundColor: Palette.primary },
-  dialogue: { width: '100%', gap: Spacing.sm, marginTop: Spacing.xl },
-  bubble: { maxWidth: '88%', borderRadius: Radius.xl, padding: Spacing.md, borderWidth: 1 },
+  dialogue: { width: '100%', gap: 10, marginTop: 18 },
+  bubble: { maxWidth: '88%', borderRadius: 18, padding: 15, borderWidth: 1 },
   bubblePartner: { alignSelf: 'flex-start', backgroundColor: Palette.surface, borderColor: Palette.border, borderBottomLeftRadius: 5 },
-  bubbleLearner: { alignSelf: 'flex-end', backgroundColor: Palette.primarySoft, borderColor: '#DDE2FF', borderBottomRightRadius: 5 },
-  bubbleSpeaker: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '400', color: Palette.primaryDark, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl' },
-  bubbleEn: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', color: Palette.ink, lineHeight: 23, textAlign: 'right', writingDirection: 'ltr' },
-  bubbleFa: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.xs + 2, fontWeight: '400', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: 5 },
-  bubbleSound: { alignSelf: 'flex-end', marginTop: 6 },
-  vocabList: { width: '100%', gap: Spacing.sm, marginTop: Spacing.xl },
-  vocabCard: { borderRadius: Radius.lg, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: Spacing.md },
-  vocabTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  vocabWord: { fontFamily: 'Inter-ExtraBold', fontSize: 18, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm + 2, fontWeight: '400', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
-  vocabExample: { fontFamily: 'Inter-ExtraBold', fontSize: 13, fontWeight: '800', color: Palette.text, textAlign: 'right', writingDirection: 'ltr', marginTop: 8 },
-  footer: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 15, paddingTop: 7, paddingBottom: 30, backgroundColor: Palette.canvas, borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
-  nextButton: { width: '100%', maxWidth: 900, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  nextText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md + 2, fontWeight: '400', color: Colors.onColor, writingDirection: 'rtl' },
+  bubbleLearner: { alignSelf: 'flex-end', backgroundColor: Palette.primarySoft, borderColor: '#CBDCFF', borderBottomRightRadius: 5 },
+  bubbleSpeaker: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '800', color: Palette.primaryDark, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl' },
+  bubbleEn: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', color: Palette.ink, lineHeight: 24, textAlign: 'left', writingDirection: 'ltr' },
+  bubbleFa: { fontFamily: Typography.fontFamily, fontSize: 13, fontWeight: '500', color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', marginTop: 5 },
+  bubbleSound: { alignSelf: 'flex-end', marginTop: 6, padding: 4 },
+  vocabList: { width: '100%', gap: 10, marginTop: 18 },
+  vocabCard: { width: '100%', borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 16, gap: 6, shadowColor: '#0B1838', shadowOpacity: 0.035, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
+  vocabTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  vocabWord: { fontFamily: 'Inter-ExtraBold', fontSize: 17, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '800', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
+  vocabExample: { fontFamily: 'Inter-ExtraBold', fontSize: 13.5, fontWeight: '800', color: Palette.text, textAlign: 'left', writingDirection: 'ltr', marginTop: 6 },
+  footer: { width: '100%', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 22, backgroundColor: 'rgba(255,255,255,0.96)', borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#0B1838', shadowOpacity: .06, shadowRadius: 14, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
+  footerInner: { width: '100%', maxWidth: 840, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  prevButton: { minHeight: 54, paddingHorizontal: 16, borderRadius: 16, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  prevText: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  nextButton: { flex: 1, minHeight: 54, borderRadius: 16, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .22, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
+  nextText: { fontFamily: Typography.fontFamily, fontSize: 15, fontWeight: '900', color: Colors.onColor, writingDirection: 'rtl' },
 });

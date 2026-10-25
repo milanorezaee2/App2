@@ -47,9 +47,9 @@ const esbuild = require('esbuild');
   const equal = (label, actual, expected) => { assert.deepEqual(actual, expected, label); checks.push(label); };
 
   equal('four internal CEFR planning bands are ordered A1 through B2', curriculum.RUSSIAN_CEFR_BANDS.map(x => x.id), ['A1', 'A2', 'B1', 'B2']);
-  equal('the five existing Russian UI levels map underneath the four planning bands',
+  equal('five Russian UI levels map Foundation and Survival to A1, then onto A2 through B2',
     Object.values(curriculum.RUSSIAN_LEVEL_TO_CEFR), ['A1', 'A1', 'A2', 'B1', 'B2']);
-  equal('existing five-level Russian UI ids and titles remain unchanged',
+  equal('five Russian UI ids and titles include Foundation before the unchanged later levels',
     russian.RUSSIAN_LEVELS.map(({ id, title }) => [id, title]),
     [[0, 'Foundation'], [1, 'Survival Russian'], [2, 'Everyday Russian'], [3, 'Communication Russian'], [4, 'Advanced Russian']]);
   check('CEFR labels are explicitly internal and non-certifying', curriculum.RUSSIAN_CEFR_POLICY.officialLevelClaim === false
@@ -57,11 +57,14 @@ const esbuild = require('esbuild');
     && curriculum.RUSSIAN_CEFR_POLICY.lessonCompletionMeansMastery === false);
 
   const a1 = curriculum.findRussianCefrBand('A1');
-  check('A1 maps sixty-five published Foundation and Survival units', a1.status === 'available'
-    && a1.units.length === 65 && a1.units.every(unit => unit.status === 'available' && unit.lessonIds.length === 1
+  check('A1 maps seventy published Foundation and Survival units', a1.status === 'available'
+    && a1.units.length === 70 && a1.units.every(unit => unit.status === 'available' && unit.lessonIds.length === 1
       && unit.lessonCheckCount === 2 && unit.independentTransferPrompts === 0));
-  check('A1 units point to the original Foundation and Survival lesson ids and order', a1.units.map(unit => unit.lessonIds[0]).join('|')
+  check('A1 units point to Foundation followed by Survival lessons in order', a1.units.map(unit => unit.lessonIds[0]).join('|')
     === russian.RUSSIAN_LESSONS.filter(lesson => lesson.levelId <= 1).map(lesson => lesson.id).join('|'));
+  check('Foundation has exactly forty lessons and 1,400 sentences, with 35 per lesson', russian.RUSSIAN_LESSONS.filter(lesson => lesson.levelId === 0).length === 40
+    && russian.RUSSIAN_LESSONS.filter(lesson => lesson.levelId === 0).reduce((sum, lesson) => sum + lesson.sentences.length, 0) === 1400
+    && russian.RUSSIAN_LESSONS.filter(lesson => lesson.levelId === 0).every(lesson => lesson.sentences.length === 35));
   const a2 = curriculum.findRussianCefrBand('A2');
   check('A2 band maps all thirty published Everyday lessons as available units', a2.units.length === 30
     && a2.units.map(unit => unit.lessonIds[0]).join('|') === russian.RUSSIAN_LESSONS.filter(lesson => lesson.levelId === 2).map(lesson => lesson.id).join('|')
@@ -70,8 +73,8 @@ const esbuild = require('esbuild');
     && band.units.length === 10 && band.units.every(unit => unit.status === 'available' && unit.lessonIds.length === 1)));
 
   const sourceSentences = russian.RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences);
-  check('sentence curriculum metadata links all 3,450 current sentences without rewriting their text',
-    sourceSentences.length === 3450 && curriculum.RUSSIAN_SENTENCE_CURRICULUM.length === sourceSentences.length
+  check('sentence curriculum metadata links all 3,800 current sentences without rewriting their text',
+    sourceSentences.length === 3800 && curriculum.RUSSIAN_SENTENCE_CURRICULUM.length === sourceSentences.length
       && new Set(curriculum.RUSSIAN_SENTENCE_CURRICULUM.map(entry => entry.sentenceId)).size === sourceSentences.length
       && curriculum.RUSSIAN_SENTENCE_CURRICULUM.every(entry => {
         const source = sourceSentences.find(sentence => sentence.id === entry.sentenceId);
@@ -103,7 +106,7 @@ const esbuild = require('esbuild');
     ['receive', 'notice', 'reconstruct', 'transfer', 'retrieve']);
   check('every learning phase maps only to an existing Russian lesson stage', engine.RUSSIAN_LEARNING_CYCLE.every(phase => phase.existingStageIds.length > 0
     && phase.existingStageIds.every(id => russian.RUSSIAN_LESSON_STAGES.some(stage => stage.id === id))));
-  const plan = engine.buildRussianLessonLearningPlan('ru-l1-introductions');
+  const plan = engine.buildRussianLessonLearningPlan('ru-l1-01-core');
   check('lesson plan resolves to A1 and keeps transfer explicitly partial until prompts are reviewed', plan.cefrLevelId === 'A1'
     && plan.phases.length === 5
     && plan.phases.find(phase => phase.id === 'transfer').implementation === 'partial'
@@ -174,8 +177,8 @@ const esbuild = require('esbuild');
   global.__russianPlatformOS = 'ios';
   global.__russianNativeMemory = new Map();
   const nativeAttempt = await evidence.recordRussianPracticeAttempt({
-    lessonId: 'ru-l1-greetings',
-    sentenceId: 'ru1-01',
+    lessonId: 'ru-l2-cafe',
+    sentenceId: 'ru2-01',
     phaseId: 'retrieve',
     outcome: 'self-rated-good',
     source: 'self-report',

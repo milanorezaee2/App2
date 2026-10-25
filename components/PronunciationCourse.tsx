@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ViewStyle } from 'react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import * as Speech from '@/lib/narration';
 import { NARRATION_ENABLED } from '@/lib/narration';
@@ -9,15 +10,15 @@ import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw, Volume2 } from 'lucide
 import { useRouter } from 'expo-router';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { GermanBottomNav } from '@/components/GermanBottomNav';
+import { LuxuryTopBar } from '@/components/LuxuryLanguageShell';
+import { LuxuryPalette, LuxuryShadows } from '@/components/luxuryTheme';
 import { RussianBottomNav } from '@/components/RussianBottomNav';
-import { PageNavigation } from '@/components/PageNavigation';
-import { preloadSpeechVoices, resolveRequiredSpeechOptions, resolveSpeechOptions } from '@/lib/speechLanguage';
+import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
 import { Typography } from '@/lib/theme';
 import { toPersianDigits as fa } from '@/lib/format';
 import {
   PRONUNCIATION_COURSES,
   type PronunciationLanguage,
-  type PronunciationUnit,
 } from '@/lib/languages/pronunciationCourse';
 import {
   loadPronunciationMarks,
@@ -26,54 +27,40 @@ import {
   type PronunciationMarks,
 } from '@/lib/languages/pronunciationProgress';
 
+const SHARED_LUXURY_THEME = {
+  accent: LuxuryPalette.primary,
+  accentDark: LuxuryPalette.primaryDeep,
+  soft: LuxuryPalette.primarySoft,
+  canvas: LuxuryPalette.canvas,
+  surface: LuxuryPalette.surface,
+  ink: LuxuryPalette.ink,
+  text: LuxuryPalette.inkBody,
+  muted: LuxuryPalette.inkMuted,
+  border: LuxuryPalette.border,
+  gold: LuxuryPalette.goldLight,
+} as const;
+
 const THEMES = {
   en: {
-    accent: '#6654CE',
-    accentDark: '#40327F',
-    soft: '#F0ECFA',
-    canvas: '#F5F3F7',
-    surface: '#FFFFFF',
-    ink: '#191A31',
-    text: '#56566D',
-    muted: '#858398',
-    border: '#E7E2EC',
-    gold: '#D8B76E',
+    ...SHARED_LUXURY_THEME,
     home: '/lang',
-    locale: 'en-US',
+    locale: 'en-US' as const,
     languageFa: 'انگلیسی',
-    brand: 'ENGLISH · PRONUNCIATION',
+    brand: 'ENGLISH PRONUNCIATION',
   },
   de: {
-    accent: '#197D70',
-    accentDark: '#124B43',
-    soft: '#E6F5EF',
-    canvas: '#F4F7F4',
-    surface: '#FFFFFF',
-    ink: '#173E34',
-    text: '#435E57',
-    muted: '#71837E',
-    border: '#D8E7E0',
-    gold: '#C6A65D',
+    ...SHARED_LUXURY_THEME,
     home: '/learn/de',
-    locale: 'de-DE',
+    locale: 'de-DE' as const,
     languageFa: 'آلمانی',
-    brand: 'DEUTSCH · AUSSPRACHE',
+    brand: 'DEUTSCH PRONUNCIATION',
   },
   ru: {
-    accent: '#3565B8',
-    accentDark: '#243F78',
-    soft: '#EAF0FB',
-    canvas: '#F4F7FC',
-    surface: '#FFFFFF',
-    ink: '#1D3152',
-    text: '#4E607D',
-    muted: '#78869D',
-    border: '#D8E2F2',
-    gold: '#C6A65D',
+    ...SHARED_LUXURY_THEME,
     home: '/learn/ru',
-    locale: 'ru-RU',
+    locale: 'ru-RU' as const,
     languageFa: 'روسی',
-    brand: 'РУССКИЙ · ПРОИЗНОШЕНИЕ',
+    brand: 'RUSSIAN PRONUNCIATION',
   },
 } as const;
 
@@ -91,7 +78,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
   const [retryStorage, setRetryStorage] = useState(0);
   const [saving, setSaving] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const [speechMessage, setSpeechMessage] = useState('نمونه با موتور گفتار دستگاه پخش می‌شود؛ در صورت نیاز صدای این زبان را در تنظیمات دستگاه فعال کنید.');
+  const [speechMessage, setSpeechMessage] = useState('');
   const unit = units[index];
   const mark = marks[unit.id]?.mark ?? undefined;
   const practicedCount = Object.values(marks).filter(value => value?.mark === 'practiced').length;
@@ -110,7 +97,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
       setStorageMessage('');
     }).catch(() => {
       if (!active) return;
-      setStorageError('یادداشت محلی تلفظ خوانده نشد. دادهٔ ناسازگار را خودکار پاک یا بازنویسی نمی‌کنیم؛ می‌توانید دوباره تلاش کنید.');
+      setStorageError('یادداشت محلی تلفظ خوانده نشد. دوباره تلاش کنید.');
     });
     return () => { active = false; };
   }, [language, retryStorage]);
@@ -129,9 +116,9 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
   const stopSpeech = () => {
     const request = ++speechGeneration.current;
     setSpeaking(false);
-    setSpeechMessage('پخش متوقف شد؛ برنامه شنیده‌شدن صدا را تأیید نمی‌کند.');
+    setSpeechMessage('');
     void Speech.stop().catch(() => {
-      if (request === speechGeneration.current) setSpeechMessage('توقف صدا ممکن نشد؛ پخش دستگاه را بررسی کنید.');
+      if (request === speechGeneration.current) setSpeechMessage('توقف صدا ممکن نشد.');
     });
   };
 
@@ -139,45 +126,33 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
     if (!NARRATION_ENABLED) return;
     const request = ++speechGeneration.current;
     setSpeaking(true);
-    setSpeechMessage(`درخواست پخش ${rate === 'slow' ? 'آهسته' : 'عادی'} ارسال شد؛ منتظر صدای دستگاه هستیم.`);
+    setSpeechMessage('');
     try {
       await Speech.stop();
       if (request !== speechGeneration.current) return;
-      const targetVoice = theme.locale === 'de-DE'
-        ? await resolveRequiredSpeechOptions(theme.locale)
-        : await resolveSpeechOptions(theme.locale);
+      const targetVoice = await resolveSpeechOptions(theme.locale);
       if (request !== speechGeneration.current) return;
-      if (!targetVoice) {
-        setSpeaking(false);
-        setSpeechMessage('صدای آلمانیِ آفلاین پیدا نشد؛ در تنظیمات گفتار دستگاه، صدای آلمانی (آلمان) را دانلود کنید و دوباره امتحان کنید.');
-        return;
-      }
       Speech.speak(text, {
         ...targetVoice,
         rate: rate === 'slow' ? 0.62 : 0.86,
-        onStart: () => {
-          if (request === speechGeneration.current) setSpeechMessage('موتور دستگاه شروع پخش را گزارش کرد؛ شنیده‌شدن صدا را خودتان بررسی کنید.');
-        },
         onDone: () => {
           if (request !== speechGeneration.current) return;
           setSpeaking(false);
-          setSpeechMessage('پایان پخش گزارش شد؛ این صفحه کیفیت تلفظ را نمی‌سنجد.');
         },
         onStopped: () => {
           if (request !== speechGeneration.current) return;
           setSpeaking(false);
-          setSpeechMessage('پخش متوقف شد؛ شنیده‌شدن صدا تأیید نشده است.');
         },
         onError: () => {
           if (request !== speechGeneration.current) return;
           setSpeaking(false);
-          setSpeechMessage(`صدای ${theme.languageFa} در دسترس نبود؛ تنظیمات گفتار دستگاه را بررسی کنید.`);
+          setSpeechMessage(`صدای ${theme.languageFa} در دسترس نبود.`);
         },
       });
     } catch {
       if (request !== speechGeneration.current) return;
       setSpeaking(false);
-      setSpeechMessage(`پخش صدای ${theme.languageFa} انجام نشد؛ تنظیمات گفتار دستگاه را بررسی کنید.`);
+      setSpeechMessage(`پخش صدای ${theme.languageFa} انجام نشد.`);
     }
   };
 
@@ -189,12 +164,12 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
       const next = await savePronunciationMark(language, unit.id, nextMark);
       setMarks(next);
       setStorageMessage(nextMark === null
-        ? 'علامت این تمرین پاک شد؛ اگر وارد حساب باشید، حذف آن همگام می‌شود.'
+        ? 'علامت پاک شد.'
         : nextMark === 'practiced'
-          ? 'یادداشت «تمرین کردم» ذخیره شد؛ در صورت ورود به حساب، همگام می‌شود.'
-          : 'این تمرین برای مرور بعدی علامت خورد؛ در صورت ورود به حساب، همگام می‌شود.');
+          ? 'به عنوان تمرین‌شده ثبت شد.'
+          : 'برای مرور بعدی نشانه‌گذاری شد.');
     } catch {
-      setStorageMessage('یادداشت ذخیره نشد؛ فضای ذخیره‌سازی دستگاه را بررسی کنید. متن درس و صدای نمونه در دسترس می‌مانند.');
+      setStorageMessage('ذخیره انجام نشد.');
     } finally {
       setSaving(false);
     }
@@ -217,58 +192,65 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
   return (
     <View style={[styles.root, { backgroundColor: theme.canvas }]}>
       <StatusBar style="dark" />
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <PageNavigation backFallback={theme.home} accentColor={theme.accent} borderColor={theme.border} />
-        <View style={styles.headerCopy}>
-          <Text style={[styles.brand, { color: theme.accent }]}>{theme.brand}</Text>
-          <Text style={[styles.headerTitle, { color: theme.ink }]}>کارگاه تلفظ {theme.languageFa}</Text>
-        </View>
-        <View style={[styles.headerCount, { backgroundColor: theme.soft }]}>
-          <Text style={[styles.headerCountText, { color: theme.accentDark }]}>{fa(index + 1)} / {fa(units.length)}</Text>
-        </View>
+      <View style={styles.headerWrap}>
+        <LuxuryTopBar
+          language={language}
+          eyebrow={theme.brand}
+          title={`کارگاه تلفظ ${theme.languageFa}`}
+          backFallbackHref={theme.home}
+          leftAccessory={
+            <View style={[styles.headerCount, { backgroundColor: theme.soft }]}>
+              <Text style={[styles.headerCountText, { color: theme.accentDark }]}>{fa(index + 1)} / {fa(units.length)}</Text>
+            </View>
+          }
+        />
       </View>
 
-      <View style={[styles.track, { backgroundColor: theme.border }]} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: units.length, now: index + 1 }}>
-        <View style={[styles.trackFill, { width: `${((index + 1) / units.length) * 100}%`, backgroundColor: theme.accent }]} />
+      <View style={styles.trackWrap}>
+        <View style={[styles.track, { backgroundColor: theme.border }]} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: units.length, now: index + 1 }}>
+          <View style={[styles.trackFill, { width: `${((index + 1) / units.length) * 100}%`, backgroundColor: theme.accent }]} />
+        </View>
       </View>
 
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <View style={[styles.hero, { backgroundColor: theme.accentDark }]}>
+          <LinearGradient colors={LuxuryPalette.heroGradient} start={{ x: 0.95, y: 0 }} end={{ x: 0.05, y: 1 }} style={styles.hero}>
+            <View pointerEvents="none" style={styles.heroOrb} />
             <View style={styles.heroTop}>
               <View style={styles.heroIcon}><Volume2 size={20} color={theme.gold} /></View>
-              <Text style={styles.heroEyebrow}>تمرین {fa(index + 1)} از {fa(units.length)}</Text>
+              <View style={styles.heroTag}><Text style={styles.heroEyebrow}>تمرین {fa(index + 1)} از {fa(units.length)}</Text></View>
             </View>
             <Text accessibilityRole="header" style={styles.heroTitle}>{unit.title}</Text>
             <Text style={styles.heroFocus}>{unit.focusFa}</Text>
-            <Text style={styles.heroProgress}>یادداشت شخصی: {fa(practicedCount)} تمرین‌شده · {fa(reviewCount)} برای مرور</Text>
-          </View>
+            <View style={styles.heroProgressRow}>
+              <Text style={styles.heroProgress}>{fa(practicedCount)} تمرین‌شده · {fa(reviewCount)} نشانه‌گذاری‌شده</Text>
+            </View>
+          </LinearGradient>
 
           <View style={[styles.noticeCard, { backgroundColor: theme.soft, borderColor: theme.border }]}>
-            <Text style={[styles.noticeTitle, { color: theme.accentDark }]}>تمرین خودارزیابی؛ خصوصی و قابل‌همگام‌سازی</Text>
-            <Text style={[styles.body, { color: theme.text }]}>نمونه‌ها با موتور گفتار سیستم‌عامل درخواست می‌شوند؛ موجودبودن و آفلاین‌بودن صدا به تنظیمات دستگاه بستگی دارد. این بخش میکروفن را باز نمی‌کند، صدای شما را ضبط یا ارسال نمی‌کند و تلفظ را نمره نمی‌دهد. وضعیت‌ها خودارزیابی‌اند؛ برای همگام‌سازی میان دستگاه‌ها، از صفحهٔ «حساب و همگام‌سازی» وارد شوید.</Text>
+            <Text style={[styles.noticeTitle, { color: theme.accentDark }]}>تمرین خودارزیابی</Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.sectionTitle, { color: theme.ink }]}>چه چیزی را تمرین کنیم؟</Text>
+            <Text style={[styles.sectionTitle, { color: theme.ink }]}>نکتهٔ آوایی این گام</Text>
             <Text style={[styles.body, { color: theme.text }]}>{unit.explanationFa}</Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={styles.sectionHeadingRow}>
-              <Text style={[styles.sectionTitle, { color: theme.ink }]}>گوش کن و مقایسه کن</Text>
+              <Text style={[styles.sectionTitle, { color: theme.ink }]}>شنیدن و مقایسه</Text>
               <View style={[styles.smallBadge, { backgroundColor: theme.soft }]}>
                 <Text style={[styles.smallBadgeText, { color: theme.accentDark }]}>{fa(unit.examples.length)} نمونه</Text>
               </View>
             </View>
             {unit.examples.map((example, exampleIndex) => (
-              <View key={`${unit.id}-${exampleIndex}`} style={[styles.example, { borderColor: theme.border, backgroundColor: theme.canvas }]}>
+              <View key={`${unit.id}-${exampleIndex}`} style={[styles.example, { borderColor: theme.border, backgroundColor: LuxuryPalette.surfaceSoft }]}>
                 <Text style={[styles.exampleText, { color: theme.ink }]}>{example.text}</Text>
                 <Text style={[styles.exampleMeaning, { color: theme.text }]}>{example.meaningFa}</Text>
                 <Text style={[styles.exampleFocus, { color: theme.muted }]}>{example.focusFa}</Text>
-                {language !== 'de' ? <View style={styles.audioButtons}>
+                <View style={styles.audioButtons}>
                   <AudioButton
-                    title="آهسته گوش کن"
+                    title="پخش آهسته"
                     accessibilityLabel={`پخش آهستهٔ ${example.text} به ${theme.languageFa}`}
                     accent={theme.accent}
                     soft={theme.soft}
@@ -276,26 +258,26 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
                     onPress={() => void speak(example.text, 'slow')}
                   />
                   <AudioButton
-                    title="سرعت عادی"
+                    title="پخش عادی"
                     accessibilityLabel={`پخش عادی ${example.text} به ${theme.languageFa}`}
                     accent={theme.accent}
                     soft={theme.soft}
                     disabled={false}
                     onPress={() => void speak(example.text, 'normal')}
                   />
-                </View> : null}
+                </View>
               </View>
             ))}
           </View>
 
-          <View style={[styles.practiceCard, { backgroundColor: theme.accentDark }]}>
-            <Text style={styles.practiceLabel}>حالا در جمله تمرین کن</Text>
+          <LinearGradient colors={LuxuryPalette.heroAltGradient} start={{ x: 0.95, y: 0 }} end={{ x: 0.05, y: 1 }} style={styles.practiceCard}>
+            <Text style={styles.practiceLabel}>تمرین در بافت جمله</Text>
             <Text style={styles.practiceText}>{unit.practiceText}</Text>
             <Text style={styles.practiceMeaning}>{unit.practiceMeaningFa}</Text>
             <Text style={styles.practiceInstruction}>{unit.practiceFa}</Text>
-            {language !== 'de' ? <View style={styles.audioButtons}>
+            <View style={styles.audioButtons}>
               <AudioButton
-                title="جمله را آهسته بشنو"
+                title="پخش آهستهٔ جمله"
                 accessibilityLabel={`پخش آهستهٔ جمله به ${theme.languageFa}`}
                 accent="#FFFFFF"
                 soft="rgba(255,255,255,0.14)"
@@ -304,7 +286,7 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
                 light
               />
               <AudioButton
-                title="جمله را عادی بشنو"
+                title="پخش عادی جمله"
                 accessibilityLabel={`پخش عادی جمله به ${theme.languageFa}`}
                 accent="#FFFFFF"
                 soft="rgba(255,255,255,0.14)"
@@ -312,13 +294,12 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
                 onPress={() => void speak(unit.practiceText, 'normal')}
                 light
               />
-            </View> : null}
-          </View>
+            </View>
+          </LinearGradient>
 
           <View style={[styles.selfCheck, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.sectionTitle, { color: theme.ink }]}>یادداشت خودت</Text>
-            <Text style={[styles.body, { color: theme.text }]}>پس از گوش‌دادن و تکرار، فقط برای برنامه‌ریزی مرور انتخاب کن؛ این علامت، سنجش درست یا نادرست‌بودن تلفظ نیست.</Text>
-            {!storageReady && !storageError ? <Text style={[styles.smallText, { color: theme.muted }]}>در حال خواندن یادداشت‌های همین دستگاه…</Text> : null}
+            <Text style={[styles.sectionTitle, { color: theme.ink }]}>وضعیت تمرین</Text>
+            {!storageReady && !storageError ? <Text style={[styles.smallText, { color: theme.muted }]}>در حال بارگذاری وضعیت…</Text> : null}
             {storageError ? (
               <View style={styles.storageErrorWrap}>
                 <Text accessibilityRole="alert" style={styles.storageError}>{storageError}</Text>
@@ -327,7 +308,8 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
             ) : null}
             <View style={styles.markButtons}>
               <ActionButton
-                title={mark === 'practiced' ? '✓ تمرین کردم' : 'تمرین کردم'}
+                title={mark === 'practiced' ? '✓ تمرین شد' : 'تمرین شد'}
+                style={styles.footerAction}
                 accent={theme.accent}
                 soft={theme.soft}
                 selected={mark === 'practiced'}
@@ -335,7 +317,8 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
                 onPress={() => void saveMark('practiced')}
               />
               <ActionButton
-                title={mark === 'review' ? '✓ برای مرور' : 'برای مرور نگه دار'}
+                title={mark === 'review' ? '✓ نشانه‌گذاری مرور' : 'نیاز به مرور'}
+                style={styles.footerAction}
                 accent={theme.accent}
                 soft={theme.soft}
                 selected={mark === 'review'}
@@ -346,47 +329,50 @@ export function PronunciationCourse({ language }: { language: PronunciationLangu
             {!!mark && storageReady ? (
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ disabled: saving }}
                 disabled={saving}
                 onPress={() => void saveMark(null)}
                 style={styles.clearMark}
               >
                 <RotateCcw size={14} color={theme.muted} />
-                <Text style={[styles.clearMarkText, { color: theme.muted }]}>پاک‌کردن علامت این تمرین</Text>
+                <Text style={[styles.clearMarkText, { color: theme.muted }]}>پاک‌کردن علامت</Text>
               </Pressable>
             ) : null}
             {!!storageMessage ? <Text accessibilityLiveRegion="polite" style={[styles.smallText, { color: theme.muted }]}>{storageMessage}</Text> : null}
-            {saving ? <Text style={[styles.smallText, { color: theme.muted }]}>در حال ذخیره…</Text> : null}
           </View>
 
-          <Text accessibilityLiveRegion="polite" style={[styles.audioStatus, { color: theme.muted }]}>{speechMessage}</Text>
+          {!!speechMessage ? <Text accessibilityLiveRegion="polite" style={[styles.audioStatus, { color: LuxuryPalette.coral }]}>{speechMessage}</Text> : null}
           {speaking ? (
-            <ActionButton title="توقف صدا" accent={theme.accent} soft={theme.soft} onPress={stopSpeech} />
+            <ActionButton title="توقف صدا" accent={theme.accent} soft={theme.soft} secondary onPress={stopSpeech} />
           ) : null}
+
+          <View style={styles.stepActionsRow}>
+            <ActionButton
+              title="گام قبلی"
+              style={styles.footerAction}
+              accent={theme.accent}
+              soft={theme.soft}
+              secondary
+              disabled={index === 0 || saving}
+              icon={<ChevronRight size={17} color={theme.accent} />}
+              onPress={() => goTo(index - 1)}
+            />
+            <ActionButton
+              title={index + 1 === units.length ? 'پایان و بازگشت' : 'گام بعدی'}
+              style={styles.footerAction}
+              accent={theme.accent}
+              soft={theme.soft}
+              disabled={saving}
+              icon={index + 1 === units.length ? <ArrowLeft size={17} color="#FFFFFF" /> : <ChevronLeft size={17} color="#FFFFFF" />}
+              onPress={next}
+            />
+          </View>
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { backgroundColor: theme.canvas, borderTopColor: theme.border, paddingBottom: 30 }]}>
-        <ActionButton
-          title="تمرین قبلی"
-          style={styles.footerAction}
-          accent={theme.accent}
-          soft={theme.soft}
-          secondary
-          disabled={index === 0 || saving}
-          icon={<ChevronRight size={17} color={theme.accent} />}
-          onPress={() => goTo(index - 1)}
-        />
-        <ActionButton
-          title={index + 1 === units.length ? 'پایان و بازگشت به مسیر' : 'تمرین بعدی'}
-          style={styles.footerAction}
-          accent={theme.accent}
-          soft={theme.soft}
-          disabled={saving}
-          icon={index + 1 === units.length ? <ArrowLeft size={17} color="#FFFFFF" /> : <ChevronLeft size={17} color="#FFFFFF" />}
-          onPress={next}
-        />
+      <View style={styles.bottomNavWrap}>
+        {language === 'de' ? <GermanBottomNav /> : language === 'ru' ? <RussianBottomNav /> : <AppBottomNav />}
       </View>
-      {language === 'de' ? <GermanBottomNav /> : language === 'ru' ? <RussianBottomNav /> : <AppBottomNav />}
     </View>
   );
 }
@@ -412,9 +398,15 @@ function AudioButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.audioButton, { backgroundColor: soft, borderColor: light ? 'rgba(255,255,255,0.25)' : `${accent}35` }, disabled && styles.disabled]}
+      style={({ pressed }) => [
+        styles.audioButton,
+        { backgroundColor: soft, borderColor: light ? 'rgba(255,255,255,0.24)' : LuxuryPalette.primaryBorder },
+        disabled && styles.disabled,
+        pressed && !disabled && styles.pressed,
+      ]}
     >
       <Volume2 size={15} color={accent} />
       <Text style={[styles.audioButtonText, { color: accent }]}>{title}</Text>
@@ -449,70 +441,80 @@ function ActionButton({
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.actionButton,
         style,
-        { backgroundColor: secondary ? '#FFFFFF' : accent, borderColor: secondary ? accent : 'transparent' },
+        { backgroundColor: secondary ? '#FFFFFF' : accent, borderColor: secondary ? LuxuryPalette.border : 'transparent' },
         selected && { backgroundColor: soft, borderColor: accent },
         disabled && styles.disabled,
+        pressed && !disabled && styles.pressed,
       ]}
     >
       {icon}
-      <Text style={[styles.actionButtonText, { color: secondary || selected ? accent : '#FFFFFF' }]}>{title}</Text>
+      <Text style={[styles.actionButtonText, { color: secondary || selected ? LuxuryPalette.primaryDeep : '#FFFFFF' }]}>{title}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: { minHeight: 64, width: '100%', maxWidth: 980, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 15, paddingTop: 12, paddingBottom: 7, borderBottomWidth: 1 },
-  headerCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
-  brand: { fontFamily: 'Inter-ExtraBold', fontSize: 6, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
-  headerTitle: { fontFamily: 'Vazir', fontSize: 16, lineHeight: 24, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  headerCount: { minWidth: 52, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 999, alignItems: 'center' },
-  headerCountText: { fontFamily: 'Inter-ExtraBold', fontSize: 8, fontWeight: '800', writingDirection: 'ltr' },
-  track: { height: 5, width: '100%', overflow: 'hidden' },
-  trackFill: { height: '100%', alignSelf: 'flex-end' },
-  scrollContent: { flexGrow: 1, paddingBottom: 18 },
-  content: { width: '100%', maxWidth: 940, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 20, gap: 13 },
-  hero: { overflow: 'hidden', padding: 19, borderRadius: 22, gap: 9 },
-  heroTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
-  heroIcon: { width: 37, height: 37, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.11)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
-  heroEyebrow: { fontFamily: 'Vazir', color: '#F2D99C', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  heroTitle: { fontFamily: 'Vazir', color: '#FFFFFF', fontSize: 22, lineHeight: 34, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  heroFocus: { fontFamily: 'Vazir', color: '#E1DDEF', fontSize: 12, lineHeight: 22, textAlign: 'right', writingDirection: 'rtl' },
-  heroProgress: { fontFamily: 'Vazir', color: '#D2CDE2', fontSize: 10, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl', marginTop: 3 },
-  noticeCard: { padding: 14, borderRadius: 17, borderWidth: 1, gap: 6 },
-  noticeTitle: { fontFamily: 'Vazir', fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  card: { padding: 16, borderRadius: 19, borderWidth: 1, gap: 11 },
+  root: { flex: 1, direction: 'ltr' },
+  headerWrap: { width: '100%', maxWidth: 880, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 10 },
+  headerCount: { minWidth: 58, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999, alignItems: 'center', borderWidth: 1, borderColor: LuxuryPalette.primaryBorder },
+  headerCountText: { fontFamily: Typography.numberFontFamily, fontSize: 11.5, fontWeight: '800', writingDirection: 'ltr' },
+  trackWrap: { width: '100%', maxWidth: 880, alignSelf: 'center', paddingHorizontal: 18, paddingBottom: 4 },
+  track: { height: 6, width: '100%', borderRadius: 999, overflow: 'hidden' },
+  trackFill: { height: '100%', borderRadius: 999, alignSelf: 'flex-end' },
+  scrollContent: { flexGrow: 1 },
+  content: { width: '100%', maxWidth: 880, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 12, paddingBottom: 24, gap: 15 },
+  bottomNavWrap: { paddingHorizontal: 14 },
+
+  hero: { position: 'relative', overflow: 'hidden', padding: 22, borderRadius: 26, gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', ...LuxuryShadows.hero },
+  heroOrb: { position: 'absolute', top: -70, left: -45, width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(120, 170, 255, 0.14)' },
+  heroTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 9 },
+  heroIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' },
+  heroTag: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(246, 217, 146, 0.16)', borderWidth: 1, borderColor: 'rgba(246, 217, 146, 0.34)' },
+  heroEyebrow: { fontFamily: Typography.fontFamily, color: LuxuryPalette.goldLight, fontSize: 11.5, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  heroTitle: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 23, lineHeight: 34, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  heroFocus: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.84)', fontSize: 13, lineHeight: 22, fontWeight: '500', textAlign: 'right', writingDirection: 'rtl' },
+  heroProgressRow: { paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.16)' },
+  heroProgress: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.80)', fontSize: 11.5, fontWeight: '600', textAlign: 'right', writingDirection: 'rtl' },
+
+  noticeCard: { display: 'none', padding: 14, borderRadius: 17, borderWidth: 1, gap: 6 },
+  noticeTitle: { fontSize: 12 },
+
+  card: { padding: 18, borderRadius: 24, borderWidth: 1, gap: 12, ...LuxuryShadows.card },
   sectionHeadingRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  sectionTitle: { fontFamily: 'Vazir', flex: 1, fontSize: 15, lineHeight: 23, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  body: { fontFamily: 'Vazir', fontSize: 12, lineHeight: 22, textAlign: 'right', writingDirection: 'rtl' },
-  smallBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
-  smallBadgeText: { fontFamily: 'Vazir', fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
-  example: { padding: 12, borderRadius: 14, borderWidth: 1, gap: 5 },
-  exampleText: { fontFamily: 'Inter-ExtraBold', fontSize: 19, lineHeight: 31, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
-  exampleMeaning: { fontFamily: 'Vazir', fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
-  exampleFocus: { fontFamily: 'Vazir', fontSize: 10, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl' },
-  audioButtons: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7, paddingTop: 4 },
-  audioButton: { minHeight: 38, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 5, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7 },
-  audioButtonText: { fontFamily: 'Vazir', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  practiceCard: { padding: 17, borderRadius: 20, gap: 9 },
-  practiceLabel: { fontFamily: 'Vazir', color: '#F2D99C', fontSize: 11, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  practiceText: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 18, lineHeight: 31, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
-  practiceMeaning: { fontFamily: 'Vazir', color: '#E1DDEF', fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
-  practiceInstruction: { fontFamily: 'Vazir', color: '#E1DDEF', fontSize: 11, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
-  selfCheck: { padding: 16, borderRadius: 19, borderWidth: 1, gap: 10 },
-  markButtons: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
-  actionButton: { minHeight: 42, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9 },
+  sectionTitle: { fontFamily: Typography.fontFamily, flex: 1, fontSize: 16, lineHeight: 25, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  body: { fontFamily: Typography.fontFamily, fontSize: 13, lineHeight: 23, textAlign: 'right', writingDirection: 'rtl' },
+  smallBadge: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: LuxuryPalette.primaryBorder },
+  smallBadgeText: { fontFamily: Typography.fontFamily, fontSize: 11, fontWeight: '800', writingDirection: 'rtl' },
+
+  example: { padding: 15, borderRadius: 18, borderWidth: 1, gap: 6 },
+  exampleText: { fontFamily: 'Inter-ExtraBold', fontSize: 19, lineHeight: 30, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
+  exampleMeaning: { fontFamily: Typography.fontFamily, fontSize: 12.5, lineHeight: 20, fontWeight: '600', textAlign: 'right', writingDirection: 'rtl' },
+  exampleFocus: { fontFamily: Typography.fontFamily, fontSize: 11.5, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
+  audioButtons: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, paddingTop: 4 },
+  audioButton: { minHeight: 38, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 7 },
+  audioButtonText: { fontFamily: Typography.fontFamily, fontSize: 11.5, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+
+  practiceCard: { padding: 20, borderRadius: 24, gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', ...LuxuryShadows.hero },
+  practiceLabel: { fontFamily: Typography.fontFamily, color: LuxuryPalette.goldLight, fontSize: 12, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  practiceText: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 20, lineHeight: 32, fontWeight: '800', textAlign: 'left', writingDirection: 'ltr' },
+  practiceMeaning: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 21, fontWeight: '600', textAlign: 'right', writingDirection: 'rtl' },
+  practiceInstruction: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+
+  selfCheck: { padding: 18, borderRadius: 24, borderWidth: 1, gap: 12, ...LuxuryShadows.card },
+  markButtons: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
+  stepActionsRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  actionButton: { minHeight: 48, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 15, paddingVertical: 11 },
   footerAction: { flex: 1, minWidth: 0 },
-  actionButtonText: { fontFamily: 'Vazir', flexShrink: 1, fontSize: 10, fontWeight: '400', textAlign: 'center', writingDirection: 'rtl' },
+  actionButtonText: { fontFamily: Typography.fontFamily, flexShrink: 1, fontSize: 13, fontWeight: '800', textAlign: 'center', writingDirection: 'rtl' },
   disabled: { opacity: 0.45 },
-  clearMark: { minHeight: 36, flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-start', gap: 5, paddingHorizontal: 2 },
-  clearMarkText: { fontFamily: 'Vazir', fontSize: 10, textAlign: 'right', writingDirection: 'rtl' },
-  smallText: { fontFamily: 'Vazir', fontSize: 10, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl' },
+  pressed: { opacity: 0.88, transform: [{ scale: 0.99 }] },
+  clearMark: { minHeight: 36, flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-end', gap: 5, paddingHorizontal: 4 },
+  clearMarkText: { fontFamily: Typography.fontFamily, fontSize: 11.5, fontWeight: '600', textAlign: 'right', writingDirection: 'rtl' },
+  smallText: { fontFamily: Typography.fontFamily, fontSize: 11.5, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
   storageErrorWrap: { gap: 8 },
-  storageError: { fontFamily: 'Vazir', color: '#9B263C', backgroundColor: '#FFF0F2', borderWidth: 1, borderColor: '#F2D1D8', padding: 11, borderRadius: 12, fontSize: 10, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl' },
-  audioStatus: { fontFamily: 'Vazir', minHeight: 22, fontSize: 10, lineHeight: 18, textAlign: 'right', writingDirection: 'rtl' },
-  footer: { width: '100%', maxWidth: 940, alignSelf: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 9, paddingHorizontal: 18, paddingVertical: 10, borderTopWidth: 1 },
+  storageError: { fontFamily: Typography.fontFamily, color: LuxuryPalette.coral, backgroundColor: LuxuryPalette.coralSoft, borderWidth: 1, borderColor: '#F2D1D8', padding: 12, borderRadius: 14, fontSize: 12, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
+  audioStatus: { fontFamily: Typography.fontFamily, fontSize: 12, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
 });

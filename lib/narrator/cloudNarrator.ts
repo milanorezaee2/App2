@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { SUPABASE_PUBLIC_URL } from '@/lib/supabaseConfig';
 import { cacheAudioFile } from './audioCache';
-import { NARRATOR_PERSONA_TAG, type NarratorLocale } from './voiceCast';
+import { NARRATOR_PERSONA_TAG, prepareTextForTts, type NarratorLocale } from './voiceCast';
 
 /**
  * Optional cloud narrator.
@@ -98,12 +98,13 @@ function languageCode(locale: NarratorLocale): string {
 function buildUrl(text: string, locale: NarratorLocale): string {
   const endpoint = cloudNarratorEndpoint();
   if (!endpoint) throw new NarratorCloudUnavailableError('Cloud narrator is not configured.');
+  const spokenText = prepareTextForTts(text, locale);
   // Built by hand: Hermes on Android has no URLSearchParams.
   // The voice is always synthesised at its natural pace; "slow" is applied at
   // playback (pitch-preserving) so the prosody stays fully human.
   const params = [
     `lang=${encodeURIComponent(languageCode(locale))}`,
-    `text=${encodeURIComponent(text)}`,
+    `text=${encodeURIComponent(spokenText)}`,
     `speed=1`,
     `persona=${encodeURIComponent(NARRATOR_PERSONA_TAG)}`,
   ];

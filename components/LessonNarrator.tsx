@@ -27,9 +27,9 @@ export function LessonNarrator({
   locale,
   text,
   enabled = true,
-  accent = '#1769D2',
-  accentDeep = '#104A94',
-  accentSoft = '#EAF2FF',
+  accent = '#1E4ED8',
+  accentDeep = '#143599',
+  accentSoft = '#EBF1FF',
 }: LessonNarratorProps) {
   const narrator = useLessonNarrator({ text, locale, enabled });
   const { status, engine, auto, speed, voiceLabel, cloudAvailable, cloudChecked } = narrator;
@@ -55,20 +55,18 @@ export function LessonNarrator({
 
   const statusText =
     status === 'loading'
-      ? 'نریتور در حال آماده‌کردن صدا…'
+      ? 'در حال آماده‌سازی تلفظ صوتی…'
       : status === 'speaking'
-        ? engine === 'cloud'
-          ? `در حال خواندن جمله با صدای CDN/ابری…`
-          : 'در حال آماده‌سازی صدای تأییدشده…'
+        ? 'در حال خواندن جمله با صدای طبیعی…'
         : paused
-          ? 'موقتاً متوقف شد؛ برای ادامه دوباره بزنید.'
+          ? 'پخش متوقف شد؛ برای ادامه ضربه بزنید.'
           : status === 'blocked'
-            ? 'مرورگر پخش خودکار را محدود کرده؛ یک‌بار دکمهٔ پخش را بزنید.'
+            ? 'برای فعال‌سازی پخش صوتی، دکمهٔ پخش را بزنید.'
             : !enabled
-              ? 'در این مرحله فقط با دکمهٔ پخش می‌خواند.'
+              ? 'پخش دستی فعال است.'
               : auto
-                ? 'نریتور خودکار روشن است و هر جمله را یک‌بار می‌خواند.'
-                : 'نریتور خودکار خاموش است؛ با دکمهٔ پخش بشنوید.';
+                ? 'پخش خودکار روشن است.'
+                : 'پخش خودکار خاموش است.';
 
   const voiceTag = engine === 'cloud' || (cloudAvailable && cloudChecked)
     ? 'صدای تأییدشدهٔ CDN/ابری'
@@ -337,6 +335,7 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   engineChip: {
+    display: 'none',
     backgroundColor: '#FFFFFF',
     borderStyle: 'dashed',
     maxWidth: 168,

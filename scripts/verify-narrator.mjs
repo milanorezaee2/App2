@@ -79,6 +79,7 @@ export {
   narratorRateFor,
   narratorVoiceLabel,
   scoreNarratorVoice,
+  prepareTextForTts,
 } from '@/lib/narrator/voiceCast';
 export {
   narrate,
@@ -185,6 +186,7 @@ globalThis.Audio = class FakeAudio {
   play() {
     this.paused = false;
     this.playCount += 1;
+    this.lastPlayedSrc = this.src;
     setTimeout(() => {
       this.paused = true;
       this.onended?.();
@@ -271,6 +273,9 @@ globalThis.__SPEECH_CALLS__ = [];
 
 await cloud.primeNarrator('en-US');
 check('The cloud narrator is discovered from the Supabase project', cloud.getNarratorSnapshot().cloudAvailable === true);
+check('Russian TTS normalization strips combining stress marks while preserving ё and й',
+  cloud.prepareTextForTts('Приве́т! Э́то моё молоко́ и горя́чий чай.', 'ru-RU') === 'Привет! Это моё молоко и горячий чай.',
+  cloud.prepareTextForTts('Приве́т! Э́то моё молоко́ и горя́чий чай.', 'ru-RU'));
 
 void cloud.narrate('Good morning! How are you today?', 'en-US');
 await wait(140);
@@ -299,6 +304,13 @@ check('Fast mode stays human: pitch-preserving faster playback',
   fastAudio?.playbackRate === 0.97,
   String(fastAudio?.playbackRate));
 cloud.setNarratorSpeed('normal');
+await wait(60);
+
+await cloud.narrate('Приве́т! Пожа́луйста, молоко́.', 'ru-RU');
+const ruSrc = String((globalThis.__AUDIOS__ ?? []).at(-1)?.lastPlayedSrc ?? '');
+check('Russian cloud narrator sends stress-free Cyrillic text to ElevenLabs/Supabase',
+  ruSrc.includes('lang=ru') && !/%CC%81/i.test(ruSrc),
+  ruSrc);
 
 section('Automatic narration switch');
 cloud.setNarratorAuto(false);

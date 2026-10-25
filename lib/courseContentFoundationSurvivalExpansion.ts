@@ -133,7 +133,7 @@ export const FOUNDATION_SURVIVAL_EXPANSION_LESSONS: SentenceLesson[] = [
     turn('partner', 'Can we meet after class?', 'می‌توانیم بعد از کلاس همدیگر را ببینیم؟'),
     turn('learner', 'Yes. We can meet at noon.', 'بله. می‌توانیم ظهر همدیگر را ببینیم.'),
   ]),
-  lesson('foundation-everyday-routine', 0, 7, 'کارهای روزمره', 'دربارهٔ عادت‌ها و برنامهٔ معمولتان جمله بسازید', 'در یک گفت‌وگوی کوتاه می‌خواهید دربارهٔ کارهای هر روزتان بگویید.', [
+  lesson('foundation-everyday-routine', 0, 7, 'کارهای روزمره', 'عادت‌ها را توصیف کنید و کارها را به هم پیوند دهید', 'در یک گفت‌وگوی کوتاه دربارهٔ برنامهٔ روزانه حرف می‌زنید و با and, but, so, because و then رابطهٔ سادهٔ میان کارها را نشان می‌دهید.', [
     sentence('s1', 'I get up at seven.', 'ساعت هفت از خواب بیدار می‌شوم.', 'آی گِت اَپ اَت سِوِن.', 'I + base verb + at + time.', [['get up', 'از خواب بیدار شدن'], ['seven', 'هفت']]),
     sentence('s2', 'I have breakfast at home.', 'در خانه صبحانه می‌خورم.', 'آی هَو بِرِکفَست اَت هوم.', 'I have + meal + at + place.', [['breakfast', 'صبحانه']]),
     sentence('s3', 'She goes to work by bus.', 'او با اتوبوس به محل کار می‌رود.', 'شی گوز تو وِرک بای باس.', 'She + verb-s + to + place + by + transport.', [['go', 'رفتن'], ['by bus', 'با اتوبوس']]),
@@ -147,10 +147,12 @@ export const FOUNDATION_SURVIVAL_EXPANSION_LESSONS: SentenceLesson[] = [
   ], [
     turn('partner', 'What time do you get up?', 'چه ساعتی بیدار می‌شوید؟'),
     turn('learner', 'I get up at seven.', 'ساعت هفت بیدار می‌شوم.'),
-    turn('partner', 'Do you have breakfast at home?', 'در خانه صبحانه می‌خورید؟'),
-    turn('learner', 'Yes, I do. I have breakfast at home.', 'بله. در خانه صبحانه می‌خورم.'),
-    turn('partner', 'What do you do after dinner?', 'بعد از شام چه‌کار می‌کنید؟'),
-    turn('learner', 'I usually take a short walk.', 'معمولاً کمی پیاده‌روی می‌کنم.'),
+    turn('partner', 'What do you do first?', 'اول چه‌کار می‌کنید؟'),
+    turn('learner', 'I make my bed, and then I get dressed.', 'تختم را مرتب می‌کنم و بعد لباس می‌پوشم.'),
+    turn('partner', 'Do you walk to work?', 'پیاده به محل کار می‌روید؟'),
+    turn('learner', 'The bus is late, so I walk to work.', 'اتوبوس دیر کرده، پس پیاده به محل کار می‌روم.'),
+    turn('partner', 'Do you cook dinner every day?', 'هر روز شام می‌پزید؟'),
+    turn('learner', 'I am tired sometimes, but I cook dinner.', 'گاهی خسته‌ام، اما شام می‌پزم.'),
   ]),
   lesson('foundation-objects-and-places', 0, 8, 'وسایل و مکان‌های نزدیک', 'چیزهای ساده و جای آن‌ها را توصیف کنید', 'در کلاس یا محله می‌خواهید بپرسید چیزی کجاست و چه چیزهایی اطرافتان هستند.', [
     sentence('s1', 'This is my notebook.', 'این دفتر من است.', 'ذیس ایز مای نوت‌بوک.', 'This is my + singular noun.', [['notebook', 'دفتر']]),
