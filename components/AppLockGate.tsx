@@ -1,7 +1,10 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname } from 'expo-router';
-import { Fingerprint, LockKeyhole, RotateCcw, ShieldCheck } from 'lucide-react-native';
+import Fingerprint from 'lucide-react-native/dist/esm/icons/fingerprint';
+import LockKeyhole from 'lucide-react-native/dist/esm/icons/lock-keyhole';
+import RotateCcw from 'lucide-react-native/dist/esm/icons/rotate-ccw';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
 import { PatternGrid } from '@/components/PatternGrid';
 import {
   authenticateWithDeviceLock,

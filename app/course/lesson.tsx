@@ -10,7 +10,18 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { BookOpenCheck, Check, ChevronLeft, ChevronRight, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Square, Volume2 } from 'lucide-react-native';
+import BookOpenCheck from 'lucide-react-native/dist/esm/icons/book-open-check';
+import Check from 'lucide-react-native/dist/esm/icons/check';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
+import ChevronRight from 'lucide-react-native/dist/esm/icons/chevron-right';
+import Headphones from 'lucide-react-native/dist/esm/icons/headphones';
+import MessageCircle from 'lucide-react-native/dist/esm/icons/message-circle';
+import Mic2 from 'lucide-react-native/dist/esm/icons/mic-vocal';
+import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
+import RotateCcw from 'lucide-react-native/dist/esm/icons/rotate-ccw';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Square from 'lucide-react-native/dist/esm/icons/square';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import { COURSE_LEVELS, getSentenceLesson, SENTENCE_LESSONS } from '@/lib/courseContent';
 import { completeSentenceLesson } from '@/lib/courseProgress';
 import { evaluateSpokenSentence, type SpeechEvaluation } from '@/lib/speechPractice';

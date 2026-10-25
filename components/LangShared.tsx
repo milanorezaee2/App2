@@ -5,22 +5,20 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Speech from '@/lib/narration';
-import {
-  Volume2,
-  Sparkles,
-  Users,
-  Coffee,
-  Plane,
-  Clock,
-  Palette,
-  BookOpen,
-  Briefcase,
-  Heart,
-  Cloud,
-  Home,
-  HeartHandshake,
-  type LucideIcon,
-} from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Users from 'lucide-react-native/dist/esm/icons/users';
+import Coffee from 'lucide-react-native/dist/esm/icons/coffee';
+import Plane from 'lucide-react-native/dist/esm/icons/plane';
+import Clock from 'lucide-react-native/dist/esm/icons/clock';
+import Palette from 'lucide-react-native/dist/esm/icons/palette';
+import BookOpen from 'lucide-react-native/dist/esm/icons/book-open';
+import Briefcase from 'lucide-react-native/dist/esm/icons/briefcase';
+import Heart from 'lucide-react-native/dist/esm/icons/heart';
+import Cloud from 'lucide-react-native/dist/esm/icons/cloud';
+import Home from 'lucide-react-native/dist/esm/icons/house';
+import HeartHandshake from 'lucide-react-native/dist/esm/icons/heart-handshake';
 import { Colors, Typography, Spacing, Radius } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
 import { resolveSpeechOptions } from '@/lib/speechLanguage';

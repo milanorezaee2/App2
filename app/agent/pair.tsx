@@ -7,7 +7,12 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, Vi
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Keyboard, ScanLine, Link2, CheckCircle2, XCircle, Hourglass } from 'lucide-react-native';
+import Keyboard from 'lucide-react-native/dist/esm/icons/keyboard';
+import ScanLine from 'lucide-react-native/dist/esm/icons/scan-line';
+import Link2 from 'lucide-react-native/dist/esm/icons/link-2';
+import CheckCircle2 from 'lucide-react-native/dist/esm/icons/circle-check';
+import XCircle from 'lucide-react-native/dist/esm/icons/circle-x';
+import Hourglass from 'lucide-react-native/dist/esm/icons/hourglass';
 import { Colors, Typography, Spacing, Radius, LtrDirection, RtlDirection } from '@/lib/theme';
 import { claimPairingCode, checkPairingStatus, isSupabaseConfigured } from '@/lib/pairing';
 import { getAgentIdentity } from '@/lib/useRealAgent';

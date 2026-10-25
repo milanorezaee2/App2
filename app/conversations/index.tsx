@@ -2,18 +2,16 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import {
-  Bot,
-  ChevronLeft,
-  MessageCircle,
-  Mic2,
-  Plus,
-  QrCode,
-  ShieldCheck,
-  Sparkles,
-  Trash2,
-  UserRound,
-} from 'lucide-react-native';
+import Bot from 'lucide-react-native/dist/esm/icons/bot';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
+import MessageCircle from 'lucide-react-native/dist/esm/icons/message-circle';
+import Mic2 from 'lucide-react-native/dist/esm/icons/mic-vocal';
+import Plus from 'lucide-react-native/dist/esm/icons/plus';
+import QrCode from 'lucide-react-native/dist/esm/icons/qr-code';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Trash2 from 'lucide-react-native/dist/esm/icons/trash-2';
+import UserRound from 'lucide-react-native/dist/esm/icons/user-round';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
 import { LuxuryPalette, LuxuryShadows } from '@/components/luxuryTheme';

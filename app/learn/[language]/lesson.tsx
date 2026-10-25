@@ -1,17 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  BookOpenCheck,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Headphones,
-  MessageCircle,
-  RotateCcw,
-  Sparkles,
-  Volume2,
-} from 'lucide-react-native';
+import BookOpenCheck from 'lucide-react-native/dist/esm/icons/book-open-check';
+import Check from 'lucide-react-native/dist/esm/icons/check';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
+import ChevronRight from 'lucide-react-native/dist/esm/icons/chevron-right';
+import Headphones from 'lucide-react-native/dist/esm/icons/headphones';
+import MessageCircle from 'lucide-react-native/dist/esm/icons/message-circle';
+import RotateCcw from 'lucide-react-native/dist/esm/icons/rotate-ccw';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Speech from '@/lib/narration';
 import { CoursePage } from '@/components/LanguageCourseUI';

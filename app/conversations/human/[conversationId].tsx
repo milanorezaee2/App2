@@ -11,7 +11,18 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { Check, Languages, Lightbulb, Mic, Pause, Play, Send, ShieldCheck, Sparkles, Square, Trash2, UserRound } from 'lucide-react-native';
+import Check from 'lucide-react-native/dist/esm/icons/check';
+import Languages from 'lucide-react-native/dist/esm/icons/languages';
+import Lightbulb from 'lucide-react-native/dist/esm/icons/lightbulb';
+import Mic from 'lucide-react-native/dist/esm/icons/mic';
+import Pause from 'lucide-react-native/dist/esm/icons/pause';
+import Play from 'lucide-react-native/dist/esm/icons/play';
+import Send from 'lucide-react-native/dist/esm/icons/send';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Square from 'lucide-react-native/dist/esm/icons/square';
+import Trash2 from 'lucide-react-native/dist/esm/icons/trash-2';
+import UserRound from 'lucide-react-native/dist/esm/icons/user-round';
 import {
   currentChatUserId,
   deleteConversationForMe,

@@ -4,7 +4,15 @@ import { KeyboardStickyView } from '@/components/KeyboardRuntime';
 
 import * as Speech from 'expo-speech';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
-import { Bot, Languages, Lightbulb, Mic, Send, Sparkles, Square, Trash2, Volume2 } from 'lucide-react-native';
+import Bot from 'lucide-react-native/dist/esm/icons/bot';
+import Languages from 'lucide-react-native/dist/esm/icons/languages';
+import Lightbulb from 'lucide-react-native/dist/esm/icons/lightbulb';
+import Mic from 'lucide-react-native/dist/esm/icons/mic';
+import Send from 'lucide-react-native/dist/esm/icons/send';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Square from 'lucide-react-native/dist/esm/icons/square';
+import Trash2 from 'lucide-react-native/dist/esm/icons/trash-2';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import { askEmma, getEmmaPracticeContext, type EmmaCorrection, type EmmaPracticeContext } from '@/lib/emma';
 import { clearEmmaHistory, loadEmmaHistory, saveEmmaHistory, type EmmaStoredMessage } from '@/lib/emmaHistory';
 import { transcribeLearnerSpeech } from '@/lib/speechPractice';

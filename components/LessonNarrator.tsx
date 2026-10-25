@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
-import { AudioLines, Pause, Play, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
+import AudioLines from 'lucide-react-native/dist/esm/icons/audio-lines';
+import Pause from 'lucide-react-native/dist/esm/icons/pause';
+import Play from 'lucide-react-native/dist/esm/icons/play';
+import RotateCcw from 'lucide-react-native/dist/esm/icons/rotate-ccw';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import { useLessonNarrator } from '@/lib/narrator/useLessonNarrator';
 import type { NarratorLocale } from '@/lib/narrator/voiceCast';
 import { Radius, Typography } from '@/lib/theme';

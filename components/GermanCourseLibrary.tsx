@@ -2,7 +2,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BookOpen, BookOpenCheck, Check, ChevronDown, ChevronLeft, ChevronUp, Clock3, Play, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
+import BookOpen from 'lucide-react-native/dist/esm/icons/book-open';
+import BookOpenCheck from 'lucide-react-native/dist/esm/icons/book-open-check';
+import Check from 'lucide-react-native/dist/esm/icons/check';
+import ChevronDown from 'lucide-react-native/dist/esm/icons/chevron-down';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
+import ChevronUp from 'lucide-react-native/dist/esm/icons/chevron-up';
+import Clock3 from 'lucide-react-native/dist/esm/icons/clock-3';
+import Play from 'lucide-react-native/dist/esm/icons/play';
+import RotateCcw from 'lucide-react-native/dist/esm/icons/rotate-ccw';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import {
   EnglishLevelRail,
   EnglishProgressTrack,

@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Fingerprint, LockKeyhole, RotateCcw, ShieldCheck, Unlock } from 'lucide-react-native';
+import Fingerprint from 'lucide-react-native/dist/esm/icons/fingerprint';
+import LockKeyhole from 'lucide-react-native/dist/esm/icons/lock-keyhole';
+import RotateCcw from 'lucide-react-native/dist/esm/icons/rotate-ccw';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import Unlock from 'lucide-react-native/dist/esm/icons/lock-open';
 import { PageNavigation } from '@/components/PageNavigation';
 import { PatternGrid } from '@/components/PatternGrid';
 import {

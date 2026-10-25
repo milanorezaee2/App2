@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BookOpenCheck } from 'lucide-react-native';
+import BookOpenCheck from 'lucide-react-native/dist/esm/icons/book-open-check';
 
 const LETTERS = ['M', 'i', 'l', 'o'];
 const SUBTITLE = 'MULTILANGUAGE';

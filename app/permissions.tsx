@@ -3,7 +3,10 @@ import { ActivityIndicator, PermissionsAndroid, Platform, Pressable, StyleSheet,
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { Bell, CheckCircle2, MapPin, ShieldCheck } from 'lucide-react-native';
+import Bell from 'lucide-react-native/dist/esm/icons/bell';
+import CheckCircle2 from 'lucide-react-native/dist/esm/icons/circle-check';
+import MapPin from 'lucide-react-native/dist/esm/icons/map-pin';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
 import { setOnboardingComplete } from '@/lib/storage';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';

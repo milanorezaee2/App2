@@ -12,27 +12,24 @@ import {
 import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import {
-  ArrowLeft,
-  BarChart3,
-  ChevronDown,
-  Headphones,
-  LifeBuoy,
-  LockKeyhole,
-  Mic2,
-  RefreshCw,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  Volume2,
-} from 'lucide-react-native';
-import { LANGUAGES } from '@/lib/languages/catalog';
-import { RUSSIAN_LESSONS } from '@/lib/languages/russian';
+import ArrowLeft from 'lucide-react-native/dist/esm/icons/arrow-left';
+import BarChart3 from 'lucide-react-native/dist/esm/icons/chart-column';
+import ChevronDown from 'lucide-react-native/dist/esm/icons/chevron-down';
+import Headphones from 'lucide-react-native/dist/esm/icons/headphones';
+import LifeBuoy from 'lucide-react-native/dist/esm/icons/life-buoy';
+import LockKeyhole from 'lucide-react-native/dist/esm/icons/lock-keyhole';
+import Mic2 from 'lucide-react-native/dist/esm/icons/mic-vocal';
+import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Target from 'lucide-react-native/dist/esm/icons/target';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
+// Lightweight metadata only: the home screen must not pull the multi-MB
+// lesson arrays into the startup path (see lib/languages/catalogMeta.ts).
+import { LANGUAGES, TOTAL_LESSON_COUNT, TOTAL_SENTENCE_COUNT } from '@/lib/languages/catalogMeta';
 import { ensureSupportConversation } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
 import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
-import { SENTENCE_LESSONS } from '@/lib/courseContent';
-import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { LuxuryPalette, LuxuryShadows } from '@/components/luxuryTheme';
 import { toPersianDigits as fa } from '@/lib/format';
 import { LtrDirection, Typography } from '@/lib/theme';
@@ -69,17 +66,13 @@ const learningSteps = [
   { icon: Target, number: '۰۳', title: 'به‌خاطر بسپار', detail: 'با مرور هوشمند تثبیت کن' },
 ] as const;
 
-const englishSentenceCount = SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
-const germanSentenceCount = GERMAN_SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
-const russianSentenceCount = RUSSIAN_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
-
 const learningStats = [
   {
-    value: fa(SENTENCE_LESSONS.length + GERMAN_SENTENCE_LESSONS.length + RUSSIAN_LESSONS.length),
+    value: fa(TOTAL_LESSON_COUNT),
     label: 'درس گام‌به‌گام',
   },
   {
-    value: fa(englishSentenceCount + germanSentenceCount + russianSentenceCount),
+    value: fa(TOTAL_SENTENCE_COUNT),
     label: 'جملهٔ کاربردی',
   },
   { value: '۳ زبان', label: 'مسیر یکپارچه' },

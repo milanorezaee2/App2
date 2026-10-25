@@ -12,7 +12,14 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { Cloud, LockKeyhole, Mail, RefreshCw, ShieldCheck, Smartphone, UserRound, X } from 'lucide-react-native';
+import Cloud from 'lucide-react-native/dist/esm/icons/cloud';
+import LockKeyhole from 'lucide-react-native/dist/esm/icons/lock-keyhole';
+import Mail from 'lucide-react-native/dist/esm/icons/mail';
+import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import Smartphone from 'lucide-react-native/dist/esm/icons/smartphone';
+import UserRound from 'lucide-react-native/dist/esm/icons/user-round';
+import X from 'lucide-react-native/dist/esm/icons/x';
 import { PageNavigation } from '@/components/PageNavigation';
 import { isSupabaseConfigured } from '@/lib/pairing';
 import { syncPersonalLearningData } from '@/lib/personalLearningSync';
