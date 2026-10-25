@@ -60,11 +60,11 @@ const build = () => {
   };
 };
 
-// EAS project id comes from the EAS_PROJECT_ID env (set in CI from a repo variable),
-// which Expo push tokens require. Without it, push registration is skipped.
+// Expo push tokens require the EAS project id. Keep the public project id as a
+// fallback so local and GitHub Actions builds cannot silently disable Push.
 module.exports = () => {
   const config = build();
-  const projectId = process.env.EAS_PROJECT_ID || process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+  const projectId = process.env.EAS_PROJECT_ID || process.env.EXPO_PUBLIC_EAS_PROJECT_ID || 'af0dc4eb-5312-4157-ad1d-e1fd71aba769';
   if (!projectId) return config;
   return {
     ...config,

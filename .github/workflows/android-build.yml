@@ -46,6 +46,12 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Configure Expo project id for push notifications
+        run: |
+          EAS_PROJECT_ID="${EAS_PROJECT_ID:-af0dc4eb-5312-4157-ad1d-e1fd71aba769}"
+          test -n "$EAS_PROJECT_ID"
+          echo "EAS_PROJECT_ID=$EAS_PROJECT_ID" >> "$GITHUB_ENV"
+
       - name: Load and validate public Supabase app settings
         shell: bash
         run: |
