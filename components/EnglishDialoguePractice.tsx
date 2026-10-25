@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Speech from '@/lib/narration';
-import { ChevronLeft, Volume2 } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Volume2 } from 'lucide-react-native';
 import type { SentenceLesson } from '@/lib/courseContent';
 import { EnglishPalette as Palette } from './EnglishSupplementTask';
 
@@ -60,31 +60,62 @@ export function EnglishDialoguePractice({ dialogue }: { dialogue: SentenceLesson
         </Pressable>
       </>}
     </View>
-    {revealed && <Pressable accessibilityRole="button" style={styles.nextButton} onPress={() => { setPairIndex(currentIndex => (currentIndex + 1) % pairs.length); setRevealed(false); }}>
-      <Text style={styles.nextText}>{pairIndex + 1 === pairs.length ? 'تمرین دوباره از آغاز' : 'موقعیت بعدی'}</Text>
-      <ChevronLeft size={18} color="#FFFFFF" />
-    </Pressable>}
+    {(pairIndex > 0 || revealed) ? (
+      <View style={styles.navRow}>
+        {pairIndex > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            style={styles.prevButton}
+            onPress={() => {
+              void Speech.stop();
+              setPairIndex(currentIndex => Math.max(0, currentIndex - 1));
+              setRevealed(false);
+            }}
+          >
+            <ChevronRight size={17} color={Palette.primaryDark} />
+            <Text style={styles.prevText}>موقعیت قبلی</Text>
+          </Pressable>
+        ) : null}
+        {revealed ? (
+          <Pressable
+            accessibilityRole="button"
+            style={styles.nextButton}
+            onPress={() => {
+              void Speech.stop();
+              setPairIndex(currentIndex => (currentIndex + 1) % pairs.length);
+              setRevealed(false);
+            }}
+          >
+            <Text style={styles.nextText}>{pairIndex + 1 === pairs.length ? 'تمرین دوباره از آغاز' : 'موقعیت بعدی'}</Text>
+            <ChevronLeft size={18} color="#FFFFFF" />
+          </Pressable>
+        ) : null}
+      </View>
+    ) : null}
     <Text style={styles.note}>این تمرین از دیالوگ موجود استفاده می‌کند؛ گفتار ضبط یا برای هوش مصنوعی ارسال نمی‌شود.</Text>
   </View>;
 }
 
 const styles = StyleSheet.create({
-  card: { width: '100%', backgroundColor: Palette.surface, borderRadius: 18, borderWidth: 1, borderColor: Palette.border, padding: 16, gap: 12 },
+  card: { width: '100%', backgroundColor: Palette.surface, borderRadius: 22, borderWidth: 1, borderColor: Palette.border, padding: 18, gap: 14, shadowColor: '#0B1838', shadowOpacity: 0.045, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
   metaRow: { flexDirection: 'row-reverse' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, gap: 8 },
-  kicker: { flex: 1, fontFamily: 'Vazir', fontSize: 12, fontWeight: '400' as const, color: Palette.primary, textAlign: 'right' as const, writingDirection: 'rtl' as const },
-  counter: { fontFamily: 'Vazir', fontSize: 11, fontWeight: '400' as const, color: Palette.muted },
-  instruction: { fontFamily: 'Vazir', fontSize: 14, lineHeight: 23, color: Palette.text, textAlign: 'right' as const, writingDirection: 'rtl' as const },
-  bubble: { alignSelf: 'flex-start' as const, width: '94%' as const, borderRadius: 15, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, padding: 14, gap: 7 },
-  replyCard: { alignSelf: 'flex-end' as const, width: '94%' as const, borderRadius: 15, borderWidth: 1, borderColor: '#DDE2FF', backgroundColor: Palette.primarySoft, padding: 14, gap: 7 },
-  speaker: { fontFamily: 'Vazir', fontSize: 11, fontWeight: '400' as const, color: Palette.primaryDark, textAlign: 'right' as const, writingDirection: 'rtl' as const },
-  english: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', lineHeight: 27, color: Palette.ink, textAlign: 'left' as const, writingDirection: 'ltr' as const },
-  persian: { fontFamily: 'Vazir', fontSize: 14, lineHeight: 23, color: Palette.text, textAlign: 'right' as const, writingDirection: 'rtl' as const },
+  kicker: { flex: 1, fontFamily: 'Vazir', fontSize: 12, fontWeight: '800' as const, color: Palette.primary, textAlign: 'right' as const, writingDirection: 'rtl' as const },
+  counter: { fontFamily: 'Vazir', fontSize: 11.5, fontWeight: '700' as const, color: Palette.muted },
+  instruction: { fontFamily: 'Vazir', fontSize: 13, lineHeight: 22, color: Palette.text, textAlign: 'right' as const, writingDirection: 'rtl' as const },
+  bubble: { alignSelf: 'flex-start' as const, width: '94%' as const, borderRadius: 18, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, padding: 15, gap: 7 },
+  replyCard: { alignSelf: 'flex-end' as const, width: '94%' as const, borderRadius: 18, borderWidth: 1, borderColor: '#CBDCFF', backgroundColor: Palette.primarySoft, padding: 15, gap: 7 },
+  speaker: { fontFamily: 'Vazir', fontSize: 11.5, fontWeight: '800' as const, color: Palette.primaryDark, textAlign: 'right' as const, writingDirection: 'rtl' as const },
+  english: { fontFamily: 'Inter-ExtraBold', fontSize: 16.5, fontWeight: '800', lineHeight: 27, color: Palette.ink, textAlign: 'left' as const, writingDirection: 'ltr' as const },
+  persian: { fontFamily: 'Vazir', fontSize: 13.5, lineHeight: 22, color: Palette.text, textAlign: 'right' as const, writingDirection: 'rtl' as const },
   soundButton: { alignSelf: 'flex-start' as const, minHeight: 34, flexDirection: 'row-reverse' as const, alignItems: 'center' as const, gap: 5 },
-  soundText: { fontFamily: 'Vazir', fontSize: 12, color: Palette.primary, writingDirection: 'rtl' as const },
-  revealButton: { minHeight: 42, alignItems: 'center' as const, justifyContent: 'center' as const, borderRadius: 10, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: 12, marginTop: 4 },
-  revealText: { fontFamily: 'Vazir', fontSize: 13, fontWeight: '400' as const, color: Palette.primaryDark, writingDirection: 'rtl' as const },
-  nextButton: { minHeight: 46, flexDirection: 'row-reverse' as const, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 8, borderRadius: 12, backgroundColor: Palette.primary, paddingHorizontal: 14, transform: [{ translateY: -30 }] },
-  nextText: { fontFamily: 'Vazir', fontSize: 14, fontWeight: '400' as const, color: '#FFFFFF', writingDirection: 'rtl' as const },
-  note: { fontFamily: 'Vazir', fontSize: 11, lineHeight: 18, color: Palette.muted, textAlign: 'right' as const, writingDirection: 'rtl' as const },
+  soundText: { fontFamily: 'Vazir', fontSize: 12, fontWeight: '700' as const, color: Palette.primary, writingDirection: 'rtl' as const },
+  revealButton: { minHeight: 44, alignItems: 'center' as const, justifyContent: 'center' as const, borderRadius: 12, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: 14, marginTop: 4 },
+  revealText: { fontFamily: 'Vazir', fontSize: 13, fontWeight: '800' as const, color: Palette.primaryDark, writingDirection: 'rtl' as const },
+  navRow: { flexDirection: 'row-reverse' as const, alignItems: 'center' as const, gap: 10 },
+  prevButton: { minHeight: 48, flexDirection: 'row-reverse' as const, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 4, borderRadius: 14, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: 14 },
+  prevText: { fontFamily: 'Vazir', fontSize: 13, fontWeight: '800' as const, color: Palette.primaryDark, writingDirection: 'rtl' as const },
+  nextButton: { flex: 1, minHeight: 48, flexDirection: 'row-reverse' as const, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 8, borderRadius: 14, backgroundColor: Palette.primary, paddingHorizontal: 16 },
+  nextText: { fontFamily: 'Vazir', fontSize: 14, fontWeight: '800' as const, color: '#FFFFFF', writingDirection: 'rtl' as const },
+  note: { display: 'none' as const, fontFamily: 'Vazir', fontSize: 11, lineHeight: 18, color: Palette.muted, textAlign: 'right' as const, writingDirection: 'rtl' as const },
   text: { fontFamily: 'Vazir', fontSize: 14, color: Palette.text, textAlign: 'right' as const, writingDirection: 'rtl' as const },
 });

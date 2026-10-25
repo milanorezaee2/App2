@@ -33,7 +33,9 @@ export function registerNarrationStopHandler(handler: StopHandler): () => void {
 /** Speak the text only when narration is enabled; otherwise stay silent. */
 export function speak(text: string, options?: SpeechOptions): void {
   if (!NARRATION_ENABLED) return;
-  void ExpoSpeech.speak(text, options);
+  const nfc = (text || '').normalize('NFC');
+  const cleanText = /[А-Яа-яЁё]/.test(nfc) ? nfc.replace(/[\u0300\u0301]/g, '') : nfc;
+  void ExpoSpeech.speak(cleanText, options);
 }
 
 /** Stop any narration that may still be playing. Safe when nothing plays. */

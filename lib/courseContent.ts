@@ -73,9 +73,9 @@ export const COURSE_LEVELS: CourseLevel[] = [
     id: 0,
     title: 'Foundation',
     cefr: 'شروع از صفر',
-    description: 'صداها، الفبا و جمله‌های روزمره برای آغاز از صفر',
+    description: 'سلام و معرفی، صداها و جمله‌های روزمره برای آغاز از صفر',
     color: '#6366f1',
-    modules: ['معرفی و صداهای پایه', 'درخواست کمک', 'خرید و قیمت‌ها', 'الفبا و هجی‌کردن', 'ضمیرها و فعل be', 'عددها و اطلاعات تماس', 'خانواده و مالکیت', 'زمان و تقویم', 'کارهای روزمره', 'وسایل و مکان‌ها'],
+    modules: ['سلام و معرفی خود و دیگران', 'درخواست کمک', 'خرید و قیمت‌ها', 'الفبا و هجی‌کردن', 'ضمیرها و فعل be', 'عددها و اطلاعات تماس', 'خانواده و مالکیت', 'زمان و تقویم', 'کارهای روزمره', 'وسایل و مکان‌ها'],
   },
   {
     id: 1,
@@ -116,9 +116,9 @@ const CORE_SENTENCE_LESSONS: SentenceLesson[] = [
     id: 'foundation-introducing-yourself',
     levelId: 0,
     order: 1,
-    title: 'معرفی خود',
-    subtitle: 'اولین گفتگوی ساده و واقعی',
-    situation: 'برای اولین بار با یک نفر آشنا شده‌اید و می‌خواهید خودتان را معرفی کنید.',
+    title: 'سلام و معرفی خود و دیگران',
+    subtitle: 'از احوال‌پرسی تا معرفی کوتاه',
+    situation: 'برای نخستین بار با کسی آشنا می‌شوید؛ سلام می‌کنید، چند جمله دربارهٔ خود می‌گویید و همراهتان را معرفی می‌کنید.',
     durationMinutes: 8,
     sentences: [
       {
@@ -165,10 +165,10 @@ const CORE_SENTENCE_LESSONS: SentenceLesson[] = [
       },
     ],
     dialogue: [
-      { speaker: 'partner', text: 'Hello! My name is Emma. What is your name?', fa: 'سلام! اسم من اِما است. اسم شما چیست؟' },
-      { speaker: 'learner', text: 'Hello, my name is Sara.', fa: 'سلام، اسم من سارا است.' },
-      { speaker: 'partner', text: 'Nice to meet you. Where are you from?', fa: 'از آشنایی خوشحالم. اهل کجا هستید؟' },
-      { speaker: 'learner', text: 'Nice to meet you too. I am from Iran.', fa: 'من هم از آشنایی خوشحالم. اهل ایران هستم.' },
+      { speaker: 'partner', text: 'Good morning! My name is Emma. What is your name?', fa: 'صبح بخیر! اسم من اِما است. اسم شما چیست؟' },
+      { speaker: 'learner', text: 'Good morning! My name is Sara.', fa: 'صبح بخیر! اسم من سارا است.' },
+      { speaker: 'partner', text: 'Nice to meet you, Sara. Where are you from?', fa: 'از آشنایی با شما خوشحالم، سارا. اهل کجا هستید؟' },
+      { speaker: 'learner', text: 'Nice to meet you, too. I am from Iran.', fa: 'من هم از آشنایی با شما خوشحالم. اهل ایران هستم.' },
     ],
   },
   {

@@ -6,8 +6,8 @@ const SPECIAL_RUSSIAN_WORDS: Readonly<Record<string, string>> = {
   'потому': 'پاتامو',
   'поэтому': 'پائِتامو',
   'пожалуйста': 'پاژالوستا',
-  'здравствуйте': 'زدراوْستْوویتِ',
-  'здравствуй': 'زدراوْستْووی',
+  'здравствуйте': 'زدراستْوویتِ',
+  'здравствуй': 'زدراستْووی',
   'сегодня': 'سِوُدنیا',
   'конечно': 'کانیِشنا',
   'скучно': 'سکوچنا',
@@ -28,10 +28,41 @@ const SPECIAL_RUSSIAN_WORDS: Readonly<Record<string, string>> = {
   'чувство': 'چوستوا',
   'чувствую': 'چوستوویو',
   'сердце': 'سِرتسِ',
-  'солнце': 'سُلنتسِ',
+  'солнце': 'سُنتسِ',
+  'легко': 'لیخکُو',
+  'много': 'مْنوگا',
+  'немного': 'نیمنوگا',
+  'дорого': 'دُوراگا',
+  'недорого': 'نیدُوراگا',
+  'строго': 'سترُوگا',
+  'мои': 'مایی',
+  'твои': 'تْوایی',
+  'свои': 'سْوایی',
+  'неё': 'نی‌یُو',
   'праздник': 'پرازنیک',
   'лестница': 'لِستنیتسا',
   'поздно': 'پُوزنا',
+  'ничего': 'نیچِوُو',
+  'счёт': 'شّوت',
+  'счет': 'شّوت',
+  'мужчина': 'موشّینا',
+  'мужчины': 'موشّینی',
+  'помощник': 'پامُوشنیک',
+  'счастливого': 'شّیستلیواوا',
+  'дождь': 'دُوشت',
+  'могу': 'ماگو',
+  'него': 'نیوُو',
+  'свидания': 'سویدانییا',
+  'большое': 'بالشُویِ',
+  'из': 'ایز',
+  'россия': 'راسی‌یا',
+  'россии': 'راسی‌یی',
+  'анна': 'آنا',
+  'обычно': 'آبیچنا',
+  'чувствуете': 'چوستوویی‌تِ',
+  'чувствуешь': 'چوستوویش',
+  'познакомимся': 'پازناکُمیمسا',
+  'друзья': 'دروزیا',
 };
 
 const CONSONANT_MAP: Readonly<Record<string, string>> = {
@@ -68,6 +99,10 @@ const FINAL_DEVOICE: Readonly<Record<string, string>> = {
 };
 
 const VOWELS = new Set(['а', 'е', 'ё', 'и', 'о', 'у', 'ы', 'э', 'ю', 'я']);
+const UNSTRESSED_CLITICS = new Set([
+  'о', 'об', 'обо', 'по', 'до', 'во', 'со', 'ко', 'от',
+  'за', 'на', 'из', 'под', 'над', 'не', 'ни', 'же', 'ли', 'бы', 'но', 'а', 'и',
+]);
 
 function transcribeSingleWord(rawWord: string): string {
   const nfd = rawWord.normalize('NFD').toLowerCase();
@@ -98,23 +133,29 @@ function transcribeSingleWord(rawWord: string): string {
     letters.push({ ch: code, stressed: code === 'ё' });
   }
 
+  // Monosyllabic content words (дом, сок, стол, кот, он, мой, мост, борщ...) are stressed on their sole vowel
+  const vowelIndices = letters.map((l, idx) => (VOWELS.has(l.ch) ? idx : -1)).filter(idx => idx >= 0);
+  if (vowelIndices.length === 1 && !UNSTRESSED_CLITICS.has(bare)) {
+    letters[vowelIndices[0]].stressed = true;
+  }
+
   // Handle reflexive verb endings -ться / -тся and genitive -ого / -его
   const joined = letters.map(x => x.ch).join('');
   if (joined.endsWith('ться') || joined.endsWith('тся')) {
     const cut = joined.endsWith('ться') ? 4 : 3;
     const stemTokens = letters.slice(0, letters.length - cut);
-    return transcribeLetters(stemTokens) + 'تسا';
+    return transcribeLetters(stemTokens, false) + 'تسا';
   }
   if (joined.length > 4 && (joined.endsWith('ого') || joined.endsWith('его'))) {
     const stemTokens = letters.slice(0, letters.length - 3);
     const tail = joined.endsWith('его') ? 'یِوا' : 'اوا';
-    return transcribeLetters(stemTokens) + tail;
+    return transcribeLetters(stemTokens, false) + tail;
   }
 
-  return transcribeLetters(letters);
+  return transcribeLetters(letters, true);
 }
 
-function transcribeLetters(letters: readonly { ch: string; stressed: boolean }[]): string {
+function transcribeLetters(letters: readonly { ch: string; stressed: boolean }[], allowFinalDevoice = true): string {
   let out = '';
   const n = letters.length;
   for (let i = 0; i < n; i++) {
@@ -130,9 +171,9 @@ function transcribeLetters(letters: readonly { ch: string; stressed: boolean }[]
     }
 
     if (CONSONANT_MAP[ch]) {
-      if (i === n - 1 && FINAL_DEVOICE[ch]) {
+      if (allowFinalDevoice && i === n - 1 && FINAL_DEVOICE[ch]) {
         out += FINAL_DEVOICE[ch];
-      } else if (i === n - 2 && letters[n - 1].ch === 'ь' && FINAL_DEVOICE[ch]) {
+      } else if (allowFinalDevoice && i === n - 2 && letters[n - 1].ch === 'ь' && FINAL_DEVOICE[ch]) {
         out += FINAL_DEVOICE[ch];
       } else {
         out += CONSONANT_MAP[ch];

@@ -13,7 +13,7 @@ export const ENGLISH_ENGINE_BLUEPRINT = [
     levelId: 0,
     title: 'Foundation',
     band: 'Level 0',
-    modules: ['Introducing Yourself & Sounds', 'Asking for Help', 'Shopping & Prices', 'Alphabet & Spelling', 'Pronouns & Be', 'Numbers & Contact Details', 'Family & Possessions', 'Time & Calendar', 'Everyday Routines', 'Objects & Places'],
+    modules: ['Greetings & Introductions', 'Asking for Help', 'Shopping & Prices', 'Alphabet & Spelling', 'Pronouns & Be', 'Numbers & Contact Details', 'Family & Possessions', 'Time & Calendar', 'Everyday Routines', 'Objects & Places'],
   },
   {
     levelId: 1,

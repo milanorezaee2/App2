@@ -6,8 +6,8 @@ export type RussianUnitStatus = 'available' | 'planned';
 export type RussianGrammarFeatureId = 'grammatical-cases' | 'verb-aspect' | 'agreement';
 
 /**
- * A planning layer over the existing five-level Russian UI. Foundation and Survival
- * are grouped under the internal A1 band; this is not a certified CEFR placement.
+ * A planning layer over the five-level Russian UI (Foundation through Advanced).
+ * Foundation and Survival both map to A1; this is internal curriculum planning, not certification.
  */
 export const RUSSIAN_LEVEL_TO_CEFR: Readonly<Record<RussianLevelId, RussianCefrLevel>> = {
   0: 'A1',
@@ -63,7 +63,7 @@ function lessonUnit(lesson: (typeof RUSSIAN_LESSONS)[number], levelId: RussianCe
   };
 }
 
-// A1 band: Foundation (levels 0) and Survival (level 1) lessons only.
+// A1 band: Foundation and Survival (levels 0 and 1).
 const A1_UNITS: readonly RussianCurriculumUnit[] = RUSSIAN_LESSONS
   .filter(lesson => RUSSIAN_LEVEL_TO_CEFR[lesson.levelId] === 'A1')
   .map(lesson => lessonUnit(lesson, 'A1'));
@@ -92,7 +92,7 @@ export const RUSSIAN_CEFR_BANDS: readonly RussianCefrBand[] = [
   {
     id: 'A1',
     titleFa: 'جمله‌سازی پایه',
-    goalFa: 'معرفی، هویت، اشیا، مکان، نیازهای روزمره و افعال پرکاربرد',
+    goalFa: 'کافه، خرید، مسیر، زمان، نیازهای روزمره و افعال پرکاربرد',
     legacyLevelIds: [0, 1],
     status: 'available',
     units: A1_UNITS,
@@ -163,7 +163,7 @@ export const RUSSIAN_GRAMMAR_THREADS: readonly RussianGrammarThread[] = [
       B2: 'انتخاب دقیق‌تر حالت در ساختارهای پیچیده و بافت‌های تخصصی.',
     },
     currentA1Status: 'in-context',
-    candidateSentenceIds: ['ru1-21', 'ru1-22', 'ru1-65', 'ru1-67'],
+    candidateSentenceIds: ['ru2-04', 'ru2-14', 'ru2-18', 'ru2-24'],
     editorialStatus: 'requires-russian-editor-review',
   },
   {
@@ -192,8 +192,8 @@ export const RUSSIAN_GRAMMAR_THREADS: readonly RussianGrammarThread[] = [
     },
     currentA1Status: 'in-context',
     candidateSentenceIds: [
-      'ru1-54', 'ru1-55', 'ru1-28',
-      'ru1-60',
+      'ru2-10', 'ru2-25', 'ru2-26',
+      'ru2-31',
     ],
     editorialStatus: 'requires-russian-editor-review',
   },
@@ -268,21 +268,14 @@ const vocabularyIdByKey = new Map(
 );
 
 const GRAMMAR_ANNOTATIONS_BY_SENTENCE: Readonly<Record<string, readonly RussianGrammarFeatureId[]>> = {
-  'ru-intro-country': ['grammatical-cases'],
-  'ru-intro-city': ['grammatical-cases'],
-  'ru-directions-museum': ['grammatical-cases'],
-  'ru-directions-ticket': ['grammatical-cases'],
-  'ru-family-brother': ['agreement'],
-  'ru-family-sister': ['agreement'],
-  'ru-help-sorry': ['agreement'],
-  'ru-object-my-desk': ['agreement'],
-  'ru-object-my-bag': ['agreement'],
-  'ru-adjective-new-masculine': ['agreement'],
-  'ru-adjective-new-feminine': ['agreement'],
-  'ru-adjective-new-neuter': ['agreement'],
-  'ru-adjective-big-house': ['agreement'],
-  'ru-adjective-new-book': ['agreement'],
-  'ru-adjective-new-word': ['agreement'],
+  'ru2-04': ['grammatical-cases'],
+  'ru2-14': ['grammatical-cases'],
+  'ru2-18': ['grammatical-cases'],
+  'ru2-24': ['grammatical-cases'],
+  'ru2-10': ['agreement'],
+  'ru2-25': ['agreement'],
+  'ru2-26': ['agreement'],
+  'ru2-31': ['agreement'],
 };
 
 export interface RussianSentenceCurriculumEntry {

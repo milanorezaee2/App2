@@ -1,30 +1,48 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from '@/lib/narration';
-import { BookOpen, BookOpenCheck, Check, ChevronDown, ChevronLeft, ChevronUp, Compass, Flame, MessageCircle, Play, RefreshCw, Sparkles, Volume2 } from 'lucide-react-native';
+import { narrate, primeNarrator, stopNarration } from '@/lib/narrator/engine';
+import {
+  BookOpen,
+  BookOpenCheck,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
+  Cloud,
+  Compass,
+  Flame,
+  MessageCircle,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  Sparkles,
+  Volume2,
+} from 'lucide-react-native';
 import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel } from '@/components/EnglishUI';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
-import { PageNavigation } from '@/components/PageNavigation';
+import { LuxuryTopBar } from '@/components/LuxuryLanguageShell';
+import { LUXURY_JOURNEY_GRADIENTS, luxuryHomeStyles as styles } from '@/components/luxuryHomeStyles';
 import { RussianBottomNav } from '@/components/RussianBottomNav';
 import { RUSSIAN_LEVELS, RUSSIAN_LESSONS, russianProgress, type RussianLevelId } from '@/lib/languages/russian';
+import { clearRussianLessonSession, loadRussianLessonSession } from '@/lib/languages/russianStudyState';
 import type { CourseProgress } from '@/lib/courseProgress';
 import { toPersianDigits as fa } from '@/lib/format';
 import { preloadSpeechVoices, resolveSpeechOptions } from '@/lib/speechLanguage';
-import { Typography } from '@/lib/theme';
 
-export const SHARED_JOURNEY_GRADIENTS: Record<number, [string, string]> = {
-  0: ['#8175F2', '#4036A8'],
-  1: ['#A875E8', '#6840A8'],
-  2: ['#C56BD0', '#853B8C'],
-  3: ['#E079A5', '#A33E6D'],
-  4: ['#D58A62', '#954A2B'],
-};
+export const SHARED_JOURNEY_GRADIENTS: Record<number, [string, string]> = LUXURY_JOURNEY_GRADIENTS;
+
+const RUSSIAN_RAIL_LEVELS = RUSSIAN_LEVELS.map(level => ({
+  ...level,
+  color: LUXURY_JOURNEY_GRADIENTS[level.id]?.[0] ?? Palette.primary,
+}));
 
 export default function RussianHome() {
   const router = useRouter();
   const [progress, setProgress] = useState<CourseProgress | null>(null);
+  const [hasFirstLessonSession, setHasFirstLessonSession] = useState(false);
   const [dueCount, setDueCount] = useState(0);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [error, setError] = useState('');
@@ -33,21 +51,33 @@ export default function RussianHome() {
   useFocusEffect(useCallback(() => {
     let alive = true;
     void preloadSpeechVoices();
-    void Promise.all([russianProgress.getCourseProgress(), russianProgress.getDueReviewCards()])
-      .then(([nextProgress, cards]) => {
+    void primeNarrator('ru-RU').catch(() => undefined);
+    void Promise.all([
+      russianProgress.getCourseProgress(),
+      russianProgress.getDueReviewCards(),
+      loadRussianLessonSession(RUSSIAN_LESSONS[0].id).catch(() => null),
+    ])
+      .then(([nextProgress, cards, firstSaved]) => {
         if (!alive) return;
         setProgress(nextProgress);
         setDueCount(cards.length);
+        setHasFirstLessonSession(Boolean(firstSaved && (firstSaved.stage > 0 || firstSaved.sentenceIndex > 0)));
         setError('');
       })
       .catch(() => { if (alive) setError('پیشرفت روسی خوانده نشد؛ اطلاعات قبلی تغییر نکرده است. دوباره تلاش کنید.'); });
-    return () => { alive = false; void Speech.stop(); };
+    return () => {
+      alive = false;
+      stopNarration();
+      void Speech.stop();
+    };
   }, [retry]));
 
   const speakRussian = useCallback((text: string) => {
-    void Speech.stop();
-    void resolveSpeechOptions('ru-RU').then(targetVoice => {
-      Speech.speak(text, { ...targetVoice, rate: 0.8 });
+    void narrate(text, 'ru-RU').catch(() => {
+      void Speech.stop();
+      void resolveSpeechOptions('ru-RU').then(targetVoice => {
+        if (targetVoice.voice) Speech.speak(text, { ...targetVoice, rate: 0.8 });
+      });
     });
   }, []);
 
@@ -55,7 +85,7 @@ export default function RussianHome() {
   const completedSet = useMemo(() => new Set(completedIds), [completedIds]);
   const nextLesson = RUSSIAN_LESSONS.find(lesson => !completedSet.has(lesson.id));
   const heroLesson = nextLesson ?? RUSSIAN_LESSONS[RUSSIAN_LESSONS.length - 1];
-  const activeLevel = RUSSIAN_LEVELS.find(level => level.id === (nextLesson?.levelId ?? heroLesson.levelId)) ?? RUSSIAN_LEVELS[0];
+  const activeLevel = RUSSIAN_RAIL_LEVELS.find(level => level.id === (nextLesson?.levelId ?? heroLesson.levelId)) ?? RUSSIAN_RAIL_LEVELS[0];
   const completedCount = RUSSIAN_LESSONS.filter(lesson => completedSet.has(lesson.id)).length;
   const levelLessons = RUSSIAN_LESSONS.filter(lesson => lesson.levelId === activeLevel.id);
   const levelCompleted = levelLessons.filter(lesson => completedSet.has(lesson.id)).length;
@@ -63,7 +93,7 @@ export default function RussianHome() {
   const uniqueWords = new Set(RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size;
   const firstSentence = heroLesson.sentences[0];
   const levelCounts = {} as Partial<Record<RussianLevelId, { completed: number; total: number; sentences: number; words: number }>>;
-  RUSSIAN_LEVELS.forEach(level => {
+  RUSSIAN_RAIL_LEVELS.forEach(level => {
     const lessons = RUSSIAN_LESSONS.filter(lesson => lesson.levelId === level.id);
     levelCounts[level.id] = {
       completed: lessons.filter(lesson => completedSet.has(lesson.id)).length,
@@ -73,247 +103,295 @@ export default function RussianHome() {
     };
   });
 
+  const firstLesson = RUSSIAN_LESSONS[0];
   const openLevel = (levelId: RussianLevelId) => router.push(`/learn/ru/library?level=${levelId}` as never);
   const openNextLesson = () => {
     if (nextLesson) router.push(`/learn/ru/lesson?id=${encodeURIComponent(nextLesson.id)}` as never);
-    else openLevel(2);
+    else openLevel(activeLevel.id);
   };
+  const openFirstLesson = () => {
+    void clearRussianLessonSession(firstLesson.id).catch(() => undefined).finally(() => {
+      router.push(`/learn/ru/lesson?id=${encodeURIComponent(firstLesson.id)}` as never);
+    });
+  };
+  const railLevels = RUSSIAN_RAIL_LEVELS.map((item, idx) => ({ ...item, id: idx as 0 | 1 | 2 | 3 }));
+  const railCounts = Object.fromEntries(RUSSIAN_RAIL_LEVELS.map((item, idx) => [idx, levelCounts[item.id]]));
+  const activeRailIndex = Math.max(0, RUSSIAN_RAIL_LEVELS.findIndex(item => item.id === activeLevel.id)) as 0 | 1 | 2 | 3 | 4;
+
+  const heroGradient = LUXURY_JOURNEY_GRADIENTS[activeLevel.id] ?? LUXURY_JOURNEY_GRADIENTS[0];
+  const progressPercent = RUSSIAN_LESSONS.length ? (completedCount / RUSSIAN_LESSONS.length) * 100 : 0;
 
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.page}>
-          <View style={styles.header}>
-            <View style={styles.brandLockup}>
-              <LinearGradient colors={['#6154E8', '#302A84']} style={styles.brandMark}><BookOpenCheck size={20} color="#FFFFFF" strokeWidth={2.2} /></LinearGradient>
-              <View>
-                <Text style={styles.brandEyebrow}>LEARN IN CONTEXT</Text>
-                <Text style={styles.headerTitle}>Russian Journey</Text>
-              </View>
-            </View>
-            <PageNavigation backFallback="/languages" accentColor={Palette.primary} borderColor={Palette.border} />
-          </View>
+          <LuxuryTopBar
+            language="ru"
+            eyebrow="RUSSIAN STUDIO"
+            title="مسیر جامع روسی"
+            backFallbackHref="/languages"
+          />
 
-          <LinearGradient colors={SHARED_JOURNEY_GRADIENTS[activeLevel.id]} start={{ x: .95, y: 0 }} end={{ x: .05, y: 1 }} style={styles.heroCard}>
+          <LinearGradient colors={heroGradient} start={{ x: 0.95, y: 0 }} end={{ x: 0.05, y: 1 }} style={styles.heroCard}>
             <View pointerEvents="none" style={styles.heroOrbLarge} />
             <View pointerEvents="none" style={styles.heroOrbSmall} />
             <View style={styles.heroTopRow}>
-              <View style={styles.heroLevelBadge}><View style={styles.heroBadgeDot} /><Text style={styles.heroLevelText}>LEVEL {activeLevel.id} · {activeLevel.title.toUpperCase()}</Text></View>
-              <Text style={styles.heroCourseLabel}>CORE PATH</Text>
+              <View style={styles.heroLevelBadge}>
+                <View style={styles.heroBadgeDot} />
+                <Text style={styles.heroLevelText}>LEVEL {activeLevel.id + 1} · {activeLevel.cefr}</Text>
+              </View>
+              <Text style={styles.heroCourseLabel}>مسیر اصلی</Text>
             </View>
             <View style={styles.heroCopy}>
-              <Text style={styles.heroEyebrow}>{nextLesson ? 'درس بعدی شما' : 'مسیر آغازین'}</Text>
-              <Text style={styles.heroTitle}>{nextLesson ? heroLesson.title : 'مسیر آغازین تکمیل شد'}</Text>
-              <Text style={styles.heroDescription}>{nextLesson ? heroLesson.subtitle : 'درس‌های موجود را مرور کنید یا نقشهٔ سطح‌های بعدی را ببینید.'}</Text>
+              <Text style={styles.heroEyebrow}>{nextLesson ? 'درس بعدی شما' : 'مسیر تکمیل‌شده'}</Text>
+              <Text style={styles.heroTitle}>{nextLesson ? heroLesson.title : 'همهٔ درس‌ها تکمیل شد'}</Text>
+              <Text style={styles.heroDescription}>{nextLesson ? heroLesson.subtitle : 'درس‌های این مسیر را مرور کنید یا از کتابخانه انتخاب نمایید.'}</Text>
             </View>
-            <View style={styles.sentenceShowcase}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`پخش تلفظ روسی: ${firstSentence.text}`} style={styles.sentenceShowcaseTop} onPress={() => speakRussian(firstSentence.text)}>
-                <View style={styles.sentenceLabelIcon}><Volume2 size={14} color="#C8C9FF" /></View>
-                <Text style={styles.sentenceLabel}>جملهٔ کلیدی این درس</Text>
-                <Text style={styles.sentenceLabelEn}>CORE SENTENCE</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جمله: ${firstSentence.text}`} onPress={() => speakRussian(firstSentence.text)}>
-                <Text style={styles.sentenceRussian}>{firstSentence.text}</Text>
-              </Pressable>
-              <Text style={styles.sentencePersian}>{firstSentence.fa}</Text>
-              <Text style={styles.sentencePronunciation}>{firstSentence.pronunciation}</Text>
-              {firstSentence.pattern ? (
-                <View style={styles.sentencePatternBox}>
-                  <Text style={styles.sentencePatternLabel}>الگوی جمله‌سازی:</Text>
-                  <Text style={styles.sentencePatternText}>{firstSentence.pattern}</Text>
-                </View>
-              ) : null}
-              {!!firstSentence.vocabulary.length && (
-                <View style={styles.wordChipRow}>
-                  {firstSentence.vocabulary.map(item => (
-                    <Pressable key={item.word} accessibilityRole="button" accessibilityLabel={`تلفظ واژه: ${item.word}`} style={styles.wordChip} onPress={() => speakRussian(item.word)}>
-                      <Text style={styles.wordChipRussian}>{item.word}</Text>
-                      <Text style={styles.wordChipDivider}>·</Text>
-                      <Text style={styles.wordChipFa}>{item.meaning}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
+
+            {firstSentence ? (
+              <View style={styles.sentenceShowcase}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`پخش تلفظ روسی: ${firstSentence.text}`} style={styles.sentenceShowcaseTop} onPress={() => speakRussian(firstSentence.text)}>
+                  <View style={styles.sentenceLabelIcon}><Volume2 size={15} color="#FFFFFF" /></View>
+                  <Text style={styles.sentenceLabel}>جملهٔ کلیدی این درس</Text>
+                  <Text style={styles.sentenceLabelEn}>CORE SENTENCE</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={`شنیدن جمله: ${firstSentence.text}`} onPress={() => speakRussian(firstSentence.text)}>
+                  <Text style={styles.sentenceRussian}>{firstSentence.text}</Text>
+                </Pressable>
+                <Text style={styles.sentencePersian}>{firstSentence.fa}</Text>
+                <Text style={styles.sentencePronunciation}>{firstSentence.pronunciation}</Text>
+                {firstSentence.pattern ? (
+                  <View style={styles.sentencePatternBox}>
+                    <Text style={styles.sentencePatternLabel}>الگوی جمله‌سازی:</Text>
+                    <Text style={styles.sentencePatternText}>{firstSentence.pattern}</Text>
+                  </View>
+                ) : null}
+                {!!firstSentence.vocabulary.length && (
+                  <View style={styles.wordChipRow}>
+                    {firstSentence.vocabulary.map(item => (
+                      <Pressable key={item.word} accessibilityRole="button" accessibilityLabel={`تلفظ واژه: ${item.word}`} style={styles.wordChip} onPress={() => speakRussian(item.word)}>
+                        <Text style={styles.wordChipRussian}>{item.word}</Text>
+                        <Text style={styles.wordChipDivider}>·</Text>
+                        <Text style={styles.wordChipFa}>{item.meaning}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : null}
+
             <View style={styles.heroActions}>
-              <Pressable accessibilityRole="button" style={styles.continueButton} onPress={openNextLesson}>
+              <Pressable accessibilityRole="button" style={({ pressed }) => [styles.continueButton, pressed && styles.buttonPressed]} onPress={openNextLesson}>
                 <Play size={16} color={Palette.primaryDark} fill={Palette.primaryDark} />
-                <Text style={styles.continueButtonText}>{nextLesson ? completedCount ? 'ادامه یادگیری' : 'شروع از پایه' : 'مشاهدهٔ سطح‌های بعدی'}</Text>
+                <Text style={styles.continueButtonText}>{nextLesson ? (completedCount ? 'ادامه یادگیری' : 'شروع از پایه') : 'مشاهدهٔ کتابخانه'}</Text>
                 <ChevronLeft size={17} color={Palette.primaryDark} />
               </Pressable>
-              <View style={styles.sentenceCount}><Text style={styles.sentenceCountValue}>{fa(heroLesson.sentences.length)}</Text><Text style={styles.sentenceCountLabel}>جملهٔ همین درس</Text></View>
+              <View style={styles.sentenceCount}>
+                <Text style={styles.sentenceCountValue}>{fa(heroLesson.sentences.length)}</Text>
+                <Text style={styles.sentenceCountLabel}>جملهٔ درس</Text>
+              </View>
             </View>
+            {(heroLesson.id !== firstLesson.id || completedCount > 0 || hasFirstLessonSession) ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="بازگشت به درس اول روسی"
+                style={({ pressed }) => [styles.firstLessonButton, pressed && styles.buttonPressed]}
+                onPress={openFirstLesson}
+              >
+                <RotateCcw size={15} color="#F6D992" />
+                <Text style={styles.firstLessonButtonText}>
+                  {heroLesson.id === firstLesson.id ? 'شروع دوباره از ابتدای درس اول' : 'بازگشت به درس اول'}
+                </Text>
+              </Pressable>
+            ) : null}
           </LinearGradient>
 
-          {!!error && <View style={styles.errorCard}><Text accessibilityRole="alert" style={styles.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry(value => value + 1)}><Text style={styles.retryText}>تلاش دوباره</Text></Pressable></View>}
+          {!!error && (
+            <View style={styles.errorCard}>
+              <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>
+              <Pressable accessibilityRole="button" onPress={() => setRetry(value => value + 1)}>
+                <Text style={styles.retryText}>تلاش دوباره</Text>
+              </Pressable>
+            </View>
+          )}
 
           <View style={styles.pathPanel}>
             <View style={styles.panelHeadingRow}>
-              <View style={styles.panelHeadingText}><Text style={styles.panelEyebrow}>THE MAIN CURRICULUM</Text><Text style={styles.panelTitle}>مسیر یادگیری روسی</Text></View>
-              <Pressable accessibilityRole="button" style={styles.libraryLink} onPress={() => router.push('/learn/ru/library' as never)}><Text style={styles.libraryLinkText}>کتابخانه</Text><ChevronLeft size={16} color={Palette.primary} /></Pressable>
+              <View style={styles.panelHeadingText}>
+                <Text style={styles.panelEyebrow}>CURRICULUM ROADMAP</Text>
+                <Text style={styles.panelTitle}>مسیر و سطح‌های یادگیری</Text>
+              </View>
+              <Pressable accessibilityRole="button" style={styles.libraryLink} onPress={() => router.push('/learn/ru/library' as never)}>
+                <Text style={styles.libraryLinkText}>کتابخانه</Text>
+                <ChevronLeft size={15} color={Palette.primaryDark} />
+              </Pressable>
             </View>
             <View style={styles.railWrap}>
-              <EnglishLevelRail activeLevelId={activeLevel.id} counts={levelCounts} levels={RUSSIAN_LEVELS} accessibilityLabelPrefix="فهرست درس‌های" direction="rtl" onSelect={openLevel} />
+              <EnglishLevelRail
+                activeLevelId={activeRailIndex}
+                counts={railCounts}
+                levels={railLevels}
+                startLabel={RUSSIAN_RAIL_LEVELS[0].cefr}
+                numberOffset={1}
+                accessibilityLabelPrefix="فهرست درس‌های"
+                direction="rtl"
+                onSelect={railIdx => {
+                  const target = RUSSIAN_RAIL_LEVELS[railIdx];
+                  if (target) openLevel(target.id);
+                }}
+              />
             </View>
             <View style={styles.currentLevelRow}>
               <View style={styles.currentLevelCopy}>
-                <Text style={styles.currentLevelEyebrow}>اکنون · سطح {fa(activeLevel.id)}</Text>
+                <Text style={styles.currentLevelEyebrow}>سطح فعلی · {activeLevel.cefr}</Text>
                 <Text style={styles.currentLevelName}>{activeLevel.title}</Text>
                 <Text style={styles.currentLevelDescription}>{activeLevel.description}</Text>
               </View>
-              <View style={[styles.levelCountBadge, { backgroundColor: `${activeLevel.color}12`, borderColor: `${activeLevel.color}38` }]}>
+              <View style={[styles.levelCountBadge, { backgroundColor: `${activeLevel.color}12`, borderColor: `${activeLevel.color}36` }]}>
                 <Text style={[styles.levelCountValue, { color: activeLevel.color }]}>{fa(levelCompleted)} از {fa(levelLessons.length)}</Text>
-                <View style={styles.levelCountMeta}><View style={[styles.levelCountDot, { backgroundColor: activeLevel.color }]} /><Text style={styles.levelCountLabel}>درس تکمیل‌شده</Text></View>
+                <View style={styles.levelCountMeta}>
+                  <View style={[styles.levelCountDot, { backgroundColor: activeLevel.color }]} />
+                  <Text style={styles.levelCountLabel}>درس تکمیل‌شده</Text>
+                </View>
               </View>
             </View>
-            <EnglishProgressTrack value={levelLessons.length ? levelCompleted / levelLessons.length * 100 : 0} color={activeLevel.color} />
+            <EnglishProgressTrack value={levelLessons.length ? (levelCompleted / levelLessons.length) * 100 : 0} color={activeLevel.color} />
+
             <Pressable accessibilityRole="button" accessibilityState={{ expanded: showRoadmap }} style={styles.mapToggle} onPress={() => setShowRoadmap(value => !value)}>
               <View style={styles.mapToggleIcon}><Compass size={16} color={Palette.primary} /></View>
-              <View style={styles.mapToggleText}><Text style={styles.mapToggleTitle}>{showRoadmap ? 'بستن نقشهٔ کامل ۵ سطح' : 'نمایش نقشهٔ کامل ۵ سطح'}</Text><Text style={styles.mapToggleMeta}>{activeLevel.modules.slice(0, 3).map(displayEnglishModuleLabel).join(' · ')}</Text></View>
+              <View style={styles.mapToggleText}>
+                <Text style={styles.mapToggleTitle}>{showRoadmap ? 'بستن نقشهٔ کامل سطح‌ها' : 'نمایش نقشهٔ کامل سطح‌ها'}</Text>
+                <Text style={styles.mapToggleMeta}>{activeLevel.modules.slice(0, 3).map(displayEnglishModuleLabel).join(' · ')}</Text>
+              </View>
               {showRoadmap ? <ChevronUp size={18} color={Palette.primary} /> : <ChevronDown size={18} color={Palette.primary} />}
             </Pressable>
-            {showRoadmap && <View style={styles.fullRoadmap}>{RUSSIAN_LEVELS.map(level => {
-              const count = levelCounts[level.id] ?? { completed: 0, total: 0, sentences: 0, words: 0 };
-              const passed = count.total > 0 && count.completed === count.total;
-              return <Pressable key={level.id} accessibilityRole="button" accessibilityLabel={`فهرست درس‌های ${level.title}`} style={[styles.levelCard, level.id === activeLevel.id && styles.levelCardActive]} onPress={() => openLevel(level.id)}>
-                <View style={[styles.levelNumber, { backgroundColor: `${level.color}18` }]}>{passed ? <Check size={18} color={level.color} strokeWidth={2.6} /> : <Text style={[styles.levelNumberText, { color: level.color }]}>{fa(level.id)}</Text>}</View>
-                <View style={styles.levelText}><View style={styles.levelTitleRow}><Text style={styles.levelTitle}>{level.title}</Text><Text style={[styles.levelBand, { color: level.color }]}>{level.cefr}</Text></View><Text style={styles.levelDesc} numberOfLines={2}>{level.description}</Text><Text style={styles.levelStats}>{fa(count.completed)} از {fa(count.total)} درس · {fa(count.sentences)} جمله · {fa(count.words)} واژهٔ یکتا</Text></View>
-                <ChevronLeft size={18} color={Palette.muted} />
-              </Pressable>;
-            })}</View>}
+
+            {showRoadmap && (
+              <View style={styles.fullRoadmap}>
+                {RUSSIAN_RAIL_LEVELS.map(level => {
+                  const count = levelCounts[level.id] ?? { completed: 0, total: 0, sentences: 0, words: 0 };
+                  const passed = count.total > 0 && count.completed === count.total;
+                  return (
+                    <Pressable
+                      key={level.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`فهرست درس‌های ${level.title}`}
+                      style={({ pressed }) => [styles.levelCard, level.id === activeLevel.id && styles.levelCardActive, pressed && styles.buttonPressed]}
+                      onPress={() => openLevel(level.id)}
+                    >
+                      <View style={[styles.levelNumber, { backgroundColor: `${level.color}16` }]}>
+                        {passed ? <Check size={18} color={level.color} strokeWidth={2.6} /> : <Text style={[styles.levelNumberText, { color: level.color }]}>{fa(level.id + 1)}</Text>}
+                      </View>
+                      <View style={styles.levelText}>
+                        <View style={styles.levelTitleRow}>
+                          <Text style={styles.levelTitle}>{level.title}</Text>
+                          <Text style={[styles.levelBand, { color: level.color }]}>{level.cefr}</Text>
+                        </View>
+                        <Text style={styles.levelDesc} numberOfLines={2}>{level.description}</Text>
+                        <Text style={styles.levelStats}>{fa(count.completed)} از {fa(count.total)} درس · {fa(count.sentences)} جمله · {fa(count.words)} واژهٔ یکتا</Text>
+                      </View>
+                      <ChevronLeft size={18} color={Palette.muted} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
-          <View style={styles.sectionHeader}><View style={styles.sectionHeaderCopy}><Text style={styles.sectionEyebrow}>TODAY AT A GLANCE</Text><Text style={styles.sectionTitle}>برنامهٔ امروز</Text></View><View style={styles.todayPill}><Flame size={14} color="#C46B18" /><Text style={styles.todayPillText}>{fa(dueCount)} جمله برای مرور</Text></View></View>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderCopy}>
+              <Text style={styles.sectionEyebrow}>PROGRESS OVERVIEW</Text>
+              <Text style={styles.sectionTitle}>خلاصهٔ پیشرفت</Text>
+            </View>
+            <View style={styles.todayPill}>
+              <Flame size={14} color={Palette.warning} />
+              <Text style={styles.todayPillText}>{fa(dueCount)} جمله آمادهٔ مرور</Text>
+            </View>
+          </View>
+
           <View style={styles.todayCard}>
-            <View style={styles.todayCardTop}><View style={styles.todayMetricCopy}><Text style={styles.todayValue}>{fa(completedCount)} از {fa(RUSSIAN_LESSONS.length)} <Text style={styles.todayValueUnit}>درس</Text></Text><Text style={styles.todayLabel}>پیشرفت همین دستگاه؛ تکمیل به‌تنهایی نشانهٔ تسلط نیست.</Text></View><View style={styles.todayIcon}><BookOpenCheck size={20} color={Palette.primary} /></View></View>
-            <View style={styles.todayProgressRow}><Text style={styles.todayProgressText}>{fa(Math.round(completedCount / RUSSIAN_LESSONS.length * 100))}٪</Text><View style={styles.todayProgressTrack}><EnglishProgressTrack value={completedCount / RUSSIAN_LESSONS.length * 100} color={Palette.primary} height={9} /></View></View>
-            <View style={styles.todayFootnote}><BookOpen size={14} color={Palette.teal} /><Text style={styles.todayFootnoteText}>{fa(sentenceCount)} جملهٔ موجود · {fa(uniqueWords)} واژه/عبارت یکتا</Text></View>
+            <View style={styles.todayCardTop}>
+              <View style={styles.todayMetricCopy}>
+                <Text style={styles.todayValue}>{fa(completedCount)} از {fa(RUSSIAN_LESSONS.length)} <Text style={styles.todayValueUnit}>درس</Text></Text>
+                <Text style={styles.todayLabel}>پیشرفت ثبت‌شده در مسیر جامع روسی</Text>
+              </View>
+              <View style={styles.todayIcon}><BookOpenCheck size={20} color={Palette.primary} /></View>
+            </View>
+            <View style={styles.todayProgressRow}>
+              <Text style={styles.todayProgressText}>{fa(Math.round(progressPercent))}٪</Text>
+              <View style={styles.todayProgressTrack}><EnglishProgressTrack value={progressPercent} color={Palette.primary} height={9} /></View>
+            </View>
+            <View style={styles.todayFootnote}>
+              <BookOpen size={14} color={Palette.teal} />
+              <Text style={styles.todayFootnoteText}>{fa(sentenceCount)} جملهٔ کاربردی · {fa(uniqueWords)} واژه و عبارت یکتا</Text>
+            </View>
           </View>
 
-          <View style={styles.quickRow}>
-            <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/ru/review' as never)}><View style={[styles.quickIcon, { backgroundColor: Palette.tealSoft }]}><RefreshCw size={19} color={Palette.teal} /></View><View style={styles.quickCopy}><Text style={styles.quickTitle}>مرور جمله‌ها</Text><Text style={styles.quickDesc}>جمله‌های روسی با موعد مرور</Text></View><ChevronLeft size={17} color={Palette.muted} /></Pressable>
-            <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/ru/pronunciation' as never)}><View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><Volume2 size={19} color={Palette.primary} /></View><View style={styles.quickCopy}><Text style={styles.quickTitle}>کارگاه تلفظ روسی</Text><Text style={styles.quickDesc}>تمرین آواها، تکیه و آهنگ جمله</Text></View><ChevronLeft size={17} color={Palette.muted} /></Pressable>
-            <Pressable accessibilityRole="button" style={styles.quickCard} onPress={() => router.push('/learn/ru/library' as never)}><View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><MessageCircle size={19} color={Palette.primary} /></View><View style={styles.quickCopy}><Text style={styles.quickTitle}>کتابخانهٔ درس‌ها</Text><Text style={styles.quickDesc}>سطح و درس را انتخاب کنید</Text></View><ChevronLeft size={17} color={Palette.muted} /></Pressable>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderCopy}>
+              <Text style={styles.sectionEyebrow}>PRACTICE STUDIO</Text>
+              <Text style={styles.sectionTitle}>بخش‌های تمرین</Text>
+            </View>
           </View>
 
-          <View style={styles.tipCard}><View style={styles.tipIcon}><Sparkles size={17} color="#D07A1E" /></View><View style={styles.tipCopy}><Text style={styles.tipTitle}>نقشهٔ سطح‌ها، محتوای مستقل روسی</Text><Text style={styles.tipText}>سطح‌بندی این مسیر داخلی است؛ هر جمله همراه با الگوی جمله‌سازی و تلفظ ارائه می‌شود.</Text></View></View>
+          <View style={styles.studioGrid}>
+            <Pressable accessibilityRole="button" style={({ pressed }) => [styles.studioTile, pressed && styles.buttonPressed]} onPress={() => router.push('/learn/ru/review' as never)}>
+              <View style={styles.studioTileTop}>
+                <View style={[styles.quickIcon, { backgroundColor: Palette.tealSoft }]}><RefreshCw size={19} color={Palette.teal} /></View>
+                <ChevronLeft size={16} color={Palette.muted} />
+              </View>
+              <View style={styles.quickCopy}>
+                <Text style={styles.quickTitle}>مرور هوشمند</Text>
+                <Text style={styles.quickDesc}>کارت‌های زمان‌بندی‌شده</Text>
+              </View>
+            </Pressable>
+
+            <Pressable accessibilityRole="button" style={({ pressed }) => [styles.studioTile, pressed && styles.buttonPressed]} onPress={() => router.push('/learn/ru/pronunciation' as never)}>
+              <View style={styles.studioTileTop}>
+                <View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><Volume2 size={19} color={Palette.primary} /></View>
+                <ChevronLeft size={16} color={Palette.muted} />
+              </View>
+              <View style={styles.quickCopy}>
+                <Text style={styles.quickTitle}>کارگاه تلفظ</Text>
+                <Text style={styles.quickDesc}>آواها، تکیه و آهنگ جمله</Text>
+              </View>
+            </Pressable>
+
+            <Pressable accessibilityRole="button" style={({ pressed }) => [styles.studioTile, pressed && styles.buttonPressed]} onPress={() => router.push('/learn/ru/library' as never)}>
+              <View style={styles.studioTileTop}>
+                <View style={[styles.quickIcon, { backgroundColor: Palette.primarySoft }]}><MessageCircle size={19} color={Palette.primary} /></View>
+                <ChevronLeft size={16} color={Palette.muted} />
+              </View>
+              <View style={styles.quickCopy}>
+                <Text style={styles.quickTitle}>کتابخانهٔ درس‌ها</Text>
+                <Text style={styles.quickDesc}>مرور سطح‌ها و سرفصل‌ها</Text>
+              </View>
+            </Pressable>
+
+            <Pressable accessibilityRole="button" accessibilityLabel="ورود ایمیلی و همگام‌سازی شخصی" style={({ pressed }) => [styles.studioTile, pressed && styles.buttonPressed]} onPress={() => router.push('/personal-sync' as never)}>
+              <View style={styles.studioTileTop}>
+                <View style={[styles.quickIcon, { backgroundColor: Palette.warningSoft }]}><Cloud size={19} color={Palette.warning} /></View>
+                <ChevronLeft size={16} color={Palette.muted} />
+              </View>
+              <View style={styles.quickCopy}>
+                <Text style={styles.quickTitle}>حساب و همگام‌سازی</Text>
+                <Text style={styles.quickDesc}>ذخیرهٔ ابری پیشرفت</Text>
+              </View>
+            </Pressable>
+          </View>
+
+          <View style={styles.tipCard}>
+            <View style={styles.tipIcon}><Sparkles size={17} color="#D07A1E" /></View>
+            <View style={styles.tipCopy}>
+              <Text style={styles.tipTitle}>نقشهٔ سطح‌ها، محتوای مستقل روسی</Text>
+              <Text style={styles.tipText}>سطح‌بندی این مسیر داخلی است؛ هر جمله همراه با الگوی جمله‌سازی و تلفظ ارائه می‌شود.</Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
-      <RussianBottomNav />
+      <View style={styles.bottomNavWrap}>
+        <RussianBottomNav />
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, direction: 'ltr', backgroundColor: Palette.canvas },
-  scrollContent: { flexGrow: 1 },
-  page: { width: '100%', maxWidth: 900, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 26, gap: 18 },
-  header: { minHeight: 56, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  headerEnd: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandLockup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
-  brandMark: { width: 42, height: 42, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  brandEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 7, fontWeight: '800', letterSpacing: 1.2, textAlign: 'right', writingDirection: 'ltr' },
-  headerTitle: { fontFamily: Typography.latinFontFamily, fontSize: 18, lineHeight: 27, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  headerChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, borderRadius: 999, borderWidth: 1, borderColor: '#CFEEE6', backgroundColor: Palette.tealSoft, paddingHorizontal: 10, paddingVertical: 7 },
-  headerChipText: { fontFamily: Typography.fontFamily, color: Palette.teal, fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
-  heroCard: { position: 'relative', overflow: 'hidden', borderRadius: 27, padding: 20, gap: 14, shadowColor: '#27246B', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 6 },
-  heroOrbLarge: { position: 'absolute', top: -76, left: -42, width: 210, height: 210, borderRadius: 105, backgroundColor: 'rgba(141, 144, 255, 0.13)' },
-  heroOrbSmall: { position: 'absolute', top: 128, left: 92, width: 76, height: 76, borderRadius: 38, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  heroTopRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  heroLevelBadge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.13)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 11, paddingVertical: 7 },
-  heroBadgeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#A4F3D5' },
-  heroLevelText: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 7, fontWeight: '800', letterSpacing: .35, writingDirection: 'ltr' },
-  heroCourseLabel: { fontFamily: 'Inter-ExtraBold', color: '#C5C9FF', fontSize: 7, fontWeight: '800', letterSpacing: 1.3, writingDirection: 'ltr' },
-  heroCopy: { gap: 2, paddingTop: 2 },
-  heroEyebrow: { fontFamily: Typography.fontFamily, color: '#C6C8FF', fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  heroTitle: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 27, lineHeight: 39, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  heroDescription: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 12, lineHeight: 21, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  sentenceShowcase: { borderRadius: 19, padding: 15, gap: 8, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
-  sentenceShowcaseTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  sentenceLabelIcon: { width: 25, height: 25, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
-  sentenceLabel: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-  sentenceLabelEn: { fontFamily: 'Inter-ExtraBold', marginRight: 'auto', color: '#CFD2FF', fontSize: 6, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
-  sentenceRussian: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 18, lineHeight: 30, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
-  sentencePersian: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.82)', fontSize: 12, lineHeight: 20, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  sentencePronunciation: { fontFamily: Typography.fontFamily, color: '#D5D7FF', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  sentencePatternBox: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'center', gap: 5, paddingTop: 7, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.16)' },
-  sentencePatternLabel: { fontFamily: Typography.fontFamily, color: '#A4F3D5', fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
-  sentencePatternText: { flex: 1, fontFamily: Typography.fontFamily, color: '#FFFFFF', fontSize: 11, lineHeight: 18, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  wordChipRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 2 },
-  wordChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', paddingHorizontal: 9, paddingVertical: 5 },
-  wordChipRussian: { fontFamily: 'Inter-ExtraBold', color: '#FFFFFF', fontSize: 9, fontWeight: '800', writingDirection: 'ltr' },
-  wordChipDivider: { fontFamily: Typography.fontFamily, color: '#C6C8FF', fontSize: 10, fontWeight: '400' },
-  wordChipFa: { fontFamily: Typography.fontFamily, color: '#E4E6FF', fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
-  heroActions: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  continueButton: { minHeight: 48, flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 15, backgroundColor: '#FFFFFF', paddingHorizontal: 13 },
-  continueButtonText: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 12, fontWeight: '400', writingDirection: 'rtl' },
-  sentenceCount: { alignItems: 'flex-end', minWidth: 76 },
-  sentenceCountValue: { fontFamily: Typography.numberFontFamily, color: '#FFFFFF', fontSize: 17, fontWeight: '400' },
-  sentenceCountLabel: { fontFamily: Typography.fontFamily, color: '#D5D7FF', fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
-  pathPanel: { borderRadius: 23, padding: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 14, shadowColor: '#21264A', shadowOpacity: .045, shadowRadius: 13, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
-  panelHeadingRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  panelHeadingText: { flex: 1, alignItems: 'stretch' },
-  panelEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 6, fontWeight: '800', letterSpacing: 1.3, textAlign: 'right', writingDirection: 'ltr' },
-  panelTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 20, lineHeight: 29, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  libraryLink: { minHeight: 37, flexDirection: 'row-reverse', alignItems: 'center', gap: 2, paddingHorizontal: 10, borderRadius: 12, backgroundColor: Palette.primarySoft },
-  libraryLinkText: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-  railWrap: { paddingVertical: 2 },
-  currentLevelRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 12, borderRadius: 17, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
-  currentLevelCopy: { flex: 1, alignItems: 'stretch', gap: 2 },
-  currentLevelEyebrow: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 9, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  currentLevelName: { fontFamily: Typography.latinFontFamily, color: Palette.ink, fontSize: 13, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
-  currentLevelDescription: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  levelCountBadge: { alignItems: 'stretch', justifyContent: 'center', minWidth: 92, minHeight: 58, borderRadius: 18, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 6, gap: 3 },
-  levelCountValue: { width: '100%', fontFamily: Typography.numberFontFamily, fontSize: 13, lineHeight: 19, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  levelCountMeta: { flexDirection: 'row-reverse', alignSelf: 'stretch', alignItems: 'center', gap: 4 },
-  levelCountDot: { width: 5, height: 5, borderRadius: 3 },
-  levelCountLabel: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 8, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  mapToggle: { minHeight: 51, flexDirection: 'row-reverse', alignItems: 'center', gap: 9, paddingHorizontal: 11, borderRadius: 15, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
-  mapToggleIcon: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: Palette.primarySoft },
-  mapToggleText: { flex: 1, gap: 2 },
-  mapToggleTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 11, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  mapToggleMeta: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 8, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  fullRoadmap: { gap: 8 },
-  levelCard: { minHeight: 76, flexDirection: 'row-reverse', alignItems: 'center', gap: 11, padding: 12, borderRadius: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
-  levelCardActive: { borderColor: Palette.primary, backgroundColor: '#F9F8FF' },
-  levelNumber: { width: 39, height: 39, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  levelNumberText: { fontFamily: Typography.numberFontFamily, fontSize: 15, fontWeight: '400', writingDirection: 'rtl' },
-  levelText: { flex: 1, gap: 3 },
-  levelTitleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  levelTitle: { fontFamily: Typography.latinFontFamily, flexShrink: 1, color: Palette.ink, fontSize: 10, fontWeight: '800', textAlign: 'right', writingDirection: 'ltr' },
-  levelBand: { fontFamily: Typography.fontFamily, fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
-  levelDesc: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  levelStats: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 9, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  sectionHeader: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 },
-  sectionHeaderCopy: { alignItems: 'stretch' },
-  sectionEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 6, fontWeight: '800', letterSpacing: 1.3, textAlign: 'right', writingDirection: 'ltr' },
-  sectionTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 19, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  todayPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, backgroundColor: Palette.warningSoft, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },
-  todayPillText: { fontFamily: Typography.fontFamily, color: Palette.warning, fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
-  todayCard: { borderRadius: 20, padding: 16, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 13, shadowColor: '#20264A', shadowOpacity: .035, shadowRadius: 11, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
-  todayCardTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
-  todayMetricCopy: { flex: 1, alignItems: 'stretch' },
-  todayValue: { fontFamily: Typography.numberFontFamily, color: Palette.ink, fontSize: 23, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  todayValueUnit: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 12, fontWeight: '400' },
-  todayLabel: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  todayIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  todayProgressRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
-  todayProgressText: { fontFamily: Typography.numberFontFamily, width: 34, color: Palette.primaryDark, fontSize: 11, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  todayProgressTrack: { flex: 1 },
-  todayFootnote: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 5, paddingTop: 10, borderTopWidth: 1, borderTopColor: Palette.border },
-  todayFootnoteText: { flex: 1, fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  quickRow: { gap: 10 },
-  quickCard: { minHeight: 70, flexDirection: 'row-reverse', alignItems: 'center', gap: 11, paddingHorizontal: 13, paddingVertical: 10, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
-  quickIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  quickCopy: { flex: 1, alignItems: 'stretch', gap: 2 },
-  quickTitle: { fontFamily: Typography.fontFamily, color: Palette.ink, fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  quickDesc: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  tipCard: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 17, borderWidth: 1, borderColor: '#F4DFC5', backgroundColor: '#FFF8EF' },
-  tipIcon: { width: 33, height: 33, borderRadius: 11, backgroundColor: '#FFEDD4', alignItems: 'center', justifyContent: 'center' },
-  tipCopy: { flex: 1, alignItems: 'stretch', gap: 2 },
-  tipTitle: { fontFamily: Typography.fontFamily, color: Palette.warning, fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  tipText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 10, lineHeight: 17, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  errorCard: { padding: 14, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, borderRadius: 16, backgroundColor: Palette.dangerSoft, borderWidth: 1, borderColor: '#F5CDD3' },
-  errorText: { flex: 1, fontFamily: Typography.fontFamily, color: Palette.danger, fontSize: 11, lineHeight: 19, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  retryText: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-});

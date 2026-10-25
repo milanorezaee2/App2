@@ -4,14 +4,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Speech from '@/lib/narration';
 import { NARRATION_ENABLED } from '@/lib/narration';
-import { BookOpenCheck, Check, ChevronLeft, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
+import { BookOpenCheck, Check, ChevronLeft, ChevronRight, Headphones, MessageCircle, Mic2, RefreshCw, RotateCcw, Sparkles, Volume2 } from 'lucide-react-native';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 const RUSSIAN_LESSON_GRADIENTS: Record<number, [string, string]> = {
-  0: ['#8175F2', '#4036A8'],
-  1: ['#A875E8', '#6840A8'],
-  2: ['#C56BD0', '#853B8C'],
-  3: ['#E079A5', '#A33E6D'],
-  4: ['#D58A62', '#954A2B'],
+  0: ['#142047', '#C79A50'],
+  1: ['#0B1A3E', '#255EE8'],
+  2: ['#102554', '#1868A8'],
+  3: ['#0E244D', '#1550B8'],
+  4: ['#0A1938', '#1E469C'],
 };
 import { PageNavigation } from '@/components/PageNavigation';
 import { LessonNarrator } from '@/components/LessonNarrator';
@@ -23,7 +23,7 @@ import { RUSSIAN_LESSONS, RUSSIAN_LEVELS, RUSSIAN_LESSON_STAGES, russianProgress
 import type { RussianLessonSession } from '@/lib/languages/russianStudyState';
 import { toPersianDigits as fa } from '@/lib/format';
 import { Typography } from '@/lib/theme';
-import { narrate } from '@/lib/narrator/engine';
+import { narrate, stopNarration } from '@/lib/narrator/engine';
 
 const stages = RUSSIAN_LESSON_STAGES;
 
@@ -102,6 +102,63 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
     speak(lesson.sentences[index].text, rate);
   };
 
+  const lessonIndex = RUSSIAN_LESSONS.findIndex(item => item.id === lesson.id);
+  const firstLesson = RUSSIAN_LESSONS[0];
+  const prevLesson = lessonIndex > 0 ? RUSSIAN_LESSONS[lessonIndex - 1] : undefined;
+  const canGoBackInSentence = (stage === 1 || stage === 3 || stage === 4) && sentenceIndex > 0;
+  const canGoBack = canGoBackInSentence || stage > 0 || Boolean(prevLesson);
+  const previousLabel = canGoBackInSentence
+    ? 'جملهٔ قبلی'
+    : stage > 0
+      ? 'مرحلهٔ قبلی'
+      : 'درس قبلی';
+
+  const restartCurrentLesson = () => {
+    if (saving) return;
+    stopNarration();
+    void Speech.stop();
+    setStage(0);
+    setSentenceIndex(0);
+    setRevealed(false);
+    setSpeechError('');
+  };
+
+  const goToFirstLesson = () => {
+    if (saving) return;
+    stopNarration();
+    void Speech.stop();
+    void clearRussianLessonSession(firstLesson.id).catch(() => undefined).finally(() => {
+      if (lesson.id === firstLesson.id) {
+        restartCurrentLesson();
+      } else {
+        router.replace(`/learn/ru/lesson?id=${encodeURIComponent(firstLesson.id)}` as never);
+      }
+    });
+  };
+
+  const previous = () => {
+    if (!sessionReady || sessionError || completing.current || saving) return;
+    stopNarration();
+    void Speech.stop();
+    setCompletionError('');
+    setSpeechError('');
+    if (canGoBackInSentence) {
+      setSentenceIndex(value => Math.max(0, value - 1));
+      setRevealed(false);
+      return;
+    }
+    if (stage > 0) {
+      const targetStage = stage - 1;
+      setStage(targetStage);
+      setSentenceIndex(targetStage === 1 ? Math.max(0, lesson.sentences.length - 1) : 0);
+      setRevealed(false);
+      return;
+    }
+    if (prevLesson) {
+      router.replace(`/learn/ru/lesson?id=${encodeURIComponent(prevLesson.id)}` as never);
+    }
+  };
+
   const next = async () => {
     if (!sessionReady || sessionError || completing.current || saving) return;
     void Speech.stop();
@@ -146,7 +203,7 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
         <View style={styles.headerTop}>
           <PageNavigation tone="dark" backFallback="/learn/ru" />
           <View style={styles.headerText}>
-            <Text style={styles.headerEyebrow}>LEVEL {courseLevel.id} · {courseLevel.title.toUpperCase()}</Text>
+            <Text style={styles.headerEyebrow}>LEVEL {courseLevel.id + 1} · {courseLevel.title.toUpperCase()}</Text>
             <Text style={styles.headerTitle}>{lesson.title}</Text>
             <Text style={styles.headerSub}>{stages[stage].labelFa} · مرحلهٔ {fa(stage + 1)} از {fa(stages.length)}</Text>
           </View>
@@ -160,7 +217,42 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
           <View><Text style={styles.stepperEyebrow}>LESSON FLOW · 09 STAGES</Text><Text style={styles.stepperTitle}>جریان این درس</Text></View>
           <View style={styles.stepperNow}><Text style={styles.stepperNowEn}>{stages[stage].labelEn}</Text><Text style={styles.stepperNowFa}>{stages[stage].labelFa}</Text></View>
         </View>
-        <View style={styles.stepSegments}>{stages.map((item, index) => <View key={item.id} accessibilityLabel={`${item.labelEn} ${index + 1} از ${stages.length}`} style={[styles.stepSegment, index <= stage && styles.stepSegmentDone, index === stage && styles.stepSegmentCurrent]} />)}</View>
+        <View style={styles.stepSegments}>
+          {stages.map((item, index) => (
+            <Pressable
+              key={item.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.labelFa} · مرحلهٔ ${fa(index + 1)} از ${fa(stages.length)}`}
+              style={styles.stepSegmentBtn}
+              onPress={() => {
+                if (!sessionReady || sessionError || saving) return;
+                stopNarration();
+                void Speech.stop();
+                setStage(index);
+                setSentenceIndex(0);
+                setRevealed(false);
+              }}
+            >
+              <View style={[styles.stepSegment, index <= stage && styles.stepSegmentDone, index === stage && styles.stepSegmentCurrent]} />
+            </Pressable>
+          ))}
+        </View>
+        {(stage > 0 || sentenceIndex > 0 || lesson.id !== firstLesson.id) ? (
+          <View style={styles.stepperQuickRow}>
+            {(stage > 0 || sentenceIndex > 0) ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="شروع از ابتدای این درس" style={styles.stepperQuickPill} onPress={restartCurrentLesson}>
+                <RotateCcw size={13} color={Palette.primaryDark} />
+                <Text style={styles.stepperQuickText}>از ابتدای این درس</Text>
+              </Pressable>
+            ) : null}
+            {lesson.id !== firstLesson.id ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="بازگشت به درس اول" style={styles.stepperQuickPill} onPress={goToFirstLesson}>
+                <RotateCcw size={13} color={Palette.primary} />
+                <Text style={styles.stepperQuickText}>بازگشت به درس اول</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
         <View style={styles.stepperEnds}><Text style={styles.stepperEndText}>Situation</Text><Text style={styles.stepperEndText}>Spaced Review</Text></View>
       </View>
 
@@ -171,9 +263,9 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
           locale="ru-RU"
           text={current.text}
           enabled={stage <= 2}
-          accent="#8175F2"
-          accentDeep="#4036A8"
-          accentSoft="#EFECFE"
+          accent={Palette.primary}
+          accentDeep={Palette.primaryDark}
+          accentSoft={Palette.primarySoft}
         />
         {stage === 0 && <View style={styles.centerStage}>
           <View style={styles.bigIcon}><Sparkles size={34} color={Palette.warning} /></View>
@@ -223,6 +315,31 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
             <Pressable accessibilityRole="button" style={styles.playSlowButton} onPress={() => speak(current.text, .68)}><Volume2 size={18} color="#FFFFFF" /><Text style={styles.recordButtonText}>پخش آهستهٔ نمونه</Text></Pressable>
             <Text style={styles.speechHint}>پس از شنیدن، جمله را با صدای بلند تکرار کنید؛ گفتار ضبط یا نمره‌گذاری نمی‌شود.</Text>
           </View>
+          <View style={styles.sentenceStepRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: sentenceIndex === 0 }}
+              disabled={sentenceIndex === 0}
+              style={[styles.sentenceStepBtn, sentenceIndex === 0 && styles.sentenceStepBtnDisabled]}
+              onPress={() => selectSentence(Math.max(0, sentenceIndex - 1), .68)}
+            >
+              <ChevronRight size={16} color={Palette.primaryDark} />
+              <Text style={styles.sentenceStepText}>جملهٔ قبلی</Text>
+            </Pressable>
+            <Text style={styles.sentenceStepCounter}>
+              جملهٔ {fa(sentenceIndex + 1)} از {fa(lesson.sentences.length)}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: sentenceIndex >= lesson.sentences.length - 1 }}
+              disabled={sentenceIndex >= lesson.sentences.length - 1}
+              style={[styles.sentenceStepBtn, sentenceIndex >= lesson.sentences.length - 1 && styles.sentenceStepBtnDisabled]}
+              onPress={() => selectSentence(Math.min(lesson.sentences.length - 1, sentenceIndex + 1), .68)}
+            >
+              <Text style={styles.sentenceStepText}>جملهٔ بعدی</Text>
+              <ChevronLeft size={16} color={Palette.primaryDark} />
+            </Pressable>
+          </View>
           <View style={styles.dots}>{lesson.sentences.map((sentence, index) => <Pressable key={sentence.id} accessibilityRole="button" accessibilityLabel={`جمله ${fa(index + 1)}`} onPress={() => selectSentence(index, .68)} style={[styles.dot, index === sentenceIndex && styles.dotActive]} />)}</View>
         </View>}
 
@@ -231,6 +348,31 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
           <Text style={styles.stageTitle}>ساخت جمله</Text>
           <Text style={styles.stageDesc}>معنی و الگوی جمله‌سازی را بخوانید و واژه‌های همان جمله را به ترتیب بچینید؛ تمرین به جمله‌های همین درس متصل است.</Text>
           <RussianSentenceBuilder key={current.id} sentence={current} lessonSentences={lesson.sentences} />
+          <View style={styles.sentenceStepRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: sentenceIndex === 0 }}
+              disabled={sentenceIndex === 0}
+              style={[styles.sentenceStepBtn, sentenceIndex === 0 && styles.sentenceStepBtnDisabled]}
+              onPress={() => setSentenceIndex(value => Math.max(0, value - 1))}
+            >
+              <ChevronRight size={16} color={Palette.primaryDark} />
+              <Text style={styles.sentenceStepText}>جملهٔ قبلی</Text>
+            </Pressable>
+            <Text style={styles.sentenceStepCounter}>
+              جملهٔ {fa(sentenceIndex + 1)} از {fa(lesson.sentences.length)}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: sentenceIndex >= lesson.sentences.length - 1 }}
+              disabled={sentenceIndex >= lesson.sentences.length - 1}
+              style={[styles.sentenceStepBtn, sentenceIndex >= lesson.sentences.length - 1 && styles.sentenceStepBtnDisabled]}
+              onPress={() => setSentenceIndex(value => Math.min(lesson.sentences.length - 1, value + 1))}
+            >
+              <Text style={styles.sentenceStepText}>جملهٔ بعدی</Text>
+              <ChevronLeft size={16} color={Palette.primaryDark} />
+            </Pressable>
+          </View>
           <View style={styles.dots}>{lesson.sentences.map((sentence, index) => <Pressable key={sentence.id} accessibilityRole="button" accessibilityLabel={`جمله ${fa(index + 1)}`} onPress={() => setSentenceIndex(index)} style={[styles.dot, index === sentenceIndex && styles.dotActive]} />)}</View>
         </View>}
 
@@ -296,10 +438,24 @@ export default function RussianLesson({ lesson }: { lesson: RussianCourseLesson 
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable accessibilityRole="button" disabled={saving || !!sessionError || (stage === stages.length - 1 && !allChecksPassed && !showCheckAnswers)} style={[styles.nextButton, (saving || (stage === stages.length - 1 && !allChecksPassed && !showCheckAnswers)) && styles.nextButtonDisabled]} onPress={() => void next()}>
-          <Text style={styles.nextText}>{saving ? 'در حال ذخیره…' : stage === stages.length - 1 ? 'پایان درس' : stage === 1 && sentenceIndex < lesson.sentences.length - 1 ? 'جملهٔ بعدی' : 'ادامه'}</Text>
-          {stage === stages.length - 1 ? <Check size={20} color="#FFFFFF" /> : <ChevronLeft size={20} color="#FFFFFF" />}
-        </Pressable>
+        <View style={styles.footerInner}>
+          {canGoBack ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving || !!sessionError }}
+              disabled={saving || !!sessionError}
+              style={[styles.prevButton, (saving || !!sessionError) && styles.nextButtonDisabled]}
+              onPress={previous}
+            >
+              <ChevronRight size={18} color={Palette.primaryDark} />
+              <Text style={styles.prevText}>{previousLabel}</Text>
+            </Pressable>
+          ) : null}
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || !!sessionError || (stage === stages.length - 1 && !allChecksPassed && !showCheckAnswers) }} disabled={saving || !!sessionError || (stage === stages.length - 1 && !allChecksPassed && !showCheckAnswers)} style={[styles.nextButton, (saving || (stage === stages.length - 1 && !allChecksPassed && !showCheckAnswers)) && styles.nextButtonDisabled]} onPress={() => void next()}>
+            <Text style={styles.nextText}>{saving ? 'در حال ذخیره…' : stage === stages.length - 1 ? 'پایان درس' : stage === 1 && sentenceIndex < lesson.sentences.length - 1 ? 'جملهٔ بعدی' : 'ادامه'}</Text>
+            {stage === stages.length - 1 ? <Check size={20} color="#FFFFFF" /> : <ChevronLeft size={20} color="#FFFFFF" />}
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -309,113 +465,125 @@ type LearningLessonVocabulary = RussianCourseLesson['sentences'][number]['vocabu
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Palette.canvas },
-  loadingCard: { flex: 1, minHeight: 260, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 13 },
-  loadingText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 13, textAlign: 'right', writingDirection: 'rtl' },
-  loadingButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 13, backgroundColor: Palette.primary },
-  loadingButtonText: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontWeight: '400', writingDirection: 'rtl' },
-  header: { paddingTop: 42, paddingHorizontal: 20, paddingBottom: 15, gap: 14, borderBottomLeftRadius: 22, borderBottomRightRadius: 22 },
-  headerTop: { width: '100%', maxWidth: 820, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  loadingCard: { flex: 1, minHeight: 260, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14 },
+  loadingText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 13.5, fontWeight: '600', textAlign: 'right', writingDirection: 'rtl' },
+  loadingButton: { minHeight: 46, justifyContent: 'center', paddingHorizontal: 20, borderRadius: 14, backgroundColor: Palette.primary },
+  loadingButtonText: { fontFamily: Typography.fontFamily, color: '#FFFFFF', fontWeight: '800', writingDirection: 'rtl' },
+  header: { width: '100%', paddingTop: 18, paddingHorizontal: 18, paddingBottom: 16, gap: 10, borderBottomLeftRadius: 26, borderBottomRightRadius: 26, shadowColor: '#091533', shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+  headerTop: { width: '100%', maxWidth: 840, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   back: { width: 40, height: 40, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', alignItems: 'center', justifyContent: 'center' },
-  headerText: { flex: 1, alignItems: 'flex-end', gap: 2 },
-  headerEyebrow: { fontFamily: 'Inter-ExtraBold', color: 'rgba(255,255,255,0.72)', fontSize: 6, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
-  headerTitle: { fontFamily: Typography.fontFamily, fontSize: 18, lineHeight: 27, fontWeight: '400', color: '#FFFFFF', textAlign: 'right', writingDirection: 'rtl' },
-  headerSub: { fontFamily: Typography.fontFamily, fontSize: 10, color: 'rgba(255,255,255,0.78)', textAlign: 'right', writingDirection: 'rtl' },
-  percentBadge: { minWidth: 50, height: 50, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
-  percent: { fontFamily: Typography.fontFamily, fontSize: 14, lineHeight: 18, fontWeight: '400', color: '#FFFFFF', writingDirection: 'rtl' },
-  percentLabel: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.72)', fontSize: 7, writingDirection: 'rtl' },
-  headerBottom: { width: '100%', maxWidth: 820, alignSelf: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
+  headerText: { flex: 1, alignItems: 'flex-end', gap: 3 },
+  headerEyebrow: { fontFamily: 'Inter-ExtraBold', color: '#F6D992', fontSize: 10, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
+  headerTitle: { fontFamily: Typography.fontFamily, fontSize: 19, lineHeight: 28, fontWeight: '900', color: '#FFFFFF', textAlign: 'right', writingDirection: 'rtl' },
+  headerSub: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.84)', textAlign: 'right', writingDirection: 'rtl' },
+  percentBadge: { minWidth: 52, height: 44, paddingHorizontal: 10, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.24)' },
+  percent: { fontFamily: Typography.fontFamily, fontSize: 14, lineHeight: 18, fontWeight: '900', color: '#FFFFFF', writingDirection: 'rtl' },
+  percentLabel: { display: 'none', fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.72)', fontSize: 7, writingDirection: 'rtl' },
+  headerBottom: { display: 'none', width: '100%', maxWidth: 840, alignSelf: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingTop: 9, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.18)' },
   headerInfoChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
   headerInfoText: { fontFamily: Typography.fontFamily, color: 'rgba(255,255,255,0.78)', fontSize: 9, writingDirection: 'rtl' },
-  stepperCard: { width: '94%', maxWidth: 820, alignSelf: 'center', marginTop: 13, padding: 13, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 10, shadowColor: '#20264A', shadowOpacity: .04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
+  stepperCard: { width: '94%', maxWidth: 840, alignSelf: 'center', marginTop: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 8, shadowColor: '#0B1838', shadowOpacity: .045, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
   stepperHeading: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  stepperEyebrow: { fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 6, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
-  stepperTitle: { fontFamily: Typography.fontFamily, fontSize: 12, lineHeight: 18, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
+  stepperEyebrow: { display: 'none', fontFamily: 'Inter-ExtraBold', color: Palette.primary, fontSize: 6, fontWeight: '800', letterSpacing: 1, writingDirection: 'ltr' },
+  stepperTitle: { fontFamily: Typography.fontFamily, fontSize: 12.5, lineHeight: 18, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
   stepperNow: { alignItems: 'flex-end', gap: 1 },
-  stepperNowEn: { fontFamily: 'Inter-ExtraBold', color: Palette.primaryDark, fontSize: 7, fontWeight: '800', writingDirection: 'ltr' },
-  stepperNowFa: { fontFamily: Typography.fontFamily, color: Palette.muted, fontSize: 8, writingDirection: 'rtl' },
-  stepSegments: { flexDirection: 'row-reverse', gap: 4 },
-  stepSegment: { flex: 1, height: 5, borderRadius: 999, backgroundColor: Palette.border },
-  stepSegmentDone: { backgroundColor: Palette.primary },
-  stepSegmentCurrent: { height: 8, marginTop: -1.5, backgroundColor: Palette.teal },
-  stepperEnds: { flexDirection: 'row-reverse', justifyContent: 'space-between' },
+  stepperNowEn: { display: 'none', fontFamily: 'Inter-ExtraBold', color: Palette.primaryDark, fontSize: 7, fontWeight: '800', writingDirection: 'ltr' },
+  stepperNowFa: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 12, fontWeight: '800', writingDirection: 'rtl' },
+  stepSegments: { flexDirection: 'row-reverse', gap: 5 },
+  stepSegmentBtn: { flex: 1, paddingVertical: 4 },
+  stepSegment: { width: '100%', height: 5, borderRadius: 999, backgroundColor: Palette.surfaceMuted },
+  stepSegmentDone: { backgroundColor: Palette.success },
+  stepSegmentCurrent: { backgroundColor: Palette.primary },
+  stepperQuickRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, paddingTop: 2 },
+  stepperQuickPill: { minHeight: 32, flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 11, borderRadius: 999, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
+  stepperQuickText: { fontFamily: Typography.fontFamily, fontSize: 11.5, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  sentenceStepRow: { width: '100%', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 14 },
+  sentenceStepBtn: { minHeight: 40, flexDirection: 'row-reverse', alignItems: 'center', gap: 4, paddingHorizontal: 13, borderRadius: 12, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border },
+  sentenceStepBtnDisabled: { opacity: 0.38 },
+  sentenceStepText: { fontFamily: Typography.fontFamily, fontSize: 12.5, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  sentenceStepCounter: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '700', color: Palette.muted, writingDirection: 'rtl' },
+  dots: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 14 },
+  stepperEnds: { display: 'none', flexDirection: 'row-reverse', justifyContent: 'space-between' },
   stepperEndText: { fontFamily: 'Inter-ExtraBold', color: Palette.muted, fontSize: 6, fontWeight: '800', writingDirection: 'ltr' },
-  error: { width: '94%', maxWidth: 820, alignSelf: 'center', marginTop: 10, padding: 12, borderRadius: 12, backgroundColor: Palette.dangerSoft, color: Palette.danger, fontFamily: Typography.fontFamily, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+  error: { width: '94%', maxWidth: 840, alignSelf: 'center', marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: Palette.dangerSoft, color: Palette.danger, fontFamily: Typography.fontFamily, fontSize: 12.5, fontWeight: '700', lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   retrySaveButton: { alignSelf: 'center', marginBottom: 10, padding: 10 },
-  retrySaveText: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-  content: { width: '100%', maxWidth: 820, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, gap: 16 },
+  retrySaveText: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 12, fontWeight: '800', writingDirection: 'rtl' },
+  content: { width: '100%', maxWidth: 840, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 32, gap: 14 },
   centerStage: { alignItems: 'center', width: '100%' },
-  bigIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#DDE2FF', alignItems: 'center', justifyContent: 'center', marginVertical: 18 },
-  stageEyebrow: { fontFamily: Typography.fontFamily, fontSize: 11, fontWeight: '400', color: Palette.primary, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  stageTitle: { fontFamily: Typography.fontFamily, fontSize: 25, lineHeight: 36, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  stageDesc: { fontFamily: Typography.fontFamily, fontSize: 13, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 23, marginTop: 8 },
-  situation: { fontFamily: Typography.fontFamily, fontSize: 14, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 27, marginTop: 12 },
-  promiseCard: { width: '100%', borderRadius: 20, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#DDE2FF', padding: 18, marginTop: 20, gap: 5 },
-  promiseTitle: { fontFamily: Typography.fontFamily, fontSize: 13, fontWeight: '400', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
-  promiseText: { fontFamily: Typography.fontFamily, fontSize: 13, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 23, marginTop: 4 },
-  noteCard: { width: '100%', marginTop: 14, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 17, gap: 8 },
-  noteTitle: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 13, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  noteText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 12, lineHeight: 25, textAlign: 'right', writingDirection: 'rtl' },
-  sentenceStage: { alignItems: 'center', paddingTop: 18, width: '100%' },
-  counter: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.muted, marginBottom: 12, alignSelf: 'flex-end', textAlign: 'right', writingDirection: 'rtl' },
-  sentenceCard: { width: '100%', borderRadius: 22, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 22, alignItems: 'center', shadowColor: '#172033', shadowOpacity: .05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  soundButton: { width: 54, height: 54, borderRadius: 27, backgroundColor: Palette.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
-  russianSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 23, lineHeight: 36, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  pronunciation: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl', marginTop: 8 },
-  divider: { width: '70%', height: 1, backgroundColor: Palette.border, marginVertical: 18 },
-  persian: { fontFamily: Typography.fontFamily, fontSize: 17, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  pattern: { width: '100%', flexDirection: 'column', alignItems: 'flex-end', gap: 4, backgroundColor: Palette.warningSoft, borderWidth: 1, borderColor: '#F3DEC0', paddingHorizontal: 13, paddingVertical: 9, borderRadius: 14, marginTop: 14 },
-  patternLabel: { fontFamily: Typography.fontFamily, fontSize: 10, fontWeight: '400', color: Palette.warning, textAlign: 'right', writingDirection: 'rtl' },
-  patternText: { fontFamily: Typography.fontFamily, fontSize: 12, lineHeight: 20, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
-  hint: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: 14 },
-  listenList: { width: '100%', gap: 8, marginTop: 20 },
-  listenRow: { minHeight: 62, borderRadius: 16, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: 13, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  bigIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#D6E4FF', alignItems: 'center', justifyContent: 'center', marginVertical: 14 },
+  stageEyebrow: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '800', color: Palette.primary, marginBottom: 4, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  stageTitle: { fontFamily: Typography.fontFamily, fontSize: 23, lineHeight: 34, fontWeight: '900', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  stageDesc: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '500', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 23, marginTop: 6 },
+  situation: { fontFamily: Typography.fontFamily, fontSize: 15, fontWeight: '500', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 27, marginTop: 10 },
+  promiseCard: { width: '100%', borderRadius: 20, backgroundColor: Palette.primarySoft, borderWidth: 1, borderColor: '#D6E4FF', padding: 18, marginTop: 18, gap: 5 },
+  promiseTitle: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '800', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
+  promiseText: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '500', color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 23, marginTop: 4 },
+  noteCard: { width: '100%', marginTop: 14, borderRadius: 20, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 18, gap: 8, shadowColor: '#0B1838', shadowOpacity: 0.04, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
+  noteTitle: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 13.5, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  noteText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 13, lineHeight: 24, textAlign: 'right', writingDirection: 'rtl' },
+  sentenceStage: { alignItems: 'center', paddingTop: 10, width: '100%' },
+  counter: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '700', color: Palette.muted, marginBottom: 10, alignSelf: 'flex-end', textAlign: 'right', writingDirection: 'rtl' },
+  sentenceCard: { width: '100%', borderRadius: 24, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 24, alignItems: 'center', shadowColor: '#0B1838', shadowOpacity: .055, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  soundButton: { width: 56, height: 56, borderRadius: 20, backgroundColor: Palette.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 18, shadowColor: Palette.primary, shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
+  russianSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 23, lineHeight: 34, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  pronunciation: { fontFamily: Typography.fontFamily, fontSize: 13, fontWeight: '600', color: Palette.primaryDark, textAlign: 'center', writingDirection: 'rtl', marginTop: 10 },
+  divider: { width: '100%', height: 1, backgroundColor: Palette.border, marginVertical: 18 },
+  persian: { fontFamily: Typography.fontFamily, fontSize: 17, fontWeight: '700', lineHeight: 28, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  pattern: { width: '100%', flexDirection: 'column', alignItems: 'flex-end', gap: 4, backgroundColor: Palette.warningSoft, borderWidth: 1, borderColor: '#F1DFB6', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, marginTop: 14 },
+  patternLabel: { fontFamily: Typography.fontFamily, fontSize: 11, fontWeight: '800', color: Palette.warning, textAlign: 'right', writingDirection: 'rtl' },
+  patternText: { fontFamily: Typography.fontFamily, fontSize: 12.5, lineHeight: 21, fontWeight: '600', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
+  hint: { display: 'none', fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19, marginTop: 14 },
+  listenList: { width: '100%', gap: 10, marginTop: 18 },
+  listenRow: { minHeight: 62, borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, paddingHorizontal: 15, flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   listenRowActive: { borderColor: Palette.primary, backgroundColor: Palette.primarySoft },
-  listenNumber: { width: 30, height: 30, borderRadius: 15, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  listenNumberText: { fontFamily: Typography.numberFontFamily, fontSize: 11, color: Palette.primaryDark, writingDirection: 'rtl' },
-  listenRussian: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 13, fontWeight: '800', lineHeight: 22, color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  shadowTip: { width: '100%', marginTop: 18, borderRadius: 14, backgroundColor: Palette.warningSoft, padding: 13, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  listenNumber: { width: 32, height: 32, borderRadius: 12, backgroundColor: Palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  listenNumberText: { fontFamily: Typography.numberFontFamily, fontSize: 12, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  listenRussian: { fontFamily: 'Inter-ExtraBold', flex: 1, fontSize: 15, fontWeight: '800', lineHeight: 23, color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  shadowTip: { display: 'none', width: '100%', marginTop: 18, borderRadius: 14, backgroundColor: Palette.warningSoft, padding: 13, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   shadowText: { flex: 1, fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.text, textAlign: 'right', writingDirection: 'rtl', lineHeight: 19 },
-  speechPractice: { width: '100%', borderRadius: 22, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 18, alignItems: 'center', marginTop: 18, shadowColor: '#172033', shadowOpacity: .04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
-  speechTitle: { fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
-  speechSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 17, lineHeight: 28, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr', marginTop: 8 },
-  playSlowButton: { minHeight: 48, minWidth: 155, borderRadius: 999, paddingHorizontal: 18, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 14 },
-  recordButtonText: { fontFamily: Typography.fontFamily, fontSize: 12, fontWeight: '400', color: '#FFFFFF', writingDirection: 'rtl' },
-  speechHint: { fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 19, marginTop: 8 },
-  dots: { flexDirection: 'row', gap: 8, marginTop: 18 },
+  speechPractice: { width: '100%', borderRadius: 24, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 20, alignItems: 'center', marginTop: 16, shadowColor: '#0B1838', shadowOpacity: .045, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  speechTitle: { fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '800', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch' },
+  speechSentence: { fontFamily: 'Inter-ExtraBold', width: '100%', fontSize: 19, lineHeight: 29, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr', marginTop: 10 },
+  playSlowButton: { minHeight: 48, minWidth: 170, borderRadius: 14, paddingHorizontal: 18, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 14 },
+  recordButtonText: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '800', color: '#FFFFFF', writingDirection: 'rtl' },
+  speechHint: { display: 'none', fontFamily: Typography.fontFamily, fontSize: 11, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl', alignSelf: 'stretch', lineHeight: 19, marginTop: 8 },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Palette.border },
   dotActive: { width: 24, backgroundColor: Palette.primary },
-  vocabList: { width: '100%', gap: 9, marginTop: 18 },
-  vocabCard: { width: '100%', borderRadius: 16, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 14, gap: 7 },
+  vocabList: { width: '100%', gap: 10, marginTop: 18 },
+  vocabCard: { width: '100%', borderRadius: 18, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, padding: 16, gap: 7, shadowColor: '#0B1838', shadowOpacity: 0.035, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
   vocabTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  vocabWord: { fontFamily: 'Inter-ExtraBold', fontSize: 16, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: 12, color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
-  vocabExample: { fontFamily: 'Inter-ExtraBold', fontSize: 13, fontWeight: '800', lineHeight: 22, color: Palette.text, textAlign: 'right', writingDirection: 'ltr' },
-  vocabExampleFa: { fontFamily: Typography.fontFamily, fontSize: 11, lineHeight: 19, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
+  vocabWord: { fontFamily: 'Inter-ExtraBold', fontSize: 17, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  vocabMeaning: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '800', color: Palette.primaryDark, textAlign: 'right', writingDirection: 'rtl' },
+  vocabExample: { fontFamily: 'Inter-ExtraBold', fontSize: 13.5, fontWeight: '800', lineHeight: 22, color: Palette.text, textAlign: 'left', writingDirection: 'ltr' },
+  vocabExampleFa: { fontFamily: Typography.fontFamily, fontSize: 12.5, lineHeight: 20, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
   bubbleSound: { alignSelf: 'flex-end', marginTop: 4, padding: 5 },
-  evidenceCard: { width: '100%', marginTop: 20, borderRadius: 20, padding: 17, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 12 },
-  evidenceTitle: { fontFamily: Typography.fontFamily, fontSize: 17, fontWeight: '400', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
-  evidenceIntro: { fontFamily: Typography.fontFamily, fontSize: 11, lineHeight: 19, color: Palette.text, textAlign: 'right', writingDirection: 'rtl' },
+  evidenceCard: { width: '100%', marginTop: 20, borderRadius: 22, padding: 20, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 14, shadowColor: '#0B1838', shadowOpacity: 0.045, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  evidenceTitle: { fontFamily: Typography.fontFamily, fontSize: 18, fontWeight: '900', color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
+  evidenceIntro: { fontFamily: Typography.fontFamily, fontSize: 13, lineHeight: 22, color: Palette.text, textAlign: 'right', writingDirection: 'rtl' },
   question: { gap: 9, marginTop: 5 },
-  questionPrompt: { fontFamily: Typography.fontFamily, fontSize: 13, lineHeight: 22, color: Palette.text, textAlign: 'right', writingDirection: 'rtl' },
-  choice: { minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, paddingHorizontal: 13, paddingVertical: 11, justifyContent: 'center' },
+  questionPrompt: { fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '700', lineHeight: 23, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
+  choice: { minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, paddingHorizontal: 14, paddingVertical: 11, justifyContent: 'center' },
   choiceSelected: { borderColor: Palette.primary, backgroundColor: Palette.primarySoft },
   choiceCorrect: { borderColor: Palette.success, backgroundColor: Palette.successSoft },
-  choiceRussian: { fontFamily: 'Inter-ExtraBold', fontSize: 12, fontWeight: '800', lineHeight: 21, color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
-  choicePersian: { fontFamily: Typography.fontFamily, fontSize: 13, lineHeight: 21, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
-  feedbackBox: { borderRadius: 12, padding: 12, backgroundColor: Palette.surfaceMuted, gap: 5 },
-  feedbackTitle: { fontFamily: Typography.fontFamily, color: Palette.success, fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  feedbackError: { fontFamily: Typography.fontFamily, color: Palette.danger, fontSize: 12, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  feedbackText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
+  choiceRussian: { fontFamily: 'Inter-ExtraBold', fontSize: 13.5, fontWeight: '800', lineHeight: 22, color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
+  choicePersian: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '600', lineHeight: 22, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
+  feedbackBox: { borderRadius: 14, padding: 13, backgroundColor: Palette.surfaceMuted, gap: 5 },
+  feedbackTitle: { fontFamily: Typography.fontFamily, color: Palette.success, fontSize: 13, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  feedbackError: { fontFamily: Typography.fontFamily, color: Palette.danger, fontSize: 13, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  feedbackText: { fontFamily: Typography.fontFamily, color: Palette.text, fontSize: 12, lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
   retryAnswer: { alignSelf: 'flex-start', paddingVertical: 6 },
-  retryAnswerText: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-  showAnswersButton: { minHeight: 45, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surface, marginTop: 4 },
-  showAnswersText: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 12, fontWeight: '400', writingDirection: 'rtl' },
-  evidenceNote: { fontFamily: Typography.fontFamily, color: Palette.success, fontSize: 11, lineHeight: 19, textAlign: 'right', writingDirection: 'rtl' },
-  footer: { paddingHorizontal: 18, paddingTop: 11, paddingBottom: 14, backgroundColor: 'rgba(255,255,255,0.96)', borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#20264A', shadowOpacity: .07, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
-  nextButton: { width: '100%', maxWidth: 820, alignSelf: 'center', minHeight: 54, borderRadius: 17, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 3, transform: [{ translateY: -30 }] },
-  replayRow: { flexDirection: 'row', gap: 10, justifyContent: 'center', marginTop: 12 },
-  replayButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 18, borderRadius: 14, borderWidth: 1, borderColor: Palette.primary, backgroundColor: '#FFFFFF' },
-  replayText: { fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '400', color: Palette.primary, writingDirection: 'rtl' },
+  retryAnswerText: { fontFamily: Typography.fontFamily, color: Palette.primary, fontSize: 12, fontWeight: '800', writingDirection: 'rtl' },
+  showAnswersButton: { minHeight: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 14, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surfaceMuted, marginTop: 4 },
+  showAnswersText: { fontFamily: Typography.fontFamily, color: Palette.primaryDark, fontSize: 13, fontWeight: '800', writingDirection: 'rtl' },
+  evidenceNote: { fontFamily: Typography.fontFamily, color: Palette.success, fontSize: 12, fontWeight: '700', lineHeight: 20, textAlign: 'right', writingDirection: 'rtl' },
+  footer: { width: '100%', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 22, backgroundColor: 'rgba(255,255,255,0.96)', borderTopWidth: 1, borderTopColor: Palette.border, shadowColor: '#0B1838', shadowOpacity: .06, shadowRadius: 14, shadowOffset: { width: 0, height: -4 }, elevation: 5 },
+  footerInner: { width: '100%', maxWidth: 840, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  prevButton: { minHeight: 54, paddingHorizontal: 16, borderRadius: 16, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  prevText: { fontFamily: Typography.fontFamily, fontSize: 13.5, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
+  nextButton: { flex: 1, minHeight: 54, borderRadius: 16, backgroundColor: Palette.primary, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: Palette.primary, shadowOpacity: .22, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
+  replayRow: { width: '100%', flexDirection: 'row-reverse', gap: 10, justifyContent: 'center', marginTop: 14 },
+  replayButton: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 44, paddingHorizontal: 18, borderRadius: 999, borderWidth: 1, borderColor: Palette.border, backgroundColor: Palette.surface },
+  replayText: { fontFamily: Typography.fontFamily, fontSize: 13, fontWeight: '800', color: Palette.primaryDark, writingDirection: 'rtl' },
   nextButtonDisabled: { opacity: .45 },
-  nextText: { fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '400', color: '#FFFFFF', writingDirection: 'rtl' },
+  nextText: { fontFamily: Typography.fontFamily, fontSize: 15, fontWeight: '900', color: '#FFFFFF', writingDirection: 'rtl' },
 });

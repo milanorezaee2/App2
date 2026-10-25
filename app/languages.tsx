@@ -1,24 +1,66 @@
-import { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, BarChart3, BookOpenCheck, Check, Headphones, LifeBuoy, LockKeyhole, Mic2, RefreshCw, ShieldCheck, Sparkles, Target, Volume2 } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  BarChart3,
+  ChevronDown,
+  Headphones,
+  LifeBuoy,
+  LockKeyhole,
+  Mic2,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Volume2,
+} from 'lucide-react-native';
 import { LANGUAGES } from '@/lib/languages/catalog';
+import { RUSSIAN_LESSONS } from '@/lib/languages/russian';
 import { ensureSupportConversation } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
 import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
 import { SENTENCE_LESSONS } from '@/lib/courseContent';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
+import { LuxuryPalette, LuxuryShadows } from '@/components/luxuryTheme';
 import { toPersianDigits as fa } from '@/lib/format';
-import { Typography } from '@/lib/theme';
+import { LtrDirection, Typography } from '@/lib/theme';
 
-// Narrator removed: no welcome voice plays when the language screen appears.
+// Narrator removed: welcome-voice.wav is kept in assets without auto-playing on startup.
 
 const languageMeta = {
-  en: { flag: '🇬🇧', code: 'EN', nativeName: 'English', tint: '#EAF2FF', border: '#CFE0FF' },
-  de: { flag: '🇩🇪', code: 'DE', nativeName: 'Deutsch', tint: '#F1F6FF', border: '#D7E4FA' },
-  ru: { flag: '🇷🇺', code: 'RU', nativeName: 'Русский', tint: '#EEF4FF', border: '#D5E3FF' },
+  en: {
+    flag: '🇬🇧',
+    code: 'EN',
+    persianName: 'انگلیسی',
+    nativeName: 'English',
+    badgeColors: ['#0D214F', '#1E4ED8'] as [string, string],
+  },
+  de: {
+    flag: '🇩🇪',
+    code: 'DE',
+    persianName: 'آلمانی',
+    nativeName: 'Deutsch',
+    badgeColors: ['#102554', '#1868A8'] as [string, string],
+  },
+  ru: {
+    flag: '🇷🇺',
+    code: 'RU',
+    persianName: 'روسی',
+    nativeName: 'Русский',
+    badgeColors: ['#0B1A3E', '#255EE8'] as [string, string],
+  },
 } as const;
 
 const learningSteps = [
@@ -29,52 +71,98 @@ const learningSteps = [
 
 const englishSentenceCount = SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
 const germanSentenceCount = GERMAN_SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
+const russianSentenceCount = RUSSIAN_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
+
 const learningStats = [
-  { value: fa(SENTENCE_LESSONS.length + GERMAN_SENTENCE_LESSONS.length), label: 'درس مرحله‌بندی‌شده' },
-  { value: fa(englishSentenceCount + germanSentenceCount), label: 'جملهٔ کاربردی' },
-  { value: '۲۴/۷', label: 'دسترسی به یادگیری' },
+  {
+    value: fa(SENTENCE_LESSONS.length + GERMAN_SENTENCE_LESSONS.length + RUSSIAN_LESSONS.length),
+    label: 'درس گام‌به‌گام',
+  },
+  {
+    value: fa(englishSentenceCount + germanSentenceCount + russianSentenceCount),
+    label: 'جملهٔ کاربردی',
+  },
+  { value: '۳ زبان', label: 'مسیر یکپارچه' },
 ] as const;
 
 const productFeatures = [
-  { icon: Volume2, title: 'شنیدن هوشمند', detail: 'سرعت طبیعی و آهسته برای درک بهتر', color: '#1769D2', soft: '#EAF3FF' },
-  { icon: RefreshCw, title: 'مرور شخصی', detail: 'تمرین دوباره در زمان مناسب یادگیری', color: '#128DA8', soft: '#E9F9FC' },
-  { icon: ShieldCheck, title: 'پیشرفت محفوظ', detail: 'ادامهٔ مسیر از همان نقطهٔ قبلی', color: '#168451', soft: '#ECF9F2' },
+  {
+    icon: Volume2,
+    title: 'شنیدن هوشمند',
+    detail: 'سرعت طبیعی و آهسته برای درک دقیق‌تر',
+    color: LuxuryPalette.primary,
+    soft: LuxuryPalette.primarySoft,
+  },
+  {
+    icon: RefreshCw,
+    title: 'مرور شخصی',
+    detail: 'تمرین دوباره در زمان مناسب یادگیری',
+    color: '#1868A8',
+    soft: '#E9F4FD',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'پیشرفت محفوظ',
+    detail: 'ادامهٔ مسیر از همان نقطهٔ قبلی',
+    color: LuxuryPalette.emerald,
+    soft: LuxuryPalette.emeraldSoft,
+  },
 ] as const;
 
 export default function LanguagesHome() {
   const router = useRouter();
   const [openingSupport, setOpeningSupport] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const languageSectionY = useRef(0);
 
   const openSupport = () => {
     if (openingSupport) return;
     setOpeningSupport(true);
     ensureSupportConversation()
-      .then((conversationId) => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId, name: 'پشتیبانی Milo' } } as never))
-      .catch((cause) => Alert.alert('پشتیبانی', readableSupabaseError(cause)))
+      .then(conversationId =>
+        router.push({
+          pathname: '/conversations/human/[conversationId]',
+          params: { conversationId, name: 'پشتیبانی Milo' },
+        } as never),
+      )
+      .catch(cause => Alert.alert('پشتیبانی', readableSupabaseError(cause)))
       .finally(() => setOpeningSupport(false));
   };
 
   const { width } = useWindowDimensions();
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
-  const compact = !ready || width < 680;
-  const tiny = !ready || width < 370;
-  const languages = LANGUAGES.filter(language => (language.id === 'ru' ? FEATURES.russianCourse : !RUSSIAN_ONLY_BUILD));
+  const compact = !ready || width < 720;
+  const tiny = !ready || width < 390;
+  const languages = LANGUAGES.filter(language =>
+    language.id === 'ru' ? FEATURES.russianCourse : !RUSSIAN_ONLY_BUILD,
+  );
 
   return (
     <View style={styles.root}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={[styles.page, compact && styles.pageCompact]}>
           <View style={styles.header}>
             <View style={styles.brand}>
               <MiloLogoMotion size="header" play={false} />
             </View>
             <View style={styles.headerActions}>
-              <Pressable accessibilityRole="button" accessibilityLabel="گفتگو با پشتیبانی" disabled={openingSupport} style={styles.lockButton} onPress={openSupport}>
-                <LifeBuoy size={17} color="#1769D2" />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="گفتگو با پشتیبانی"
+                disabled={openingSupport}
+                style={({ pressed }) => [styles.actionIconBtn, pressed && styles.pressed]}
+                onPress={openSupport}
+              >
+                <LifeBuoy size={17} color={LuxuryPalette.primary} />
               </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="تنظیم قفل برنامه" style={styles.lockButton} onPress={() => router.push('/app-lock' as never)}>
-                <LockKeyhole size={17} color="#1769D2" />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="تنظیم قفل برنامه"
+                style={({ pressed }) => [styles.actionIconBtn, pressed && styles.pressed]}
+                onPress={() => router.push('/app-lock' as never)}
+              >
+                <LockKeyhole size={17} color={LuxuryPalette.primary} />
               </Pressable>
               <View style={styles.statusPill}>
                 <View style={styles.statusDot} />
@@ -83,66 +171,94 @@ export default function LanguagesHome() {
             </View>
           </View>
 
-          <LinearGradient
-            colors={['#FFFFFF', '#EDF5FF', '#E4F2FF']}
-            start={{ x: 0.95, y: 0 }}
-            end={{ x: 0.05, y: 1 }}
-            style={[styles.hero, compact && styles.heroCompact]}
-          >
-            <Image source={require('../assets/images/hero-background.jpg')} resizeMode="cover" style={styles.heroBackground} accessibilityIgnoresInvertColors />
-            <View style={styles.heroOrbOne} />
-            <View style={styles.heroOrbTwo} />
-            <View style={[styles.heroCopy, compact && styles.heroCopyCompact]}>
+          <View style={[styles.hero, compact && styles.heroCompact]}>
+            <View pointerEvents="none" style={styles.heroGoldEdge} />
+            <View style={styles.heroTopline}>
               <View style={styles.eyebrow}>
-                <Sparkles size={13} color="#1769D2" />
-                <Text style={styles.eyebrowText}>یادگیری ساده، پیوسته و واقعی</Text>
-              </View>
-              <Text accessibilityRole="header" style={[styles.heroTitle, tiny && styles.heroTitleTiny]}>
-                هر روز، یک قدم{`\n`}به مکالمه نزدیک‌تر
-              </Text>
-              <Text style={styles.heroDescription}>
-                مسیر کوتاه و شخصی تو برای یادگیری زبان؛ با جمله‌های کاربردی، شنیدن هدفمند و مرور منظم.
-              </Text>
-              <View style={styles.heroChecks}>
-                <View style={styles.checkItem}><Check size={13} color="#087F5B" strokeWidth={3} /><Text style={styles.checkText}>بدون حفظ‌کردن بی‌هدف</Text></View>
-                <View style={styles.checkItem}><Check size={13} color="#087F5B" strokeWidth={3} /><Text style={styles.checkText}>پیشرفت ذخیره‌شونده</Text></View>
+                <Sparkles size={13} color={LuxuryPalette.goldLight} />
+                <Text style={styles.eyebrowText}>آکادمی چندزبانهٔ میلو</Text>
               </View>
             </View>
-            <View style={[styles.heroVisual, compact && styles.heroVisualCompact]}>
-              <Image source={require('../assets/images/splash-learning-light.png')} resizeMode="contain" style={styles.heroImage} />
-            </View>
-          </LinearGradient>
 
-          <View style={[styles.statsStrip, compact && styles.statsStripCompact]}>
-            <View style={[styles.statsLead, compact && styles.statsLeadCompact]}>
-              <View style={styles.statsLeadIcon}><BarChart3 size={17} color="#1769D2" /></View>
-              <View style={styles.statsLeadCopy}>
-                <Text style={styles.statsLeadTitle}>یک مسیر کامل، نه چند تمرین پراکنده</Text>
-                <Text style={styles.statsLeadDetail}>محتوای واقعی و منظم برای پیشرفت روزانه</Text>
+            <View style={[styles.heroMain, compact && styles.heroMainCompact]}>
+              <View style={[styles.heroCopy, !compact && styles.heroCopyDesktop]}>
+                <Text accessibilityRole="header" style={[styles.heroTitle, tiny && styles.heroTitleTiny]}>
+                  با جمله‌های واقعی،{`\n`}روان‌تر حرف بزن
+                </Text>
+                <Text style={styles.heroDescription}>
+                  انگلیسی، آلمانی و روسی را با تمرین‌های کوتاه و هدفمند یاد بگیر.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="انتخاب زبان برای شروع یادگیری"
+                  onPress={() => scrollRef.current?.scrollTo({ y: languageSectionY.current, animated: true })}
+                  style={({ pressed }) => [styles.heroCta, compact && styles.heroCtaCompact, pressed && styles.pressed]}
+                >
+                  <Text style={styles.heroCtaText}>شروع مسیر یادگیری</Text>
+                  <ArrowLeft size={16} color="#F5D993" strokeWidth={2.7} />
+                </Pressable>
+              </View>
+
+              <View style={[styles.heroVisual, compact && styles.heroVisualCompact]}>
+                <LinearGradient colors={['#315FD4', '#10265D']} style={styles.heroArtDisk} />
+                <View pointerEvents="none" style={styles.heroArtRing} />
+                <Image
+                  source={require('../assets/images/milo-hero-sculpture-cutout.png')}
+                  resizeMode="contain"
+                  accessibilityLabel="کتاب باز با جریان طلایی و سه حباب گفت‌وگو"
+                  style={styles.heroArtwork}
+                />
               </View>
             </View>
-            <View style={[styles.statsValues, compact && styles.statsValuesCompact]}>
-              {learningStats.map((item, index) => (
-                <View key={item.label} style={styles.statItem}>
-                  <Text style={styles.statValue}>{item.value}</Text>
-                  <Text style={styles.statLabel}>{item.label}</Text>
-                  {index < learningStats.length - 1 ? <View style={styles.statDivider} /> : null}
-                </View>
-              ))}
-            </View>
+
           </View>
 
-          <View style={styles.languageSection}>
-            <View style={styles.sectionCopy}>
-              <Text style={styles.sectionEyebrow}>CHOOSE A LANGUAGE</Text>
-              <Text style={styles.sectionTitle}>می‌خواهی کدام زبان را یاد بگیری؟</Text>
-              <Text style={styles.sectionDetail}>برای ورود، یکی از زبان‌ها را انتخاب کن.</Text>
+          <View
+            style={styles.languageSection}
+            onLayout={event => { languageSectionY.current = event.nativeEvent.layout.y; }}
+          >
+            <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionHeaderCopy}>
+                <Text style={styles.sectionEyebrow}>انتخاب مسیر یادگیری</Text>
+                <Text style={styles.sectionTitle}>می‌خواهی کدام زبان را تمرین کنی؟</Text>
+              </View>
             </View>
 
-            <View style={styles.languageRow}>
+            <View style={[styles.languageGrid, compact && styles.languageGridCompact]}>
               {languages.map(language => {
                 const meta = languageMeta[language.id as keyof typeof languageMeta];
-                return (
+                return compact ? (
+                  <Pressable
+                    key={language.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`ورود به زبان ${language.name}، ${fa(language.lessonsCount)} درس`}
+                    onPress={() => router.push(language.home as never)}
+                    style={({ pressed }) => [styles.languageRowCard, styles.languageRowCardCompact, pressed && styles.pressed]}
+                  >
+                    <View style={styles.languageCompactTop}>
+                      <LinearGradient
+                        colors={meta.badgeColors}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.monogramWrapCompact}
+                      >
+                        <Text style={styles.monogramCode}>{meta.code}</Text>
+                      </LinearGradient>
+                      <Text style={styles.flagCompact}>{meta.flag}</Text>
+                    </View>
+
+                    <View style={styles.languageIdentityCompact}>
+                      <Text style={styles.languagePersianNameCompact} numberOfLines={1}>{meta.persianName}</Text>
+                      <Text style={styles.languageNativeNameCompact} numberOfLines={1}>{meta.nativeName}</Text>
+                      <Text style={styles.languageLessonCompact} numberOfLines={2}>{fa(language.lessonsCount)} درس جمله‌محور</Text>
+                    </View>
+
+                    <View style={styles.languageArrowCompact}>
+                      <Text style={styles.enterText}>ورود</Text>
+                      <ArrowLeft size={13} color="#FFFFFF" strokeWidth={2.5} />
+                    </View>
+                  </Pressable>
+                ) : (
                   <Pressable
                     key={language.id}
                     accessibilityRole="button"
@@ -150,62 +266,132 @@ export default function LanguagesHome() {
                     onPress={() => router.push(language.home as never)}
                     style={({ pressed }) => [
                       styles.languageCard,
-                      { backgroundColor: meta.tint, borderColor: meta.border },
-                      tiny && styles.languageCardTiny,
+                      styles.languageCardDesktop,
                       pressed && styles.pressed,
                     ]}
                   >
-                    <Text style={styles.flag}>{meta.flag}</Text>
-                    <View style={styles.languageIdentity}>
-                      <Text style={styles.languageCode} numberOfLines={1}>{meta.code}</Text>
-                      <Text style={styles.languageName} numberOfLines={1}>{meta.nativeName}</Text>
-                      <Text style={styles.languageLessonCount}>{fa(language.lessonsCount)} درس</Text>
+                    <View style={styles.languageCardTop}>
+                      <LinearGradient
+                        colors={meta.badgeColors}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.monogramWrap}
+                      >
+                        <Text style={styles.monogramCode}>{meta.code}</Text>
+                      </LinearGradient>
+
+                      <View style={styles.languageIdentity}>
+                        <View style={styles.languageNameRow}>
+                          <Text style={styles.languagePersianName}>{meta.persianName}</Text>
+                          <Text style={styles.flag}>{meta.flag}</Text>
+                        </View>
+                        <Text style={styles.languageNativeName}>{meta.nativeName}</Text>
+                      </View>
                     </View>
-                    <View style={styles.languageArrow}><ArrowLeft size={14} color="#1769D2" strokeWidth={2.5} /></View>
+
+                    <View style={styles.languageCardFooter}>
+                      <View style={styles.lessonCountBadge}>
+                        <Text style={styles.languageLessonCount}>{fa(language.lessonsCount)} درس جمله‌محور</Text>
+                      </View>
+                      <View style={styles.languageArrow}>
+                        <Text style={styles.enterText}>ورود</Text>
+                        <ArrowLeft size={14} color="#FFFFFF" strokeWidth={2.5} />
+                      </View>
+                    </View>
                   </Pressable>
                 );
               })}
             </View>
           </View>
 
-          <View style={styles.flowCard}>
-            <View style={styles.flowHeader}>
-              <View>
-                <Text style={styles.flowEyebrow}>روش یادگیری میلو</Text>
-                <Text style={styles.flowTitle}>یک چرخهٔ کوتاه برای پیشرفت واقعی</Text>
+          <View style={[styles.statsStrip, compact && styles.statsStripCompact]}>
+            <View style={[styles.statsLead, !compact && styles.statsLeadDesktop]}>
+              <View style={styles.statsLeadIcon}>
+                <BarChart3 size={18} color={LuxuryPalette.primary} />
               </View>
-              <View style={styles.minutesBadge}><Text style={styles.minutesValue}>۱۰</Text><Text style={styles.minutesText}>دقیقه در روز</Text></View>
+              <View style={styles.statsLeadCopy}>
+                <Text style={styles.statsLeadTitle}>یک ساختار یکپارچه برای هر سه زبان</Text>
+                <Text style={styles.statsLeadDetail}>درس، کتابخانه، تلفظ و مرور فاصله‌دار هماهنگ</Text>
+              </View>
             </View>
-            <View style={styles.stepsRow}>
-              {learningSteps.map((step, index) => {
-                const Icon = step.icon;
-                return (
-                  <View key={step.number} style={styles.stepWrap}>
-                    <View style={styles.step}>
-                      <View style={styles.stepIcon}><Icon size={18} color="#1769D2" /></View>
-                      <Text style={styles.stepNumber}>{step.number}</Text>
-                      <Text style={styles.stepTitle}>{step.title}</Text>
-                      <Text style={styles.stepDetail}>{step.detail}</Text>
-                    </View>
-                    {index < learningSteps.length - 1 ? <View style={styles.connector} /> : null}
-                  </View>
-                );
-              })}
+            <View style={[styles.statsValues, !compact ? styles.statsValuesDesktop : styles.statsValuesCompact]}>
+              {learningStats.map((item, index) => (
+                <View key={item.label} style={styles.statItem}>
+                  <Text style={styles.statValue}>{item.value}</Text>
+                  <Text style={styles.statLabel} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                  {index < learningStats.length - 1 ? <View style={styles.statDivider} /> : null}
+                </View>
+              ))}
             </View>
           </View>
 
-          <View style={styles.advantagesSection}>
-            <View style={styles.advantagesHeading}>
-              <View style={styles.advantagesBadge}><Sparkles size={13} color="#1769D2" /><Text style={styles.advantagesBadgeText}>تجربهٔ کامل یادگیری</Text></View>
-              <Text style={styles.advantagesTitle}>همه‌چیز برای یک برنامهٔ منظم روزانه</Text>
-              <Text style={styles.advantagesDetail}>هر بخش طوری طراحی شده که سریع وارد تمرین شوی و مسیرت را بدون سردرگمی ادامه بدهی.</Text>
+          <View style={styles.flowCard}>
+            <View style={styles.flowHeader}>
+              <View style={styles.flowTitleCol}>
+                <Text style={styles.flowEyebrow}>روش یادگیری میلو</Text>
+                <Text style={styles.flowTitle}>چرخهٔ کوتاه و مؤثر روزانه</Text>
+              </View>
+              <View style={styles.minutesBadge}>
+                <Text style={styles.minutesValue}>۱۰</Text>
+                <Text style={styles.minutesText}>دقیقه در روز</Text>
+              </View>
             </View>
-            <View style={styles.advantagesGrid}>
+            {compact ? (
+              <View style={styles.stepsColumnCompact}>
+                {learningSteps.map(step => {
+                  const Icon = step.icon;
+                  return (
+                    <View key={step.number} style={styles.stepRowCompact}>
+                      <View style={styles.stepIcon}>
+                        <Icon size={18} color={LuxuryPalette.primary} />
+                      </View>
+                      <View style={styles.stepCopyCompact}>
+                        <View style={styles.stepTitleRowCompact}>
+                          <Text style={styles.stepTitle}>{step.title}</Text>
+                          <Text style={styles.stepNumber}>{step.number}</Text>
+                        </View>
+                        <Text style={styles.stepDetailCompact}>{step.detail}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.stepsRow}>
+                {learningSteps.map((step, index) => {
+                  const Icon = step.icon;
+                  return (
+                    <View key={step.number} style={styles.stepWrap}>
+                      <View style={styles.step}>
+                        <View style={styles.stepIcon}>
+                          <Icon size={18} color={LuxuryPalette.primary} />
+                        </View>
+                        <Text style={styles.stepNumber}>{step.number}</Text>
+                        <Text style={styles.stepTitle}>{step.title}</Text>
+                        <Text style={styles.stepDetail}>{step.detail}</Text>
+                      </View>
+                      {index < learningSteps.length - 1 ? <View style={styles.connector} /> : null}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          <View style={styles.advantagesSection}>
+            <View style={[styles.advantagesGrid, compact && styles.advantagesGridCompact]}>
               {productFeatures.map(feature => {
                 const Icon = feature.icon;
                 return (
-                  <View key={feature.title} style={styles.advantageCard}>
-                    <View style={[styles.advantageIcon, { backgroundColor: feature.soft }]}><Icon size={19} color={feature.color} /></View>
+                  <View
+                    key={feature.title}
+                    style={[styles.advantageCard, !compact && styles.advantageCardDesktop]}
+                  >
+                    <View style={[styles.advantageIcon, { backgroundColor: feature.soft }]}>
+                      <Icon size={19} color={feature.color} />
+                    </View>
                     <View style={styles.advantageCopy}>
                       <Text style={styles.advantageTitle}>{feature.title}</Text>
                       <Text style={styles.advantageDetail}>{feature.detail}</Text>
@@ -217,8 +403,7 @@ export default function LanguagesHome() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>آماده‌ای شروع کنی؟ زبانت را انتخاب کن و اولین درس را بساز.</Text>
-            <Text style={styles.footerBrand}>MILO · LEARN A LITTLE, EVERY DAY</Text>
+            <Text style={styles.footerBrand}>MILO LANGUAGE ACADEMY</Text>
           </View>
         </View>
       </ScrollView>
@@ -227,95 +412,683 @@ export default function LanguagesHome() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F7FAFF' },
-  scrollContent: { flexGrow: 1, paddingBottom: 28 },
-  page: { width: '100%', maxWidth: 1080, alignSelf: 'center', paddingHorizontal: 26, paddingTop: 16, gap: 22 },
-  pageCompact: { paddingHorizontal: 15, paddingTop: 12, gap: 17 },
-  header: { minHeight: 48, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  brand: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
-  brandIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#1769D2', alignItems: 'center', justifyContent: 'center', shadowColor: '#1769D2', shadowOpacity: .2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  brandName: { fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 16, lineHeight: 20, fontWeight: '800', textAlign: 'right', letterSpacing: 2, writingDirection: 'ltr' },
-  brandCaption: { fontFamily: 'Inter-ExtraBold', color: '#6680A5', fontSize: 6, fontWeight: '800', letterSpacing: 1.35, writingDirection: 'ltr' },
-  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  heroBackground: { ...StyleSheet.absoluteFillObject, opacity: .88 },
-  lockButton: { width: 36, height: 36, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
-  statusPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8' },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#22A06B' },
-  statusText: { fontFamily: 'Vazir', color: '#49617F', fontSize: 10, fontWeight: '400', writingDirection: 'rtl' },
-  hero: { minHeight: 290, borderRadius: 28, borderWidth: 1, borderColor: '#D4E5FA', overflow: 'hidden', flexDirection: 'row-reverse', alignItems: 'center', padding: 30, shadowColor: '#18529A', shadowOpacity: .08, shadowRadius: 22, shadowOffset: { width: 0, height: 9 }, elevation: 3 },
-  heroCompact: { minHeight: 266, padding: 18, alignItems: 'flex-start' },
-  heroOrbOne: { position: 'absolute', width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(79,160,255,0.12)', top: -72, right: -38 },
-  heroOrbTwo: { position: 'absolute', width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(74,216,224,0.13)', bottom: -55, left: 40 },
-  heroCopy: { flex: 1, zIndex: 2, alignItems: 'flex-end', gap: 12, maxWidth: 610 },
-  heroCopyCompact: { paddingTop: 2, paddingBottom: 82 },
-  eyebrow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, alignSelf: 'flex-end', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.84)', borderWidth: 1, borderColor: '#D5E6FA' },
-  eyebrowText: { fontFamily: 'Vazir', color: '#1769D2', fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-  heroTitle: { fontFamily: 'Vazir', color: '#102A56', fontSize: 34, lineHeight: 49, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  heroTitleTiny: { fontSize: 29, lineHeight: 43 },
-  heroDescription: { maxWidth: 580, fontFamily: 'Vazir', color: '#4D6688', fontSize: 14, lineHeight: 25, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  heroChecks: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 9 },
-  checkItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  checkText: { fontFamily: 'Vazir', color: '#315274', fontSize: 11, fontWeight: '400', writingDirection: 'rtl' },
-  heroVisual: { width: '36%', height: 235, alignItems: 'center', justifyContent: 'center' },
-  heroVisualCompact: { position: 'absolute', width: 108, height: 108, left: 10, bottom: 8, borderRadius: 24, overflow: 'hidden', opacity: .96 },
-  heroImage: { width: '100%', height: '100%' },
-  statsStrip: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 14, borderRadius: 20, paddingHorizontal: 17, paddingVertical: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8', shadowColor: '#174B86', shadowOpacity: .035, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
-  statsStripCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
-  statsLead: { flex: 1.25, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
-  statsLeadCompact: { flex: 0, width: '100%' },
-  statsLeadIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#EAF3FF', alignItems: 'center', justifyContent: 'center' },
-  statsLeadCopy: { flex: 1, alignItems: 'flex-end', gap: 1 },
-  statsLeadTitle: { fontFamily: 'Vazir', color: '#18385F', fontSize: 11, lineHeight: 18, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  statsLeadDetail: { fontFamily: 'Vazir', color: '#7186A0', fontSize: 9, lineHeight: 15, textAlign: 'right', writingDirection: 'rtl' },
-  statsValues: { flex: 1.5, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-around' },
-  statsValuesCompact: { flex: 0, width: '100%', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E7EFF8' },
-  statItem: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center' },
-  statValue: { fontFamily: Typography.numberFontFamily, color: '#1769D2', fontSize: 15, lineHeight: 19, fontWeight: '900', writingDirection: 'rtl' },
-  statLabel: { fontFamily: 'Vazir', color: '#7186A0', fontSize: 8, lineHeight: 13, fontWeight: '400', textAlign: 'center', writingDirection: 'rtl' },
-  statDivider: { position: 'absolute', left: 0, width: 1, height: 28, backgroundColor: '#E0EAF6' },
-  languageSection: { gap: 13, paddingTop: 4, alignItems: 'center' },
-  sectionCopy: { width: '100%', alignItems: 'center', gap: 3 },
-  sectionEyebrow: { fontFamily: 'Inter-ExtraBold', color: '#1769D2', fontSize: 7, fontWeight: '800', letterSpacing: 1.25, writingDirection: 'ltr' },
-  sectionTitle: { fontFamily: 'Vazir', color: '#102A56', fontSize: 21, lineHeight: 31, fontWeight: '400', textAlign: 'center', writingDirection: 'rtl' },
-  sectionDetail: { fontFamily: 'Vazir', color: '#6A7F9B', fontSize: 12, lineHeight: 20, textAlign: 'center', writingDirection: 'rtl' },
-  languageRow: { width: '100%', flexDirection: 'row-reverse', justifyContent: 'center', gap: 12, alignItems: 'stretch' },
-  languageCard: { flex: 1, minWidth: 0, maxWidth: 190, minHeight: 92, borderRadius: 18, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', gap: 6, shadowColor: '#174B86', shadowOpacity: .045, shadowRadius: 9, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
-  languageCardTiny: { minHeight: 84, paddingHorizontal: 7, paddingVertical: 9, borderRadius: 15 },
-  flag: { fontSize: 27, lineHeight: 33 },
-  languageIdentity: { alignItems: 'center', gap: 0 },
-  languageCode: { flexShrink: 0, textAlign: 'center', fontFamily: 'Inter-ExtraBold', color: '#102A56', fontSize: 12, lineHeight: 17, fontWeight: '800', letterSpacing: 1.2, writingDirection: 'ltr' },
-  languageName: { fontFamily: 'Inter-ExtraBold', color: '#6680A5', fontSize: 7, lineHeight: 12, fontWeight: '800', writingDirection: 'ltr' },
-  languageLessonCount: { fontFamily: 'Vazir', color: '#1769D2', fontSize: 8, lineHeight: 13, fontWeight: '400', writingDirection: 'rtl' },
-  languageArrow: { position: 'absolute', left: 8, bottom: 8, width: 23, height: 23, borderRadius: 8, backgroundColor: 'rgba(255,255,255,.8)', alignItems: 'center', justifyContent: 'center' },
-  pressed: { opacity: .82, transform: [{ scale: .98 }] },
-  flowCard: { borderRadius: 24, padding: 20, gap: 19, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8', shadowColor: '#174B86', shadowOpacity: .05, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
-  flowHeader: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  flowEyebrow: { fontFamily: 'Vazir', color: '#1769D2', fontSize: 10, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  flowTitle: { fontFamily: 'Vazir', color: '#102A56', fontSize: 16, lineHeight: 25, fontWeight: '400', textAlign: 'right', writingDirection: 'rtl' },
-  minutesBadge: { minWidth: 64, borderRadius: 14, backgroundColor: '#EAF3FF', borderWidth: 1, borderColor: '#D3E5FC', paddingVertical: 7, alignItems: 'center' },
-  minutesValue: { fontFamily: Typography.numberFontFamily, writingDirection: 'rtl', color: '#1769D2', fontSize: 17, lineHeight: 19, fontWeight: '900' },
-  minutesText: { fontFamily: 'Vazir', color: '#6680A5', fontSize: 8, fontWeight: '400', writingDirection: 'rtl' },
+  root: {
+    ...LtrDirection,
+    flex: 1,
+    backgroundColor: LuxuryPalette.canvas,
+  },
+  scrollContent: { flexGrow: 1, paddingBottom: 30 },
+  page: {
+    width: '100%',
+    maxWidth: 1020,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 14,
+    gap: 20,
+  },
+  pageCompact: { paddingHorizontal: 15, paddingTop: 8, gap: 14 },
+  header: {
+    width: '100%',
+    minHeight: 46,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  brand: { flexDirection: 'row', alignItems: 'center' },
+  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  actionIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: LuxuryPalette.surface,
+    borderWidth: 1,
+    borderColor: LuxuryPalette.border,
+    ...LuxuryShadows.soft,
+  },
+  statusPill: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: LuxuryPalette.surface,
+    borderWidth: 1,
+    borderColor: LuxuryPalette.border,
+  },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LuxuryPalette.emerald },
+  statusText: {
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.inkSoft,
+    fontSize: 10.5,
+    fontWeight: '700',
+    writingDirection: 'rtl',
+  },
+  hero: {
+    width: '100%',
+    borderRadius: 26,
+    overflow: 'hidden',
+    padding: 22,
+    gap: 15,
+    backgroundColor: '#FBF8F0',
+    borderWidth: 1,
+    borderColor: '#E8DCC3',
+    ...LuxuryShadows.soft,
+  },
+  heroCompact: {
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 7,
+  },
+  heroGoldEdge: {
+    position: 'absolute',
+    top: 0,
+    left: 24,
+    right: 24,
+    height: 1,
+    backgroundColor: '#D8B76E',
+  },
+  heroTopline: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  eyebrow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E7D9BB',
+  },
+  eyebrowText: {
+    fontFamily: Typography.fontFamily,
+    color: '#806027',
+    fontSize: 10.5,
+    fontWeight: '800',
+    writingDirection: 'rtl',
+    textAlign: 'right',
+  },
+  heroMain: {
+    minHeight: 270,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  heroMainCompact: {
+    minHeight: 0,
+    flexDirection: 'column-reverse',
+    gap: 0,
+  },
+  heroCopy: {
+    flex: 1,
+    alignItems: 'flex-end',
+    gap: 10,
+    zIndex: 1,
+  },
+  heroCopyDesktop: { maxWidth: 500, gap: 13 },
+  heroTitle: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.ink,
+    fontSize: 31,
+    lineHeight: 44,
+    fontWeight: '900',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  heroTitleTiny: { fontSize: 25, lineHeight: 36 },
+  heroDescription: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.inkSoft,
+    fontSize: 13.5,
+    lineHeight: 22,
+    fontWeight: '500',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  heroCta: {
+    minHeight: 46,
+    minWidth: 185,
+    alignSelf: 'flex-end',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 15,
+    marginTop: 3,
+    paddingHorizontal: 17,
+    borderRadius: 14,
+    backgroundColor: '#1D4FC4',
+    borderWidth: 1,
+    borderColor: '#416FE0',
+    ...LuxuryShadows.soft,
+  },
+  heroCtaCompact: { alignSelf: 'stretch' },
+  heroCtaText: {
+    fontFamily: Typography.fontFamily,
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+    writingDirection: 'rtl',
+  },
+  heroVisual: {
+    width: 320,
+    height: 285,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  heroVisualCompact: {
+    width: '100%',
+    height: 218,
+    marginTop: -5,
+    marginBottom: 2,
+  },
+  heroArtDisk: {
+    position: 'absolute',
+    width: 166,
+    height: 166,
+    borderRadius: 83,
+    alignSelf: 'center',
+    top: 24,
+  },
+  heroArtRing: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    alignSelf: 'center',
+    top: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(184, 134, 40, 0.38)',
+  },
+  heroArtwork: { width: '100%', height: '100%' },
+  languageSection: { width: '100%', gap: 11 },
+  sectionHeaderRow: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionHeaderCopy: { width: '100%', alignItems: 'flex-end', gap: 2 },
+  sectionEyebrow: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.primary,
+    fontSize: 11.5,
+    fontWeight: '800',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  sectionTitle: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.ink,
+    fontSize: 18.5,
+    lineHeight: 28,
+    fontWeight: '900',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  languageGrid: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    gap: 14,
+    alignItems: 'stretch',
+  },
+  languageGridCompact: {
+    flexDirection: 'row-reverse',
+    alignItems: 'stretch',
+    gap: 8,
+  },
+  languageRowCard: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    backgroundColor: LuxuryPalette.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: LuxuryPalette.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    ...LuxuryShadows.card,
+  },
+  languageRowCardCompact: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 146,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    gap: 8,
+    borderRadius: 18,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  languageCompactTop: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  monogramWrapCompact: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  languageIdentityCompact: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 2,
+  },
+  languagePersianNameCompact: {
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.ink,
+    fontSize: 14.5,
+    lineHeight: 21,
+    fontWeight: '900',
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  languageNativeNameCompact: {
+    fontFamily: 'Inter-ExtraBold',
+    color: LuxuryPalette.inkMuted,
+    fontSize: 9.5,
+    fontWeight: '700',
+    textAlign: 'center',
+    writingDirection: 'ltr',
+  },
+  languageLessonCompact: {
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.primaryDeep,
+    fontSize: 9.5,
+    lineHeight: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  flagCompact: { fontSize: 16 },
+  languageArrowCompact: {
+    alignSelf: 'center',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 11,
+    backgroundColor: LuxuryPalette.primary,
+  },
+  languageCard: {
+    backgroundColor: LuxuryPalette.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: LuxuryPalette.border,
+    padding: 18,
+    gap: 16,
+    justifyContent: 'space-between',
+    ...LuxuryShadows.card,
+  },
+  languageCardDesktop: {
+    flex: 1,
+    minWidth: 0,
+  },
+  languageCardTop: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  monogramWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  monogramCode: {
+    fontFamily: 'Inter-ExtraBold',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.1,
+    writingDirection: 'ltr',
+  },
+  languageIdentity: { flex: 1, alignItems: 'flex-end', gap: 2 },
+  languageNameRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  languagePersianName: {
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.ink,
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: '900',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  flag: { fontSize: 18 },
+  languageNativeName: {
+    fontFamily: 'Inter-ExtraBold',
+    color: LuxuryPalette.inkMuted,
+    fontSize: 11.5,
+    fontWeight: '700',
+    writingDirection: 'ltr',
+  },
+  languageCardFooter: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: LuxuryPalette.border,
+    gap: 10,
+  },
+  lessonCountBadge: {
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: LuxuryPalette.primarySoft,
+  },
+  languageLessonCount: {
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.primaryDeep,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  languageArrow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: LuxuryPalette.primary,
+  },
+  enterText: {
+    fontFamily: Typography.fontFamily,
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    writingDirection: 'rtl',
+  },
+  pressed: { opacity: 0.88, transform: [{ scale: 0.99 }] },
+  statsStrip: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 14,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    backgroundColor: LuxuryPalette.surface,
+    borderWidth: 1,
+    borderColor: LuxuryPalette.border,
+    ...LuxuryShadows.soft,
+  },
+  statsStripCompact: { flexDirection: 'column', alignItems: 'stretch', gap: 14 },
+  statsLead: { width: '100%', flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
+  statsLeadDesktop: { flex: 1.25, width: undefined, minWidth: 0 },
+  statsLeadIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: LuxuryPalette.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statsLeadCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
+  statsLeadTitle: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.ink,
+    fontSize: 13.5,
+    lineHeight: 21,
+    fontWeight: '800',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  statsLeadDetail: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.inkMuted,
+    fontSize: 11.5,
+    lineHeight: 18,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  statsValues: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-around' },
+  statsValuesDesktop: { flex: 1.5 },
+  statsValuesCompact: {
+    width: '100%',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: LuxuryPalette.border,
+  },
+  statItem: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  statValue: {
+    fontFamily: Typography.numberFontFamily,
+    color: LuxuryPalette.primary,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '900',
+    writingDirection: 'rtl',
+  },
+  statLabel: {
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.inkMuted,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  statDivider: { position: 'absolute', left: 0, width: 1, height: 28, backgroundColor: LuxuryPalette.border },
+  flowCard: {
+    width: '100%',
+    borderRadius: 24,
+    padding: 18,
+    gap: 14,
+    backgroundColor: LuxuryPalette.surface,
+    borderWidth: 1,
+    borderColor: LuxuryPalette.border,
+    ...LuxuryShadows.soft,
+  },
+  flowHeader: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  flowTitleCol: { flex: 1, alignItems: 'flex-end', gap: 2 },
+  flowEyebrow: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.primary,
+    fontSize: 11.5,
+    fontWeight: '800',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  flowTitle: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.ink,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '900',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  minutesBadge: {
+    minWidth: 70,
+    borderRadius: 14,
+    backgroundColor: LuxuryPalette.goldSoft,
+    borderWidth: 1,
+    borderColor: '#EFE0BA',
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  minutesValue: {
+    fontFamily: Typography.numberFontFamily,
+    writingDirection: 'rtl',
+    color: LuxuryPalette.gold,
+    fontSize: 17,
+    lineHeight: 20,
+    fontWeight: '900',
+  },
+  minutesText: {
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.inkSoft,
+    fontSize: 10,
+    fontWeight: '700',
+    writingDirection: 'rtl',
+  },
+  stepsColumnCompact: {
+    width: '100%',
+    gap: 9,
+  },
+  stepRowCompact: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: LuxuryPalette.surfaceSoft,
+    borderWidth: 1,
+    borderColor: LuxuryPalette.border,
+  },
+  stepCopyCompact: {
+    flex: 1,
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  stepTitleRowCompact: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 7,
+  },
+  stepDetailCompact: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.inkMuted,
+    fontSize: 12,
+    lineHeight: 19,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
   stepsRow: { flexDirection: 'row-reverse', alignItems: 'flex-start' },
   stepWrap: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center' },
-  step: { flex: 1, alignItems: 'center', gap: 4 },
-  stepIcon: { width: 37, height: 37, borderRadius: 12, backgroundColor: '#EDF5FF', borderWidth: 1, borderColor: '#D7E7FA', alignItems: 'center', justifyContent: 'center' },
-  stepNumber: { fontFamily: Typography.numberFontFamily, color: '#8AA1BE', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
-  stepTitle: { fontFamily: 'Vazir', color: '#18385F', fontSize: 12, lineHeight: 18, fontWeight: '400', writingDirection: 'rtl' },
-  stepDetail: { maxWidth: 100, fontFamily: 'Vazir', color: '#7186A0', fontSize: 9, lineHeight: 15, textAlign: 'center', writingDirection: 'rtl' },
-  connector: { width: 18, height: 1, marginTop: 19, backgroundColor: '#C9DCF4' },
-  advantagesSection: { gap: 14, paddingVertical: 4 },
-  advantagesHeading: { alignItems: 'center', gap: 4, paddingHorizontal: 10 },
-  advantagesBadge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#EAF3FF' },
-  advantagesBadgeText: { fontFamily: 'Vazir', color: '#1769D2', fontSize: 9, fontWeight: '400', writingDirection: 'rtl' },
-  advantagesTitle: { fontFamily: 'Vazir', color: '#102A56', fontSize: 18, lineHeight: 28, fontWeight: '400', textAlign: 'center', writingDirection: 'rtl' },
-  advantagesDetail: { maxWidth: 620, fontFamily: 'Vazir', color: '#6A7F9B', fontSize: 11, lineHeight: 20, textAlign: 'center', writingDirection: 'rtl' },
-  advantagesGrid: { flexDirection: 'row-reverse', justifyContent: 'center', gap: 10 },
-  advantageCard: { flex: 1, maxWidth: 260, minWidth: 0, minHeight: 108, alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: 18, paddingHorizontal: 10, paddingVertical: 13, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE8F8', shadowColor: '#174B86', shadowOpacity: .035, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
-  advantageIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  advantageCopy: { alignItems: 'center', gap: 2 },
-  advantageTitle: { fontFamily: 'Vazir', color: '#18385F', fontSize: 11, lineHeight: 18, fontWeight: '400', textAlign: 'center', writingDirection: 'rtl' },
-  advantageDetail: { fontFamily: 'Vazir', color: '#7186A0', fontSize: 9, lineHeight: 15, textAlign: 'center', writingDirection: 'rtl' },
-  footer: { paddingVertical: 8, alignItems: 'center', gap: 5 },
-  footerText: { fontFamily: 'Vazir', color: '#627B9B', fontSize: 11, lineHeight: 20, textAlign: 'center', writingDirection: 'rtl' },
-  footerBrand: { fontFamily: 'Inter-ExtraBold', color: '#A0B2C9', fontSize: 6, fontWeight: '800', letterSpacing: 1.1, writingDirection: 'ltr' },
+  step: { flex: 1, alignItems: 'center', gap: 5 },
+  stepIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: LuxuryPalette.primarySoft,
+    borderWidth: 1,
+    borderColor: '#D6E4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumber: {
+    fontFamily: Typography.numberFontFamily,
+    color: LuxuryPalette.gold,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  stepTitle: {
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.ink,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: '800',
+    writingDirection: 'rtl',
+    textAlign: 'right',
+  },
+  stepDetail: {
+    maxWidth: 130,
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.inkMuted,
+    fontSize: 11.5,
+    lineHeight: 18,
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  connector: { width: 20, height: 1, marginTop: 20, backgroundColor: LuxuryPalette.borderStrong },
+  advantagesSection: { width: '100%', gap: 12 },
+  advantagesGrid: { width: '100%', flexDirection: 'row-reverse', justifyContent: 'center', gap: 12 },
+  advantagesGridCompact: { flexDirection: 'column', gap: 10 },
+  advantageCard: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 13,
+    backgroundColor: LuxuryPalette.surface,
+    borderWidth: 1,
+    borderColor: LuxuryPalette.border,
+    ...LuxuryShadows.soft,
+  },
+  advantageCardDesktop: {
+    flex: 1,
+    width: undefined,
+    minWidth: 0,
+  },
+  advantageIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  advantageCopy: { flex: 1, alignItems: 'flex-end', gap: 2 },
+  advantageTitle: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.ink,
+    fontSize: 13.5,
+    lineHeight: 20,
+    fontWeight: '800',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  advantageDetail: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.inkMuted,
+    fontSize: 11.5,
+    lineHeight: 18,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  footer: { paddingVertical: 6, alignItems: 'center' },
+  footerBrand: {
+    fontFamily: 'Inter-ExtraBold',
+    color: LuxuryPalette.inkMuted,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    writingDirection: 'ltr',
+  },
 });

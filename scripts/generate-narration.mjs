@@ -26,15 +26,24 @@ async function retry(task, label) {
   throw error;
 }
 
+function prepareTtsText(text, lang) {
+  const nfc = String(text || '').normalize('NFC');
+  if (lang === 'ru' || /[А-Яа-яЁё]/.test(nfc)) {
+    return nfc.replace(/[\u0300\u0301]/g, '').replace(/\s+/g, ' ').trim();
+  }
+  return nfc.replace(/\s+/g, ' ').trim();
+}
+
 async function openAiAudio(sentence) {
   const voice = process.env[`OPENAI_TTS_VOICE_${sentence.language.toUpperCase()}`] || 'coral';
+  const spokenText = prepareTtsText(sentence.text, sentence.language);
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
     headers: { Authorization: `Bearer ${openAiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts', voice, input: sentence.text,
+      model: process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts', voice, input: spokenText,
       response_format: 'mp3', speed: 1,
-      instructions: `Read only this ${sentence.locale} language-learning sentence. Use clear natural connected speech, correct pronunciation, gentle warmth, and natural pauses. Never translate, explain, repeat, or add words.`,
+      instructions: `Read only this ${sentence.locale} language-learning sentence as a native female speaker. Use clear natural connected speech, authentic native phonology, gentle warmth, and natural pauses. Never translate, explain, repeat, or add words.`,
     }),
   });
   if (!response.ok) throw new Error(`OpenAI ${response.status}: ${(await response.text()).slice(0, 300)}`);
@@ -42,17 +51,31 @@ async function openAiAudio(sentence) {
 }
 
 async function elevenLabsAudio(sentence) {
-  const voice = process.env[`ELEVENLABS_VOICE_${sentence.language.toUpperCase()}`];
-  if (!voice) throw new Error(`ELEVENLABS_VOICE_${sentence.language.toUpperCase()} is missing`);
+  const lang = sentence.language.toLowerCase();
+  const explicitVoice = process.env[`ELEVENLABS_VOICE_${sentence.language.toUpperCase()}`];
+  const voice = explicitVoice || (lang === 'ru' ? 'pFZP5JQG7iQjIQuC4Bku' : 'EXAVITQu4vr4xnSDxMaL');
+  const spokenText = prepareTtsText(sentence.text, lang);
+  const model = lang === 'ru'
+    ? (process.env.ELEVENLABS_MODEL_RU || process.env.ELEVENLABS_MODEL || 'eleven_turbo_v2_5')
+    : (process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2');
+  const supportsLanguageCode = /turbo_v2_5|flash_v2_5|eleven_v3/i.test(model);
+  const voiceSettings = lang === 'ru' && !explicitVoice
+    ? { stability: 0.62, similarity_boost: 0.42, style: 0.0, use_speaker_boost: false }
+    : { stability: 0.55, similarity_boost: 0.80, style: 0.12, use_speaker_boost: true };
+  const body = {
+    text: spokenText,
+    model_id: model,
+    voice_settings: voiceSettings,
+    pronunciation_dictionary_locators: sentence.pronunciationDictionaryLocators || [],
+  };
+  if (supportsLanguageCode) {
+    body.language_code = lang;
+    body.apply_text_normalization = 'on';
+  }
   const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}?output_format=mp3_44100_128`, {
     method: 'POST',
     headers: { 'xi-api-key': elevenKey, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-    body: JSON.stringify({
-      text: sentence.text,
-      model_id: process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2',
-      voice_settings: { stability: 0.42, similarity_boost: 0.8, style: 0.28, use_speaker_boost: true },
-      pronunciation_dictionary_locators: sentence.pronunciationDictionaryLocators || [],
-    }),
+    body: JSON.stringify(body),
   });
   if (!response.ok) throw new Error(`ElevenLabs ${response.status}: ${(await response.text()).slice(0, 300)}`);
   return Buffer.from(await response.arrayBuffer());

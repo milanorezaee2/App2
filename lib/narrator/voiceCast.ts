@@ -29,6 +29,23 @@ export function selectedNarratorLabel(locale: NarratorLocale): string {
   return SELECTED_NARRATOR_CAST[locale].label;
 }
 
+/**
+ * Strips pedagogic combining stress marks (U+0301 acute / U+0300 grave) that are
+ * shown to learners on Russian words (e.g. «Приве́т», «молоко́», «хорошо́») while
+ * preserving real Cyrillic letters such as «ё / Ё» and «й / Й» via NFC first.
+ *
+ * Sending raw U+0301 inside Cyrillic words breaks TTS lexicon lookup in
+ * ElevenLabs, OpenAI and Web Speech, causing Russian words to be read with
+ * unreduced English-like vowels instead of native Russian phonology.
+ */
+export function prepareTextForTts(text: string, locale?: string): string {
+  const nfc = (text || '').normalize('NFC');
+  if (!locale || locale.toLowerCase().startsWith('ru') || /[А-Яа-яЁё]/.test(nfc)) {
+    return nfc.replace(/[\u0300\u0301]/g, '').replace(/\s+/g, ' ').trim();
+  }
+  return nfc.replace(/\s+/g, ' ').trim();
+}
+
 /** Names of voices that are recognisably female on Windows, Android, iOS and Chrome. */
 const FEMININE_NAMES: Record<NarratorLocale, RegExp> = {
   'en-US': /(?:^|[^a-z])(?:aria|jenny|ava|emma|michelle|sonia|libby|natasha|clara|samantha|karen|moira|tessa|victoria|allison|susan|zoe|zira|hazel|serena|kate|stephanie|olivia|amy|joanna|salli|kimberly|ivy|kendra|nicole|female|woman|google us english|google uk english female)(?:$|[^a-z])/i,

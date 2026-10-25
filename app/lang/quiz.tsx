@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Trophy, ArrowRight, RotateCcw, Star } from 'lucide-react-native';
+import { Trophy, ArrowRight, ChevronRight, RotateCcw, Star } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radius } from '@/lib/theme';
 import { toPersianDigits } from '@/lib/format';
 import { getLesson, type LangWord } from '@/lib/langContent';
@@ -54,27 +54,32 @@ export default function QuizScreen() {
 
   const [questions, setQuestions] = useState<Question[]>(() => buildQuestions(lessonId));
   const [qi, setQi] = useState(0);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [answersByIndex, setAnswersByIndex] = useState<Record<number, number>>({});
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
 
   useEffect(() => {
     setQuestions(buildQuestions(lessonId));
     setQi(0);
-    setSelected(null);
+    setAnswersByIndex({});
     setCorrectCount(0);
     setFinished(false);
   }, [lessonId]);
 
   const question = questions[qi];
+  const selected = answersByIndex[qi] ?? null;
   const total = questions.length;
 
   const pick = async (idx: number) => {
     if (selected !== null) return;
-    setSelected(idx);
+    setAnswersByIndex((prev) => ({ ...prev, [qi]: idx }));
     const correct = question.options[idx].en === question.word.en;
     if (correct) setCorrectCount((c) => c + 1);
     await recordQuizAnswer(lessonId, question.wordIndex, correct);
+  };
+
+  const previous = () => {
+    if (qi > 0) setQi((i) => i - 1);
   };
 
   const next = () => {
@@ -82,7 +87,6 @@ export default function QuizScreen() {
       setFinished(true);
     } else {
       setQi((i) => i + 1);
-      setSelected(null);
     }
   };
 
@@ -123,7 +127,7 @@ export default function QuizScreen() {
             onPress={() => {
               setQuestions(buildQuestions(lessonId));
               setQi(0);
-              setSelected(null);
+              setAnswersByIndex({});
               setCorrectCount(0);
               setFinished(false);
             }}
@@ -132,9 +136,9 @@ export default function QuizScreen() {
             <Text style={styles.finishBtnText}>تلاش دوباره</Text>
           </Pressable>
 
-          <Pressable accessibilityRole="button" accessibilityLabel="بازگشت به فهرست درس‌ها" style={[styles.finishBtn, { backgroundColor: Colors.neutral[800] }]} onPress={() => router.back()}>
-            <ArrowRight size={18} color={Colors.neutral[200]} strokeWidth={2.3} />
-            <Text style={[styles.finishBtnText, { color: Colors.neutral[100] }]}>بازگشت</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="بازگشت به فهرست درس‌ها" style={[styles.finishBtn, { backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border }]} onPress={() => router.back()}>
+            <ArrowRight size={18} color={Palette.primaryDark} strokeWidth={2.3} />
+            <Text style={[styles.finishBtnText, { color: Palette.primaryDark }]}>بازگشت</Text>
           </Pressable>
         </View>
       </View>
@@ -179,12 +183,22 @@ export default function QuizScreen() {
           })}
         </View>
 
-        {selected !== null && (
-          <Pressable accessibilityRole="button" accessibilityLabel={qi + 1 >= total ? 'نمایش نتیجهٔ آزمون' : 'رفتن به سؤال بعدی'} style={[styles.nextBtn, { backgroundColor: lesson.color }]} onPress={next}>
-            <Text style={styles.nextBtnText}>{qi + 1 >= total ? 'نمایش نتیجه' : 'سؤال بعدی'}</Text>
-            <ArrowRight size={18} color={Colors.onColor} strokeWidth={2.4} />
-          </Pressable>
-        )}
+        {(qi > 0 || selected !== null) ? (
+          <View style={styles.quizNavRow}>
+            {qi > 0 ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="رفتن به سؤال قبلی" style={styles.prevBtn} onPress={previous}>
+                <ChevronRight size={18} color={Palette.primaryDark} strokeWidth={2.4} />
+                <Text style={styles.prevBtnText}>سؤال قبلی</Text>
+              </Pressable>
+            ) : null}
+            {selected !== null ? (
+              <Pressable accessibilityRole="button" accessibilityLabel={qi + 1 >= total ? 'نمایش نتیجهٔ آزمون' : 'رفتن به سؤال بعدی'} style={[styles.nextBtn, { backgroundColor: lesson.color }]} onPress={next}>
+                <Text style={styles.nextBtnText}>{qi + 1 >= total ? 'نمایش نتیجه' : 'سؤال بعدی'}</Text>
+                <ArrowRight size={18} color={Colors.onColor} strokeWidth={2.4} />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -195,14 +209,17 @@ const styles = StyleSheet.create({
   progressWrap: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg },
   qWrap: { flex: 1, padding: Spacing.xl, gap: Spacing.lg, margin: Spacing.lg, backgroundColor: Palette.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: Palette.border, shadowColor: '#172033', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   qLabel: { alignSelf: 'stretch', fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md, color: Palette.muted, textAlign: 'right', writingDirection: 'rtl' },
-  qWord: { alignSelf: 'stretch', fontFamily: Typography.latinFontFamily, fontSize: 42, fontWeight: '800', color: Palette.ink, textAlign: 'right', writingDirection: 'ltr' },
+  qWord: { alignSelf: 'stretch', fontFamily: Typography.latinFontFamily, fontSize: 38, fontWeight: '800', color: Palette.ink, textAlign: 'left', writingDirection: 'ltr' },
   optionsWrap: { gap: Spacing.sm, marginTop: Spacing.md },
   option: { flexDirection: 'row-reverse', alignItems: 'center', gap: Spacing.md, backgroundColor: Palette.surface, borderRadius: Radius.lg, borderWidth: 1.5, borderColor: Palette.border, paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg },
   optionCorrect: { backgroundColor: Palette.successSoft, borderColor: Palette.success },
   optionWrong: { backgroundColor: Palette.dangerSoft, borderColor: Palette.danger },
   optionBadge: { width: 30, height: 30, borderRadius: 15, backgroundColor: Palette.surfaceMuted, textAlign: 'center', textAlignVertical: 'center', fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Palette.text, lineHeight: 30 },
   optionText: { flex: 1, fontFamily: Typography.fontFamily, fontSize: Typography.sizes.lg, fontWeight: Typography.weights.medium, color: Palette.ink, textAlign: 'right', writingDirection: 'rtl' },
-  nextBtn: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: Spacing.md, borderRadius: Radius.lg, marginTop: Spacing.md, transform: [{ translateY: -30 }] },
+  quizNavRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginTop: Spacing.md },
+  prevBtn: { minHeight: 50, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: Spacing.md, borderRadius: 15, backgroundColor: Palette.surfaceMuted, borderWidth: 1, borderColor: Palette.border },
+  prevBtnText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.sm, fontWeight: Typography.weights.bold, color: Palette.primaryDark, writingDirection: 'rtl' },
+  nextBtn: { flex: 1, minHeight: 50, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: Spacing.md, borderRadius: 15 },
   nextBtnText: { fontFamily: Typography.fontFamily, fontSize: Typography.sizes.md, fontWeight: Typography.weights.bold, color: Colors.onColor, writingDirection: 'rtl', textAlign: 'center' },
   finishWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl, margin: Spacing.lg, gap: Spacing.lg, backgroundColor: Palette.surface, borderRadius: Radius.xl, borderWidth: 1, borderColor: Palette.border, shadowColor: '#172033', shadowOpacity: 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
   trophyBadge: { width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center' },

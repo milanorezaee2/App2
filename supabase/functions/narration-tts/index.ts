@@ -7,14 +7,14 @@
 //
 // Providers (first one that has a key wins, or set NARRATION_PROVIDER):
 //   openai      OPENAI_API_KEY              gpt-4o-mini-tts, warm female voice
-//   elevenlabs  ELEVENLABS_API_KEY          eleven_multilingual_v2, warm female
+//   elevenlabs  ELEVENLABS_API_KEY          native-calibrated female neural TTS
 //
 // Deploy:  npx supabase functions deploy narration-tts --no-verify-jwt
-// Secret:  npx supabase secrets set OPENAI_API_KEY=sk-...
-//          (or ELEVENLABS_API_KEY=... for the most human voice)
+// Secret:  npx supabase secrets set ELEVENLABS_API_KEY=...
 // Optional: NARRATION_TTS_TOKEN (shared token), OPENAI_TTS_MODEL,
 //           OPENAI_TTS_VOICE_EN / _DE / _RU,
-//           ELEVENLABS_VOICE_EN / _DE / _RU, ELEVENLABS_MODEL.
+//           ELEVENLABS_VOICE_EN / _DE / _RU,
+//           ELEVENLABS_MODEL, ELEVENLABS_MODEL_RU.
 //
 // Privacy: only the lesson sentence is sent to the provider. No learner
 // identity, no audio, no transcripts and no free-form chat reach this function.
@@ -45,23 +45,45 @@ const DEFAULT_OPENAI_VOICE: Record<LanguageCode, string> = {
   ru: 'coral',
 };
 
-// ElevenLabs voices are multilingual; Sarah is a warm, calm female voice.
 const ELEVEN_VOICE_ENV: Record<LanguageCode, string> = {
   en: 'ELEVENLABS_VOICE_EN',
   de: 'ELEVENLABS_VOICE_DE',
   ru: 'ELEVENLABS_VOICE_RU',
 };
 
+// Premade voices available across ElevenLabs accounts:
+// - English/German: Sarah (warm female voice)
+// - Russian fallback (when no native Russian voice is added to the account yet):
+//   Lily (pFZP5JQG7iQjIQuC4Bku) — soft European articulation without American
+//   retroflex R, paired with eleven_turbo_v2_5 + language_code: "ru" and low
+//   similarity_boost so Russian phonology dominates over English timbre.
 const DEFAULT_ELEVEN_VOICE = 'EXAVITQu4vr4xnSDxMaL';
+const DEFAULT_ELEVEN_EUROPEAN_FEMALE_VOICE = 'pFZP5JQG7iQjIQuC4Bku';
 
-const ELEVEN_VOICE_SETTINGS: Record<LanguageCode, {
+interface ElevenVoiceSettings {
   stability: number;
   similarity_boost: number;
   style: number;
-}> = {
-  en: { stability: 0.50, similarity_boost: 0.85, style: 0.20 },
-  de: { stability: 0.50, similarity_boost: 0.85, style: 0.20 },
-  ru: { stability: 0.50, similarity_boost: 0.85, style: 0.20 },
+  use_speaker_boost: boolean;
+}
+
+const ELEVEN_VOICE_SETTINGS: Record<'en' | 'de', ElevenVoiceSettings> = {
+  en: { stability: 0.50, similarity_boost: 0.85, style: 0.20, use_speaker_boost: true },
+  de: { stability: 0.50, similarity_boost: 0.85, style: 0.16, use_speaker_boost: true },
+};
+
+const ELEVEN_RUSSIAN_NATIVE_SETTINGS: ElevenVoiceSettings = {
+  stability: 0.55,
+  similarity_boost: 0.80,
+  style: 0.10,
+  use_speaker_boost: true,
+};
+
+const ELEVEN_RUSSIAN_CROSSLINGUAL_SETTINGS: ElevenVoiceSettings = {
+  stability: 0.62,
+  similarity_boost: 0.42,
+  style: 0.0,
+  use_speaker_boost: false,
 };
 
 const LANGUAGE_NAME: Record<LanguageCode, string> = {
@@ -70,13 +92,11 @@ const LANGUAGE_NAME: Record<LanguageCode, string> = {
   ru: 'Standard Russian',
 };
 
-// One persona, three languages. The wording is about delivery only: a real
-// person reading one short sentence to a learner, never a robot or a newsreader.
 const PERSONA = (lang: LanguageCode) =>
-  `You are a warm, friendly female ${LANGUAGE_NAME[lang]} teacher speaking one-to-one with an adult learner. ` +
+  `You are a warm, friendly native female ${LANGUAGE_NAME[lang]} teacher speaking one-to-one with an adult learner. ` +
   'Say the sentence exactly once, like a real human in a relaxed lesson: natural connected speech, ' +
-  'gentle and expressive intonation, soft warmth and a calm smile in the voice, with tiny natural pauses at punctuation. ' +
-  'Never sound robotic, never read word by word, never slow down unnaturally. ' +
+  'authentic native phonology and vowel reduction, gentle intonation, and tiny natural pauses at punctuation. ' +
+  'Never sound robotic, never use an English accent on non-English words, never read word by word. ' +
   'Read only the sentence you are given, exactly as written. Do not add, greet, explain, translate, emphasise or repeat.';
 
 const MAX_TEXT = 320;
@@ -84,6 +104,14 @@ const CACHE_LIMIT = 160;
 const cache = new Map<string, Uint8Array>();
 
 type Provider = 'openai' | 'elevenlabs';
+
+interface ResolvedElevenVoice {
+  voiceId: string;
+  isNativeRussian: boolean;
+}
+
+let cachedRussianVoice: { resolvedAt: number; value: ResolvedElevenVoice } | null = null;
+const VOICE_DISCOVERY_TTL_MS = 30 * 60 * 1000;
 
 function resolveProvider(): Provider | null {
   const configured = (Deno.env.get('NARRATION_PROVIDER') || '').toLowerCase();
@@ -112,19 +140,133 @@ function cacheSet(key: string, value: Uint8Array): void {
   cache.set(key, value);
 }
 
-function normalizeText(raw: string | null): string {
-  return (raw ?? '')
+/**
+ * Normalizes lesson text for TTS. Preserves precomposed Cyrillic letters such
+ * as «ё / Ё» and «й / Й» via NFC first, then strips pedagogic combining stress
+ * marks (U+0300 / U+0301) so Russian lexicon lookup and vowel reduction work.
+ */
+function normalizeText(raw: string | null, lang: LanguageCode): string {
+  const nfc = (raw ?? '').normalize('NFC');
+  const deStressed = lang === 'ru' || /[А-Яа-яЁё]/.test(nfc)
+    ? nfc.replace(/[\u0300\u0301]/g, '')
+    : nfc;
+  return deStressed
     .replace(/[\u0000-\u001F\u007F]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, MAX_TEXT + 1);
 }
 
-function voiceFor(provider: Provider, lang: LanguageCode): string {
-  if (provider === 'elevenlabs') {
-    return Deno.env.get(ELEVEN_VOICE_ENV[lang]) || DEFAULT_ELEVEN_VOICE;
+interface ElevenAccountVoice {
+  voice_id?: string;
+  name?: string;
+  category?: string;
+  labels?: Record<string, string | undefined>;
+  verified_languages?: Array<{ language?: string; accent?: string; model_id?: string }>;
+}
+
+function scoreRussianAccountVoice(voice: ElevenAccountVoice): { score: number; native: boolean } {
+  if (!voice.voice_id) return { score: -999, native: false };
+  const labels = voice.labels ?? {};
+  const gender = (labels.gender || '').toLowerCase();
+  if (gender === 'male') return { score: -500, native: false };
+
+  const langLabel = (labels.language || '').toLowerCase();
+  const accentLabel = (labels.accent || '').toLowerCase();
+  const descLabel = (labels.description || '').toLowerCase();
+  const name = voice.name || '';
+  const hasVerifiedRu = Boolean(
+    voice.verified_languages?.some(item => (item.language || '').toLowerCase().startsWith('ru')),
+  );
+  const isRussianLabel =
+    hasVerifiedRu ||
+    langLabel === 'ru' ||
+    langLabel === 'russian' ||
+    accentLabel.includes('russian') ||
+    /[А-Яа-яЁё]/.test(name);
+  const isEnglishPremadeAccent = /\b(american|us|australian)\b/.test(accentLabel);
+  const hasRussianFemaleName =
+    !isEnglishPremadeAccent &&
+    /\b(victoria|viktoria|anna|anastasia|elena|svetlana|irina|maria|natalia|natasha|ksenia|kseniya|polina|daria|nadia|olga|tatiana|tatyana|yulia|ekaterina|katya|sofia|alina|arina)\b/i.test(name);
+
+  if (isRussianLabel || (hasRussianFemaleName && voice.category !== 'premade')) {
+    let score = 200;
+    if (hasVerifiedRu) score += 60;
+    if (langLabel === 'ru' || accentLabel.includes('russian')) score += 50;
+    if (gender === 'female') score += 30;
+    if (voice.category !== 'premade') score += 20;
+    if (/warm|calm|clear|soft|narration|conversational|teacher/.test(descLabel)) score += 10;
+    return { score, native: true };
   }
-  return Deno.env.get(VOICE_ENV[lang]) || DEFAULT_OPENAI_VOICE[lang];
+
+  // Among premade voices, prefer neutral/European female voices over American voices.
+  let fallbackScore = 0;
+  if (voice.voice_id === DEFAULT_ELEVEN_EUROPEAN_FEMALE_VOICE) fallbackScore += 60; // Lily
+  if (voice.voice_id === 'XB0fDUnXU5powFXDhCwa') fallbackScore += 55; // Charlotte (Swedish/European)
+  if (voice.voice_id === 'Xb7hH8MSUJpSbSDYk0k2') fallbackScore += 45; // Alice
+  if (gender === 'female') fallbackScore += 20;
+  if (isEnglishPremadeAccent) fallbackScore -= 40;
+  return { score: fallbackScore, native: false };
+}
+
+async function resolveElevenLabsVoice(apiKey: string, lang: LanguageCode): Promise<ResolvedElevenVoice> {
+  const explicit = (Deno.env.get(ELEVEN_VOICE_ENV[lang]) || '').trim();
+  if (explicit) {
+    return { voiceId: explicit, isNativeRussian: lang === 'ru' };
+  }
+  if (lang !== 'ru') {
+    return { voiceId: DEFAULT_ELEVEN_VOICE, isNativeRussian: false };
+  }
+
+  const now = Date.now();
+  if (cachedRussianVoice && now - cachedRussianVoice.resolvedAt < VOICE_DISCOVERY_TTL_MS) {
+    return cachedRussianVoice.value;
+  }
+
+  let resolved: ResolvedElevenVoice = {
+    voiceId: DEFAULT_ELEVEN_EUROPEAN_FEMALE_VOICE,
+    isNativeRussian: false,
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3800);
+  try {
+    const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+      method: 'GET',
+      headers: { 'xi-api-key': apiKey, Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (response.ok) {
+      const payload = (await response.json()) as { voices?: ElevenAccountVoice[] };
+      const voices = Array.isArray(payload.voices) ? payload.voices : [];
+      let bestScore = -999;
+      for (const candidate of voices) {
+        const { score, native } = scoreRussianAccountVoice(candidate);
+        if (score > bestScore && candidate.voice_id) {
+          bestScore = score;
+          resolved = { voiceId: candidate.voice_id, isNativeRussian: native };
+        }
+      }
+    }
+  } catch {
+    // Scoped API keys without `voices_read` or transient timeouts safely use the premade fallback.
+  } finally {
+    clearTimeout(timer);
+  }
+
+  cachedRussianVoice = { resolvedAt: now, value: resolved };
+  return resolved;
+}
+
+function modelSupportsLanguageCode(modelId: string): boolean {
+  return /turbo_v2_5|flash_v2_5|eleven_v3/i.test(modelId);
+}
+
+function defaultElevenModelFor(lang: LanguageCode): string {
+  if (lang === 'ru') {
+    return Deno.env.get('ELEVENLABS_MODEL_RU') || Deno.env.get('ELEVENLABS_MODEL') || 'eleven_turbo_v2_5';
+  }
+  return Deno.env.get('ELEVENLABS_MODEL') || 'eleven_multilingual_v2';
 }
 
 async function synthesizeOpenAI(apiKey: string, lang: LanguageCode, text: string, voice: string): Promise<Uint8Array> {
@@ -136,7 +278,6 @@ async function synthesizeOpenAI(apiKey: string, lang: LanguageCode, text: string
     response_format: 'mp3',
     speed: 1,
   };
-  // `instructions` and the expressive models produce human-sounding prosody.
   if (/gpt-4o/i.test(model)) payload.instructions = PERSONA(lang);
 
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -151,20 +292,54 @@ async function synthesizeOpenAI(apiKey: string, lang: LanguageCode, text: string
   return new Uint8Array(await response.arrayBuffer());
 }
 
-async function synthesizeElevenLabs(apiKey: string, lang: LanguageCode, text: string, voice: string): Promise<Uint8Array> {
-  const model = Deno.env.get('ELEVENLABS_MODEL') || 'eleven_multilingual_v2';
-  const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice)}?output_format=mp3_44100_128`,
+async function callElevenLabsTts(
+  apiKey: string,
+  voiceId: string,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  return fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
     {
       method: 'POST',
       headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-      body: JSON.stringify({
-        text,
-        model_id: model,
-        voice_settings: { ...ELEVEN_VOICE_SETTINGS[lang], use_speaker_boost: true },
-      }),
+      body: JSON.stringify(body),
     },
   );
+}
+
+async function synthesizeElevenLabs(
+  apiKey: string,
+  lang: LanguageCode,
+  text: string,
+  resolvedVoice: ResolvedElevenVoice,
+): Promise<Uint8Array> {
+  const model = defaultElevenModelFor(lang);
+  const voiceSettings: ElevenVoiceSettings = lang === 'ru'
+    ? (resolvedVoice.isNativeRussian ? ELEVEN_RUSSIAN_NATIVE_SETTINGS : ELEVEN_RUSSIAN_CROSSLINGUAL_SETTINGS)
+    : ELEVEN_VOICE_SETTINGS[lang];
+
+  const primaryBody: Record<string, unknown> = {
+    text,
+    model_id: model,
+    voice_settings: voiceSettings,
+  };
+  if (modelSupportsLanguageCode(model)) {
+    primaryBody.language_code = lang;
+    primaryBody.apply_text_normalization = 'on';
+  }
+
+  let response = await callElevenLabsTts(apiKey, resolvedVoice.voiceId, primaryBody);
+
+  // Resilient fallback if a custom model rejects `language_code` or a voice id is unavailable.
+  if (!response.ok && (response.status === 400 || response.status === 404 || response.status === 422)) {
+    const fallbackVoiceId = response.status === 404 ? DEFAULT_ELEVEN_VOICE : resolvedVoice.voiceId;
+    response = await callElevenLabsTts(apiKey, fallbackVoiceId, {
+      text,
+      model_id: 'eleven_multilingual_v2',
+      voice_settings: voiceSettings,
+    });
+  }
+
   if (!response.ok) {
     console.error('ElevenLabs narrator failed', response.status, (await response.text()).slice(0, 400));
     throw new Error('TTS_FAILED');
@@ -185,9 +360,9 @@ Deno.serve(async request => {
       ok: true,
       provider,
       model: provider === 'elevenlabs'
-        ? Deno.env.get('ELEVENLABS_MODEL') || 'eleven_multilingual_v2'
+        ? Deno.env.get('ELEVENLABS_MODEL') || 'eleven_turbo_v2_5 (ru) / eleven_multilingual_v2'
         : Deno.env.get('OPENAI_TTS_MODEL') || 'gpt-4o-mini-tts',
-      persona: 'warm-female-teacher-v2',
+      persona: 'warm-female-teacher-v3-ru-native',
       languages: ['en', 'de', 'ru'],
     });
   }
@@ -203,12 +378,20 @@ Deno.serve(async request => {
     return json({ error: 'Unsupported narration language', code: 'UNSUPPORTED_LANGUAGE' }, 400);
   }
   const lang = langRaw as LanguageCode;
-  const text = normalizeText(url.searchParams.get('text'));
+  const text = normalizeText(url.searchParams.get('text'), lang);
   if (!text) return json({ error: 'text is required', code: 'TEXT_REQUIRED' }, 400);
   if (text.length > MAX_TEXT) return json({ error: 'Sentence is too long', code: 'TEXT_TOO_LONG' }, 413);
 
-  const voice = voiceFor(provider, lang);
-  const key = `${provider}|${voice}|${lang}|${text}`;
+  const elevenKey = Deno.env.get('ELEVENLABS_API_KEY') || '';
+  const openAiKey = Deno.env.get('OPENAI_API_KEY') || '';
+  const resolvedEleven = provider === 'elevenlabs'
+    ? await resolveElevenLabsVoice(elevenKey, lang)
+    : null;
+  const voice = provider === 'elevenlabs'
+    ? resolvedEleven!.voiceId
+    : (Deno.env.get(VOICE_ENV[lang]) || DEFAULT_OPENAI_VOICE[lang]);
+  const modelKey = provider === 'elevenlabs' ? defaultElevenModelFor(lang) : 'openai';
+  const key = `v3|${provider}|${modelKey}|${voice}|${lang}|${text}`;
 
   const cached = cacheGet(key);
   if (cached) {
@@ -226,8 +409,8 @@ Deno.serve(async request => {
 
   try {
     const audio = provider === 'elevenlabs'
-      ? await synthesizeElevenLabs(Deno.env.get('ELEVENLABS_API_KEY') || '', lang, text, voice)
-      : await synthesizeOpenAI(Deno.env.get('OPENAI_API_KEY') || '', lang, text, voice);
+      ? await synthesizeElevenLabs(elevenKey, lang, text, resolvedEleven!)
+      : await synthesizeOpenAI(openAiKey, lang, text, voice);
 
     if (!audio.byteLength) return json({ error: 'Empty narrator audio', code: 'TTS_EMPTY' }, 502);
     cacheSet(key, audio);

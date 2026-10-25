@@ -54,7 +54,7 @@ function readWebVoicesSync(): SpeechVoiceInfo[] {
   }
   const raw = synth.getVoices() || [];
   return raw.map(v => ({
-    identifier: v.voiceURI || v.name,
+    identifier: v.voiceURI || '',
     name: v.name,
     language: v.lang,
     quality: v.localService ? 'Enhanced' : 'Default',
