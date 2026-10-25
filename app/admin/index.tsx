@@ -134,8 +134,19 @@ function EducationAdmin() {
         const { data } = await adminClient().auth.getSession();
         if (!data.session) return;
         void registerAdminPushToken();
-        const result = await loadAdminData();
-        if (mounted) { setStudents(result.students); setInvites(result.invites); setRegisteredUsers(result.registeredUsers); setMode('live'); }
+        // Authentication is enough to open the panel. Do not keep the whole
+        // app behind slow report queries on a cold start.
+        if (mounted) setMode('live');
+        try {
+          const result = await loadAdminData();
+          if (mounted) {
+            setStudents(result.students);
+            setInvites(result.invites);
+            setRegisteredUsers(result.registeredUsers);
+          }
+        } catch (cause) {
+          if (mounted) setError(educationError(cause));
+        }
       } catch { /* Login remains available if the migration is not installed. */ }
     })();
     return () => { mounted = false; };
@@ -144,8 +155,10 @@ function EducationAdmin() {
     const { error } = await adminClient().auth.signInWithPassword({ email: email.trim(), password });
     if (error) throw error;
     void registerAdminPushToken();
-    try { await refresh(); setMode('live'); setPassword(''); }
-    catch (e) { await adminClient().auth.signOut(); throw e; }
+    // Show the authenticated panel immediately; report data is non-blocking.
+    setMode('live');
+    setPassword('');
+    void refresh().catch(cause => setError(educationError(cause)));
   });
   const button = (title: string, onPress: () => void, secondary = false, disabled = false) => (
     <Pressable accessibilityRole="button" disabled={disabled || busy} onPress={onPress} style={[s.button, secondary && s.secondary, (disabled || busy) && { opacity: .45 }]}>
