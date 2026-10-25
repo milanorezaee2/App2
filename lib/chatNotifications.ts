@@ -165,10 +165,14 @@ export async function registerChatPushTokenForUser(
       state_updated_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,expo_push_token' });
-    if (error) return null;
+    if (error) {
+      console.warn('[chat-push] token registration failed:', error.message);
+      return null;
+    }
     return token;
-  } catch {
+  } catch (error) {
     // Foreground banners still work if the project has not configured EAS yet.
+    console.warn('[chat-push] token registration unavailable:', error);
     return null;
   }
 }
@@ -243,9 +247,9 @@ export async function startChatNotifications(
 ): Promise<() => Promise<void>> {
   if (Platform.OS === 'web' || !Device.isDevice) return async () => undefined;
   await configureAndroidChannels();
-  // The bridge still listens for in-app events if permission is denied; only
-  // OS token registration is gated by the one-time permission request.
-  await askNotificationPermissionOnce();
+  // Resolve the authenticated user before asking for notification permission.
+  // Asking on cold launch used to show the prompt before login and could leave
+  // the later token-registration path without a reliable second opportunity.
 
   let stopped = false;
   let activeUserId: string | null = null;

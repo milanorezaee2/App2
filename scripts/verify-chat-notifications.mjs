@@ -10,7 +10,8 @@ const config = read('app.json');
 const bridge = read('components/ChatNotificationBridge.tsx');
 const notifications = read('lib/chatNotifications.ts');
 const adminPush = read('lib/adminPush.ts');
-const navigation = read('components/AppBottomNav.tsx');
+// AppBottomNav delegates the actual tabs and unread badge to LanguageBottomNav.
+const navigation = `${read('components/AppBottomNav.tsx')}\n${read('components/LanguageBottomNav.tsx')}`;
 const migration = read('supabase/migrations/202610140001_chat_push_notifications.sql');
 const outbox = read('supabase/migrations/202610180001_chat_push_outbox.sql');
 const setupSql = read('supabase/SETUP-CHAT-PUSH-ONCE.sql');

@@ -117,7 +117,14 @@ export async function loginLearner(email: string, passwordOrCode: string): Promi
   }
   if (result.error) throw result.error;
   const name = String(result.data.user.user_metadata?.full_name || '').trim();
-  if (name) await saveProfile(result.data.user, name);
+  // Authentication is sufficient to enter the app. Profile repair is useful
+  // for admin reporting but must not keep the learner on the login screen when
+  // the profile request is slow or temporarily unavailable.
+  if (name) {
+    void saveProfile(result.data.user, name).catch(error => {
+      console.warn('[registration] profile repair deferred:', error);
+    });
+  }
 }
 
 export async function touchLearnerActivity(): Promise<void> {
