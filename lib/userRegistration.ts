@@ -118,6 +118,11 @@ export async function registerLearner(fullName: string, email: string, loginCode
 
 export async function loginLearner(email: string, passwordOrCode: string): Promise<void> {
   const cleanEmail = email.trim().toLowerCase();
+  // A persisted Supabase session may already be available while the gate was
+  // waiting on its background profile check. Do not send the user through a
+  // second network login request in that case.
+  const existing = await supabase.auth.getSession();
+  if (existing.data.session?.user.email?.trim().toLowerCase() === cleanEmail) return;
   const isSimpleCode = /^\d{6}$/.test(passwordOrCode);
   let result = await supabase.auth.signInWithPassword({
     email: cleanEmail,
