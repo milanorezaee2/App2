@@ -8,7 +8,7 @@ import {
   startChatNotifications,
   type ChatNotificationEvent,
 } from '@/lib/chatNotifications';
-import { MANAGEMENT_BUILD } from '@/lib/features';
+import { FEATURES, MANAGEMENT_BUILD } from '@/lib/features';
 import {
   clearChatUnreadCount,
   getChatUnreadCount,
@@ -114,7 +114,9 @@ export function ChatNotificationBridge() {
       .catch(() => undefined);
 
     void startChatNotifications({
-      requireSession: MANAGEMENT_BUILD,
+      // The login APK must wait for a real learner session. Falling back to
+      // an anonymous identity here registers the device under the wrong user.
+      requireSession: MANAGEMENT_BUILD || FEATURES.learnerLogin,
       onForegroundEvent: event => foregroundEventRef.current(event),
     }).then(cleanup => {
       if (mounted) stop = cleanup;
