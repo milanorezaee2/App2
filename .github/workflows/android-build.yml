@@ -225,7 +225,7 @@ jobs:
           arch: x86_64
           target: default
           cores: 4
-          ram-size: 3072M
+          ram-size: 4096M
           heap-size: 512M
           emulator-boot-timeout: 900
           disable-animations: true

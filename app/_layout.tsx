@@ -169,15 +169,19 @@ export default function RootLayout() {
     }
 
     startupChimePlayed = true;
+    setIntroComplete(true);
+    if (IS_ADMIN_APP) return;
+
     try {
       const player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
       player.volume = 0.28;
       player.play();
-      setTimeout(() => player.remove(), 2500);
+      setTimeout(() => {
+        try { player.remove(); } catch { /* ignore native audio cleanup races */ }
+      }, 2500);
     } catch {
       // A device without playback support still opens the learner home.
     }
-    setIntroComplete(true);
     warmSpeech('en-US');
     setTimeout(() => warmSpeech('de-DE'), 350);
   }, [fontsLoaded, fontError]);

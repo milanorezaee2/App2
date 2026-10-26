@@ -31,7 +31,7 @@ on_exit() {
     printf '%s\n' "${activity_summary:-'(no resumed activity reported)'}"
     printf '\n--- Relevant recent logcat ---\n'
     adb logcat -d -v threadtime -t 5000 >"$full_logcat_file" 2>&1
-    log_summary="$(grep -E 'FATAL EXCEPTION|Unable to load script|AppStartupError|ReactNativeJS|AndroidRuntime|ReactNative|SoLoader|ActivityTaskManager' "$full_logcat_file" | tail -n 80 || true)"
+    log_summary="$(grep -E 'FATAL EXCEPTION|Unable to load script|AppStartupError|ReactNativeJS|AndroidRuntime|ReactNative|SoLoader|ActivityTaskManager|DEBUG|libc|Fatal signal' "$full_logcat_file" | grep -v 'com.android.commands.uiautomator' | tail -n 80 || true)"
     printf '%s\n' "${log_summary:-'(no matching Android or React Native errors)'}"
     ui_summary='(UI hierarchy unavailable)'
     if [[ -f "$ui_file" ]]; then
@@ -374,20 +374,27 @@ echo 'Android emulator verified both complete chat composers and their side butt
 fi
 
 failed_step="installing the private management APK"
+adb shell am force-stop com.devicecontrol.mml || true
 adb install -r "$admin_apk_path"
 adb shell am force-stop com.devicecontrol.miloadmin
 
 failed_step="launching the private management app"
 timeout 90s adb shell am start -W -n com.devicecontrol.miloadmin/.MainActivity
-sleep 12
+sleep 15
 capture_ui
 
 failed_step="verifying the management login is isolated and protected"
-if ! grep -Fq 'ایمیل مدیر' "$ui_file" || ! grep -Fq 'ورود امن به پنل' "$ui_file"; then
+for admin_attempt in 1 2 3; do
+  if grep -Fq 'ایمیل مدیر' "$ui_file" && grep -Fq 'ورود امن به پنل' "$ui_file"; then
+    break
+  fi
+  if [[ "$admin_attempt" == 3 ]]; then
+    break
+  fi
   echo 'Management accessibility tree is not ready; waiting once more.'
   sleep 12
   capture_ui
-fi
+done
 if ! grep -Fq 'ایمیل مدیر' "$ui_file" || ! grep -Fq 'ورود امن به پنل' "$ui_file"; then
   echo 'The standalone management APK did not render its protected manager login.'
   exit 1
@@ -401,6 +408,7 @@ fi
 login_apk_path="MiloMultilang-Login.apk"
 if [[ -s "$login_apk_path" ]]; then
   failed_step="installing the learner login APK"
+  adb shell am force-stop com.devicecontrol.miloadmin || true
   adb install -r "$login_apk_path"
   failed_step="verifying the learner login APK package"
   adb shell pm path com.devicecontrol.milomultilang
@@ -437,6 +445,7 @@ fi
 turkish_apk_path="MiloTurkish.apk"
 if [[ -s "$turkish_apk_path" ]]; then
   failed_step="installing the Turkish learner APK"
+  adb shell am force-stop com.devicecontrol.milomultilang || true
   adb install -r "$turkish_apk_path"
   adb shell pm path com.devicecontrol.miloturkish
   adb shell am force-stop com.devicecontrol.miloturkish
@@ -465,6 +474,7 @@ fi
 turkish_login_apk_path="MiloTurkish-Login.apk"
 if [[ -s "$turkish_login_apk_path" ]]; then
   failed_step="installing the Turkish learner login APK"
+  adb shell am force-stop com.devicecontrol.miloturkish || true
   adb install -r "$turkish_login_apk_path"
   adb shell pm path com.devicecontrol.miloturkishlogin
   adb shell am force-stop com.devicecontrol.miloturkishlogin

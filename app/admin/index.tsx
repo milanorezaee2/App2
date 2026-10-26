@@ -227,7 +227,8 @@ function EducationAdmin() {
   const router = useRouter();
   const wide = useWindowDimensions().width > 940;
 
-  const [authState, setAuthState] = useState<'checking' | 'login' | 'live'>('checking');
+  const [authState, setAuthState] = useState<'login' | 'live'>('login');
+  const [restoringSession, setRestoringSession] = useState(false);
   const [managerName, setManagerName] = useState('مدیر اصلی');
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
@@ -356,6 +357,7 @@ function EducationAdmin() {
     const guardTimer = setTimeout(() => {
       if (!settled && mounted) {
         settled = true;
+        setRestoringSession(false);
         setAuthState('login');
       }
     }, 10_000);
@@ -365,19 +367,27 @@ function EducationAdmin() {
         if (!data.session) {
           settled = true;
           clearTimeout(guardTimer);
-          if (mounted) setAuthState('login');
+          if (mounted) {
+            setRestoringSession(false);
+            setAuthState('login');
+          }
           return;
         }
+        if (mounted) setRestoringSession(true);
         await refreshAll();
         void registerAdminPushToken();
         settled = true;
         clearTimeout(guardTimer);
-        if (mounted) setAuthState('live');
+        if (mounted) {
+          setRestoringSession(false);
+          setAuthState('live');
+        }
       } catch (cause) {
         settled = true;
         clearTimeout(guardTimer);
         try { await adminClient().auth.signOut(); } catch { /* ignore */ }
         if (mounted) {
+          setRestoringSession(false);
           setError(educationError(cause));
           setAuthState('login');
         }
@@ -689,20 +699,12 @@ function EducationAdmin() {
 
   const feedback = (
     <>
-      {busy && <ActivityIndicator color="#1769D2" />}
+      {(busy || restoringSession) && <ActivityIndicator color="#1769D2" />}
+      {restoringSession && <Text style={s.notice}>در حال بازیابی نشست امن مدیر از سرور Milo…</Text>}
       {!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
       {!!notice && <Text style={s.notice}>{notice}</Text>}
     </>
   );
-
-  if (authState === 'checking') {
-    return (
-      <View style={s.checkingScreen}>
-        <ActivityIndicator size="large" color="#1769D2" />
-        <Text style={s.checkingText}>در حال اتصال امن به سرور مدیریت Milo…</Text>
-      </View>
-    );
-  }
 
   if (authState === 'login') {
     return (
@@ -736,25 +738,25 @@ function EducationAdmin() {
 
           <View style={s.sectionHead}>
             <Text style={s.label}>رمز عبور مدیر</Text>
-            <Pressable accessibilityRole="button" onPress={() => setShowPassword(v => !v)}>
-              <Text style={s.inlineLink}>{showPassword ? 'پنهان‌کردن رمز' : 'نمایش رمز'}</Text>
-            </Pressable>
+            {Platform.OS === 'web' && (
+              <Pressable accessibilityRole="button" onPress={() => setShowPassword(v => !v)}>
+                <Text style={s.inlineLink}>{showPassword ? 'پنهان‌کردن رمز' : 'نمایش رمز'}</Text>
+              </Pressable>
+            )}
           </View>
           <TextInput
             accessibilityLabel="رمز عبور مدیر"
-            secureTextEntry={!showPassword}
+            secureTextEntry={Platform.OS === 'web' ? !showPassword : true}
             autoCapitalize="none"
             autoCorrect={false}
             value={password}
             onChangeText={setPassword}
             style={[s.input, s.ltr]}
-            placeholder="••••••••••••"
-            placeholderTextColor="#8B9AB0"
             onSubmitEditing={login}
           />
 
           {feedback}
-          {button('ورود امن به پنل مدیریت', login, false, !email.trim() || !password)}
+          {button('ورود امن به پنل مدیریت', login, false, restoringSession || !email.trim() || !password)}
 
           <View style={s.securityInfoBox}>
             <ShieldCheck size={18} color="#1769D2" />
@@ -2262,7 +2264,7 @@ const s = StyleSheet.create({
   secondary: { backgroundColor: '#F0F4F8' },
   buttonText: { fontFamily: 'Vazir-Bold', color: '#FFFFFF', fontSize: 11 },
   input: { fontFamily: 'Vazir', fontSize: 11, color: '#1E293B', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#DCE5ED', borderRadius: 10, paddingHorizontal: 11, paddingVertical: 9, textAlign: 'right' },
-  ltr: { fontFamily: 'Inter-ExtraBold', textAlign: 'left', writingDirection: 'ltr' },
+  ltr: { textAlign: 'left' },
   emailText: { fontFamily: 'Vazir', fontSize: 9, fontWeight: '700', color: '#64748B', textAlign: 'left', writingDirection: 'ltr' },
   label: { fontFamily: 'Vazir-Bold', fontSize: 10, color: '#334E68', textAlign: 'right', marginTop: 2 },
   loginPage: { flexGrow: 1, backgroundColor: '#EEF5FC', alignItems: 'center', justifyContent: 'center', padding: 18 },
