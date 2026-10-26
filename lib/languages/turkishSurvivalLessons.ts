@@ -2,8 +2,8 @@ import type { LearningLesson } from './types';
 import { trLesson, trSentence } from './turkishLessonKit';
 
 /**
- * سطح کاربردی (Survival) — موقعیت‌های بیرون از خانه.
- * کافه، رستوران، خرید، مسیر، زمان، حمل‌ونقل، هتل و سلامت.
+ * هشت درس موقعیتیِ موجود در مسیر A1 Survival؛ ترتیب نهایی در turkish.ts است.
+ * موضوع‌های جدید در turkishSurvivalLessonsB.ts افزوده شده‌اند.
  */
 export const TURKISH_SURVIVAL_LESSONS: readonly LearningLesson[] = [
   trLesson(

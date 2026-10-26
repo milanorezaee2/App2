@@ -53,32 +53,98 @@ const esbuild = require('esbuild');
   const cyrillic = /[\u0400-\u04FF]/;
   const persian = /[\u0600-\u06FF]/;
 
-  /**
-   * ترتیب رسمی سطح ۱ (A1) — بیست موضوع، به همین ترتیب. اگر کسی درس‌ها را
-   * جابه‌جا یا حذف کند، این بررسی می‌شکند.
-   */
+  /** ترتیب‌های رسمی Foundation و Survival؛ عنوان درس‌های موجود دست‌نخورده می‌ماند. */
   const foundationTopics = app.TURKISH_LEVELS[0].modules;
-  const EXPECTED_TOPICS = [
+  const survivalTopics = app.TURKISH_LEVELS[1].modules;
+  const EXPECTED_FOUNDATION_TOPICS = [
     'سلام و احوال‌پرسی',
     'معرفی خود و دیگران',
     'ضمایر شخصی در جمله',
-    'جمله‌های اسمی ساده با پسوندهای شخصی',
+    'جمله‌های اسمی و پسوندهای شخصی',
     'ملیت، زبان و محل زندگی',
-    'جمله‌های فعلی ساده در زمان حال استمراری',
-    'پرسش‌های ساده و پاسخ به آن‌ها',
-    'جمله‌های منفی',
     'اعداد، سن و اطلاعات شخصی',
-    'مالکیت و خانواده',
-    'اسم‌ها، جمع و پسوندهای ملکی',
-    'توصیف اشخاص، اشیا و مکان‌ها',
-    'بیان نیازها، خواسته‌ها و علایق',
-    'مکان، جهت و موقعیت مکانی',
-    'زمان، روزها و برنامهٔ روزانه',
-    'توانایی، درخواست و اجازه',
-    'فعل‌های حرکتی پایه و بیان مسیر',
-    'جمله‌های ساده در زمان گذشته',
-    'بیان قصد و برنامهٔ آینده',
-    'اتصال دو جمله ساده با حروف ربط پایه',
+    'خانواده و مالکیت',
+    'اسم‌ها، جمع و اشاره به اشخاص و اشیا',
+    'توصیف ساده اشخاص، اشیا و مکان‌ها',
+    'جمله‌های فعلی در زمان حال استمراری',
+    'پرسش‌سازی و پاسخ‌های پایه',
+    'جمله‌های منفی',
+    'علایق، خواسته‌ها و نیازهای ساده',
+    'مکان و موقعیت مکانی پایه',
+  ];
+  const EXPECTED_SURVIVAL_TOPICS = [
+    'خرید، قیمت و پرداخت',
+    'سفارش غذا و نوشیدنی',
+    'آدرس‌پرسیدن و مسیر‌یابی',
+    'حمل‌ونقل عمومی و تاکسی',
+    'معرفی خود در موقعیت‌های اجتماعی',
+    'رزرو هتل و اقامت',
+    'سفر و اطلاعات گردشگری',
+    'خرید بلیت و پرسیدن ساعت حرکت',
+    'مکالمه در فروشگاه و بازار',
+    'درخواست کمک و بیان مشکل',
+    'مراجعه به پزشک و بیان علائم ساده',
+    'مکالمه‌های ساده در محل کار و تحصیل',
+    'بیان ساعت، تاریخ و برنامه روزانه',
+    'صحبت درباره آب‌وهوا',
+    'تماس تلفنی و پیام‌های کوتاه',
+    'دعوت‌کردن، پذیرفتن و ردکردن دعوت',
+    'درخواست مؤدبانه و اجازه‌گرفتن',
+    'بیان توانایی و ناتوانی',
+    'بیان گذشته نزدیک و اتفاق‌های ساده',
+    'بیان برنامه‌های آینده نزدیک',
+  ];
+  const EXPECTED_FOUNDATION_IDS = [
+    'tr-l1-01-greetings',
+    'tr-l1-02-introduce',
+    'tr-l1-03-pronouns',
+    'tr-l1-04-nominal-sentences',
+    'tr-l1-05-nationality',
+    'tr-l1-09-numbers-age',
+    'tr-l1-10-family',
+    'tr-l1-11-nouns-plural',
+    'tr-l1-12-describing',
+    'tr-l1-06-present-continuous',
+    'tr-l1-07-questions',
+    'tr-l1-08-negative',
+    'tr-l1-13-needs',
+    'tr-l1-14-location',
+  ];
+  const EXPECTED_SURVIVAL_CORE_IDS = [
+    'tr-l2-shopping',
+    'tr-l2-cafe',
+    'tr-l2-directions',
+    'tr-l2-transport',
+    'tr-survival-01-social-introduction',
+    'tr-l2-hotel',
+    'tr-survival-02-travel-tourism',
+    'tr-survival-03-tickets-departures',
+    'tr-survival-04-market-conversation',
+    'tr-survival-05-help-and-problems',
+    'tr-l2-health',
+    'tr-survival-06-work-and-school',
+    'tr-l2-time',
+    'tr-survival-07-weather',
+    'tr-survival-08-phone-and-messages',
+    'tr-survival-09-invitations',
+    'tr-l1-16-ability-request',
+    'tr-survival-10-ability-and-inability',
+    'tr-l1-18-past',
+    'tr-l1-19-future',
+  ];
+  const EXPECTED_SURVIVAL_RETAINED_IDS = [
+    'tr-l2-restaurant',
+    'tr-l1-15-time',
+    'tr-l1-17-motion',
+    'tr-l1-20-conjunctions',
+  ];
+  const EXPECTED_SURVIVAL_ORDER_IDS = [
+    'tr-l2-shopping', 'tr-l2-cafe', 'tr-l2-restaurant', 'tr-l2-directions', 'tr-l1-17-motion',
+    'tr-l2-transport', 'tr-survival-01-social-introduction', 'tr-l2-hotel', 'tr-survival-02-travel-tourism',
+    'tr-survival-03-tickets-departures', 'tr-survival-04-market-conversation', 'tr-survival-05-help-and-problems',
+    'tr-l2-health', 'tr-survival-06-work-and-school', 'tr-l2-time', 'tr-l1-15-time', 'tr-survival-07-weather',
+    'tr-survival-08-phone-and-messages', 'tr-survival-09-invitations', 'tr-l1-16-ability-request',
+    'tr-survival-10-ability-and-inability', 'tr-l1-18-past', 'tr-l1-19-future', 'tr-l1-20-conjunctions',
   ];
 
   const a2Topics = app.TURKISH_LEVELS[2].modules;
@@ -109,7 +175,7 @@ const esbuild = require('esbuild');
     'تعریف‌کردن یک اتفاق یا تجربه در چند جمله مرتبط',
   ];
 
-  check('Turkish course registers 56 lessons in four levels', lessons.length === 56
+  check('Turkish course registers 66 lessons in four levels', lessons.length === 66
     && app.TURKISH_LEVELS.length === 4
     && app.TURKISH_LEVELS.map(level => level.id).join('|') === '0|1|2|3');
   check('Every level has lessons and an available status', app.TURKISH_LEVELS.every(level =>
@@ -118,22 +184,49 @@ const esbuild = require('esbuild');
     && level.modules.length > 0
     && level.title
     && level.cefr));
-  check('Course order runs Foundation → Survival → A2 → Communication', lessons.every((lesson, index) =>
-    lesson.order === index + 1
-    && lesson.levelId === (index < 20 ? 0 : index < 28 ? 1 : index < 52 ? 2 : 3))
-    && lessons.slice(0, 20).every(lesson => lesson.id.startsWith('tr-l1-'))
-    && lessons.slice(20, 28).every(lesson => lesson.id.startsWith('tr-l2-'))
-    && lessons.slice(28, 52).every(lesson => lesson.id.startsWith('tr-l2-'))
-    && lessons.slice(52).every(lesson => lesson.id.startsWith('tr-l4-')));
-  check('Level 1 (A1) follows the official 20-topic order, one lesson per topic',
-    foundationTopics.length === 20
-    && foundationTopics.every((topic, index) => topic === EXPECTED_TOPICS[index])
-    && lessons.filter(lesson => lesson.levelId === 0).length === 20
-    && lessons.filter(lesson => lesson.levelId === 0).map(lesson => lesson.title).join('|')
-      === EXPECTED_TOPICS.join('|'));
-  check('Level 1 lessons are numbered 01…20 in that order',
-    lessons.filter(lesson => lesson.levelId === 0).every((lesson, index) =>
-      lesson.id === `tr-l1-${String(index + 1).padStart(2, '0')}-${lesson.id.split('-').slice(3).join('-')}`));
+  const expectedCourseIds = [
+    ...EXPECTED_FOUNDATION_IDS,
+    ...EXPECTED_SURVIVAL_ORDER_IDS,
+    ...Array.from({ length: 24 }, (_, index) => `tr-l2-${String(index + 1).padStart(2, '0')}-${[
+      'about-me', 'appearance', 'habits', 'dates', 'past-experience', 'future-plans', 'comparing', 'preferences',
+      'obligation', 'polite', 'possibility', 'directions', 'bargaining', 'restaurant', 'travel', 'health',
+      'work', 'reason', 'condition', 'opinion', 'experience', 'connectors', 'multi-questions', 'story',
+    ][index]}`),
+    'tr-l4-experience', 'tr-l4-advice', 'tr-l4-plans', 'tr-l4-phone',
+  ];
+  check('Course order runs Foundation → Survival → A2 → Communication', lessons.every((lesson, index) => lesson.order === index + 1)
+    && lessons.map(lesson => lesson.id).join('|') === expectedCourseIds.join('|')
+    && lessons.slice(0, 14).every(lesson => lesson.levelId === 0)
+    && lessons.slice(14, 38).every(lesson => lesson.levelId === 1)
+    && lessons.slice(38, 62).every(lesson => lesson.levelId === 2)
+    && lessons.slice(62).every(lesson => lesson.levelId === 3));
+  check('A1 Foundation follows the official 14-topic order', foundationTopics.length === 14
+    && foundationTopics.every((topic, index) => topic === EXPECTED_FOUNDATION_TOPICS[index])
+    && lessons.filter(lesson => lesson.levelId === 0).length === 14
+    && lessons.filter(lesson => lesson.levelId === 0).map(lesson => lesson.id).join('|') === EXPECTED_FOUNDATION_IDS.join('|'));
+  check('A1 Survival publishes the 20 requested topics in exact order', survivalTopics.length === 20
+    && survivalTopics.every((topic, index) => topic === EXPECTED_SURVIVAL_TOPICS[index]));
+  const survivalLessons = lessons.filter(lesson => lesson.levelId === 1);
+  const supplementarySurvivalIds = new Set(EXPECTED_SURVIVAL_RETAINED_IDS);
+  check('A1 Survival puts one core lesson under each requested topic, in order', survivalLessons.length === 24
+    && survivalLessons.filter(lesson => !supplementarySurvivalIds.has(lesson.id)).map(lesson => lesson.id).join('|') === EXPECTED_SURVIVAL_CORE_IDS.join('|'));
+  check('All four existing supplementary lessons stay beside their related topics', EXPECTED_SURVIVAL_RETAINED_IDS.every(id => survivalLessons.some(lesson => lesson.id === id))
+    && survivalLessons.map(lesson => lesson.id).join('|') === EXPECTED_SURVIVAL_ORDER_IDS.join('|'));
+  const previousA1Ids = [
+    ...Array.from({ length: 20 }, (_, index) => [
+      'tr-l1-01-greetings', 'tr-l1-02-introduce', 'tr-l1-03-pronouns', 'tr-l1-04-nominal-sentences',
+      'tr-l1-05-nationality', 'tr-l1-06-present-continuous', 'tr-l1-07-questions', 'tr-l1-08-negative',
+      'tr-l1-09-numbers-age', 'tr-l1-10-family', 'tr-l1-11-nouns-plural', 'tr-l1-12-describing',
+      'tr-l1-13-needs', 'tr-l1-14-location', 'tr-l1-15-time', 'tr-l1-16-ability-request',
+      'tr-l1-17-motion', 'tr-l1-18-past', 'tr-l1-19-future', 'tr-l1-20-conjunctions',
+    ][index]),
+    'tr-l2-cafe', 'tr-l2-restaurant', 'tr-l2-shopping', 'tr-l2-directions',
+    'tr-l2-time', 'tr-l2-transport', 'tr-l2-hotel', 'tr-l2-health',
+  ];
+  const allLessonIds = new Set(lessons.map(lesson => lesson.id));
+  check('No existing A1 Foundation or Survival lesson was deleted', previousA1Ids.every(id => allLessonIds.has(id)));
+  check('All ten new Survival lessons are present', EXPECTED_SURVIVAL_CORE_IDS.filter(id => id.startsWith('tr-survival-')).length === 10
+    && EXPECTED_SURVIVAL_CORE_IDS.filter(id => id.startsWith('tr-survival-')).every(id => allLessonIds.has(id)));
   check('Level 2 (A2) follows the official 24-topic order, one lesson per topic',
     a2Topics.length === 24
     && a2Topics.every((topic, index) => topic === EXPECTED_A2_TOPICS[index])
@@ -143,9 +236,13 @@ const esbuild = require('esbuild');
   check('Level 2 lessons are numbered 01…24 in that order',
     lessons.filter(lesson => lesson.levelId === 2).every((lesson, index) =>
       lesson.id.startsWith(`tr-l2-${String(index + 1).padStart(2, '0')}-`)));
-  check('Levels hold 20 / 8 / 24 / 4 lessons', app.TURKISH_LEVELS.map(level =>
-    lessons.filter(lesson => lesson.levelId === level.id).length).join('|') === '20|8|24|4');
-  check('Course contains 448 sentences, eight per lesson', sentences.length === 448 && lessons.every(lesson => lesson.sentences.length === 8));
+  check('Levels hold 14 / 24 / 24 / 4 lessons', app.TURKISH_LEVELS.map(level =>
+    lessons.filter(lesson => lesson.levelId === level.id).length).join('|') === '14|24|24|4');
+  check('Course contains 528 sentences, eight per lesson', sentences.length === 528 && lessons.every(lesson => lesson.sentences.length === 8));
+  const newSurvivalSentences = survivalLessons.filter(lesson => lesson.id.startsWith('tr-survival-')).flatMap(lesson => lesson.sentences);
+  check('Ten new Survival lessons contribute 80 uniquely namespaced sentences', newSurvivalSentences.length === 80
+    && newSurvivalSentences.every(sentence => /^tr5-\d{2}$/.test(sentence.id))
+    && new Set(newSurvivalSentences.map(sentence => sentence.id)).size === 80);
   check('Sentence ids are unique and namespaced', new Set(sentenceIds).size === sentenceIds.length && sentenceIds.every(id => /^tr\d-\d{2,3}$/.test(id)));
   check('No sentence text is repeated anywhere in the course',
     new Set(sentences.map(sentence => sentence.text.toLocaleLowerCase('tr-TR'))).size === sentences.length);
@@ -184,7 +281,7 @@ const esbuild = require('esbuild');
 
   const turkishMeta = fs.readFileSync(path.resolve('lib/languages/catalogMeta.ts'), 'utf8');
   check('Turkish catalog entry uses the tr-TR speech locale', /id: 'tr'/.test(turkishMeta) && /speechLocale: 'tr-TR'/.test(turkishMeta)
-    && /lessonsCount: 56/.test(turkishMeta) && /sentencesCount: 448/.test(turkishMeta));
+    && /lessonsCount: 66/.test(turkishMeta) && /sentencesCount: 528/.test(turkishMeta));
 
   const features = fs.readFileSync(path.resolve('lib/features.ts'), 'utf8');
   check('Edition flags gate Russian and Turkish tracks', /TURKISH_EDITION/.test(features)

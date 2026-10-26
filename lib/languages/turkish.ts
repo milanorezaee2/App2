@@ -3,6 +3,7 @@ import { createCourseProgressStore } from '../createCourseProgressStore';
 import { TURKISH_FOUNDATION_LESSONS_A } from './turkishFoundationLessons';
 import { TURKISH_FOUNDATION_LESSONS_B } from './turkishFoundationLessonsB';
 import { TURKISH_SURVIVAL_LESSONS } from './turkishSurvivalLessons';
+import { TURKISH_SURVIVAL_LESSONS_B } from './turkishSurvivalLessonsB';
 import { TURKISH_A2_LESSONS_A } from './turkishA2LessonsA';
 import { TURKISH_A2_LESSONS_B } from './turkishA2LessonsB';
 import { TURKISH_COMMUNICATION_LESSONS } from './turkishCommunicationLessons';
@@ -56,29 +57,23 @@ export const TURKISH_LEVELS: readonly TurkishCourseLevel[] = [
     title: 'Foundation Turkish',
     cefr: 'سطح ۱ · پایه (A1)',
     description:
-      '۲۰ درس پایه به همان ترتیب برنامهٔ آموزشی: از سلام و احوال‌پرسی تا اتصال دو جمله با حروف ربط؛ ۱۶۰ جمله با تلفظ و الگوی پسوندها.',
+      '۱۴ درس پایهٔ A1 مطابق ترتیب برنامهٔ آموزشی: از سلام و احوال‌پرسی تا مکان و موقعیت مکانی پایه؛ ۱۱۲ جمله با تلفظ و الگوی پسوندها.',
     color: '#C2410C',
     modules: [
       'سلام و احوال‌پرسی',
       'معرفی خود و دیگران',
       'ضمایر شخصی در جمله',
-      'جمله‌های اسمی ساده با پسوندهای شخصی',
+      'جمله‌های اسمی و پسوندهای شخصی',
       'ملیت، زبان و محل زندگی',
-      'جمله‌های فعلی ساده در زمان حال استمراری',
-      'پرسش‌های ساده و پاسخ به آن‌ها',
-      'جمله‌های منفی',
       'اعداد، سن و اطلاعات شخصی',
-      'مالکیت و خانواده',
-      'اسم‌ها، جمع و پسوندهای ملکی',
-      'توصیف اشخاص، اشیا و مکان‌ها',
-      'بیان نیازها، خواسته‌ها و علایق',
-      'مکان، جهت و موقعیت مکانی',
-      'زمان، روزها و برنامهٔ روزانه',
-      'توانایی، درخواست و اجازه',
-      'فعل‌های حرکتی پایه و بیان مسیر',
-      'جمله‌های ساده در زمان گذشته',
-      'بیان قصد و برنامهٔ آینده',
-      'اتصال دو جمله ساده با حروف ربط پایه',
+      'خانواده و مالکیت',
+      'اسم‌ها، جمع و اشاره به اشخاص و اشیا',
+      'توصیف ساده اشخاص، اشیا و مکان‌ها',
+      'جمله‌های فعلی در زمان حال استمراری',
+      'پرسش‌سازی و پاسخ‌های پایه',
+      'جمله‌های منفی',
+      'علایق، خواسته‌ها و نیازهای ساده',
+      'مکان و موقعیت مکانی پایه',
     ],
     status: 'available',
   },
@@ -87,17 +82,29 @@ export const TURKISH_LEVELS: readonly TurkishCourseLevel[] = [
     title: 'Survival Turkish',
     cefr: 'کاربرد روزمره (A1)',
     description:
-      '۸ درس موقعیت‌محور: کافه، رستوران، خرید، مسیر، ساعت، تاکسی و اتوبوس، هتل و سلامت.',
+      '۲۰ موضوع کاربردی A1 به ترتیب برنامه، همراه با ۴ درس تکمیلیِ موجود که برای حفظ کامل محتوای قبلی نگه داشته شده‌اند؛ ۲۴ درس و ۱۹۲ جمله با تلفظ و الگوی پسوندها.',
     color: '#0F766E',
     modules: [
-      'سفارش در کافه',
-      'رستوران و سفارش غذا',
-      'خرید و پرداخت',
-      'آدرس و مسیر',
-      'ساعت و قرار',
-      'تاکسی و حمل‌ونقل',
-      'هتل و اقامت',
-      'سلامتی و کمک فوری',
+      'خرید، قیمت و پرداخت',
+      'سفارش غذا و نوشیدنی',
+      'آدرس‌پرسیدن و مسیر‌یابی',
+      'حمل‌ونقل عمومی و تاکسی',
+      'معرفی خود در موقعیت‌های اجتماعی',
+      'رزرو هتل و اقامت',
+      'سفر و اطلاعات گردشگری',
+      'خرید بلیت و پرسیدن ساعت حرکت',
+      'مکالمه در فروشگاه و بازار',
+      'درخواست کمک و بیان مشکل',
+      'مراجعه به پزشک و بیان علائم ساده',
+      'مکالمه‌های ساده در محل کار و تحصیل',
+      'بیان ساعت، تاریخ و برنامه روزانه',
+      'صحبت درباره آب‌وهوا',
+      'تماس تلفنی و پیام‌های کوتاه',
+      'دعوت‌کردن، پذیرفتن و ردکردن دعوت',
+      'درخواست مؤدبانه و اجازه‌گرفتن',
+      'بیان توانایی و ناتوانی',
+      'بیان گذشته نزدیک و اتفاق‌های ساده',
+      'بیان برنامه‌های آینده نزدیک',
     ],
     status: 'available',
   },
@@ -149,7 +156,7 @@ export const TURKISH_LEVELS: readonly TurkishCourseLevel[] = [
 ];
 
 const TURKISH_LESSON_META: Record<string, { levelId: TurkishLevelId; subtitle: string }> = {
-  /* سطح ۱ — ترتیب ۲۰موضوعی برنامهٔ پایه */
+  /* A1 Foundation — شناسه‌ها و متن درس‌های پایهٔ حفظ‌شده */
   'tr-l1-01-greetings': { levelId: 0, subtitle: 'سلام، احوال‌پرسی و گفتن نام' },
   'tr-l1-02-introduce': { levelId: 0, subtitle: 'معرفی دوست و همکار به دیگران' },
   'tr-l1-03-pronouns': { levelId: 0, subtitle: 'من، تو، او، ما، شما، آن‌ها' },
@@ -164,13 +171,13 @@ const TURKISH_LESSON_META: Record<string, { levelId: TurkishLevelId; subtitle: s
   'tr-l1-12-describing': { levelId: 0, subtitle: 'بلند، بزرگ، تمیز، شلوغ و کهنه' },
   'tr-l1-13-needs': { levelId: 0, subtitle: 'نیاز دارم، می‌خواهم، دوست دارم' },
   'tr-l1-14-location': { levelId: 0, subtitle: 'روی، داخل، کنار، راست و چپ' },
-  'tr-l1-15-time': { levelId: 0, subtitle: 'روزهای هفته، ساعت و برنامهٔ روز' },
-  'tr-l1-16-ability-request': { levelId: 0, subtitle: 'می‌توانم، لطفاً و اجازه گرفتن' },
-  'tr-l1-17-motion': { levelId: 0, subtitle: 'به، در، از همراه فعل‌های رفتن و آمدن' },
-  'tr-l1-18-past': { levelId: 0, subtitle: 'دیروز چه کار کردید؛ پسوند گذشته' },
-  'tr-l1-19-future': { levelId: 0, subtitle: 'فردا چه خواهید کرد؛ زمان آینده' },
-  'tr-l1-20-conjunctions': { levelId: 0, subtitle: 'و، ولی، چون، یا و ترتیب رویداد' },
-  /* سطح ۲ — موقعیت‌های بیرون از خانه */
+  'tr-l1-15-time': { levelId: 1, subtitle: 'روزهای هفته، ساعت و برنامهٔ روز' },
+  'tr-l1-16-ability-request': { levelId: 1, subtitle: 'می‌توانم، لطفاً و اجازه گرفتن' },
+  'tr-l1-17-motion': { levelId: 1, subtitle: 'به، در، از همراه فعل‌های رفتن و آمدن' },
+  'tr-l1-18-past': { levelId: 1, subtitle: 'دیروز چه کار کردید؛ پسوند گذشته' },
+  'tr-l1-19-future': { levelId: 1, subtitle: 'فردا چه خواهید کرد؛ زمان آینده' },
+  'tr-l1-20-conjunctions': { levelId: 1, subtitle: 'و، ولی، چون، یا و ترتیب رویداد' },
+  /* A1 Survival — هشت درس موجود، با شناسه و محتوای ثابت */
   'tr-l2-cafe': { levelId: 1, subtitle: 'سفارش نوشیدنی و صورت‌حساب' },
   'tr-l2-restaurant': { levelId: 1, subtitle: 'منو، سفارش غذا و پرداخت' },
   'tr-l2-shopping': { levelId: 1, subtitle: 'قیمت، سایز، پرو و کارت' },
@@ -179,7 +186,18 @@ const TURKISH_LESSON_META: Record<string, { levelId: TurkishLevelId; subtitle: s
   'tr-l2-transport': { levelId: 1, subtitle: 'تاکسی، بلیت و پیاده شدن' },
   'tr-l2-hotel': { levelId: 1, subtitle: 'رزرو، اتاق، صبحانه و کلید' },
   'tr-l2-health': { levelId: 1, subtitle: 'درد، دارو و کمک فوری' },
-  /* سطح ۲ — ترتیب ۲۴موضوعی برنامهٔ A2 */
+  /* A1 Survival — ده درس تازه برای موضوع‌های فاقد پوشش */
+  'tr-survival-01-social-introduction': { levelId: 1, subtitle: 'آشنایی در جمع و آغاز گفت‌وگوی کوتاه' },
+  'tr-survival-02-travel-tourism': { levelId: 1, subtitle: 'دیدنی‌ها، تور، ساعت بازدید و اطلاعات گردشگری' },
+  'tr-survival-03-tickets-departures': { levelId: 1, subtitle: 'بلیت رفت‌وبرگشت، سکو و ساعت حرکت' },
+  'tr-survival-04-market-conversation': { levelId: 1, subtitle: 'مقدار، کالا، بسته‌بندی و پرداخت در بازار' },
+  'tr-survival-05-help-and-problems': { levelId: 1, subtitle: 'گم‌شدن، جاگذاشتن وسایل و درخواست کمک' },
+  'tr-survival-06-work-and-school': { levelId: 1, subtitle: 'کلاس، جلسه، تکلیف و برنامهٔ محیط کار' },
+  'tr-survival-07-weather': { levelId: 1, subtitle: 'هوا، پیش‌بینی، باران و دما' },
+  'tr-survival-08-phone-and-messages': { levelId: 1, subtitle: 'تماس، پیامک، نشانی و هماهنگی' },
+  'tr-survival-09-invitations': { levelId: 1, subtitle: 'دعوت، پاسخ مثبت یا منفی و زمان جایگزین' },
+  'tr-survival-10-ability-and-inability': { levelId: 1, subtitle: 'توانستن و نتوانستن در موقعیت‌های روزمره' },
+  /* سطح ۲ (A2) — ترتیب رسمی ۲۴موضوعی */
   'tr-l2-01-about-me': { levelId: 2, subtitle: 'زادگاه، تحصیل، شغل و سرگرمی‌ها' },
   'tr-l2-02-appearance': { levelId: 2, subtitle: 'ظاهر، اخلاق و ویژگی‌های افراد' },
   'tr-l2-03-habits': { levelId: 2, subtitle: 'کارهایی که هر روز و هر هفته تکرار می‌شوند' },
@@ -210,10 +228,89 @@ const TURKISH_LESSON_META: Record<string, { levelId: TurkishLevelId; subtitle: s
   'tr-l4-phone': { levelId: 3, subtitle: 'تلفن، وقت گرفتن و جابه‌جایی قرار' },
 };
 
-const TURKISH_SOURCE_LESSONS: readonly LearningLesson[] = [
+const TURKISH_A1_SOURCE_LESSONS: readonly LearningLesson[] = [
   ...TURKISH_FOUNDATION_LESSONS_A,
   ...TURKISH_FOUNDATION_LESSONS_B,
   ...TURKISH_SURVIVAL_LESSONS,
+  ...TURKISH_SURVIVAL_LESSONS_B,
+];
+
+const TURKISH_A1_LESSON_BY_ID = new Map<string, LearningLesson>();
+for (const lesson of TURKISH_A1_SOURCE_LESSONS) {
+  if (TURKISH_A1_LESSON_BY_ID.has(lesson.id)) {
+    throw new Error(`شناسهٔ تکراری در درس‌های A1 ترکی: ${lesson.id}`);
+  }
+  TURKISH_A1_LESSON_BY_ID.set(lesson.id, lesson);
+}
+
+const TURKISH_FOUNDATION_ORDER = [
+  'tr-l1-01-greetings',
+  'tr-l1-02-introduce',
+  'tr-l1-03-pronouns',
+  'tr-l1-04-nominal-sentences',
+  'tr-l1-05-nationality',
+  'tr-l1-09-numbers-age',
+  'tr-l1-10-family',
+  'tr-l1-11-nouns-plural',
+  'tr-l1-12-describing',
+  'tr-l1-06-present-continuous',
+  'tr-l1-07-questions',
+  'tr-l1-08-negative',
+  'tr-l1-13-needs',
+  'tr-l1-14-location',
+] as const;
+
+/** بیست درس اصلی به ترتیب سرفصل‌های درخواستی، همراه با چهار درس پیشینِ تکمیلی در جایگاه‌های مرتبط. */
+const TURKISH_SURVIVAL_ORDER = [
+  'tr-l2-shopping',
+  'tr-l2-cafe',
+  'tr-l2-restaurant',
+  'tr-l2-directions',
+  'tr-l1-17-motion',
+  'tr-l2-transport',
+  'tr-survival-01-social-introduction',
+  'tr-l2-hotel',
+  'tr-survival-02-travel-tourism',
+  'tr-survival-03-tickets-departures',
+  'tr-survival-04-market-conversation',
+  'tr-survival-05-help-and-problems',
+  'tr-l2-health',
+  'tr-survival-06-work-and-school',
+  'tr-l2-time',
+  'tr-l1-15-time',
+  'tr-survival-07-weather',
+  'tr-survival-08-phone-and-messages',
+  'tr-survival-09-invitations',
+  'tr-l1-16-ability-request',
+  'tr-survival-10-ability-and-inability',
+  'tr-l1-18-past',
+  'tr-l1-19-future',
+  // درس پیونددهندهٔ پیشین نیز به‌عنوان محتوای تکمیلی نگه داشته می‌شود.
+  'tr-l1-20-conjunctions',
+] as const;
+
+const orderTurkishA1Lessons = (ids: readonly string[]) => ids.map(id => {
+  const lesson = TURKISH_A1_LESSON_BY_ID.get(id);
+  if (!lesson) throw new Error(`درس ترکی A1 در ترتیب برنامه پیدا نشد: ${id}`);
+  return lesson;
+});
+
+const TURKISH_A1_ORDERED_LESSONS = [
+  ...orderTurkishA1Lessons(TURKISH_FOUNDATION_ORDER),
+  ...orderTurkishA1Lessons(TURKISH_SURVIVAL_ORDER),
+];
+
+const TURKISH_A1_ORDERED_IDS = new Set(TURKISH_A1_ORDERED_LESSONS.map(lesson => lesson.id));
+if (
+  TURKISH_A1_ORDERED_LESSONS.length !== TURKISH_A1_SOURCE_LESSONS.length
+  || TURKISH_A1_ORDERED_IDS.size !== TURKISH_A1_SOURCE_LESSONS.length
+  || [...TURKISH_A1_LESSON_BY_ID.keys()].some(id => !TURKISH_A1_ORDERED_IDS.has(id))
+) {
+  throw new Error('یک یا چند درس ترکی A1 در ترتیب دوره جا افتاده یا تکرار شده است.');
+}
+
+const TURKISH_SOURCE_LESSONS: readonly LearningLesson[] = [
+  ...TURKISH_A1_ORDERED_LESSONS,
   ...TURKISH_A2_LESSONS_A,
   ...TURKISH_A2_LESSONS_B,
   ...TURKISH_COMMUNICATION_LESSONS,
