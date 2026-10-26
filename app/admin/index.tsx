@@ -77,7 +77,6 @@ import {
   type RealContact,
   type SupportRequestStatus,
 } from '@/lib/conversations';
-import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
 import {
   adminClient,
   deleteRegisteredUser,
@@ -90,6 +89,9 @@ import {
 } from '@/lib/educationAdmin';
 import { FEATURES } from '@/lib/features';
 import { toPersianDigits as fa } from '@/lib/format';
+import { ALL_LANGUAGE_META } from '@/lib/languages/catalogMeta';
+
+const ENGLISH_LESSON_TOTAL = ALL_LANGUAGE_META.find(item => item.id === 'en')?.lessonsCount ?? 174;
 import {
   DEFAULT_ALL_LANGUAGES_DISABLED_MESSAGE,
   LOGIN_APP_LANGUAGE_IDS,
@@ -360,7 +362,7 @@ function EducationAdmin() {
     setInvites(core.invites);
     setRegisteredUsers(core.registeredUsers);
     setPopups(popupResult.popups);
-    setPopupSchemaMissing(popupResult.schemaMissing || langResult.schemaMissing);
+    setPopupSchemaMissing(popupResult.schemaMissing);
     setGlobalLangPolicy(langResult.globalPolicy);
     setGlobalLockMessage(langResult.globalPolicy.message);
     setUserLangPolicies(langResult.userPolicies);
@@ -375,7 +377,7 @@ function EducationAdmin() {
         loadAdminLanguagePolicies(),
       ]);
       setPopups(popupResult.popups);
-      setPopupSchemaMissing(popupResult.schemaMissing || langResult.schemaMissing);
+      setPopupSchemaMissing(popupResult.schemaMissing);
       setGlobalLangPolicy(langResult.globalPolicy);
       setUserLangPolicies(langResult.userPolicies);
     } catch {
@@ -525,9 +527,47 @@ function EducationAdmin() {
     setNotice(`در حال ویرایش پاپ‌آپ «${item.title}»`);
   }
 
-  function submitPopupForm() {
+  function showValidationPrompt(titleText: string, messageText: string) {
+    setError(messageText);
+    if (Platform.OS !== 'web') {
+      Alert.alert(titleText, messageText, [{ text: 'متوجه شدم' }]);
+    }
+  }
+
+  function submitPopupForm(forceActive = true) {
+    if (busy) return;
+    if (!popupTitle.trim()) {
+      showValidationPrompt(
+        'عنوان پاپ‌آپ خالی است',
+        'لطفاً عنوان پاپ‌آپ را در بخش ۳ وارد کنید (یا یکی از قالب‌های آماده بالا را بزنید).',
+      );
+      return;
+    }
+    if (!popupBody.trim()) {
+      showValidationPrompt(
+        'متن پاپ‌آپ خالی است',
+        'لطفاً متن کامل پیام پاپ‌آپ را در بخش ۴ بنویسید.',
+      );
+      return;
+    }
+    if (popupTargetScope === 'user' && !popupTargetUserId) {
+      showValidationPrompt(
+        'گیرنده انتخاب نشده است',
+        'یک زبان‌آموز مشخص از لیست انتخاب کنید یا مخاطب هدف را روی «همهٔ کاربران اپ با لاگین» بگذارید.',
+      );
+      return;
+    }
+    if ((popupCtaLabel.trim() && !popupCtaUrl.trim()) || (!popupCtaLabel.trim() && popupCtaUrl.trim())) {
+      showValidationPrompt(
+        'دکمهٔ اقدام ناقص است',
+        'اگر دکمهٔ اقدام (CTA) تعریف می‌کنید، هم عنوان دکمه و هم مسیر/لینک آن را وارد کنید (یا هر دو را خالی بگذارید).',
+      );
+      return;
+    }
+
     void task(async () => {
       const parsedPriority = Number.parseInt(popupPriority, 10);
+      const publishLive = forceActive ? true : popupStartActive;
       const draft: AdminPopupDraft = {
         title: popupTitle,
         body: popupBody,
@@ -542,18 +582,27 @@ function EducationAdmin() {
         target_edition: 'all',
         target_user_id: popupTargetScope === 'user' ? popupTargetUserId : null,
         priority: Number.isFinite(parsedPriority) ? parsedPriority : 10,
-        is_active: popupStartActive,
+        is_active: publishLive,
         expires_in_hours: popupExpiryHours,
         expires_at: popupExpiryHours === null ? popupKeepExistingExpiry : null,
       };
+      const publishedTitle = popupTitle.trim();
       if (editingPopupId) {
         await updateAdminPopup(editingPopupId, draft);
-        setNotice('پاپ‌آپ ویرایش شد و به‌صورت آنی در اپ زبان‌آموز با لاگین به‌روزرسانی گردید.');
+        const msg = `تغییرات پاپ‌آپ «${publishedTitle}» ذخیره شد و به‌صورت آنی در اپ زبان‌آموز با لاگین منتشر گردید.`;
+        setNotice(msg);
+        if (Platform.OS !== 'web') {
+          Alert.alert('به‌روزرسانی و منتشر شد', msg, [{ text: 'عالی' }]);
+        }
       } else {
         await createAdminPopup(draft);
-        setNotice(popupStartActive
-          ? 'پاپ‌آپ با موفقیت منتشر شد و هم‌اکنون در اپ زبان‌آموز با لاگین به نمایش درآمد.'
-          : 'پاپ‌آپ به‌صورت غیرفعال ذخیره شد؛ هر زمان خواستید آن را فعال کنید.');
+        const msg = publishLive
+          ? `پاپ‌آپ «${publishedTitle}» با موفقیت منتشر شد و هم‌اکنون در اپ زبان‌آموز با لاگین فعال است.`
+          : `پاپ‌آپ «${publishedTitle}» به‌صورت پیش‌نویس ذخیره شد.`;
+        setNotice(msg);
+        if (Platform.OS !== 'web' && publishLive) {
+          Alert.alert('پاپ‌آپ منتشر شد', msg, [{ text: 'عالی' }]);
+        }
       }
       resetPopupForm();
       await refreshPopupsOnly();
@@ -1685,6 +1734,33 @@ function EducationAdmin() {
                     style={[s.input, { minHeight: 88, textAlignVertical: 'top' }]}
                   />
 
+                  {/* Immediate Publish Action right after required Title + Body */}
+                  <View style={s.publishInlineBox}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="انتشار فوری پاپ‌آپ"
+                      disabled={busy}
+                      onPress={() => submitPopupForm(true)}
+                      style={[s.publishPrimaryBtn, busy && { opacity: 0.6 }]}
+                    >
+                      {busy ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <>
+                          <Send size={16} color="#FFFFFF" />
+                          <Text style={s.publishPrimaryBtnText}>
+                            {editingPopupId
+                              ? 'ذخیره و انتشار آنی تغییرات پاپ‌آپ'
+                              : 'انتشار فوری پاپ‌آپ در اپ با لاگین'}
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+                    <Text style={s.small}>
+                      فیلدهای ۵ تا ۷ اختیاری هستند؛ همین الان می‌توانید پاپ‌آپ را منتشر کنید یا در ادامه دکمه و زمان‌بندی اضافه کنید.
+                    </Text>
+                  </View>
+
                   <Text style={s.label}>۵. دکمهٔ اقدام هوشمند (CTA — اختیاری)</Text>
                   <TextInput
                     accessibilityLabel="متن دکمه اقدام"
@@ -1797,15 +1873,27 @@ function EducationAdmin() {
                     ))}
                   </View>
 
-                  <View style={{ flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                    {button(
-                      editingPopupId
-                        ? 'ذخیره تغییرات و به‌روزرسانی آنی'
-                        : 'انتشار و ارسال آنی پاپ‌آپ در اپ اصلی',
-                      submitPopupForm,
-                      false,
-                      popupSchemaMissing || !popupTitle.trim() || !popupBody.trim(),
-                    )}
+                  <View style={{ flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="انتشار کامل پاپ‌آپ در اپ اصلی"
+                      disabled={busy}
+                      onPress={() => submitPopupForm(true)}
+                      style={[s.publishPrimaryBtn, { flex: 1, minWidth: 210 }, busy && { opacity: 0.6 }]}
+                    >
+                      {busy ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <>
+                          <Send size={16} color="#FFFFFF" />
+                          <Text style={s.publishPrimaryBtnText}>
+                            {editingPopupId
+                              ? 'ذخیره تغییرات و انتشار آنی'
+                              : 'انتشار و ارسال آنی پاپ‌آپ در اپ اصلی'}
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
                     {editingPopupId && button('انصراف از ویرایش', resetPopupForm, true)}
                   </View>
                 </View>
@@ -1833,8 +1921,28 @@ function EducationAdmin() {
                       onDismiss={popupDisplayMode === 'persistent_blocking' ? undefined : () => undefined}
                     />
                   </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="اعمال و انتشار پاپ‌آپ از پیش‌نمایش"
+                    disabled={busy}
+                    onPress={() => submitPopupForm(true)}
+                    style={[s.publishPrimaryBtn, busy && { opacity: 0.6 }]}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <Megaphone size={16} color="#FFFFFF" />
+                        <Text style={s.publishPrimaryBtnText}>
+                          {editingPopupId
+                            ? 'تأیید پیش‌نمایش و انتشار تغییرات'
+                            : 'تأیید و انتشار فوری این پاپ‌آپ'}
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
                   <Text style={s.small}>
-                    نکته: به‌محض فشردن دکمهٔ انتشار، هر زبان‌آموزی که اپ اصلی یا اپ ترکی روی گوشی یا مرورگرش باز باشد در لحظه این پاپ‌آپ را می‌بیند.
+                    نکته: به‌محض فشردن دکمهٔ انتشار، هر زبان‌آموزی که اپ زبان‌آموز با لاگین روی گوشی یا مرورگرش باز باشد در لحظه این پاپ‌آپ را می‌بیند.
                   </Text>
                 </View>
               </View>
@@ -2402,7 +2510,7 @@ function EducationAdmin() {
                       </View>
                       <View style={{ width: wide ? 200 : 115 }}>
                         <Text style={s.small}>
-                          {r.summary ? `انگلیسی: ${fa(m.lessons)} از ${fa(SENTENCE_LESSONS.length)} درس` : 'بدون گزارش'}
+                          {r.summary ? `انگلیسی: ${fa(m.lessons)} از ${fa(ENGLISH_LESSON_TOTAL)} درس` : 'بدون گزارش'}
                         </Text>
                         <View style={s.track}>
                           <View style={[s.fill, { width: `${m.percent}%` }]} />
@@ -2595,19 +2703,24 @@ function EducationAdmin() {
                 ))}
               </View>
 
-              <View style={s.card}>
-                <Text style={s.cardTitle}>سرفصل سطوح دورهٔ انگلیسی ({fa(SENTENCE_LESSONS.length)} درس · ۵۰۴ واژه مرجع)</Text>
-                {COURSE_LEVELS.map(l => (
-                  <View key={l.id} style={s.contentRow}>
-                    <View style={[s.levelDot, { backgroundColor: l.color }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.studentName}>{l.title}</Text>
-                      <Text style={s.small}>{l.description}</Text>
-                    </View>
-                    <Text style={s.badge}>{fa(SENTENCE_LESSONS.filter(x => x.levelId === l.id).length)} درس</Text>
+              {(() => {
+                const { COURSE_LEVELS, SENTENCE_LESSONS } = require('@/lib/courseContent') as typeof import('@/lib/courseContent');
+                return (
+                  <View style={s.card}>
+                    <Text style={s.cardTitle}>سرفصل سطوح دورهٔ انگلیسی ({fa(SENTENCE_LESSONS.length)} درس · ۵۰۴ واژه مرجع)</Text>
+                    {COURSE_LEVELS.map(l => (
+                      <View key={l.id} style={s.contentRow}>
+                        <View style={[s.levelDot, { backgroundColor: l.color }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.studentName}>{l.title}</Text>
+                          <Text style={s.small}>{l.description}</Text>
+                        </View>
+                        <Text style={s.badge}>{fa(SENTENCE_LESSONS.filter(x => x.levelId === l.id).length)} درس</Text>
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
+                );
+              })()}
             </>
           )}
 
@@ -2621,6 +2734,44 @@ function EducationAdmin() {
             button('بازگشت به اپ آموزشی', () => router.replace('/languages' as never), true)
           )}
         </ScrollView>
+
+        {/* Sticky Always-Visible Publish Action Bar when inside Pop-ups Studio */}
+        {tab === 'popups' && (
+          <View style={s.stickyPublishBar}>
+            <View style={{ flex: 1, minWidth: 110 }}>
+              <Text style={s.stickyPublishStatus} numberOfLines={1}>
+                {popupTitle.trim() && popupBody.trim()
+                  ? `آمادهٔ انتشار: «${popupTitle.trim()}»`
+                  : 'عنوان و متن پاپ‌آپ را بنویسید یا قالب آماده بزنید'}
+              </Text>
+              <Text style={s.small} numberOfLines={1}>
+                {popupTargetScope === 'user'
+                  ? selectedTargetUser
+                    ? `گیرنده: ${selectedTargetUser.full_name}`
+                    : 'گیرنده: کاربر مشخص (انتخاب کنید)'
+                  : 'گیرنده: همهٔ کاربران اپ با لاگین'}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="دکمه انتشار پاپ‌آپ"
+              disabled={busy}
+              onPress={() => submitPopupForm(true)}
+              style={[s.stickyPublishBtn, busy && { opacity: 0.6 }]}
+            >
+              {busy ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Send size={15} color="#FFFFFF" />
+                  <Text style={s.publishPrimaryBtnText}>
+                    {editingPopupId ? 'انتشار تغییرات' : 'انتشار پاپ‌آپ'}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -2776,5 +2927,73 @@ const s = StyleSheet.create({
   langToggleCardOff: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
+  },
+  publishInlineBox: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 14,
+    padding: 10,
+    gap: 7,
+    marginTop: 4,
+  },
+  publishPrimaryBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 46,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 13,
+    backgroundColor: '#059669',
+    shadowColor: '#059669',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  publishPrimaryBtnText: {
+    fontFamily: 'Vazir-Bold',
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
+  stickyPublishBar: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderColor: '#C9DFFF',
+    shadowColor: '#102A56',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+  },
+  stickyPublishStatus: {
+    fontFamily: 'Vazir-Bold',
+    fontSize: 11,
+    color: '#102A56',
+    textAlign: 'right',
+  },
+  stickyPublishBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    minHeight: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#059669',
+    shadowColor: '#059669',
+    shadowOpacity: 0.24,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
 });

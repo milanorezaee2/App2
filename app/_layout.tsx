@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts, FontDisplay } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
-import { AppState, I18nManager, Platform, Text, TextInput } from 'react-native';
+import { AppState, I18nManager, InteractionManager, Platform, Text, TextInput } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
 import { createAudioPlayer } from 'expo-audio';
@@ -171,23 +171,42 @@ export default function RootLayout() {
     setIntroComplete(true);
     if (IS_ADMIN_APP) return;
 
-    try {
-      const player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
-      player.volume = 0.28;
-      player.play();
-      setTimeout(() => {
-        try { player.remove(); } catch { /* ignore native audio cleanup races */ }
-      }, 2500);
-    } catch {
-      // A device without playback support still opens the learner home.
-    }
-    if (FEATURES.englishCourse) warmSpeech('en-US');
-    if (FEATURES.germanCourse) setTimeout(() => warmSpeech('de-DE'), 350);
+    InteractionManager.runAfterInteractions(() => {
+      try {
+        const player = createAudioPlayer(require('../assets/audio/welcome-chime.wav'));
+        player.volume = 0.28;
+        player.play();
+        setTimeout(() => {
+          try { player.remove(); } catch { /* ignore native audio cleanup races */ }
+        }, 2500);
+      } catch {
+        // A device without playback support still opens the learner home.
+      }
+      if (FEATURES.englishCourse) setTimeout(() => warmSpeech('en-US'), 1200);
+      if (FEATURES.germanCourse) setTimeout(() => warmSpeech('de-DE'), 2000);
+    });
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
     pathnameRef.current = pathname;
   }, [pathname]);
+
+  const forceNavigateHome = useCallback(() => {
+    let attempts = 0;
+    const tryNavigate = () => {
+      if (navigationRef.isReady()) {
+        if (pathnameRef.current !== homeRoute) {
+          router.replace(homeRoute as never);
+        }
+        return;
+      }
+      attempts += 1;
+      if (attempts < 25) {
+        setTimeout(tryNavigate, 40);
+      }
+    };
+    tryNavigate();
+  }, [homeRoute, navigationRef, router]);
 
   // Returning to the app after leaving it should always start from the same
   // language chooser/home, not the last nested lesson, library, or conversation.
@@ -212,13 +231,24 @@ export default function RootLayout() {
 
   // Wait for our own Stack to be mounted before normalizing an Android-restored
   // route. AppLockGate/RegistrationGate can temporarily defer mounting the
-  // Stack, and fonts keep RootLayout at `return null`; isReady() is the exact
-  // readiness check expo-router performs before accepting a navigation call.
+  // Stack, and fonts keep RootLayout at `return null`; retry cleanly if
+  // navigationRef.isReady() flips true on the commit right after mount.
   useEffect(() => {
-    if (!introComplete || !navigatorMounted || !navigationRef.isReady() || startupRouteLocked.current) return;
-    startupRouteLocked.current = true;
-    if (pathname !== homeRoute) router.replace(homeRoute as never);
-  }, [homeRoute, introComplete, pathname, navigatorMounted, navigationRef, router]);
+    if (!introComplete || !navigatorMounted || startupRouteLocked.current) return;
+    if (navigationRef.isReady()) {
+      startupRouteLocked.current = true;
+      if (pathnameRef.current !== homeRoute) router.replace(homeRoute as never);
+      return;
+    }
+    const timer = setInterval(() => {
+      if (!navigationRef.isReady()) return;
+      clearInterval(timer);
+      if (startupRouteLocked.current) return;
+      startupRouteLocked.current = true;
+      if (pathnameRef.current !== homeRoute) router.replace(homeRoute as never);
+    }, 35);
+    return () => clearInterval(timer);
+  }, [homeRoute, introComplete, navigatorMounted, navigationRef, router]);
 
   // On web, AppState is unavailable — use page visibility instead so that
   // returning to the tab also starts from the home screen, not the last
@@ -251,11 +281,12 @@ export default function RootLayout() {
       <ErrorBoundary>
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <AppLockGate>
-            <RegistrationGate>
+            <RegistrationGate onAuthenticated={forceNavigateHome}>
               <LearnerLanguageAccessProvider>
                 {!IS_ADMIN_APP && <RuntimeGate />}
                 <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
                   <Stack.Screen name="index" />
+                  <Stack.Screen name="languages" />
                   <Stack.Screen name="admin/index" />
                   <Stack.Screen name="agent" />
                   <Stack.Screen name="permissions" />

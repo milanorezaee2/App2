@@ -67,6 +67,94 @@ export const POPUP_LIVE_CHANNEL = 'milo-admin-popups-live';
 export const SYSTEM_LANGUAGE_POLICY_BADGE = '__MILO_LANG_ACCESS_V1__';
 const POPUP_CLIENT_ID_KEY = 'milo_popup_client_id_v1';
 const SEEN_POPUPS_STORAGE_KEY = 'milo_seen_popups_v1';
+const FALLBACK_POPUPS_CLOUD_KEY = 'milo_admin_popups_cloud_v2';
+const FALLBACK_POPUP_STATS_CLOUD_KEY = 'milo_admin_popup_stats_cloud_v2';
+
+interface FallbackPopupStatRecord {
+  total_impressions: number;
+  unique_impression_clients: string[];
+  total_clicks: number;
+  unique_click_clients: string[];
+  unique_dismiss_clients: string[];
+  last_event_at: string | null;
+}
+
+function generatePopupId(): string {
+  try {
+    return Crypto.randomUUID();
+  } catch {
+    const hex = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).slice(1);
+    return `${hex()}${hex()}-${hex()}-4${hex().slice(1)}-a${hex().slice(1)}-${hex()}${hex()}${hex()}`;
+  }
+}
+
+async function assertVerifiedEducationAdmin(): Promise<void> {
+  const db = adminClient();
+  const { data, error } = await db.rpc('is_education_admin');
+  if (error || data !== true) {
+    throw new Error('ADMIN_REQUIRED');
+  }
+}
+
+async function readCloudPopupFallback(
+  client: ReturnType<typeof adminClient>,
+): Promise<{ popups: AdminPopup[]; available: boolean }> {
+  const { data, error } = await client
+    .from('device_settings')
+    .select('value')
+    .eq('key', FALLBACK_POPUPS_CLOUD_KEY)
+    .maybeSingle();
+  if (error) return { popups: [], available: false };
+  const rawValue = data && typeof (data as { value?: unknown }).value === 'string'
+    ? (data as { value: string }).value
+    : '';
+  if (!rawValue) return { popups: [], available: true };
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) return { popups: [], available: true };
+    return {
+      popups: parsed
+        .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+        .map(row => normalizePopupRow(row)),
+      available: true,
+    };
+  } catch {
+    return { popups: [], available: true };
+  }
+}
+
+async function writeCloudPopupFallback(popups: AdminPopup[]): Promise<void> {
+  await assertVerifiedEducationAdmin();
+  const db = adminClient();
+  const { error } = await db.from('device_settings').upsert(
+    {
+      key: FALLBACK_POPUPS_CLOUD_KEY,
+      value: JSON.stringify(popups.slice(0, 120)),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'key' },
+  );
+  if (error) throw error;
+}
+
+async function readCloudPopupStatsFallback(
+  client: ReturnType<typeof adminClient>,
+): Promise<Record<string, FallbackPopupStatRecord>> {
+  const { data, error } = await client
+    .from('device_settings')
+    .select('value')
+    .eq('key', FALLBACK_POPUP_STATS_CLOUD_KEY)
+    .maybeSingle();
+  if (error || !data || typeof (data as { value?: unknown }).value !== 'string') return {};
+  try {
+    const parsed = JSON.parse((data as { value: string }).value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, FallbackPopupStatRecord>)
+      : {};
+  } catch {
+    return {};
+  }
+}
 
 export const INTERNAL_POPUP_ROUTES: ReadonlyArray<{ label: string; route: string; edition?: PopupTargetEdition }> = [
   { label: 'فهرست زبان‌ها', route: '/languages' },
@@ -254,6 +342,7 @@ export async function fetchEligibleLearnerPopups(): Promise<AdminPopup[]> {
   // Admin features apply strictly to authenticated users of the With-Login app.
   if (!currentUserId) return [];
 
+  let rawRows: Record<string, unknown>[] = [];
   const { data, error } = await supabase
     .from('admin_popups')
     .select('*')
@@ -263,14 +352,21 @@ export async function fetchEligibleLearnerPopups(): Promise<AdminPopup[]> {
     .limit(40);
 
   if (error) {
-    if (isMissingPopupSchema(error)) return [];
-    return [];
+    if (isMissingPopupSchema(error)) {
+      const fallback = await readCloudPopupFallback(supabase);
+      if (!fallback.available) return [];
+      rawRows = fallback.popups as unknown as Record<string, unknown>[];
+    } else {
+      return [];
+    }
+  } else {
+    rawRows = (data || []) as Record<string, unknown>[];
   }
 
   const seenOnce = await readSeenPopupTokens();
   const nowMs = Date.now();
-  const eligible = (data || [])
-    .map(row => normalizePopupRow(row as Record<string, unknown>))
+  const eligible = rawRows
+    .map(row => normalizePopupRow(row))
     .filter(popup => {
       if (popup.badge_text === SYSTEM_LANGUAGE_POLICY_BADGE) return false;
       if (!popup.id || !isPopupCurrentlyInWindow(popup, nowMs)) return false;
@@ -295,13 +391,45 @@ export async function recordLearnerPopupEvent(popup: AdminPopup, eventType: Popu
   }
   try {
     const clientId = await getOrCreatePopupClientId();
-    await supabase.rpc('record_admin_popup_event', {
+    const { error } = await supabase.rpc('record_admin_popup_event', {
       p_popup_id: popup.id,
       p_event_type: eventType,
       p_client_id: clientId,
       p_edition: currentLearnerEdition(),
       p_platform: runtimePlatform(),
     });
+    if (error && isMissingPopupSchema(error)) {
+      const statsMap = await readCloudPopupStatsFallback(supabase);
+      const current: FallbackPopupStatRecord = statsMap[popup.id] || {
+        total_impressions: 0,
+        unique_impression_clients: [],
+        total_clicks: 0,
+        unique_click_clients: [],
+        unique_dismiss_clients: [],
+        last_event_at: null,
+      };
+      const addUnique = (arr: string[], id: string) =>
+        arr.includes(id) ? arr : [...arr.slice(-499), id];
+      if (eventType === 'impression') {
+        current.total_impressions = (current.total_impressions || 0) + 1;
+        current.unique_impression_clients = addUnique(current.unique_impression_clients || [], clientId);
+      } else if (eventType === 'cta_click') {
+        current.total_clicks = (current.total_clicks || 0) + 1;
+        current.unique_click_clients = addUnique(current.unique_click_clients || [], clientId);
+      } else if (eventType === 'dismiss') {
+        current.unique_dismiss_clients = addUnique(current.unique_dismiss_clients || [], clientId);
+      }
+      current.last_event_at = new Date().toISOString();
+      statsMap[popup.id] = current;
+      await supabase.from('device_settings').upsert(
+        {
+          key: FALLBACK_POPUP_STATS_CLOUD_KEY,
+          value: JSON.stringify(statsMap),
+          updated_at: current.last_event_at,
+        },
+        { onConflict: 'key' },
+      );
+    }
   } catch {
     // Analytics failure never interrupts the learner.
   }
@@ -332,17 +460,16 @@ export function subscribeLearnerPopups(onUpdate: (popups: AdminPopup[]) => void)
   void refreshNow();
 
   const channel: RealtimeChannel = supabase
-    .channel(`${POPUP_LIVE_CHANNEL}:learner:${Math.random().toString(36).slice(2, 8)}`)
-    .on('broadcast', { event: 'popups_changed' }, () => scheduleRefresh(30))
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_popups' }, () => scheduleRefresh(60))
-    .subscribe();
-
-  const broadcastSyncChannel: RealtimeChannel = supabase
     .channel(POPUP_LIVE_CHANNEL)
-    .on('broadcast', { event: 'popups_changed' }, () => scheduleRefresh(20))
+    .on('broadcast', { event: 'popups_changed' }, () => scheduleRefresh(25))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_popups' }, () => scheduleRefresh(60))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'device_settings' }, () => scheduleRefresh(80))
     .subscribe();
 
-  const { data: authSub } = supabase.auth.onAuthStateChange(() => scheduleRefresh(50));
+  const { data: authSub } = supabase.auth.onAuthStateChange(event => {
+    if (event === 'INITIAL_SESSION') return;
+    scheduleRefresh(60);
+  });
 
   const appStateSub = AppState.addEventListener('change', state => {
     if (state === 'active') scheduleRefresh(50);
@@ -366,7 +493,6 @@ export function subscribeLearnerPopups(onUpdate: (popups: AdminPopup[]) => void)
       document.removeEventListener('visibilitychange', onVisible);
     }
     void supabase.removeChannel(channel).catch(() => undefined);
-    void supabase.removeChannel(broadcastSyncChannel).catch(() => undefined);
   };
 }
 
@@ -507,6 +633,28 @@ export async function loadAdminPopupsWithStats(): Promise<{
   const { data, error } = await db.rpc('admin_list_popups_with_stats');
   if (error) {
     if (isMissingPopupSchema(error)) {
+      const [fallback, statsMap] = await Promise.all([
+        readCloudPopupFallback(db),
+        readCloudPopupStatsFallback(db),
+      ]);
+      if (fallback.available) {
+        const merged: AdminPopupWithStats[] = fallback.popups
+          .filter(row => row.badge_text !== SYSTEM_LANGUAGE_POLICY_BADGE)
+          .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+          .map(row => {
+            const st = statsMap[row.id];
+            return {
+              ...row,
+              unique_impressions: st?.unique_impression_clients?.length ?? 0,
+              total_impressions: st?.total_impressions ?? 0,
+              unique_clicks: st?.unique_click_clients?.length ?? 0,
+              total_clicks: st?.total_clicks ?? 0,
+              unique_dismissals: st?.unique_dismiss_clients?.length ?? 0,
+              last_event_at: st?.last_event_at ?? null,
+            };
+          });
+        return { popups: merged, schemaMissing: false };
+      }
       return { popups: [], schemaMissing: true };
     }
     throw error;
@@ -522,38 +670,78 @@ export async function loadAdminPopupsWithStats(): Promise<{
 export async function createAdminPopup(draft: AdminPopupDraft): Promise<void> {
   const payload = validateAdminPopupDraft(draft);
   const db = adminClient();
-  const { error } = await db.from('admin_popups').insert({
-    ...payload,
-    starts_at: new Date().toISOString(),
-  });
-  if (error) throw error;
+  const { error } = await db.from('admin_popups').insert(payload);
+  if (error) {
+    if (isMissingPopupSchema(error)) {
+      const now = new Date().toISOString();
+      const existing = await readCloudPopupFallback(db);
+      if (!existing.available) throw error;
+      const newPopup: AdminPopup = {
+        id: generatePopupId(),
+        ...payload,
+        starts_at: now,
+        created_at: now,
+        updated_at: now,
+      };
+      await writeCloudPopupFallback([newPopup, ...existing.popups]);
+      void broadcastAdminPopupSignal();
+      return;
+    }
+    throw error;
+  }
   void broadcastAdminPopupSignal();
 }
 
 export async function updateAdminPopup(id: string, draft: AdminPopupDraft): Promise<void> {
   const payload = validateAdminPopupDraft(draft);
   const db = adminClient();
+  const now = new Date().toISOString();
   const { error } = await db
     .from('admin_popups')
     .update({
       ...payload,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
     .eq('id', id);
-  if (error) throw error;
+  if (error) {
+    if (isMissingPopupSchema(error)) {
+      const existing = await readCloudPopupFallback(db);
+      if (!existing.available) throw error;
+      const next = existing.popups.map(item =>
+        item.id === id ? { ...item, ...payload, updated_at: now } : item,
+      );
+      await writeCloudPopupFallback(next);
+      void broadcastAdminPopupSignal();
+      return;
+    }
+    throw error;
+  }
   void broadcastAdminPopupSignal();
 }
 
 export async function toggleAdminPopupActive(id: string, isActive: boolean): Promise<void> {
   const db = adminClient();
+  const now = new Date().toISOString();
   const { error } = await db
     .from('admin_popups')
     .update({
       is_active: isActive,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
     .eq('id', id);
-  if (error) throw error;
+  if (error) {
+    if (isMissingPopupSchema(error)) {
+      const existing = await readCloudPopupFallback(db);
+      if (!existing.available) throw error;
+      const next = existing.popups.map(item =>
+        item.id === id ? { ...item, is_active: isActive, updated_at: now } : item,
+      );
+      await writeCloudPopupFallback(next);
+      void broadcastAdminPopupSignal();
+      return;
+    }
+    throw error;
+  }
   void broadcastAdminPopupSignal();
 }
 
@@ -569,14 +757,35 @@ export async function republishAdminPopup(id: string): Promise<void> {
       updated_at: now,
     })
     .eq('id', id);
-  if (error) throw error;
+  if (error) {
+    if (isMissingPopupSchema(error)) {
+      const existing = await readCloudPopupFallback(db);
+      if (!existing.available) throw error;
+      const next = existing.popups.map(item =>
+        item.id === id ? { ...item, is_active: true, starts_at: now, updated_at: now } : item,
+      );
+      await writeCloudPopupFallback(next);
+      void broadcastAdminPopupSignal();
+      return;
+    }
+    throw error;
+  }
   void broadcastAdminPopupSignal();
 }
 
 export async function deleteAdminPopup(id: string): Promise<void> {
   const db = adminClient();
   const { error } = await db.from('admin_popups').delete().eq('id', id);
-  if (error) throw error;
+  if (error) {
+    if (isMissingPopupSchema(error)) {
+      const existing = await readCloudPopupFallback(db);
+      if (!existing.available) throw error;
+      await writeCloudPopupFallback(existing.popups.filter(item => item.id !== id));
+      void broadcastAdminPopupSignal();
+      return;
+    }
+    throw error;
+  }
   void broadcastAdminPopupSignal();
 }
 
@@ -593,6 +802,7 @@ export function subscribeAdminPopupTelemetry(onChange: () => void): () => void {
     .channel(`admin-popup-telemetry:${Math.random().toString(36).slice(2, 8)}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_popups' }, trigger)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_popup_events' }, trigger)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'device_settings' }, trigger)
     .subscribe();
 
   return () => {

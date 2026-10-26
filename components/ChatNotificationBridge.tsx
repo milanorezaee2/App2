@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, InteractionManager, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { isSupabaseConfigured } from '@/lib/pairing';
@@ -73,12 +73,39 @@ export function ChatNotificationBridge() {
 
     const handleResponse = (response: Notifications.NotificationResponse | null) => {
       if (!response) return;
-      const responseId = response.notification.request.identifier;
-      if (handledResponseIds.current.has(responseId)) return;
+      if (
+        response.actionIdentifier
+        && response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER
+      ) {
+        return;
+      }
+      const responseId = response.notification?.request?.identifier;
+      if (!responseId || handledResponseIds.current.has(responseId)) return;
+      const rawData = response.notification?.request?.content?.data;
+      const data = rawData && typeof rawData === 'object'
+        ? (rawData as Record<string, unknown>)
+        : null;
+      const targetConversationId = data && typeof data.conversationId === 'string' && data.conversationId.trim()
+        ? data.conversationId.trim()
+        : null;
+      const explicitRoute = data && typeof data.route === 'string'
+        ? data.route.trim()
+        : '';
+
+      // Android synthesizes a NotificationResponse from ordinary launcher Intents
+      // when getLastNotificationResponseAsync() runs right after login. Never fall
+      // back to /conversations unless the tapped notification explicitly carried a
+      // real Milo chat conversationId or explicit target route.
+      if (
+        !targetConversationId
+        && explicitRoute !== '/admin'
+        && (MANAGEMENT_BUILD || explicitRoute !== '/conversations')
+      ) {
+        return;
+      }
+
       handledResponseIds.current.add(responseId);
       void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
-      const data = response.notification.request.content.data;
-      const targetConversationId = typeof data.conversationId === 'string' ? data.conversationId : null;
       setBanner(null);
       if (timerRef.current) clearTimeout(timerRef.current);
       void clearChatUnreadCount().then(() => Notifications.setBadgeCountAsync(0).catch(() => undefined));
@@ -87,9 +114,9 @@ export function ChatNotificationBridge() {
           pathname: '/conversations/human/[conversationId]',
           params: { conversationId: targetConversationId },
         } as never);
-      } else if (data.route === '/admin') {
+      } else if (explicitRoute === '/admin' || MANAGEMENT_BUILD) {
         router.push('/admin' as never);
-      } else {
+      } else if (explicitRoute === '/conversations') {
         router.push('/conversations' as never);
       }
     };
@@ -113,20 +140,28 @@ export function ChatNotificationBridge() {
       .then(response => { if (mounted) handleResponse(response); })
       .catch(() => undefined);
 
-    void startChatNotifications({
-      // The login APK must wait for a real learner session. Falling back to
-      // an anonymous identity here registers the device under the wrong user.
-      requireSession: MANAGEMENT_BUILD || FEATURES.learnerLogin,
-      onForegroundEvent: event => foregroundEventRef.current(event),
-    }).then(cleanup => {
-      if (mounted) stop = cleanup;
-      else void cleanup();
-    }).catch(() => {
-      // A denied permission or missing EAS project id must never block startup.
+    let bootTimer: ReturnType<typeof setTimeout> | null = null;
+    const interactionTask = InteractionManager.runAfterInteractions(() => {
+      bootTimer = setTimeout(() => {
+        if (!mounted) return;
+        void startChatNotifications({
+          // The login APK must wait for a real learner session. Falling back to
+          // an anonymous identity here registers the device under the wrong user.
+          requireSession: MANAGEMENT_BUILD || FEATURES.learnerLogin,
+          onForegroundEvent: event => foregroundEventRef.current(event),
+        }).then(cleanup => {
+          if (mounted) stop = cleanup;
+          else void cleanup();
+        }).catch(() => {
+          // A denied permission or missing EAS project id must never block startup.
+        });
+      }, 500);
     });
 
     return () => {
       mounted = false;
+      interactionTask.cancel();
+      if (bootTimer) clearTimeout(bootTimer);
       receivedSubscription.remove();
       responseSubscription.remove();
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -154,7 +189,7 @@ export function ChatNotificationBridge() {
         pathname: '/conversations/human/[conversationId]',
         params: { conversationId: targetConversationId },
       } as never);
-    } else if (banner.route === '/admin') {
+    } else if (banner.route === '/admin' || MANAGEMENT_BUILD) {
       router.push('/admin' as never);
     } else {
       router.push('/conversations' as never);

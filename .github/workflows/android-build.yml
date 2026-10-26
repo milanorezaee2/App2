@@ -123,7 +123,7 @@ jobs:
 
       - name: Generate native Android project (App 2 — No-Login EN+RU)
         run: |
-          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
+          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* "${RUNNER_TEMP:-/tmp}"/metro-* "${RUNNER_TEMP:-/tmp}"/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
           EXPO_PUBLIC_APP_EDITION=en_ru npx expo prebuild --platform android --no-install
 
       - name: Build standalone release APK (App 2 — No-Login EN+RU)
@@ -169,7 +169,7 @@ jobs:
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
-          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
+          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* "${RUNNER_TEMP:-/tmp}"/metro-* "${RUNNER_TEMP:-/tmp}"/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
           MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew
@@ -205,7 +205,7 @@ jobs:
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
-          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
+          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* "${RUNNER_TEMP:-/tmp}"/metro-* "${RUNNER_TEMP:-/tmp}"/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
           EXPO_PUBLIC_APP_EDITION=all_four npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew
@@ -243,7 +243,7 @@ jobs:
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
-          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
+          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* "${RUNNER_TEMP:-/tmp}"/metro-* "${RUNNER_TEMP:-/tmp}"/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
           EXPO_PUBLIC_APP_EDITION=login_en_de_tr EXPO_PUBLIC_LEARNER_LOGIN=true EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR=true npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew

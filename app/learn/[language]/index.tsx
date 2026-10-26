@@ -1,9 +1,7 @@
+import type { ComponentType } from 'react';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { CoursePage } from '@/components/LanguageCourseUI';
-import GermanSentenceHome from '@/components/GermanSentenceHome';
 import { useLearnerLanguageAccess } from '@/components/LearnerLanguageAccess';
-import RussianHome from '@/components/RussianHome';
-import TurkishHome from '@/components/TurkishHome';
 import { FEATURES } from '@/lib/features';
 
 export default function LearningHomeRoute() {
@@ -16,19 +14,25 @@ export default function LearningHomeRoute() {
       : <Redirect href={'/languages' as never} />;
   }
   if (language === 'de') {
-    return FEATURES.germanCourse && isLanguageAllowed('de')
-      ? <GermanSentenceHome />
-      : <Redirect href={'/languages' as never} />;
+    if (!FEATURES.germanCourse || !isLanguageAllowed('de')) {
+      return <Redirect href={'/languages' as never} />;
+    }
+    const GermanSentenceHome = (require('@/components/GermanSentenceHome') as { default: ComponentType }).default;
+    return <GermanSentenceHome />;
   }
   if (language === 'ru') {
-    return FEATURES.russianCourse && isLanguageAllowed('ru')
-      ? <RussianHome />
-      : <Redirect href={'/languages' as never} />;
+    if (!FEATURES.russianCourse || !isLanguageAllowed('ru')) {
+      return <Redirect href={'/languages' as never} />;
+    }
+    const RussianHome = (require('@/components/RussianHome') as { default: ComponentType }).default;
+    return <RussianHome />;
   }
   if (language === 'tr') {
-    return FEATURES.turkishCourse && isLanguageAllowed('tr')
-      ? <TurkishHome />
-      : <Redirect href={'/languages' as never} />;
+    if (!FEATURES.turkishCourse || !isLanguageAllowed('tr')) {
+      return <Redirect href={'/languages' as never} />;
+    }
+    const TurkishHome = (require('@/components/TurkishHome') as { default: ComponentType }).default;
+    return <TurkishHome />;
   }
   return <CoursePage title="این مسیر آموزشی پیدا نشد">{null}</CoursePage>;
 }

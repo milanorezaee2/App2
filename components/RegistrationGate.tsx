@@ -19,7 +19,11 @@ const BYPASS_GATE: boolean = IS_ADMIN_APP || !FEATURES.learnerLogin;
 
 type Mode = 'register' | 'login';
 
-export function RegistrationGate({ children }: PropsWithChildren) {
+type RegistrationGateProps = PropsWithChildren<{
+  onAuthenticated?: () => void;
+}>;
+
+export function RegistrationGate({ children, onAuthenticated }: RegistrationGateProps) {
   const [checking, setChecking] = useState(!BYPASS_GATE);
   const [ready, setReady] = useState(BYPASS_GATE);
   const [mode, setMode] = useState<Mode>('register');
@@ -33,9 +37,17 @@ export function RegistrationGate({ children }: PropsWithChildren) {
   const [registrationReady, setRegistrationReady] = useState(false);
   const holdForCode = useRef(false);
   const openedFromCache = useRef(false);
+  const inspectInFlight = useRef(false);
+  const lastInspectAt = useRef(0);
+  const onAuthenticatedRef = useRef(onAuthenticated);
+  onAuthenticatedRef.current = onAuthenticated;
 
-  const inspect = useCallback(async () => {
+  const inspect = useCallback(async (force = false) => {
     if (BYPASS_GATE) return;
+    const now = Date.now();
+    if (!force && (inspectInFlight.current || now - lastInspectAt.current < 900)) return;
+    inspectInFlight.current = true;
+    lastInspectAt.current = now;
     try {
       const state = await getRegisteredSession();
       const complete = !!state.session && !!state.profile;
@@ -46,6 +58,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
       // verified on this phone. Only a clear server response can close it.
       if (!openedFromCache.current) setReady(false);
     } finally {
+      inspectInFlight.current = false;
       setChecking(false);
     }
   }, []);
@@ -59,10 +72,18 @@ export function RegistrationGate({ children }: PropsWithChildren) {
       setReady(current => current || true);
       setChecking(false);
     });
-    void inspect();
-    const { data } = supabase.auth.onAuthStateChange(() => { void inspect(); });
+    void inspect(true);
+    const { data } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'INITIAL_SESSION') return;
+      if (event === 'SIGNED_OUT') {
+        openedFromCache.current = false;
+        void inspect(true);
+        return;
+      }
+      void inspect(false);
+    });
     const appState = AppState.addEventListener('change', state => {
-      if (state === 'active') void inspect();
+      if (state === 'active') void inspect(false);
     });
     return () => {
       alive = false;
@@ -90,9 +111,11 @@ export function RegistrationGate({ children }: PropsWithChildren) {
         // consistency check in the background instead of making the learner wait
         // for a second session + profile round trip.
         holdForCode.current = false;
+        openedFromCache.current = true;
+        lastInspectAt.current = Date.now();
         setChecking(false);
         setReady(true);
-        void inspect();
+        onAuthenticatedRef.current?.();
       }
     } catch (reason) {
       holdForCode.current = false;
@@ -125,7 +148,12 @@ export function RegistrationGate({ children }: PropsWithChildren) {
             if (!registrationReady) {
               holdForCode.current = false; setGeneratedCode(''); setMode('login'); return;
             }
-            holdForCode.current = false; setGeneratedCode(''); void inspect();
+            holdForCode.current = false;
+            openedFromCache.current = true;
+            setGeneratedCode('');
+            setReady(true);
+            onAuthenticatedRef.current?.();
+            void inspect(true);
           }}><Text style={styles.submitText}>{registrationReady ? 'ورود مستقیم به اپ' : 'رفتن به صفحه ورود'}</Text></Pressable>
         </LinearGradient>
       </KeyboardAwareScrollView>

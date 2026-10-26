@@ -21,7 +21,7 @@ import { LuxuryPalette } from '@/components/luxuryTheme';
 import { TurkishBottomNav } from '@/components/TurkishBottomNav';
 import { TURKISH_LEVELS, TURKISH_LESSONS, turkishProgress, type TurkishLevelId } from '@/lib/languages/turkish';
 import type { CourseProgress } from '@/lib/courseProgress';
-import { clearTurkishLessonSession, loadTurkishLessonSession, type TurkishLessonSession } from '@/lib/languages/turkishStudyState';
+import { clearTurkishLessonSession, loadAllTurkishLessonSessions, type TurkishLessonSession } from '@/lib/languages/turkishStudyState';
 import { bidiIsolate, toPersianDigits as fa } from '@/lib/format';
 
 const LESSONS_PER_GROUP = 10;
@@ -59,14 +59,11 @@ export default function TurkishLibrary() {
     let alive = true;
     void Promise.all([
       turkishProgress.getCourseProgress(),
-      Promise.all(TURKISH_LESSONS.map(async lesson => {
-        try { return [lesson.id, await loadTurkishLessonSession(lesson.id)] as const; }
-        catch { return [lesson.id, null] as const; }
-      })),
+      loadAllTurkishLessonSessions(),
     ]).then(([nextProgress, nextSessions]) => {
       if (!alive) return;
       setProgress(nextProgress);
-      setSessions(Object.fromEntries(nextSessions));
+      setSessions(nextSessions);
       setError('');
     }).catch(() => { if (alive) setError('وضعیت ذخیره‌شده خوانده نشد؛ فهرست درس‌ها همچنان در دسترس است.'); });
     return () => { alive = false; };
@@ -84,10 +81,14 @@ export default function TurkishLibrary() {
     const lessons = TURKISH_LESSONS.filter(item => item.levelId === levelId);
     return { total: lessons.length, completed: lessons.filter(item => completedIds.includes(item.id)).length };
   };
-  const sentenceCount = selectedLessons.reduce((count, lesson) => count + lesson.sentences.length, 0);
-  const words = new Set(selectedLessons.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word))));
-  const allWords = new Set(TURKISH_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word))));
-  const totalSentences = TURKISH_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0);
+  const { sentenceCount, words } = useMemo(() => ({
+    sentenceCount: selectedLessons.reduce((count, lesson) => count + lesson.sentences.length, 0),
+    words: new Set(selectedLessons.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))),
+  }), [selectedLessons]);
+  const { allWords, totalSentences } = useMemo(() => ({
+    allWords: new Set(TURKISH_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))),
+    totalSentences: TURKISH_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0),
+  }), []);
 
   const openLevel = (levelId: TurkishLevelId) => router.push(`/learn/tr/library?level=${levelId}` as never);
   const openLesson = (id: string) => router.push(`/learn/tr/lesson?id=${encodeURIComponent(id)}` as never);

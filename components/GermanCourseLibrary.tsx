@@ -118,8 +118,10 @@ export default function GermanCourseLibrary() {
     });
   };
 
-  const totalGermanSentences = GERMAN_SENTENCE_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0);
-  const totalGermanWords = new Set(GERMAN_SENTENCE_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(word => word.word)))).size;
+  const { totalGermanSentences, totalGermanWords } = useMemo(() => ({
+    totalGermanSentences: GERMAN_SENTENCE_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0),
+    totalGermanWords: new Set(GERMAN_SENTENCE_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(word => word.word)))).size,
+  }), []);
 
   return (
     <View style={styles.root}>

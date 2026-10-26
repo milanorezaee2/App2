@@ -21,7 +21,7 @@ import { LuxuryPalette } from '@/components/luxuryTheme';
 import { RussianBottomNav } from '@/components/RussianBottomNav';
 import { RUSSIAN_LEVELS, RUSSIAN_LESSONS, russianProgress, type RussianLevelId } from '@/lib/languages/russian';
 import type { CourseProgress } from '@/lib/courseProgress';
-import { clearRussianLessonSession, loadRussianLessonSession, type RussianLessonSession } from '@/lib/languages/russianStudyState';
+import { clearRussianLessonSession, loadAllRussianLessonSessions, type RussianLessonSession } from '@/lib/languages/russianStudyState';
 import { toPersianDigits as fa } from '@/lib/format';
 
 const LESSONS_PER_GROUP = 10;
@@ -59,14 +59,11 @@ export default function RussianLibrary() {
     let alive = true;
     void Promise.all([
       russianProgress.getCourseProgress(),
-      Promise.all(RUSSIAN_LESSONS.map(async lesson => {
-        try { return [lesson.id, await loadRussianLessonSession(lesson.id)] as const; }
-        catch { return [lesson.id, null] as const; }
-      })),
+      loadAllRussianLessonSessions(),
     ]).then(([nextProgress, nextSessions]) => {
       if (!alive) return;
       setProgress(nextProgress);
-      setSessions(Object.fromEntries(nextSessions));
+      setSessions(nextSessions);
       setError('');
     }).catch(() => { if (alive) setError('وضعیت ذخیره‌شده خوانده نشد؛ فهرست درس‌ها همچنان در دسترس است.'); });
     return () => { alive = false; };
@@ -84,10 +81,14 @@ export default function RussianLibrary() {
     const lessons = RUSSIAN_LESSONS.filter(item => item.levelId === levelId);
     return { total: lessons.length, completed: lessons.filter(item => completedIds.includes(item.id)).length };
   };
-  const sentenceCount = selectedLessons.reduce((count, lesson) => count + lesson.sentences.length, 0);
-  const words = new Set(selectedLessons.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word))));
-  const allWords = new Set(RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word))));
-  const totalSentences = RUSSIAN_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0);
+  const { sentenceCount, words } = useMemo(() => ({
+    sentenceCount: selectedLessons.reduce((count, lesson) => count + lesson.sentences.length, 0),
+    words: new Set(selectedLessons.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))),
+  }), [selectedLessons]);
+  const { allWords, totalSentences } = useMemo(() => ({
+    allWords: new Set(RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))),
+    totalSentences: RUSSIAN_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0),
+  }), []);
 
   const openLevel = (levelId: RussianLevelId) => router.push(`/learn/ru/library?level=${levelId}` as never);
   const openLesson = (id: string) => router.push(`/learn/ru/lesson?id=${encodeURIComponent(id)}` as never);

@@ -6,10 +6,63 @@ import { adminClient } from './educationAdmin';
 import { isSupabaseConfigured } from './pairing';
 import { FEATURES } from './features';
 import {
-  POPUP_LIVE_CHANNEL,
   SYSTEM_LANGUAGE_POLICY_BADGE,
   isMissingPopupSchema,
 } from './adminPopups';
+
+export const LANG_LIVE_CHANNEL = 'milo-admin-lang-access-live';
+const FALLBACK_LANG_POLICIES_CLOUD_KEY = 'milo_language_policies_cloud_v2';
+
+interface FallbackCloudPoliciesDoc {
+  global?: LanguagePolicyPayload | null;
+  users?: Record<string, LanguagePolicyPayload>;
+}
+
+async function assertVerifiedLanguageAdmin(): Promise<void> {
+  const db = adminClient();
+  const { data, error } = await db.rpc('is_education_admin');
+  if (error || data !== true) {
+    throw new Error('ADMIN_REQUIRED');
+  }
+}
+
+async function readFallbackLanguagePolicies(
+  client: ReturnType<typeof adminClient>,
+): Promise<{ doc: FallbackCloudPoliciesDoc; available: boolean }> {
+  const { data, error } = await client
+    .from('device_settings')
+    .select('value')
+    .eq('key', FALLBACK_LANG_POLICIES_CLOUD_KEY)
+    .maybeSingle();
+  if (error) return { doc: {}, available: false };
+  const raw = data && typeof (data as { value?: unknown }).value === 'string'
+    ? (data as { value: string }).value
+    : '';
+  if (!raw) return { doc: {}, available: true };
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { doc: {}, available: true };
+    }
+    return { doc: parsed as FallbackCloudPoliciesDoc, available: true };
+  } catch {
+    return { doc: {}, available: true };
+  }
+}
+
+async function writeFallbackLanguagePolicies(doc: FallbackCloudPoliciesDoc): Promise<void> {
+  await assertVerifiedLanguageAdmin();
+  const db = adminClient();
+  const { error } = await db.from('device_settings').upsert(
+    {
+      key: FALLBACK_LANG_POLICIES_CLOUD_KEY,
+      value: JSON.stringify(doc),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'key' },
+  );
+  if (error) throw error;
+}
 
 export type LoginAppLanguageId = 'en' | 'de' | 'tr';
 
@@ -149,7 +202,7 @@ async function writeCache(
 export async function broadcastLanguageAccessSignal(): Promise<void> {
   if (!isInteractiveRuntime() || !isSupabaseConfigured()) return;
   const db = adminClient();
-  const channel = db.channel(POPUP_LIVE_CHANNEL, {
+  const channel = db.channel(LANG_LIVE_CHANNEL, {
     config: { broadcast: { ack: false } },
   });
   try {
@@ -202,6 +255,31 @@ export async function loadAdminLanguagePolicies(): Promise<{
 
   if (error) {
     if (isMissingPopupSchema(error)) {
+      const fb = await readFallbackLanguagePolicies(db);
+      if (fb.available) {
+        const globalRaw = fb.doc.global ? parsePolicyBody(JSON.stringify(fb.doc.global)) : null;
+        const globalPolicy: AdminGlobalLanguagePolicy = globalRaw
+          ? {
+              rowId: 'cloud_global',
+              enabled: globalRaw.enabled,
+              message: globalRaw.message || DEFAULT_ALL_LANGUAGES_DISABLED_MESSAGE,
+              updatedAt: globalRaw.updatedAt,
+            }
+          : defaultGlobal;
+        const userPolicies: Record<string, AdminUserLanguagePolicy> = {};
+        for (const [uid, entry] of Object.entries(fb.doc.users || {})) {
+          const parsed = parsePolicyBody(JSON.stringify(entry));
+          if (!parsed || !uid) continue;
+          userPolicies[uid] = {
+            rowId: `cloud_user_${uid}`,
+            userId: uid,
+            enabled: parsed.enabled,
+            message: parsed.message ?? null,
+            updatedAt: parsed.updatedAt,
+          };
+        }
+        return { globalPolicy, userPolicies, schemaMissing: false };
+      }
       return { globalPolicy: defaultGlobal, userPolicies: {}, schemaMissing: true };
     }
     throw error;
@@ -257,7 +335,17 @@ export async function saveGlobalLanguagePolicy(
     .eq('badge_text', SYSTEM_LANGUAGE_POLICY_BADGE)
     .eq('target_scope', 'all')
     .order('updated_at', { ascending: false });
-  if (lookupError) throw lookupError;
+  if (lookupError) {
+    if (isMissingPopupSchema(lookupError)) {
+      const fb = await readFallbackLanguagePolicies(db);
+      if (!fb.available) throw lookupError;
+      const parsed = parsePolicyBody(body)!;
+      await writeFallbackLanguagePolicies({ ...fb.doc, global: parsed });
+      void broadcastLanguageAccessSignal();
+      return;
+    }
+    throw lookupError;
+  }
 
   const rows = existing || [];
   if (rows.length > 0) {
@@ -315,7 +403,18 @@ export async function saveUserLanguagePolicy(
     .eq('target_scope', 'user')
     .eq('target_user_id', cleanUserId)
     .order('updated_at', { ascending: false });
-  if (lookupError) throw lookupError;
+  if (lookupError) {
+    if (isMissingPopupSchema(lookupError)) {
+      const fb = await readFallbackLanguagePolicies(db);
+      if (!fb.available) throw lookupError;
+      const parsed = parsePolicyBody(body)!;
+      const nextUsers = { ...(fb.doc.users || {}), [cleanUserId]: parsed };
+      await writeFallbackLanguagePolicies({ ...fb.doc, users: nextUsers });
+      void broadcastLanguageAccessSignal();
+      return;
+    }
+    throw lookupError;
+  }
 
   const rows = existing || [];
   if (rows.length > 0) {
@@ -365,7 +464,18 @@ export async function clearUserLanguagePolicy(userId: string): Promise<void> {
     .eq('badge_text', SYSTEM_LANGUAGE_POLICY_BADGE)
     .eq('target_scope', 'user')
     .eq('target_user_id', cleanUserId);
-  if (error) throw error;
+  if (error) {
+    if (isMissingPopupSchema(error)) {
+      const fb = await readFallbackLanguagePolicies(db);
+      if (!fb.available) throw error;
+      const nextUsers = { ...(fb.doc.users || {}) };
+      delete nextUsers[cleanUserId];
+      await writeFallbackLanguagePolicies({ ...fb.doc, users: nextUsers });
+      void broadcastLanguageAccessSignal();
+      return;
+    }
+    throw error;
+  }
   void broadcastLanguageAccessSignal();
 }
 
@@ -420,29 +530,49 @@ export async function fetchLearnerLanguageAccess(): Promise<LearnerLanguageAcces
     .order('updated_at', { ascending: false })
     .limit(10);
 
-  if (error) {
-    if (cached) {
-      return { ready: true, ...cached };
-    }
-    return {
-      ready: true,
-      enabled: [...LOGIN_APP_LANGUAGE_IDS],
-      message: DEFAULT_ALL_LANGUAGES_DISABLED_MESSAGE,
-      source: 'default',
-    };
-  }
-
   let userMatch: LanguagePolicyPayload | null = null;
   let globalMatch: LanguagePolicyPayload | null = null;
 
-  for (const raw of data || []) {
-    const row = raw as Record<string, unknown>;
-    const parsed = parsePolicyBody(row.body);
-    if (!parsed) continue;
-    if (row.target_scope === 'user' && row.target_user_id === currentUserId && !userMatch) {
-      userMatch = parsed;
-    } else if (row.target_scope === 'all' && !globalMatch) {
-      globalMatch = parsed;
+  if (error) {
+    if (isMissingPopupSchema(error)) {
+      const fb = await readFallbackLanguagePolicies(supabase);
+      if (fb.available) {
+        if (fb.doc.users?.[currentUserId]) {
+          userMatch = parsePolicyBody(JSON.stringify(fb.doc.users[currentUserId]));
+        }
+        if (fb.doc.global) {
+          globalMatch = parsePolicyBody(JSON.stringify(fb.doc.global));
+        }
+      } else if (cached) {
+        return { ready: true, ...cached };
+      } else {
+        return {
+          ready: true,
+          enabled: [...LOGIN_APP_LANGUAGE_IDS],
+          message: DEFAULT_ALL_LANGUAGES_DISABLED_MESSAGE,
+          source: 'default',
+        };
+      }
+    } else if (cached) {
+      return { ready: true, ...cached };
+    } else {
+      return {
+        ready: true,
+        enabled: [...LOGIN_APP_LANGUAGE_IDS],
+        message: DEFAULT_ALL_LANGUAGES_DISABLED_MESSAGE,
+        source: 'default',
+      };
+    }
+  } else {
+    for (const raw of data || []) {
+      const row = raw as Record<string, unknown>;
+      const parsed = parsePolicyBody(row.body);
+      if (!parsed) continue;
+      if (row.target_scope === 'user' && row.target_user_id === currentUserId && !userMatch) {
+        userMatch = parsed;
+      } else if (row.target_scope === 'all' && !globalMatch) {
+        globalMatch = parsed;
+      }
     }
   }
 
@@ -493,17 +623,17 @@ export function subscribeLearnerLanguageAccess(
 
   void refreshNow();
 
-  const pgChannel: RealtimeChannel = supabase
-    .channel(`${POPUP_LIVE_CHANNEL}:lang:${Math.random().toString(36).slice(2, 8)}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_popups' }, () => scheduleRefresh(40))
+  const channel: RealtimeChannel = supabase
+    .channel(LANG_LIVE_CHANNEL)
+    .on('broadcast', { event: 'language_access_changed' }, () => scheduleRefresh(25))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_popups' }, () => scheduleRefresh(50))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'device_settings' }, () => scheduleRefresh(70))
     .subscribe();
 
-  const broadcastChannel: RealtimeChannel = supabase
-    .channel(POPUP_LIVE_CHANNEL)
-    .on('broadcast', { event: 'language_access_changed' }, () => scheduleRefresh(20))
-    .subscribe();
-
-  const { data: authSub } = supabase.auth.onAuthStateChange(() => scheduleRefresh(40));
+  const { data: authSub } = supabase.auth.onAuthStateChange(event => {
+    if (event === 'INITIAL_SESSION') return;
+    scheduleRefresh(50);
+  });
 
   const appStateSub = AppState.addEventListener('change', state => {
     if (state === 'active') scheduleRefresh(40);
@@ -526,7 +656,6 @@ export function subscribeLearnerLanguageAccess(
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', onVisible);
     }
-    void supabase.removeChannel(pgChannel).catch(() => undefined);
-    void supabase.removeChannel(broadcastChannel).catch(() => undefined);
+    void supabase.removeChannel(channel).catch(() => undefined);
   };
 }
