@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist');
+const distDirName = (process.env.DIST_DIR || 'dist').replace(/\/+$/, '');
+const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', distDirName);
 const port = parseInt(process.env.PORT || '8081', 10);
 const baseUrl = '/App2';
 

@@ -19,6 +19,20 @@ const build = () => {
     };
   }
   const learnerLogin = process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true';
+  // Second edition: Turkish replaces the Russian track. The default edition
+  // (without this flag) stays exactly as it is today.
+  const turkishEdition = process.env.EXPO_PUBLIC_TURKISH_EDITION === 'true';
+  if (!admin && turkishEdition) {
+    return {
+      ...base,
+      name: 'MiloMultiLanguage Turkish',
+      slug: learnerLogin ? 'milomultilanguage-turkish-login' : 'milomultilanguage-turkish',
+      scheme: 'miloturkish',
+      android: { ...base.android, package: 'com.devicecontrol.miloturkish' },
+      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.miloturkish' },
+      extra: { ...base.extra, turkishEdition: true, learnerLogin },
+    };
+  }
   if (!admin && learnerLogin) {
     return {
       ...base,

@@ -1,4 +1,5 @@
 import type { LanguageDefinition, LanguageId } from './types';
+import { TURKISH_EDITION } from '../features';
 
 /**
  * Lightweight language catalog — zero course-data imports.
@@ -13,7 +14,7 @@ export interface LanguageMeta extends LanguageDefinition {
   sentencesCount: number;
 }
 
-export const LANGUAGE_META: readonly LanguageMeta[] = [
+const ALL_LANGUAGE_META: readonly LanguageMeta[] = [
   {
     id: 'en',
     name: 'انگلیسی',
@@ -50,7 +51,30 @@ export const LANGUAGE_META: readonly LanguageMeta[] = [
     status: 'available',
     home: '/learn/ru',
   },
+  {
+    id: 'tr',
+    name: 'ترکی استانبولی',
+    nativeName: 'Türkçe',
+    speechLocale: 'tr-TR',
+    accent: '#C2410C',
+    lessonsCount: 66,
+    sentencesCount: 528,
+    description: '۶۶ درس جمله‌محور؛ ۱۴ درس A1 Foundation، ۲۰ موضوع A1 Survival با ۴ درس تکمیلی حفظ‌شده، ۲۴ درس A2 و ۴ درس B1، با ۵۲۸ جمله و الگوی پسوندها',
+    status: 'available',
+    home: '/learn/tr',
+  },
 ];
+
+/**
+ * Two editions, one code base:
+ *  - default edition → English, German, Russian
+ *  - Turkish edition (`EXPO_PUBLIC_TURKISH_EDITION=true`) → English, German, Turkish
+ * The Russian card disappears from the Turkish edition, and the Turkish card is
+ * not advertised in the original edition, so the two versions stay distinct.
+ */
+export const LANGUAGE_META: readonly LanguageMeta[] = ALL_LANGUAGE_META.filter(
+  language => (TURKISH_EDITION ? language.id !== 'ru' : language.id !== 'tr'),
+);
 
 /** Same shape as the old `LANGUAGES` export, without the extra count field. */
 export const LANGUAGES: readonly LanguageDefinition[] = LANGUAGE_META.map(

@@ -2,7 +2,7 @@
 //
 // The app asks this function for one sentence before reading it. When the
 // function answers, the learner hears the approved cloud/CDN narrator in
-// English, German and Russian on every device and browser. The client never
+// English, German, Russian and Turkish on every device and browser. The client never
 // falls back to a device speech engine; a missing asset is reported clearly.
 //
 // Providers (first one that has a key wins, or set NARRATION_PROVIDER):
@@ -12,8 +12,8 @@
 // Deploy:  npx supabase functions deploy narration-tts --no-verify-jwt
 // Secret:  npx supabase secrets set ELEVENLABS_API_KEY=...
 // Optional: NARRATION_TTS_TOKEN (shared token), OPENAI_TTS_MODEL,
-//           OPENAI_TTS_VOICE_EN / _DE / _RU,
-//           ELEVENLABS_VOICE_EN / _DE / _RU,
+//           OPENAI_TTS_VOICE_EN / _DE / _RU / _TR,
+//           ELEVENLABS_VOICE_EN / _DE / _RU / _TR,
 //           ELEVENLABS_MODEL, ELEVENLABS_MODEL_RU.
 //
 // Privacy: only the lesson sentence is sent to the provider. No learner
@@ -31,24 +31,27 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
 
-type LanguageCode = 'en' | 'de' | 'ru';
+type LanguageCode = 'en' | 'de' | 'ru' | 'tr';
 
 const VOICE_ENV: Record<LanguageCode, string> = {
   en: 'OPENAI_TTS_VOICE_EN',
   de: 'OPENAI_TTS_VOICE_DE',
   ru: 'OPENAI_TTS_VOICE_RU',
+  tr: 'OPENAI_TTS_VOICE_TR',
 };
 
 const DEFAULT_OPENAI_VOICE: Record<LanguageCode, string> = {
   en: 'nova',
   de: 'coral',
   ru: 'coral',
+  tr: 'coral',
 };
 
 const ELEVEN_VOICE_ENV: Record<LanguageCode, string> = {
   en: 'ELEVENLABS_VOICE_EN',
   de: 'ELEVENLABS_VOICE_DE',
   ru: 'ELEVENLABS_VOICE_RU',
+  tr: 'ELEVENLABS_VOICE_TR',
 };
 
 // Premade voices available across ElevenLabs accounts:
@@ -90,6 +93,7 @@ const LANGUAGE_NAME: Record<LanguageCode, string> = {
   en: 'American English',
   de: 'Standard German (Hochdeutsch)',
   ru: 'Standard Russian',
+  tr: 'Standard Turkish',
 };
 
 const PERSONA = (lang: LanguageCode) =>
@@ -374,7 +378,7 @@ Deno.serve(async request => {
   if (!provider) return json({ error: 'Narrator is not configured', code: 'NARRATION_NOT_CONFIGURED' }, 503);
 
   const langRaw = (url.searchParams.get('lang') || 'en').toLowerCase();
-  if (!['en', 'de', 'ru'].includes(langRaw)) {
+  if (!['en', 'de', 'ru', 'tr'].includes(langRaw)) {
     return json({ error: 'Unsupported narration language', code: 'UNSUPPORTED_LANGUAGE' }, 400);
   }
   const lang = langRaw as LanguageCode;

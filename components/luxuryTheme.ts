@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-export type SupportedLuxuryLanguage = 'en' | 'de' | 'ru';
+export type SupportedLuxuryLanguage = 'en' | 'de' | 'ru' | 'tr';
 
 export const LuxuryPalette = {
   canvas: '#F4F7FC',
@@ -58,7 +58,7 @@ export function getLuxuryLevelAccent(levelId: number): LuxuryLevelAccent {
 
 export interface LuxuryLanguageMeta {
   id: SupportedLuxuryLanguage;
-  code: 'EN' | 'DE' | 'RU';
+  code: 'EN' | 'DE' | 'RU' | 'TR';
   eyebrow: string;
   nameFa: string;
   studioTitleFa: string;
@@ -114,6 +114,20 @@ export const LUXURY_LANGUAGE_META: Record<SupportedLuxuryLanguage, LuxuryLanguag
     reviewHref: '/learn/ru/review',
     pronunciationHref: '/learn/ru/pronunciation',
   },
+  tr: {
+    id: 'tr',
+    code: 'TR',
+    eyebrow: 'TURKISH STUDIO',
+    nameFa: 'ترکی استانبولی',
+    studioTitleFa: 'مسیر جامع ترکی',
+    libraryTitleFa: 'کتابخانهٔ درس‌های ترکی',
+    reviewTitleFa: 'مرور هوشمند ترکی',
+    pronunciationTitleFa: 'کارگاه تلفظ ترکی',
+    homeHref: '/learn/tr',
+    libraryHref: '/learn/tr/library',
+    reviewHref: '/learn/tr/review',
+    pronunciationHref: '/learn/tr/pronunciation',
+  },
 };
 
 const ACTIVE_LANG_UI_KEY = 'lj_ui_active_lang_v1';
@@ -134,7 +148,7 @@ export function getLastActiveLanguage(): SupportedLuxuryLanguage {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     try {
       const saved = window.sessionStorage?.getItem(ACTIVE_LANG_UI_KEY);
-      if (saved === 'en' || saved === 'de' || saved === 'ru') {
+      if (saved === 'en' || saved === 'de' || saved === 'ru' || saved === 'tr') {
         memoryActiveLanguage = saved;
         return saved;
       }

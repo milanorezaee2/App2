@@ -3,10 +3,13 @@ import { LANGUAGE_META, LANGUAGES } from './catalogMeta';
 import { SENTENCE_LESSONS } from '../courseContent';
 import { GERMAN_SENTENCE_LESSONS } from './germanSentenceCourse';
 import { RUSSIAN_LESSONS, russianProgress } from './russian';
+import { TURKISH_LESSONS, turkishProgress } from './turkish';
 import { createCourseProgressStore } from '../createCourseProgressStore';
 
 export { LANGUAGES };
 export { russianProgress };
+export { turkishProgress };
+export { TURKISH_LESSONS };
 
 /**
  * The home screen reads static counts from the lightweight `catalogMeta`
@@ -20,6 +23,7 @@ if (process.env.NODE_ENV !== 'production') {
     en: { lessons: SENTENCE_LESSONS.length, sentences: SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0) },
     de: { lessons: GERMAN_SENTENCE_LESSONS.length, sentences: GERMAN_SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0) },
     ru: { lessons: RUSSIAN_LESSONS.length, sentences: RUSSIAN_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0) },
+    tr: { lessons: TURKISH_LESSONS.length, sentences: TURKISH_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0) },
   } as const;
   for (const meta of LANGUAGE_META) {
     const live = liveCounts[meta.id];
@@ -48,3 +52,5 @@ export const germanProgress = createCourseProgressStore({
   },
 });
 export function findGermanLesson(id: string | undefined) { return GERMAN_SENTENCE_LESSONS.find(l => l.id === id); }
+
+export function findTurkishCourseLesson(id: string | undefined) { return TURKISH_LESSONS.find(l => l.id === id); }

@@ -27,6 +27,20 @@ export function toPersianDigits(input: string | number): string {
   return String(input).replace(/[0-9]/g, (d) => persian[parseInt(d)]);
 }
 
+/**
+ * Persian paragraphs that quote a Turkish/Latin phrase get scrambled by the
+ * browser's bidi algorithm: the Latin run (and a trailing "!") jumps to the
+ * wrong side of the sentence. Wrapping every Latin run in First-Strong
+ * Isolate/PDI keeps the quote in place while the paragraph stays right-to-left.
+ * Used by the Turkish lesson pattern lines and notes.
+ */
+export function bidiIsolate(text: string): string {
+  // A leading hyphen belongs to the Turkish suffix itself (-ler/-lar), so it
+  // is kept inside the isolate instead of floating to the other side.
+  const LTR_RUN = /-?[A-Za-zÇĞİÖŞÜçğıöşü][A-Za-zÇĞİÖŞÜçğıöşü0-9\s'’\-.,!?;:()/]*/g;
+  return text.replace(LTR_RUN, match => `\u2068${match.trimEnd()}\u2069${match.endsWith(' ') ? ' ' : ''}`);
+}
+
 export function formatPersianDate(isoDate: string): string {
   const date = new Date(isoDate);
   const months = [

@@ -12,15 +12,16 @@ import { setLastActiveLanguage } from '@/components/luxuryTheme';
 import { getChatUnreadCount, subscribeToChatUnreadCount } from '@/lib/chatNotificationState';
 import { useEffect, useState } from 'react';
 
-export type LearningLanguage = 'en' | 'de' | 'ru';
+export type LearningLanguage = 'en' | 'de' | 'ru' | 'tr';
 
 const routes: Record<LearningLanguage, { home: string; pronunciation: string; library: string; review: string }> = {
   en: { home: '/lang', pronunciation: '/learn/en/pronunciation', library: '/lang/library', review: '/review' },
   de: { home: '/learn/de', pronunciation: '/learn/de/pronunciation', library: '/learn/de/library', review: '/learn/de/reviews' },
   ru: { home: '/learn/ru', pronunciation: '/learn/ru/pronunciation', library: '/learn/ru/library', review: '/learn/ru/review' },
+  tr: { home: '/learn/tr', pronunciation: '/learn/tr/pronunciation', library: '/learn/tr/library', review: '/learn/tr/review' },
 };
 
-/** One shared floating navigation design for English, German and Russian. */
+/** One shared floating navigation design for English, German, Russian and Turkish. */
 export function LanguageBottomNav({ language }: { language: LearningLanguage }) {
   const pathname = usePathname();
   const router = useRouter();
