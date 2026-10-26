@@ -1,86 +1,539 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { useRouter, Redirect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { Redirect, useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FEATURES } from '@/lib/features';
-import BookOpen from 'lucide-react-native/dist/esm/icons/book-open';
-import Users from 'lucide-react-native/dist/esm/icons/users';
-import Ticket from 'lucide-react-native/dist/esm/icons/ticket';
-import LayoutDashboard from 'lucide-react-native/dist/esm/icons/layout-dashboard';
-import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
-import LogOut from 'lucide-react-native/dist/esm/icons/log-out';
 import ArrowUpLeft from 'lucide-react-native/dist/esm/icons/arrow-up-left';
-import Search from 'lucide-react-native/dist/esm/icons/search';
-import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
-import GraduationCap from 'lucide-react-native/dist/esm/icons/graduation-cap';
-import Trash2 from 'lucide-react-native/dist/esm/icons/trash-2';
+import BellRing from 'lucide-react-native/dist/esm/icons/bell-ring';
+import BookOpen from 'lucide-react-native/dist/esm/icons/book-open';
+import ChartBar from 'lucide-react-native/dist/esm/icons/chart-bar';
+import CircleCheck from 'lucide-react-native/dist/esm/icons/circle-check';
+import Clock from 'lucide-react-native/dist/esm/icons/clock';
+import Copy from 'lucide-react-native/dist/esm/icons/copy';
 import Download from 'lucide-react-native/dist/esm/icons/download';
+import Eye from 'lucide-react-native/dist/esm/icons/eye';
+import Globe from 'lucide-react-native/dist/esm/icons/globe';
+import GraduationCap from 'lucide-react-native/dist/esm/icons/graduation-cap';
+import Layers from 'lucide-react-native/dist/esm/icons/layers';
+import LayoutDashboard from 'lucide-react-native/dist/esm/icons/layout-dashboard';
+import LogOut from 'lucide-react-native/dist/esm/icons/log-out';
+import Megaphone from 'lucide-react-native/dist/esm/icons/megaphone';
 import MessageCircle from 'lucide-react-native/dist/esm/icons/message-circle';
-import { adminClient, deleteRegisteredUser, loadAdminData, demoStudents, educationError, progressMetrics, type StudentRow, type EducationInvite, type RegisteredUser } from '@/lib/educationAdmin';
-import { listRealContacts, listSupportRequestStatuses, loadAdminChatModeration, setChatConversationDeleted, setChatUserBlocked, updateSupportRequestStatus, type RealContact, type SupportRequestStatus } from '@/lib/conversations';
-import { downloadRegisteredUsers } from '@/lib/userExport';
+import MousePointerClick from 'lucide-react-native/dist/esm/icons/mouse-pointer-click';
+import Pause from 'lucide-react-native/dist/esm/icons/pause';
+import Play from 'lucide-react-native/dist/esm/icons/play';
+import Radio from 'lucide-react-native/dist/esm/icons/radio';
+import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
+import Search from 'lucide-react-native/dist/esm/icons/search';
+import Send from 'lucide-react-native/dist/esm/icons/send';
+import ShieldAlert from 'lucide-react-native/dist/esm/icons/shield-alert';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import SquarePen from 'lucide-react-native/dist/esm/icons/square-pen';
+import Ticket from 'lucide-react-native/dist/esm/icons/ticket';
+import Trash2 from 'lucide-react-native/dist/esm/icons/trash-2';
+import UserCheck from 'lucide-react-native/dist/esm/icons/user-check';
+import Users from 'lucide-react-native/dist/esm/icons/users';
+import X from 'lucide-react-native/dist/esm/icons/x';
+import Zap from 'lucide-react-native/dist/esm/icons/zap';
+import { PopupCardPreview } from '@/components/LearnerPopupBridge';
 import { registerAdminPushToken } from '@/lib/adminPush';
+import {
+  INTERNAL_POPUP_ROUTES,
+  broadcastAdminPopupSignal,
+  createAdminPopup,
+  deleteAdminPopup,
+  loadAdminPopupsWithStats,
+  republishAdminPopup,
+  subscribeAdminPopupTelemetry,
+  toggleAdminPopupActive,
+  updateAdminPopup,
+  type AdminPopupDraft,
+  type AdminPopupWithStats,
+  type PopupDisplayMode,
+  type PopupTargetEdition,
+  type PopupTargetScope,
+  type PopupVariant,
+} from '@/lib/adminPopups';
+import { ADMIN_POPUPS_SETUP_SQL } from '@/lib/adminPopupsSetupSql';
+import {
+  listRealContacts,
+  listSupportRequestStatuses,
+  loadAdminChatModeration,
+  setChatConversationDeleted,
+  setChatUserBlocked,
+  updateSupportRequestStatus,
+  type RealContact,
+  type SupportRequestStatus,
+} from '@/lib/conversations';
 import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
+import {
+  adminClient,
+  deleteRegisteredUser,
+  educationError,
+  loadAdminData,
+  progressMetrics,
+  type EducationInvite,
+  type RegisteredUser,
+  type StudentRow,
+} from '@/lib/educationAdmin';
+import { FEATURES } from '@/lib/features';
 import { toPersianDigits as fa } from '@/lib/format';
+import { downloadRegisteredUsers } from '@/lib/userExport';
 
-type Tab = 'overview' | 'registered' | 'support' | 'students' | 'invites' | 'content';
-const tabs = [
-  { id: 'overview' as Tab, title: 'نمای کلی', icon: LayoutDashboard },
-  { id: 'registered' as Tab, title: 'کاربران ثبت‌شده', icon: Users },
-  { id: 'support' as Tab, title: 'پشتیبانی', icon: MessageCircle },
-  { id: 'students' as Tab, title: 'زبان‌آموزان', icon: Users },
-  { id: 'invites' as Tab, title: 'دعوت‌نامه‌ها', icon: Ticket },
-  { id: 'content' as Tab, title: 'محتوای آموزشی', icon: BookOpen },
+type Tab = 'overview' | 'popups' | 'registered' | 'support' | 'students' | 'invites' | 'content';
+
+const ALL_COURSES_CATALOG = [
+  { id: 'en', title: 'انگلیسی (English)', lessons: 174, sentences: 3862, color: '#6356D9', route: '/lang', edition: 'هر دو نسخه (اصلی و ترکی)' },
+  { id: 'de', title: 'آلمانی (Deutsch)', lessons: 95, sentences: 4715, color: '#087E75', route: '/learn/de', edition: 'هر دو نسخه (اصلی و ترکی)' },
+  { id: 'ru', title: 'روسی (Русский)', lessons: 120, sentences: 3800, color: '#4267A8', route: '/learn/ru', edition: 'نسخهٔ اصلی (Milo MultiLanguage)' },
+  { id: 'tr', title: 'ترکی استانبولی (Türkçe)', lessons: 66, sentences: 528, color: '#C2410C', route: '/learn/tr', edition: 'نسخهٔ دوم (Milo Turkish)' },
+] as const;
+
+const POPUP_TEMPLATES: ReadonlyArray<{
+  label: string;
+  title: string;
+  badge: string;
+  body: string;
+  variant: PopupVariant;
+  ctaLabel: string;
+  ctaUrl: string;
+  edition: PopupTargetEdition;
+  mode: PopupDisplayMode;
+}> = [
+  {
+    label: '🎉 معرفی دوره ترکی',
+    title: 'دورهٔ کامل ترکی استانبولی فعال شد!',
+    badge: 'ویژه زبان‌آموزان',
+    body: '۶۶ درس جمله‌محور از سطح پایه تا مکالمهٔ روزمره به همراه تمرین تلفظ و مرور هوشمند آمادهٔ یادگیری است.',
+    variant: 'celebration',
+    ctaLabel: 'شروع دورهٔ ترکی',
+    ctaUrl: '/learn/tr',
+    edition: 'turkish',
+    mode: 'once',
+  },
+  {
+    label: '🎯 دعوت تعیین سطح',
+    title: 'از سطح مناسب خودتان شروع کنید',
+    badge: 'پیشنهاد آموزشی',
+    body: 'با آزمون کوتاه تعیین سطح، نقطهٔ شروع دقیق شما مشخص می‌شود تا وقتتان روی جمله‌های خیلی ساده یا خیلی دشوار هدر نرود.',
+    variant: 'info',
+    ctaLabel: 'شروع تعیین سطح',
+    ctaUrl: '/placement',
+    edition: 'all',
+    mode: 'once',
+  },
+  {
+    label: '🚀 نسخهٔ جدید اپ',
+    title: 'نسخهٔ جدید Milo منتشر شد',
+    badge: 'به‌روزرسانی مهم',
+    body: 'سرعت باز شدن درس‌ها، کیفیت پخش صدا و همگام‌سازی پیشرفت ارتقا یافت. برای بهترین تجربه از آخرین نسخه استفاده کنید.',
+    variant: 'update',
+    ctaLabel: 'مشاهده فهرست زبان‌ها',
+    ctaUrl: '/languages',
+    edition: 'all',
+    mode: 'once',
+  },
+  {
+    label: '⚠️ اطلاعیه فوری',
+    title: 'اطلاعیه مهم مدیریت آموزش',
+    badge: 'پیام فوری',
+    body: 'لطفاً پیشرفت آموزشی خود را از بخش همگام‌سازی ابری ذخیره کنید تا در تمام دستگاه‌ها حفظ شود.',
+    variant: 'warning',
+    ctaLabel: 'همگام‌سازی ابری',
+    ctaUrl: '/personal-sync',
+    edition: 'all',
+    mode: 'every_launch',
+  },
 ];
-const dates = (value: string | null) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleDateString('fa-IR') : 'هنوز همگام نشده';
+
+const EXPIRY_PRESETS: ReadonlyArray<{ label: string; hours: number | null }> = [
+  { label: 'بدون انقضا', hours: null },
+  { label: '۱ ساعت', hours: 1 },
+  { label: '۶ ساعت', hours: 6 },
+  { label: '۲۴ ساعت', hours: 24 },
+  { label: '۳ روز', hours: 72 },
+  { label: '۷ روز', hours: 168 },
+  { label: '۳۰ روز', hours: 720 },
+];
+
+const formatDateFa = (value: string | null | undefined) =>
+  value && Number.isFinite(Date.parse(value))
+    ? new Date(value).toLocaleDateString('fa-IR')
+    : 'ثبت نشده';
+
+const formatDateTimeFa = (value: string | null | undefined) =>
+  value && Number.isFinite(Date.parse(value))
+    ? new Date(value).toLocaleString('fa-IR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '—';
+
+const isActiveWithinHours = (iso: string | null | undefined, hours: number) => {
+  if (!iso) return false;
+  const ts = Date.parse(iso);
+  return Number.isFinite(ts) && Date.now() - ts <= hours * 3_600_000;
+};
+
+async function copyTextSafe(text: string): Promise<boolean> {
+  if (Platform.OS === 'web' && typeof navigator !== 'undefined') {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // Fallback below
+    }
+    try {
+      if (typeof document !== 'undefined') {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        document.body.removeChild(area);
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+  try {
+    await Share.share({ message: text });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export default function AdminRoute() {
   if (!FEATURES.adminPanel) return <Redirect href={'/languages' as never} />;
   return <EducationAdmin />;
 }
+
 function EducationAdmin() {
   const router = useRouter();
   const wide = useWindowDimensions().width > 940;
-  const [mode, setMode] = useState<'login' | 'demo' | 'live'>('login');
+
+  const [authState, setAuthState] = useState<'checking' | 'login' | 'live'>('checking');
+  const [managerName, setManagerName] = useState('مدیر اصلی');
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
+
+  // Core live data from Supabase
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [invites, setInvites] = useState<EducationInvite[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
-  const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
-  const [search, setSearch] = useState(''); const [filter, setFilter] = useState('all');
-  const [label, setLabel] = useState(''); const [error, setError] = useState(''); const [notice, setNotice] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [selected, setSelected] = useState<StudentRow | null>(null);
-  const demo = mode === 'demo';
-  const rows = demo ? demoStudents : students;
-  const visible = rows.filter(r => r.display_name.includes(search.trim()) && (filter === 'all' || r.status === filter));
-  const active = rows.filter(r => r.status === 'active');
-  const synced = active.filter(r => r.summary);
+  const [popups, setPopups] = useState<AdminPopupWithStats[]>([]);
+  const [popupSchemaMissing, setPopupSchemaMissing] = useState(false);
+
+  // Support & Moderation live state
   const [supportContacts, setSupportContacts] = useState<RealContact[]>([]);
   const [supportStatuses, setSupportStatuses] = useState<Record<string, SupportRequestStatus>>({});
   const [chatBlockedUsers, setChatBlockedUsers] = useState<Record<string, boolean>>({});
   const [deletedChats, setDeletedChats] = useState<Record<string, boolean>>({});
+
+  // Login inputs
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Filters & selections
+  const [search, setSearch] = useState('');
+  const [studentFilter, setStudentFilter] = useState<'all' | 'active' | 'paused'>('all');
+  const [userFilter, setUserFilter] = useState<'all' | 'recent' | 'android' | 'web' | 'blocked'>('all');
+  const [supportFilter, setSupportFilter] = useState<'all' | 'open' | 'resolved' | 'moderated'>('all');
+  const [popupFilter, setPopupFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [selected, setSelected] = useState<StudentRow | null>(null);
+  const [label, setLabel] = useState('');
+
+  // Pop-up Studio form state
+  const [editingPopupId, setEditingPopupId] = useState<string | null>(null);
+  const [popupTitle, setPopupTitle] = useState('');
+  const [popupBadge, setPopupBadge] = useState('');
+  const [popupBody, setPopupBody] = useState('');
+  const [popupVariant, setPopupVariant] = useState<PopupVariant>('info');
+  const [popupDisplayMode, setPopupDisplayMode] = useState<PopupDisplayMode>('once');
+  const [popupTargetScope, setPopupTargetScope] = useState<PopupTargetScope>('all');
+  const [popupTargetEdition, setPopupTargetEdition] = useState<PopupTargetEdition>('all');
+  const [popupTargetUserId, setPopupTargetUserId] = useState<string | null>(null);
+  const [popupUserSearch, setPopupUserSearch] = useState('');
+  const [popupCtaLabel, setPopupCtaLabel] = useState('');
+  const [popupCtaUrl, setPopupCtaUrl] = useState('');
+  const [popupImageUrl, setPopupImageUrl] = useState('');
+  const [popupDismissLabel, setPopupDismissLabel] = useState('متوجه شدم');
+  const [popupPriority, setPopupPriority] = useState('10');
+  const [popupExpiryHours, setPopupExpiryHours] = useState<number | null>(null);
+  const [popupKeepExistingExpiry, setPopupKeepExistingExpiry] = useState<string | null>(null);
+  const [popupStartActive, setPopupStartActive] = useState(true);
+
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const resetPopupForm = useCallback(() => {
+    setEditingPopupId(null);
+    setPopupTitle('');
+    setPopupBadge('');
+    setPopupBody('');
+    setPopupVariant('info');
+    setPopupDisplayMode('once');
+    setPopupTargetScope('all');
+    setPopupTargetEdition('all');
+    setPopupTargetUserId(null);
+    setPopupUserSearch('');
+    setPopupCtaLabel('');
+    setPopupCtaUrl('');
+    setPopupImageUrl('');
+    setPopupDismissLabel('متوجه شدم');
+    setPopupPriority('10');
+    setPopupExpiryHours(null);
+    setPopupKeepExistingExpiry(null);
+    setPopupStartActive(true);
+  }, []);
+
+  const loadSupportAndModeration = useCallback(async (knownUserIds: string[]) => {
+    try {
+      const [contacts, statuses] = await Promise.all([
+        listRealContacts(true),
+        listSupportRequestStatuses(),
+      ]);
+      setSupportContacts(contacts);
+      setSupportStatuses(statuses);
+      const allUserIds = Array.from(new Set([...knownUserIds, ...contacts.map(c => c.id)]));
+      const moderation = await loadAdminChatModeration(
+        allUserIds,
+        contacts.map(c => c.conversationId),
+      );
+      setChatBlockedUsers(moderation.blockedUsers);
+      setDeletedChats(moderation.deletedConversations);
+    } catch {
+      // Optional support tables do not block core admin panel if not yet migrated.
+    }
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    const [core, popupResult] = await Promise.all([
+      loadAdminData(),
+      loadAdminPopupsWithStats(),
+    ]);
+    setManagerName(core.managerName);
+    setStudents(core.students);
+    setInvites(core.invites);
+    setRegisteredUsers(core.registeredUsers);
+    setPopups(popupResult.popups);
+    setPopupSchemaMissing(popupResult.schemaMissing);
+    setLastSyncedAt(new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    await loadSupportAndModeration(core.registeredUsers.map(u => u.user_id));
+  }, [loadSupportAndModeration]);
+
+  const refreshPopupsOnly = useCallback(async () => {
+    try {
+      const popupResult = await loadAdminPopupsWithStats();
+      setPopups(popupResult.popups);
+      setPopupSchemaMissing(popupResult.schemaMissing);
+    } catch {
+      // Silent background telemetry refresh
+    }
+  }, []);
+
+  // Cold-start real session verification with mobile network timeout safeguard
   useEffect(() => {
-    if (tab !== 'support' || mode !== 'live') return;
-    let active = true;
-    Promise.all([listRealContacts(true), listSupportRequestStatuses()])
-      .then(async ([contacts, statuses]) => {
-        if (!active) return;
-        setSupportContacts(contacts);
-        setSupportStatuses(statuses);
-        const moderation = await loadAdminChatModeration(
-          contacts.map(contact => contact.id),
-          contacts.map(contact => contact.conversationId),
-        );
-        if (!active) return;
-        setChatBlockedUsers(moderation.blockedUsers);
-        setDeletedChats(moderation.deletedConversations);
-      })
-      .catch(cause => { if (active) setError(educationError(cause)); });
-    return () => { active = false; };
-  }, [tab, mode]);
-  const avg = synced.length ? Math.round(synced.reduce((n,r) => n + progressMetrics(r.summary).percent, 0) / synced.length) : 0;
+    let mounted = true;
+    let settled = false;
+    const guardTimer = setTimeout(() => {
+      if (!settled && mounted) {
+        settled = true;
+        setAuthState('login');
+      }
+    }, 10_000);
+    (async () => {
+      try {
+        const { data } = await adminClient().auth.getSession();
+        if (!data.session) {
+          settled = true;
+          clearTimeout(guardTimer);
+          if (mounted) setAuthState('login');
+          return;
+        }
+        await refreshAll();
+        void registerAdminPushToken();
+        settled = true;
+        clearTimeout(guardTimer);
+        if (mounted) setAuthState('live');
+      } catch (cause) {
+        settled = true;
+        clearTimeout(guardTimer);
+        try { await adminClient().auth.signOut(); } catch { /* ignore */ }
+        if (mounted) {
+          setError(educationError(cause));
+          setAuthState('login');
+        }
+      }
+    })();
+    return () => {
+      mounted = false;
+      clearTimeout(guardTimer);
+    };
+  }, [refreshAll]);
+
+  // Live Realtime subscriptions for Popups, Users, Enrollments & Support
+  useEffect(() => {
+    if (authState !== 'live') return;
+    const stopPopups = subscribeAdminPopupTelemetry(() => {
+      void refreshPopupsOnly();
+    });
+
+    const db = adminClient();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleLiveSync = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void refreshAll().catch(() => undefined);
+      }, 450);
+    };
+
+    const liveChannel = db
+      .channel(`admin-console-live:${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_user_profiles' }, scheduleLiveSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'education_enrollments' }, scheduleLiveSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_requests' }, scheduleLiveSync)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, scheduleLiveSync)
+      .subscribe();
+
+    return () => {
+      stopPopups();
+      if (timer) clearTimeout(timer);
+      void db.removeChannel(liveChannel).catch(() => undefined);
+    };
+  }, [authState, refreshAll, refreshPopupsOnly]);
+
+  async function task(action: () => Promise<void>) {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await action();
+    } catch (e) {
+      setError(educationError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const login = () => void task(async () => {
+    const { error: signInError } = await adminClient().auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (signInError) throw signInError;
+    try {
+      await refreshAll();
+    } catch (verifyErr) {
+      await adminClient().auth.signOut().catch(() => undefined);
+      throw verifyErr;
+    }
+    void registerAdminPushToken();
+    setPassword('');
+    setAuthState('live');
+  });
+
+  function startDirectPopupForUser(userId: string, fullName: string) {
+    resetPopupForm();
+    setPopupTargetScope('user');
+    setPopupTargetUserId(userId);
+    setPopupBadge(`پیام اختصاصی برای ${fullName}`);
+    setTab('popups');
+    setNotice(`گیرندهٔ پاپ‌آپ روی «${fullName}» تنظیم شد؛ عنوان و متن پیام را بنویسید.`);
+  }
+
+  function startEditPopup(item: AdminPopupWithStats) {
+    setEditingPopupId(item.id);
+    setPopupTitle(item.title);
+    setPopupBadge(item.badge_text || '');
+    setPopupBody(item.body);
+    setPopupVariant(item.variant);
+    setPopupDisplayMode(item.display_mode);
+    setPopupTargetScope(item.target_scope);
+    setPopupTargetEdition(item.target_edition);
+    setPopupTargetUserId(item.target_user_id);
+    setPopupCtaLabel(item.cta_label || '');
+    setPopupCtaUrl(item.cta_url || '');
+    setPopupImageUrl(item.image_url || '');
+    setPopupDismissLabel(item.dismiss_label || 'متوجه شدم');
+    setPopupPriority(String(item.priority ?? 10));
+    setPopupExpiryHours(null);
+    setPopupKeepExistingExpiry(item.expires_at);
+    setPopupStartActive(item.is_active);
+    setTab('popups');
+    setNotice(`در حال ویرایش پاپ‌آپ «${item.title}»`);
+  }
+
+  function submitPopupForm() {
+    void task(async () => {
+      const parsedPriority = Number.parseInt(popupPriority, 10);
+      const draft: AdminPopupDraft = {
+        title: popupTitle,
+        body: popupBody,
+        variant: popupVariant,
+        badge_text: popupBadge || null,
+        image_url: popupImageUrl || null,
+        cta_label: popupCtaLabel || null,
+        cta_url: popupCtaUrl || null,
+        dismiss_label: popupDismissLabel || 'متوجه شدم',
+        display_mode: popupDisplayMode,
+        target_scope: popupTargetScope,
+        target_edition: popupTargetScope === 'user' ? 'all' : popupTargetEdition,
+        target_user_id: popupTargetScope === 'user' ? popupTargetUserId : null,
+        priority: Number.isFinite(parsedPriority) ? parsedPriority : 10,
+        is_active: popupStartActive,
+        expires_in_hours: popupExpiryHours,
+        expires_at: popupExpiryHours === null ? popupKeepExistingExpiry : null,
+      };
+      if (editingPopupId) {
+        await updateAdminPopup(editingPopupId, draft);
+        setNotice('پاپ‌آپ ویرایش شد و به‌صورت آنی در اپ‌های فعال به‌روزرسانی گردید.');
+      } else {
+        await createAdminPopup(draft);
+        setNotice(popupStartActive
+          ? 'پاپ‌آپ با موفقیت منتشر شد و هم‌اکنون در اپ اصلی به نمایش درآمد.'
+          : 'پاپ‌آپ به‌صورت غیرفعال ذخیره شد؛ هر زمان خواستید آن را فعال کنید.');
+      }
+      resetPopupForm();
+      await refreshPopupsOnly();
+    });
+  }
+
+  function confirmDeletePopup(popup: AdminPopupWithStats) {
+    const msg = `پاپ‌آپ «${popup.title}» و آمار بازدید آن برای همیشه حذف شود؟`;
+    const run = () => void task(async () => {
+      await deleteAdminPopup(popup.id);
+      if (editingPopupId === popup.id) resetPopupForm();
+      await refreshPopupsOnly();
+      setNotice('پاپ‌آپ حذف شد و از صفحهٔ کاربران برداشته شد.');
+    });
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(msg)) run();
+      return;
+    }
+    Alert.alert('حذف پاپ‌آپ', msg, [
+      { text: 'انصراف', style: 'cancel' },
+      { text: 'حذف دائمی', style: 'destructive', onPress: run },
+    ]);
+  }
 
   function confirmDeleteUser(user: RegisteredUser) {
     const message = `حساب «${user.full_name}» (${user.email}) برای همیشه حذف شود؟ پیشرفت و گفتگوهای این کاربر پاک می‌شود و قابل بازگشت نیست.`;
@@ -93,8 +546,11 @@ function EducationAdmin() {
       { text: 'حذف دائمی', style: 'destructive', onPress: () => { void removeUser(user); } },
     ]);
   }
+
   async function removeUser(user: RegisteredUser) {
-    setBusy(true); setError(''); setNotice('');
+    setBusy(true);
+    setError('');
+    setNotice('');
     try {
       await deleteRegisteredUser(user.user_id);
       setRegisteredUsers(current => current.filter(item => item.user_id !== user.user_id));
@@ -132,195 +588,1730 @@ function EducationAdmin() {
     ]);
   }
 
-  async function refresh() {
-    const data = await loadAdminData(); setStudents(data.students); setInvites(data.invites); setRegisteredUsers(data.registeredUsers); setSelected(null);
-  }
-  async function task(action: () => Promise<void>) {
-    if (busy) return; setBusy(true); setError(''); setNotice('');
-    try { await action(); } catch (e) { setError(educationError(e)); } finally { setBusy(false); }
-  }
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const { data } = await adminClient().auth.getSession();
-        if (!data.session) return;
-        void registerAdminPushToken();
-        // Authentication is enough to open the panel. Do not keep the whole
-        // app behind slow report queries on a cold start.
-        if (mounted) setMode('live');
-        try {
-          const result = await loadAdminData();
-          if (mounted) {
-            setStudents(result.students);
-            setInvites(result.invites);
-            setRegisteredUsers(result.registeredUsers);
-          }
-        } catch (cause) {
-          if (mounted) setError(educationError(cause));
-        }
-      } catch { /* Login remains available if the migration is not installed. */ }
-    })();
-    return () => { mounted = false; };
-  }, []);
-  const login = () => task(async () => {
-    const { error } = await adminClient().auth.signInWithPassword({ email: email.trim(), password });
-    if (error) throw error;
-    void registerAdminPushToken();
-    // Show the authenticated panel immediately; report data is non-blocking.
-    setMode('live');
-    setPassword('');
-    void refresh().catch(cause => setError(educationError(cause)));
+  // Computed metrics (100% real data)
+  const userById = useMemo(
+    () => new Map(registeredUsers.map(u => [u.user_id, u])),
+    [registeredUsers],
+  );
+  const active24hCount = useMemo(
+    () => registeredUsers.filter(u => isActiveWithinHours(u.last_seen_at, 24)).length,
+    [registeredUsers],
+  );
+  const activeStudents = useMemo(
+    () => students.filter(r => r.status === 'active'),
+    [students],
+  );
+  const syncedStudents = useMemo(
+    () => activeStudents.filter(r => r.summary),
+    [activeStudents],
+  );
+  const avgProgress = useMemo(
+    () => syncedStudents.length
+      ? Math.round(syncedStudents.reduce((n, r) => n + progressMetrics(r.summary).percent, 0) / syncedStudents.length)
+      : 0,
+    [syncedStudents],
+  );
+  const totalMinutesAll = useMemo(
+    () => syncedStudents.reduce((n, r) => n + progressMetrics(r.summary).minutes, 0),
+    [syncedStudents],
+  );
+  const livePopups = useMemo(
+    () => popups.filter(p => p.is_active && (!p.expires_at || Date.parse(p.expires_at) > Date.now())),
+    [popups],
+  );
+  const popupTotals = useMemo(() => {
+    const impressions = popups.reduce((acc, p) => acc + p.unique_impressions, 0);
+    const clicks = popups.reduce((acc, p) => acc + p.unique_clicks, 0);
+    const ctr = impressions > 0 ? Math.round((clicks / impressions) * 100) : 0;
+    return { impressions, clicks, ctr };
+  }, [popups]);
+  const openSupportCount = useMemo(
+    () => supportContacts.filter(c => !deletedChats[c.conversationId] && (supportStatuses[c.conversationId] || 'open') === 'open').length,
+    [supportContacts, deletedChats, supportStatuses],
+  );
+
+  const tabs: ReadonlyArray<{ id: Tab; title: string; icon: typeof LayoutDashboard; badge?: number }> = [
+    { id: 'overview', title: 'نمای کلی', icon: LayoutDashboard },
+    { id: 'popups', title: 'پاپ‌آپ اپ', icon: Megaphone, badge: livePopups.length || undefined },
+    { id: 'registered', title: 'کاربران ثبت‌شده', icon: Users, badge: registeredUsers.length || undefined },
+    { id: 'support', title: 'پشتیبانی', icon: MessageCircle, badge: openSupportCount || undefined },
+    { id: 'students', title: 'زبان‌آموزان', icon: GraduationCap },
+    { id: 'invites', title: 'دعوت‌نامه‌ها', icon: Ticket },
+    { id: 'content', title: 'محتوای آموزشی', icon: BookOpen },
+  ];
+
+  const visibleStudents = students.filter(
+    r => r.display_name.toLowerCase().includes(search.trim().toLowerCase())
+      && (studentFilter === 'all' || r.status === studentFilter),
+  );
+
+  const visibleUsers = registeredUsers.filter(u => {
+    const matchesQuery = `${u.full_name} ${u.email} ${u.platform || ''}`
+      .toLowerCase()
+      .includes(search.trim().toLowerCase());
+    if (!matchesQuery) return false;
+    if (userFilter === 'recent') return isActiveWithinHours(u.last_seen_at, 24);
+    if (userFilter === 'android') return u.platform === 'android';
+    if (userFilter === 'web') return u.platform === 'web';
+    if (userFilter === 'blocked') return Boolean(chatBlockedUsers[u.user_id]);
+    return true;
   });
+
+  const visibleSupport = supportContacts.filter(c => {
+    const matchesQuery = c.displayName.toLowerCase().includes(search.trim().toLowerCase());
+    if (!matchesQuery) return false;
+    const status = supportStatuses[c.conversationId] || 'open';
+    const moderated = Boolean(chatBlockedUsers[c.id] || deletedChats[c.conversationId]);
+    if (supportFilter === 'open') return status === 'open' && !deletedChats[c.conversationId];
+    if (supportFilter === 'resolved') return status === 'resolved' && !deletedChats[c.conversationId];
+    if (supportFilter === 'moderated') return moderated;
+    return true;
+  });
+
+  const visiblePopups = popups.filter(p => {
+    const expired = Boolean(p.expires_at && Date.parse(p.expires_at) <= Date.now());
+    const currentlyLive = p.is_active && !expired;
+    if (popupFilter === 'active') return currentlyLive;
+    if (popupFilter === 'inactive') return !currentlyLive;
+    return true;
+  });
+
   const button = (title: string, onPress: () => void, secondary = false, disabled = false) => (
-    <Pressable accessibilityRole="button" disabled={disabled || busy} onPress={onPress} style={[s.button, secondary && s.secondary, (disabled || busy) && { opacity: .45 }]}>
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled || busy}
+      onPress={onPress}
+      style={[s.button, secondary && s.secondary, (disabled || busy) && { opacity: 0.45 }]}
+    >
       <Text style={[s.buttonText, secondary && { color: '#344761' }]}>{title}</Text>
     </Pressable>
   );
-  const feedback = <>{busy && <ActivityIndicator color="#1769D2" />}{!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}{!!notice && <Text style={s.notice}>{notice}</Text>}</>;
 
-  if (mode === 'login') return (
-    <ScrollView contentContainerStyle={s.loginPage}>
-      <View style={s.loginCard}>
-        <View style={s.logo}><GraduationCap color="white" size={32} /></View>
-        <Text style={s.eyebrow}>ENGLISH JOURNEY / ADMIN</Text>
-        <Text style={s.title}>آموزش، با یک نگاه روشن</Text>
-        <Text style={s.subtitle}>پنل مدیریت آموزشی شما؛ فقط پیشرفت زبان‌آموزانی که با رضایت عضو شده‌اند.</Text>
-        <Text style={s.label}>ایمیل مدیر</Text>
-        <TextInput accessibilityLabel="ایمیل مدیر" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} style={[s.input, s.ltr]} placeholder="you@example.com" />
-        <Text style={s.label}>رمز عبور</Text>
-        <TextInput accessibilityLabel="رمز عبور مدیر" secureTextEntry value={password} onChangeText={setPassword} style={[s.input, s.ltr]} onSubmitEditing={login} />
-        {feedback}
-        {button('ورود امن به پنل', login, false, !email.trim() || !password)}
-        {button('مشاهده پیش‌نمایش با داده‌های نمونه', () => { setError(''); setMode('demo'); }, true)}
-        <Text style={s.small}>حساب عادی یا ناشناس دسترسی مدیریتی ندارد. ساخت اولین مدیر از Supabase و طبق راهنمای EDUCATION-ADMIN انجام می‌شود.</Text>
-        {button('بازگشت به آموزش', () => router.replace('/lang'), true)}
-      </View>
-    </ScrollView>
+  const feedback = (
+    <>
+      {busy && <ActivityIndicator color="#1769D2" />}
+      {!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
+      {!!notice && <Text style={s.notice}>{notice}</Text>}
+    </>
   );
 
-  return <View style={s.root}>
-    <View style={s.shell}>
-      <View style={[s.sidebar, !wide && s.sidebarMobile]}>
-        <View style={[s.brand, !wide && s.brandMobile]}>
-          <View style={[s.logo, !wide && s.logoMobile]}><GraduationCap color="white" size={wide ? 25 : 21} /></View>
-          {wide ? <View><Text style={s.brandTitle}>English Journey</Text><Text style={s.small}>فضای مدیریت آموزش</Text></View> : <Text style={s.mobileBrandTitle}>مدیریت</Text>}
-        </View>
-        <Text style={[s.navLabel, !wide && s.navLabelMobile]}>{wide ? 'میز کار شما' : 'منوی اصلی'}</Text>
-        <View style={[s.navList, !wide && s.navListMobile]}>
-          {tabs.map(t => <Pressable accessibilityRole="button" key={t.id} onPress={() => {setTab(t.id);setSelected(null);}} style={[s.navItem, !wide && s.mobileNavItem, tab === t.id && s.navActive]}><t.icon size={wide ? 19 : 20} color={tab === t.id ? '#1769D2' : '#64748B'} /><Text numberOfLines={2} style={[s.navText, !wide && s.mobileNavText, tab === t.id && s.navTextActive]}>{t.title}</Text></Pressable>)}
-        </View>
-        <View style={{ flex: 1 }} />
-        {wide && <View style={s.privacy}><ShieldCheck size={24} color="#1769D2" /><Text style={s.cardTitle}>فقط آموزش، با رضایت</Text><Text style={s.small}>بدون دسترسی به پیام‌ها، مخاطبان یا صفحه گوشی زبان‌آموز.</Text></View>}
-        <Pressable style={[s.navItem, !wide && s.mobileLogout]} onPress={() => void task(async () => { if (!demo) {const {error} = await adminClient().auth.signOut(); if(error) throw error;} setMode('login');setStudents([]);setInvites([]);setRegisteredUsers([]);setSelected(null); })}><LogOut size={18} color="#64748B" /><Text numberOfLines={2} style={[s.navText, !wide && s.mobileNavText]}>{demo ? (wide ? 'ورود به پنل واقعی' : 'ورود') : (wide ? 'خروج از حساب مدیر' : 'خروج')}</Text></Pressable>
+  if (authState === 'checking') {
+    return (
+      <View style={s.checkingScreen}>
+        <ActivityIndicator size="large" color="#1769D2" />
+        <Text style={s.checkingText}>در حال اتصال امن به سرور مدیریت Milo…</Text>
       </View>
-      <ScrollView style={s.content} contentContainerStyle={[s.main, !wide && s.mainMobile]}>
-        <LinearGradient colors={['#EAF4FF', '#F8FBFF', '#FFFFFF']} start={{x:0,y:0}} end={{x:1,y:1}} style={[s.header, !wide && s.headerMobile]}><View style={{flex:1}}><Text style={s.eyebrow}>مدیریت آموزشی / {tabs.find(t => t.id === tab)?.title}</Text><Text style={[s.title, !wide && s.titleMobile]}>{tab === 'overview' ? 'رشد زبان‌آموزان، پیش چشم شما' : tabs.find(t => t.id === tab)?.title}</Text><Text style={s.subtitle}>یادگیری را دنبال کنید، نه زندگی خصوصی افراد را.</Text></View><View style={[s.pill, !wide && s.pillMobile]}><View style={s.dot} /><Text style={s.pillText}>{demo ? 'نمایشی' : 'مدیر'}</Text></View></LinearGradient>
-        {demo && <Text style={s.demoBanner}>پیش‌نمایش • نام‌ها و آمار این صفحه نمونه‌اند. ایجاد دعوت و تغییر وضعیت در این حالت غیرفعال است.</Text>}
-        {feedback}
-        {!demo && button('تازه‌سازی گزارش‌ها', () => void task(refresh), true)}
-        {tab === 'registered' && <View style={s.card}>
-          <View style={s.sectionHead}><Text style={s.cardTitle}>کاربران ثبت‌شده اپ زبان</Text><View style={{flexDirection:'row',alignItems:'center',gap:10}}><Text style={s.small}>{fa(registeredUsers.length)} حساب واقعی</Text><Pressable accessibilityRole="button" disabled={demo || !registeredUsers.length} onPress={() => { downloadRegisteredUsers(registeredUsers).catch(cause => setError(educationError(cause))); }} style={[s.ghostBtn, (demo || !registeredUsers.length) && {opacity:.45}]}><Download size={16} color="#1769D2" /><Text style={s.actionText}>دانلود فهرست</Text></Pressable></View></View>
-          <Text style={s.subtitle}>این فهرست شامل اطلاعات حساب و وضعیت فعالیت است؛ پیام‌های خصوصی و فایل‌های شخصی نمایش داده نمی‌شوند.</Text>
-          {!registeredUsers.length && <View style={s.empty}><Users size={34} color="#1769D2" /><Text style={s.cardTitle}>هنوز کاربری ثبت‌نام نکرده است</Text></View>}
-          {registeredUsers.filter(user => `${user.full_name} ${user.email}`.toLowerCase().includes(search.trim().toLowerCase())).map((user, index) => <View key={user.user_id} style={s.studentRow}>
-            <View style={[s.avatar, {backgroundColor: ['#e5f3f0','#eef0ff','#fff1dc'][index%3]}]}><Text style={s.avatarText}>{user.full_name.slice(0,1)}</Text></View>
-            <View style={{flex:1,minWidth:115}}><Text style={s.studentName}>{user.full_name}</Text><Text style={s.emailText}>{user.email}</Text></View>
-            <View><Text style={s.small}>ثبت‌نام: {dates(user.registered_at)}</Text><Text style={s.small}>آخرین فعالیت: {dates(user.last_seen_at)}</Text></View>
-            <Text style={s.badge}>{user.platform || 'نامشخص'} · {user.app_version || '—'}</Text>
-            <Pressable accessibilityRole="button" disabled={demo || busy} onPress={() => confirmDeleteUser(user)} style={[s.deleteBtn, (demo || busy) && {opacity:.45}]}><Trash2 size={16} color="#B42318" /><Text style={s.deleteText}>حذف</Text></Pressable>
-          </View>)}
-        </View>}
-        {(tab === 'overview' || tab === 'students') && <>
-          <View style={s.stats}>
-            {[['کاربران ثبت‌شده', demo ? 3 : registeredUsers.length, 'حساب‌های اپ زبان'], ['زبان‌آموزان', rows.length, 'عضویت با رضایت'], ['اشتراک فعال', active.length, 'گزارش آموزشی فعال'], ['میانگین پیشرفت', `${fa(avg)}٪`, `${fa(synced.length)} نفر با گزارش همگام‌شده`], ['درس‌های دوره', SENTENCE_LESSONS.length, 'پوشش ۵۰۴ واژه مرجع']].map(([name,value,hint]) => <View key={name} style={s.stat}><Text style={s.statLabel}>{name}</Text><Text style={s.statNumber}>{typeof value === 'number' ? fa(value) : value}</Text><Text style={s.small}>{hint}</Text></View>)}
+    );
+  }
+
+  if (authState === 'login') {
+    return (
+      <ScrollView contentContainerStyle={s.loginPage} keyboardShouldPersistTaps="handled">
+        <View style={s.loginCard}>
+          <View style={s.loginTopRow}>
+            <View style={s.logo}><GraduationCap color="#FFFFFF" size={30} /></View>
+            <View style={s.liveServerBadge}>
+              <View style={s.liveGreenDot} />
+              <Text style={s.liveServerText}>متصل به Supabase واقعی</Text>
+            </View>
           </View>
-          {tab === 'overview' && <View style={s.hero}><View style={{ flex: 1 }}><Text style={s.heroTitle}>مسیر یادگیری از یک دعوت شروع می‌شود.</Text><Text style={s.heroText}>یک دعوت اختصاصی بسازید؛ زبان‌آموز نام شما و نوع اطلاعات قابل اشتراک را می‌بیند و خودش تصمیم می‌گیرد.</Text></View>{button('دعوت زبان‌آموز جدید', () => setTab('invites'))}</View>}
-          <View style={s.card}>
-            <View style={s.sectionHead}><Text style={s.cardTitle}>زبان‌آموزان شما</Text><Text style={s.small}>آخرین داده ارسال‌شده از دستگاه</Text></View>
-            <View style={s.toolbar}><View style={s.search}><Search size={18} color="#8390a1" /><TextInput accessibilityLabel="جستجوی نام زبان‌آموز" placeholder="جستجوی نام زبان‌آموز…" value={search} onChangeText={setSearch} style={s.searchInput} /></View><View style={s.filters}>{[['all','همه'],['active','فعال'],['paused','متوقف']].map(([id,title]) => <Pressable key={id} onPress={() => setFilter(id)} style={[s.filter, filter===id && {backgroundColor:'#E2EFFF'}]}><Text style={s.small}>{title}</Text></Pressable>)}</View></View>
-            {!visible.length && <View style={s.empty}><Users size={34} color="#1769D2" /><Text style={s.cardTitle}>{rows.length ? 'نتیجه‌ای پیدا نشد' : 'اولین زبان‌آموز را دعوت کنید'}</Text><Text style={s.small}>فقط افرادی که دعوت شما را پذیرفته‌اند اینجا ظاهر می‌شوند.</Text></View>}
-            {visible.map((r,i) => { const m=progressMetrics(r.summary); return <Pressable accessibilityRole="button" key={r.student_id} onPress={() => setSelected(r)} style={s.studentRow}>
-              <View style={[s.avatar, {backgroundColor: ['#e5f3f0','#eef0ff','#fff1dc'][i%3]}]}><Text style={s.avatarText}>{r.display_name.slice(0,1)}</Text></View>
-              <View style={{ flex: 1, minWidth: 120 }}><Text style={s.studentName}>{r.display_name}</Text><Text style={s.small}>{r.status==='paused' ? 'گزارش متوقف است' : dates(r.synced_at)}</Text></View>
-              <View style={{ width: wide ? 180 : 100 }}><Text style={s.small}>{r.summary ? `${fa(m.lessons)} از ۱۶۱ درس` : 'بدون گزارش'}</Text><View style={s.track}><View style={[s.fill,{width:`${m.percent}%`}]} /></View></View>
-              <Text style={[s.badge, r.status==='paused' && { backgroundColor:'#fff3df',color:'#a36512' }]}>{r.status==='active' ? 'فعال' : 'متوقف'}</Text><ArrowUpLeft size={17} color="#8190a5" />
-            </Pressable>; })}
+          <Text style={s.eyebrow}>MILO MULTILANGUAGE · ADMIN CONSOLE</Text>
+          <Text style={s.loginTitle}>کنسول مدیریت زنده و یکپارچه</Text>
+          <Text style={s.subtitle}>
+            مدیریت واقعی کاربران، ارسال آنی پاپ‌آپ به اپ اصلی و ترکی، پشتیبانی زنده و پایش پیشرفت آموزشی در چهار زبان.
+          </Text>
+
+          <Text style={s.label}>ایمیل حساب مدیر</Text>
+          <TextInput
+            accessibilityLabel="ایمیل مدیر"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+            style={[s.input, s.ltr]}
+            placeholder="admin@yourdomain.com"
+            placeholderTextColor="#8B9AB0"
+          />
+
+          <View style={s.sectionHead}>
+            <Text style={s.label}>رمز عبور مدیر</Text>
+            <Pressable accessibilityRole="button" onPress={() => setShowPassword(v => !v)}>
+              <Text style={s.inlineLink}>{showPassword ? 'پنهان‌کردن رمز' : 'نمایش رمز'}</Text>
+            </Pressable>
           </View>
-          {selected && <View style={s.card}><View style={s.sectionHead}><Text style={s.cardTitle}>گزارش {selected.display_name}</Text>{button('بستن',()=>setSelected(null),true)}</View><Text style={s.subtitle}>عضویت: {dates(selected.consent_at)} • آخرین همگام‌سازی: {dates(selected.synced_at)}</Text>
-            {selected.summary && <Text style={s.detail}>{fa(progressMetrics(selected.summary).lessons)} درس تکمیل‌شده   ·   {fa(progressMetrics(selected.summary).words)} واژه معرفی‌شده   ·   {fa(progressMetrics(selected.summary).minutes)} دقیقه ثبت‌شده</Text>}
-            <Text style={s.small}>این داده‌ها گزارش دستگاه‌اند، نه آزمون تسلط یا سنجش حضور. توقف گزارش، اپ یا درس‌های آفلاین را قفل نمی‌کند.</Text>
-            {button(selected.status==='active' ? 'توقف دریافت گزارش این عضو' : 'فعال‌کردن دوباره گزارش', () => void task(async () => {
-              const { error }=await adminClient().from('education_enrollments').update({status:selected.status==='active'?'paused':'active'}).eq('student_id',selected.student_id).select('student_id');
-              if(error) throw error;await refresh();setNotice('وضعیت گزارش به‌روزرسانی شد.');
-            }), true, demo)}
-          </View>}
-        </>}
-        {tab === 'support' && <View style={s.card}>
-          <View style={s.sectionHead}><Text style={s.cardTitle}>گفتگوی پشتیبانی</Text><Text style={s.small}>{fa(supportContacts.length)} گفتگو</Text></View>
-          <Text style={s.subtitle}>زبان‌آموزان از بخش پشتیبانی اپ زبان به شما پیام می‌دهند. هر گفتگو خصوصی و بین شما و همان زبان‌آموز است.</Text>
-          {demo && <View style={s.empty}><Text style={s.small}>در حالت نمونه گفتگوی واقعی نمایش داده نمی‌شود.</Text></View>}
-          {!demo && !supportContacts.length && <View style={s.empty}><MessageCircle size={34} color="#1769D2" /><Text style={s.cardTitle}>هنوز پیامی از زبان‌آموزان نیست</Text></View>}
-          {!demo && supportContacts.map(contact => {
-            const status = supportStatuses[contact.conversationId] || 'open';
-            const nextStatus: SupportRequestStatus = status === 'open' ? 'resolved' : 'open';
-            const isBlocked = Boolean(chatBlockedUsers[contact.id]);
-            const isDeleted = Boolean(deletedChats[contact.conversationId]);
-            return <View key={contact.conversationId} style={[s.studentRow, isDeleted && { opacity: .65 }]}>
-              <Pressable accessibilityRole="button" disabled={isDeleted} style={{ flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }} onPress={() => router.push({ pathname: '/conversations/human/[conversationId]', params: { conversationId: contact.conversationId, name: contact.displayName } } as never)}>
-                <View style={[s.avatar, {backgroundColor:'#eef0ff'}]}><Text style={s.avatarText}>{contact.displayName.slice(0,1)}</Text></View>
-                <View style={{flex:1,minWidth:80}}><Text style={s.studentName}>{contact.displayName}</Text><Text style={s.small}>{isBlocked ? 'دسترسی چت مسدود است' : isDeleted ? 'گفتگو پنهان شده' : `آخرین فعالیت: ${dates(contact.lastSeen)}`}</Text></View>
-                {!isDeleted && <ArrowUpLeft size={18} color="#1769D2" />}
-              </Pressable>
+          <TextInput
+            accessibilityLabel="رمز عبور مدیر"
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={password}
+            onChangeText={setPassword}
+            style={[s.input, s.ltr]}
+            placeholder="••••••••••••"
+            placeholderTextColor="#8B9AB0"
+            onSubmitEditing={login}
+          />
+
+          {feedback}
+          {button('ورود امن به پنل مدیریت', login, false, !email.trim() || !password)}
+
+          <View style={s.securityInfoBox}>
+            <ShieldCheck size={18} color="#1769D2" />
+            <Text style={s.small}>
+              حالت نمایشی غیرفعال است و تمام عملیات مستقیماً با احراز هویت سرور (`is_education_admin`) و سیاست‌های RLS انجام می‌شود. پیام‌های خصوصی کاربران هرگز فاش نمی‌شوند.
+            </Text>
+          </View>
+
+          {Constants.expoConfig?.extra?.appRole !== 'admin' && (
+            button('بازگشت به اپ زبان‌آموز', () => router.replace('/languages' as never), true)
+          )}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  const selectedTargetUser = popupTargetUserId ? userById.get(popupTargetUserId) : null;
+
+  return (
+    <View style={s.root}>
+      <View style={s.shell}>
+        {/* Responsive RTL Sidebar (works cleanly on 360x800 mobile AND wide desktop) */}
+        <View style={[s.sidebar, !wide && s.sidebarMobile]}>
+          <View style={[s.brand, !wide && s.brandMobile]}>
+            <View style={[s.logo, !wide && s.logoMobile]}>
+              <GraduationCap color="#FFFFFF" size={wide ? 25 : 20} />
+            </View>
+            {wide ? (
+              <View style={{ flex: 1 }}>
+                <Text style={s.brandTitle}>Milo Admin</Text>
+                <Text style={s.small}>{managerName}</Text>
+              </View>
+            ) : (
+              <Text style={s.mobileBrandTitle}>کنسول مدیر</Text>
+            )}
+          </View>
+
+          <Text style={[s.navLabel, !wide && s.navLabelMobile]}>
+            {wide ? 'بخش‌های مدیریتی زنده' : 'منو'}
+          </Text>
+
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[s.navList, !wide && s.navListMobile]}
+            showsVerticalScrollIndicator={false}
+          >
+            {tabs.map(t => (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={status === 'open' ? `بستن درخواست پشتیبانی ${contact.displayName}` : `بازکردن دوباره درخواست پشتیبانی ${contact.displayName}`}
+                key={t.id}
+                onPress={() => {
+                  setTab(t.id);
+                  setSelected(null);
+                  setError('');
+                  setNotice('');
+                }}
+                style={[s.navItem, !wide && s.mobileNavItem, tab === t.id && s.navActive]}
+              >
+                <View style={s.navIconWrap}>
+                  <t.icon size={wide ? 18 : 19} color={tab === t.id ? '#1769D2' : '#64748B'} />
+                  {!!t.badge && (
+                    <View style={s.navBadge}>
+                      <Text style={s.navBadgeText}>{t.badge > 99 ? '۹۹+' : fa(t.badge)}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text numberOfLines={2} style={[s.navText, !wide && s.mobileNavText, tab === t.id && s.navTextActive]}>
+                  {t.title}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          {wide && (
+            <View style={s.privacy}>
+              <ShieldCheck size={22} color="#1769D2" />
+              <Text style={s.cardTitle}>حریم خصوصی و امنیت RLS</Text>
+              <Text style={s.small}>
+                ارسال پاپ‌آپ و گزارش‌ها ۱۰۰٪ واقعی و تحت مجوز سرور است؛ پیام‌های خصوصی بین کاربران محرمانه می‌ماند.
+              </Text>
+            </View>
+          )}
+
+          <Pressable
+            accessibilityRole="button"
+            style={[s.navItem, !wide && s.mobileLogout]}
+            onPress={() => void task(async () => {
+              const { error: outErr } = await adminClient().auth.signOut();
+              if (outErr) throw outErr;
+              setAuthState('login');
+              setStudents([]);
+              setInvites([]);
+              setRegisteredUsers([]);
+              setPopups([]);
+              setSelected(null);
+            })}
+          >
+            <LogOut size={18} color="#B42318" />
+            <Text numberOfLines={2} style={[s.navText, !wide && s.mobileNavText, { color: '#B42318' }]}>
+              {wide ? 'خروج از حساب مدیر' : 'خروج'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Main Scrollable Workspace */}
+        <ScrollView style={s.content} contentContainerStyle={[s.main, !wide && s.mainMobile]} keyboardShouldPersistTaps="handled">
+          <LinearGradient
+            colors={['#E6F1FF', '#F5FAFF', '#FFFFFF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[s.header, !wide && s.headerMobile]}
+          >
+            <View style={{ flex: 1, minWidth: 180 }}>
+              <Text style={s.eyebrow}>کنسول مدیریت زنده / {tabs.find(t => t.id === tab)?.title}</Text>
+              <Text style={[s.title, !wide && s.titleMobile]}>
+                {tab === 'overview'
+                  ? 'فرماندهی زندهٔ اپ‌های Milo'
+                  : tab === 'popups'
+                    ? 'استودیوی پاپ‌آپ و اعلان آنی در اپ اصلی'
+                    : tabs.find(t => t.id === tab)?.title}
+              </Text>
+              <Text style={s.subtitle}>
+                متصل به پایگاه‌دادهٔ واقعی و Realtime • {lastSyncedAt ? `آخرین همگام‌سازی: ${lastSyncedAt}` : 'همگام‌سازی خودکار فعال'}
+              </Text>
+            </View>
+
+            <View style={s.headerRightGroup}>
+              <View style={[s.pill, !wide && s.pillMobile]}>
+                <View style={s.liveGreenDot} />
+                <Text style={s.pillText}>زنده · {managerName}</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="تازه‌سازی گزارش‌ها"
                 disabled={busy}
                 onPress={() => void task(async () => {
-                  await updateSupportRequestStatus(contact.conversationId, nextStatus);
-                  setSupportStatuses(current => ({ ...current, [contact.conversationId]: nextStatus }));
-                  setNotice(nextStatus === 'resolved' ? 'درخواست پاسخ‌داده‌شده شد؛ زبان‌آموز اعلان می‌گیرد.' : 'درخواست دوباره باز شد؛ زبان‌آموز اعلان می‌گیرد.');
+                  await refreshAll();
+                  setNotice('تمام داده‌ها و آمارها از سرور زنده به‌روزرسانی شد.');
                 })}
-                style={{ paddingHorizontal: 9, paddingVertical: 6, borderRadius: 8, backgroundColor: status === 'resolved' ? '#E8F6EF' : '#EAF3FF', opacity: busy ? .55 : 1 }}
+                style={[s.refreshBtn, busy && { opacity: 0.5 }]}
               >
-                <Text style={[s.small, { color: status === 'resolved' ? '#178055' : '#1769D2' }]}>{status === 'resolved' ? 'پاسخ‌داده‌شده' : 'باز'}</Text>
+                <RefreshCw size={15} color="#1769D2" />
+                <Text style={s.refreshBtnText}>تازه‌سازی</Text>
               </Pressable>
-              <View style={{ width: '100%', flexDirection: 'row-reverse', justifyContent: 'flex-start', gap: 8, marginTop: 8 }}>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={busy}
-                  onPress={() => void task(async () => {
-                    await setChatUserBlocked(contact.id, !isBlocked);
-                    setChatBlockedUsers(current => ({ ...current, [contact.id]: !isBlocked }));
-                    setNotice(isBlocked ? 'دسترسی گفتگو برای این کاربر مجاز شد.' : 'دسترسی گفتگو برای این کاربر مسدود شد.');
-                  })}
-                  style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: isBlocked ? '#E8F6EF' : '#FFF1E8' }}
-                ><Text style={[s.small, { color: isBlocked ? '#178055' : '#B34B22' }]}>{isBlocked ? 'اجازهٔ دسترسی' : 'مسدودکردن چت'}</Text></Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={busy}
-                  onPress={() => confirmConversationDeletion(contact)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: isDeleted ? '#E8F6EF' : '#FFF0F0' }}
-                ><Text style={[s.small, { color: isDeleted ? '#178055' : '#B42336' }]}>{isDeleted ? 'بازیابی گفتگو' : 'حذف گفتگو'}</Text></Pressable>
+            </View>
+          </LinearGradient>
+
+          {feedback}
+
+          {/* SQL Setup Banner if admin_popups migration has not been run on Supabase yet */}
+          {popupSchemaMissing && (
+            <View style={s.schemaAlertCard}>
+              <View style={s.sectionHead}>
+                <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <ShieldAlert size={20} color="#B45309" />
+                  <Text style={[s.cardTitle, { color: '#92400E', flex: 1 }]}>
+                    نصب یک‌بار جدول پاپ‌آپ‌ها در Supabase لازم است
+                  </Text>
+                </View>
               </View>
-            </View>;
-          })}
-        </View>}
-        {tab === 'invites' && <View style={s.card}>
-          <Text style={s.cardTitle}>دعوت آموزشی جدید</Text><Text style={s.subtitle}>دعوت یک‌بارمصرف با اعتبار ۷ روز. این کد با کد دعوت مکالمه فرق دارد.</Text>
-          <TextInput accessibilityLabel="عنوان دعوت" placeholder="مثلاً: کلاس عصر — سارا" maxLength={80} value={label} onChangeText={setLabel} style={s.input} />
-          {button('ساخت دعوت اختصاصی', () => void task(async () => {const {error}=await adminClient().from('education_invites').insert({label:label.trim()});if(error) throw error;setLabel('');await refresh();setNotice('دعوت ساخته شد. کد را فقط به فرد موردنظر بدهید.');}),false,demo || !label.trim())}
-          <Text style={s.small}>زبان‌آموز در صفحه «مدیریت اشتراک آموزشی» کد را وارد می‌کند. نام مدیر و رضایت اشتراک پیشرفت قبل از عضویت نمایش داده می‌شود.</Text>
-          {!invites.length && <Text style={s.emptyText}>{demo ? 'برای ساخت دعوت واقعی وارد حساب مدیر شوید.' : 'هنوز دعوتی ساخته نشده است.'}</Text>}
-          {invites.map(inv => <View key={inv.id} style={s.inviteRow}><Text style={s.cardTitle}>{inv.label}</Text><Text selectable style={s.code}>{inv.code}</Text><Text style={s.small}>{inv.claimed_at ? 'مصرف‌شده' : Date.parse(inv.expires_at) < Date.now() ? 'منقضی‌شده' : 'آماده استفاده'} · پایان اعتبار: {dates(inv.expires_at)}</Text>{!inv.claimed_at && button('لغو دعوت',()=>void task(async()=>{const {error}=await adminClient().from('education_invites').delete().eq('id',inv.id);if(error) throw error;await refresh();}),true)}</View>)}
-        </View>}
-        {tab === 'content' && <View style={s.card}><Text style={s.cardTitle}>کتابخانه محتوای فعلی</Text><Text style={s.subtitle}>{fa(SENTENCE_LESSONS.length)} درس · {fa(SENTENCE_LESSONS.reduce((total, lesson) => total + lesson.sentences.length, 0))} جمله · ۵۰۴ واژه مرجع</Text><Text style={s.small}>این بخش فعلاً فقط خواندنی است. ویرایش و انتشار محتوای جدید از پنل هنوز پیاده‌سازی نشده است.</Text>{COURSE_LEVELS.map(l => <View key={l.id} style={s.contentRow}><View style={[s.levelDot,{backgroundColor:l.color}]} /><View style={{flex:1}}><Text style={s.studentName}>{l.title}</Text><Text style={s.small}>{l.description}</Text></View><Text style={s.badge}>{fa(SENTENCE_LESSONS.filter(x=>x.levelId===l.id).length)} درس</Text></View>)}</View>}
-        <View style={s.footer}><ShieldCheck size={16} color="#7a899b" /><Text style={s.small}>مدیریت آموزشی • بدون نظارت بر گوشی • داده آفلاین پس از همگام‌سازی دیده می‌شود</Text></View>
-        {Constants.expoConfig?.extra?.appRole !== 'admin' && button('بازگشت به اپ آموزشی',()=>router.replace('/lang'),true)}
-      </ScrollView>
+              <Text style={[s.small, { color: '#78350F' }]}>
+                سایر بخش‌های پنل به سرور واقعی متصل‌اند، اما برای ذخیره و ارسال آنی پاپ‌آپ به اپ اصلی، یک‌بار کد SQL زیر را کپی کرده و در Supabase → SQL Editor اجرا کنید و سپس دکمهٔ «بررسی مجدد» را بزنید.
+              </Text>
+              <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 }}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    void copyTextSafe(ADMIN_POPUPS_SETUP_SQL).then(ok => {
+                      setNotice(ok
+                        ? 'اسکریپت کامل SQL در کلیپ‌بورد کپی شد؛ در Supabase SQL Editor جای‌گذاری (Paste) و Run کنید.'
+                        : 'امکان کپی خودکار نبود؛ فایل supabase/SETUP-ADMIN-POPUPS-ONCE.sql را اجرا کنید.');
+                    });
+                  }}
+                  style={s.primaryActionChip}
+                >
+                  <Copy size={14} color="#FFFFFF" />
+                  <Text style={s.primaryActionChipText}>کپی کامل کد SQL نصب پاپ‌آپ</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void task(async () => {
+                    await refreshPopupsOnly();
+                    setNotice('بررسی انجام شد.');
+                  })}
+                  style={s.ghostBtn}
+                >
+                  <RefreshCw size={14} color="#1769D2" />
+                  <Text style={s.actionText}>بررسی مجدد پس از اجرا</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* ==================== TAB 1: OVERVIEW ==================== */}
+          {tab === 'overview' && (
+            <>
+              <View style={s.stats}>
+                {[
+                  ['کاربران ثبت‌شده', fa(registeredUsers.length), `${fa(active24hCount)} فعال در ۲۴ ساعت اخیر`],
+                  ['پاپ‌آپ‌های در حال پخش', fa(livePopups.length), `${fa(popupTotals.impressions)} بازدید · نرخ کلیک ${fa(popupTotals.ctr)}٪`],
+                  ['پشتیبانی منتظر پاسخ', fa(openSupportCount), `از مجموع ${fa(supportContacts.length)} گفتگوی پشتیبانی`],
+                  ['زبان‌آموزان همگام', fa(activeStudents.length), `${fa(syncedStudents.length)} عضو با گزارش پیشرفت`],
+                  ['میانگین پیشرفت انگلیسی', `${fa(avgProgress)}٪`, `${fa(totalMinutesAll)} دقیقه مطالعه ثبت‌شده`],
+                  ['ظرفیت ۴ دوره فعال', `${fa(455)} درس`, 'انگلیسی · آلمانی · روسی · ترکی'],
+                ].map(([name, value, hint]) => (
+                  <View key={name} style={s.stat}>
+                    <Text style={s.statLabel}>{name}</Text>
+                    <Text style={s.statNumber}>{value}</Text>
+                    <Text style={s.small}>{hint}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <LinearGradient
+                colors={['#0F2E5C', '#1769D2']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.hero}
+              >
+                <View style={{ flex: 1, minWidth: 190 }}>
+                  <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Radio size={16} color="#93C5FD" />
+                    <Text style={[s.eyebrow, { color: '#BFDBFE', marginBottom: 0 }]}>REALTIME IN-APP POPUP ENGINE</Text>
+                  </View>
+                  <Text style={s.heroTitle}>ارسال مستقیم پاپ‌آپ به صفحهٔ زبان‌آموزان در کمتر از یک ثانیه</Text>
+                  <Text style={s.heroText}>
+                    بدون نیاز به آپدیت اپ، اطلاعیه، بنر دورهٔ جدید، لینک داخلی یا پیام اختصاصی برای یک کاربر خاص بفرستید و آمار بازدید و کلیک واقعی را زنده ببینید.
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 }}>
+                  <Pressable accessibilityRole="button" onPress={() => setTab('popups')} style={s.heroWhiteBtn}>
+                    <Megaphone size={15} color="#102A56" />
+                    <Text style={s.heroWhiteBtnText}>ساخت پاپ‌آپ جدید</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" onPress={() => setTab('support')} style={s.heroOutlineBtn}>
+                    <MessageCircle size={15} color="#FFFFFF" />
+                    <Text style={s.heroOutlineBtnText}>صندوق پشتیبانی ({fa(openSupportCount)})</Text>
+                  </Pressable>
+                </View>
+              </LinearGradient>
+
+              {/* Active Popups Live Snapshot */}
+              <View style={s.card}>
+                <View style={s.sectionHead}>
+                  <Text style={s.cardTitle}>پاپ‌آپ‌های فعال در اپ اصلی و ترکی ({fa(livePopups.length)})</Text>
+                  <Pressable accessibilityRole="button" onPress={() => setTab('popups')}>
+                    <Text style={s.inlineLink}>مدیریت همهٔ پاپ‌آپ‌ها ←</Text>
+                  </Pressable>
+                </View>
+                {!livePopups.length ? (
+                  <View style={s.empty}>
+                    <BellRing size={30} color="#1769D2" />
+                    <Text style={s.cardTitle}>در حال حاضر هیچ پاپ‌آپ فعالی روی اپ‌ها نمایش داده نمی‌شود</Text>
+                    <Text style={s.small}>از تب «پاپ‌آپ اپ» می‌توانید اولین اعلان همگانی یا اختصاصی را منتشر کنید.</Text>
+                  </View>
+                ) : (
+                  livePopups.slice(0, 4).map(p => (
+                    <View key={p.id} style={s.studentRow}>
+                      <View style={[s.avatar, { backgroundColor: '#EAF3FF' }]}>
+                        <Megaphone size={16} color="#1769D2" />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 130 }}>
+                        <Text style={s.studentName}>{p.title}</Text>
+                        <Text style={s.small}>
+                          {p.target_scope === 'user'
+                            ? `اختصاصی: ${userById.get(p.target_user_id || '')?.full_name || 'کاربر مشخص'}`
+                            : p.target_edition === 'main'
+                              ? 'نسخهٔ اصلی (EN/DE/RU)'
+                              : p.target_edition === 'turkish'
+                                ? 'نسخهٔ ترکی (EN/DE/TR)'
+                                : 'همهٔ نسخه‌ها'}
+                          {' · '}
+                          {fa(p.unique_impressions)} بازدید · {fa(p.unique_clicks)} کلیک
+                        </Text>
+                      </View>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => void task(async () => {
+                          await toggleAdminPopupActive(p.id, false);
+                          await refreshPopupsOnly();
+                          setNotice(`پاپ‌آپ «${p.title}» متوقف شد.`);
+                        })}
+                        style={s.warnChip}
+                      >
+                        <Pause size={13} color="#B45309" />
+                        <Text style={s.warnChipText}>توقف</Text>
+                      </Pressable>
+                    </View>
+                  ))
+                )}
+              </View>
+
+              {/* Recent Active Registered Users */}
+              <View style={s.card}>
+                <View style={s.sectionHead}>
+                  <Text style={s.cardTitle}>آخرین کاربران فعال در اپ زبان</Text>
+                  <Pressable accessibilityRole="button" onPress={() => setTab('registered')}>
+                    <Text style={s.inlineLink}>مشاهدهٔ همه ({fa(registeredUsers.length)}) ←</Text>
+                  </Pressable>
+                </View>
+                {!registeredUsers.length ? (
+                  <View style={s.empty}>
+                    <Users size={30} color="#1769D2" />
+                    <Text style={s.small}>هنوز کاربری در جدول حساب‌های اپ ثبت‌نام نکرده است.</Text>
+                  </View>
+                ) : (
+                  [...registeredUsers]
+                    .sort((a, b) => Date.parse(b.last_seen_at) - Date.parse(a.last_seen_at))
+                    .slice(0, 5)
+                    .map((u, idx) => {
+                      const onlineToday = isActiveWithinHours(u.last_seen_at, 24);
+                      return (
+                        <View key={u.user_id} style={s.studentRow}>
+                          <View style={[s.avatar, { backgroundColor: ['#E5F3F0', '#EEF0FF', '#FFF1DC'][idx % 3] }]}>
+                            <Text style={s.avatarText}>{u.full_name.slice(0, 1)}</Text>
+                          </View>
+                          <View style={{ flex: 1, minWidth: 120 }}>
+                            <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6 }}>
+                              {onlineToday && <View style={s.liveGreenDot} />}
+                              <Text style={s.studentName}>{u.full_name}</Text>
+                            </View>
+                            <Text style={s.emailText}>{u.email}</Text>
+                          </View>
+                          <Text style={s.small}>فعالیت: {formatDateTimeFa(u.last_seen_at)}</Text>
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => startDirectPopupForUser(u.user_id, u.full_name)}
+                            style={s.ghostBtn}
+                          >
+                            <Send size={13} color="#1769D2" />
+                            <Text style={s.actionText}>پاپ‌آپ</Text>
+                          </Pressable>
+                        </View>
+                      );
+                    })
+                )}
+              </View>
+            </>
+          )}
+
+          {/* ==================== TAB 2: POPUPS STUDIO & TELEMETRY ==================== */}
+          {tab === 'popups' && (
+            <>
+              {/* Quick Ready Templates */}
+              <View style={s.card}>
+                <View style={s.sectionHead}>
+                  <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6 }}>
+                    <Zap size={16} color="#1769D2" />
+                    <Text style={s.cardTitle}>قالب‌های آمادهٔ سریع (یک کلیک برای بارگذاری در فرم)</Text>
+                  </View>
+                  {editingPopupId && (
+                    <Pressable accessibilityRole="button" onPress={resetPopupForm} style={s.ghostBtn}>
+                      <X size={14} color="#1769D2" />
+                      <Text style={s.actionText}>لغو ویرایش / فرم جدید</Text>
+                    </Pressable>
+                  )}
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsRow}>
+                  {POPUP_TEMPLATES.map(tpl => (
+                    <Pressable
+                      key={tpl.label}
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setPopupTitle(tpl.title);
+                        setPopupBadge(tpl.badge);
+                        setPopupBody(tpl.body);
+                        setPopupVariant(tpl.variant);
+                        setPopupCtaLabel(tpl.ctaLabel);
+                        setPopupCtaUrl(tpl.ctaUrl);
+                        setPopupTargetScope('all');
+                        setPopupTargetEdition(tpl.edition);
+                        setPopupDisplayMode(tpl.mode);
+                      }}
+                      style={s.templateChip}
+                    >
+                      <Text style={s.templateChipText}>{tpl.label}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Form + Live Preview Split */}
+              <View style={[s.studioGrid, wide && s.studioGridWide]}>
+                {/* Builder Form */}
+                <View style={[s.card, wide && { flex: 1.35 }]}>
+                  <Text style={s.cardTitle}>
+                    {editingPopupId ? 'ویرایش پاپ‌آپ انتخاب‌شده' : 'طراحی و ارسال آنی پاپ‌آپ به اپ اصلی'}
+                  </Text>
+                  <Text style={s.subtitle}>
+                    به‌محض انتشار، پاپ‌آپ از طریق Supabase Realtime روی اپ‌های باز نمایش داده می‌شود و برای مراجعان بعدی نیز در دیتابیس ذخیره می‌ماند.
+                  </Text>
+
+                  <Text style={s.label}>۱. استایل و حال‌وهوای پاپ‌آپ</Text>
+                  <View style={s.chipsWrap}>
+                    {([
+                      ['info', 'اطلاعیه رسمی'],
+                      ['celebration', 'تبریک / ویژه'],
+                      ['update', 'نسخه جدید'],
+                      ['warning', 'هشدار مهم'],
+                    ] as const).map(([id, text]) => (
+                      <Pressable
+                        key={id}
+                        accessibilityRole="button"
+                        onPress={() => setPopupVariant(id)}
+                        style={[s.choiceChip, popupVariant === id && s.choiceChipActive]}
+                      >
+                        <Text style={[s.choiceChipText, popupVariant === id && s.choiceChipTextActive]}>{text}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <Text style={s.label}>۲. مخاطب هدف پاپ‌آپ</Text>
+                  <View style={s.chipsWrap}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => { setPopupTargetScope('all'); setPopupTargetUserId(null); }}
+                      style={[s.choiceChip, popupTargetScope === 'all' && s.choiceChipActive]}
+                    >
+                      <Globe size={13} color={popupTargetScope === 'all' ? '#FFFFFF' : '#334E68'} />
+                      <Text style={[s.choiceChipText, popupTargetScope === 'all' && s.choiceChipTextActive]}>
+                        ارسال همگانی (حتی بدون لاگین)
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setPopupTargetScope('user')}
+                      style={[s.choiceChip, popupTargetScope === 'user' && s.choiceChipActive]}
+                    >
+                      <UserCheck size={13} color={popupTargetScope === 'user' ? '#FFFFFF' : '#334E68'} />
+                      <Text style={[s.choiceChipText, popupTargetScope === 'user' && s.choiceChipTextActive]}>
+                        کاربر ثبت‌شدهٔ مشخص
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  {popupTargetScope === 'all' ? (
+                    <>
+                      <Text style={s.label}>تفکیک نسخهٔ اپ</Text>
+                      <View style={s.chipsWrap}>
+                        {([
+                          ['all', 'هر دو اپ (اصلی + ترکی)'],
+                          ['main', 'فقط اپ اصلی (EN/DE/RU)'],
+                          ['turkish', 'فقط اپ ترکی (EN/DE/TR)'],
+                        ] as const).map(([ed, text]) => (
+                          <Pressable
+                            key={ed}
+                            accessibilityRole="button"
+                            onPress={() => setPopupTargetEdition(ed)}
+                            style={[s.choiceChip, popupTargetEdition === ed && s.choiceChipActive]}
+                          >
+                            <Text style={[s.choiceChipText, popupTargetEdition === ed && s.choiceChipTextActive]}>{text}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </>
+                  ) : (
+                    <View style={s.userPickerBox}>
+                      <Text style={s.label}>
+                        انتخاب کاربر گیرنده {selectedTargetUser ? `(انتخاب‌شده: ${selectedTargetUser.full_name})` : ''}
+                      </Text>
+                      <TextInput
+                        accessibilityLabel="جستجوی کاربر برای پاپ‌آپ"
+                        value={popupUserSearch}
+                        onChangeText={setPopupUserSearch}
+                        placeholder="جستجوی نام یا ایمیل کاربر ثبت‌شده…"
+                        placeholderTextColor="#8B9AB0"
+                        style={s.input}
+                      />
+                      <ScrollView style={{ maxHeight: 135 }} nestedScrollEnabled>
+                        {registeredUsers
+                          .filter(u => `${u.full_name} ${u.email}`.toLowerCase().includes(popupUserSearch.trim().toLowerCase()))
+                          .slice(0, 20)
+                          .map(u => {
+                            const activePick = popupTargetUserId === u.user_id;
+                            return (
+                              <Pressable
+                                key={u.user_id}
+                                accessibilityRole="button"
+                                onPress={() => setPopupTargetUserId(u.user_id)}
+                                style={[s.userPickRow, activePick && s.userPickRowActive]}
+                              >
+                                <Text style={[s.studentName, activePick && { color: '#1769D2' }]}>{u.full_name}</Text>
+                                <Text style={s.emailText}>{u.email}</Text>
+                              </Pressable>
+                            );
+                          })}
+                        {!registeredUsers.length && (
+                          <Text style={s.small}>هنوز هیچ کاربر ثبت‌شده‌ای وجود ندارد؛ برای تست فوری از «ارسال همگانی» استفاده کنید.</Text>
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  <Text style={s.label}>۳. عنوان پاپ‌آپ (الزامی)</Text>
+                  <TextInput
+                    accessibilityLabel="عنوان پاپ‌آپ"
+                    value={popupTitle}
+                    onChangeText={setPopupTitle}
+                    maxLength={120}
+                    placeholder="مثلاً: درس‌های جدید مکالمه اضافه شد!"
+                    placeholderTextColor="#8B9AB0"
+                    style={s.input}
+                  />
+
+                  <Text style={s.label}>برچسب بالای هدر (اختیاری)</Text>
+                  <TextInput
+                    accessibilityLabel="برچسب بالای پاپ‌آپ"
+                    value={popupBadge}
+                    onChangeText={setPopupBadge}
+                    maxLength={40}
+                    placeholder="مثلاً: اطلاعیه مهم · ویژه امروز"
+                    placeholderTextColor="#8B9AB0"
+                    style={s.input}
+                  />
+
+                  <Text style={s.label}>۴. متن کامل پیام (الزامی)</Text>
+                  <TextInput
+                    accessibilityLabel="متن پاپ‌آپ"
+                    value={popupBody}
+                    onChangeText={setPopupBody}
+                    maxLength={1200}
+                    multiline
+                    numberOfLines={4}
+                    placeholder="توضیحات روشن و کوتاه برای زبان‌آموز بنویسید…"
+                    placeholderTextColor="#8B9AB0"
+                    style={[s.input, { minHeight: 88, textAlignVertical: 'top' }]}
+                  />
+
+                  <Text style={s.label}>۵. دکمهٔ اقدام هوشمند (CTA — اختیاری)</Text>
+                  <TextInput
+                    accessibilityLabel="متن دکمه اقدام"
+                    value={popupCtaLabel}
+                    onChangeText={setPopupCtaLabel}
+                    maxLength={60}
+                    placeholder="عنوان دکمه (مثلاً: ورود به دوره ترکی)"
+                    placeholderTextColor="#8B9AB0"
+                    style={s.input}
+                  />
+                  <TextInput
+                    accessibilityLabel="مسیر یا لینک دکمه اقدام"
+                    value={popupCtaUrl}
+                    onChangeText={setPopupCtaUrl}
+                    maxLength={500}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholder="/learn/tr یا https://example.com"
+                    placeholderTextColor="#8B9AB0"
+                    style={[s.input, s.ltr]}
+                  />
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsRow}>
+                    {INTERNAL_POPUP_ROUTES.map(r => (
+                      <Pressable
+                        key={r.route}
+                        accessibilityRole="button"
+                        onPress={() => {
+                          setPopupCtaUrl(r.route);
+                          if (!popupCtaLabel.trim()) setPopupCtaLabel(`مشاهده ${r.label}`);
+                        }}
+                        style={[s.routeChip, popupCtaUrl === r.route && s.routeChipActive]}
+                      >
+                        <Text style={[s.routeChipText, popupCtaUrl === r.route && { color: '#1769D2' }]}>
+                          {r.label} ({r.route})
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+
+                  <Text style={s.label}>۶. تصویر بنر HTTPS (اختیاری)</Text>
+                  <TextInput
+                    accessibilityLabel="لینک تصویر پاپ‌آپ"
+                    value={popupImageUrl}
+                    onChangeText={setPopupImageUrl}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholder="https://..."
+                    placeholderTextColor="#8B9AB0"
+                    style={[s.input, s.ltr]}
+                  />
+
+                  <Text style={s.label}>۷. حالت نمایش روی گوشی زبان‌آموز</Text>
+                  <View style={s.chipsWrap}>
+                    {([
+                      ['once', 'یک‌بار برای هر کاربر'],
+                      ['every_launch', 'هر بار باز شدن اپ'],
+                      ['persistent_blocking', 'اجباری (بدون دکمه بستن)'],
+                    ] as const).map(([m, text]) => (
+                      <Pressable
+                        key={m}
+                        accessibilityRole="button"
+                        onPress={() => setPopupDisplayMode(m)}
+                        style={[s.choiceChip, popupDisplayMode === m && s.choiceChipActive]}
+                      >
+                        <Text style={[s.choiceChipText, popupDisplayMode === m && s.choiceChipTextActive]}>{text}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <View style={{ flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap' }}>
+                    <View style={{ flex: 1, minWidth: 130 }}>
+                      <Text style={s.label}>متن دکمهٔ بستن</Text>
+                      <TextInput
+                        accessibilityLabel="متن دکمه بستن"
+                        value={popupDismissLabel}
+                        onChangeText={setPopupDismissLabel}
+                        maxLength={40}
+                        style={s.input}
+                      />
+                    </View>
+                    <View style={{ width: 110 }}>
+                      <Text style={s.label}>اولویت (۰–۱۰۰)</Text>
+                      <TextInput
+                        accessibilityLabel="اولویت نمایش"
+                        value={popupPriority}
+                        onChangeText={setPopupPriority}
+                        keyboardType="numeric"
+                        maxLength={3}
+                        style={[s.input, s.ltr]}
+                      />
+                    </View>
+                  </View>
+
+                  <Text style={s.label}>مدت اعتبار پاپ‌آپ</Text>
+                  <View style={s.chipsWrap}>
+                    {EXPIRY_PRESETS.map(preset => (
+                      <Pressable
+                        key={preset.label}
+                        accessibilityRole="button"
+                        onPress={() => {
+                          setPopupExpiryHours(preset.hours);
+                          if (preset.hours !== null) setPopupKeepExistingExpiry(null);
+                        }}
+                        style={[s.choiceChip, popupExpiryHours === preset.hours && s.choiceChipActive]}
+                      >
+                        <Text style={[s.choiceChipText, popupExpiryHours === preset.hours && s.choiceChipTextActive]}>
+                          {preset.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <View style={{ flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                    {button(
+                      editingPopupId
+                        ? 'ذخیره تغییرات و به‌روزرسانی آنی'
+                        : 'انتشار و ارسال آنی پاپ‌آپ در اپ اصلی',
+                      submitPopupForm,
+                      false,
+                      popupSchemaMissing || !popupTitle.trim() || !popupBody.trim(),
+                    )}
+                    {editingPopupId && button('انصراف از ویرایش', resetPopupForm, true)}
+                  </View>
+                </View>
+
+                {/* Pixel-Accurate Live Mobile Preview */}
+                <View style={[s.card, wide && { flex: 1, alignSelf: 'flex-start' }]}>
+                  <View style={s.sectionHead}>
+                    <Text style={s.cardTitle}>پیش‌نمایش زنده در اپ زبان‌آموز</Text>
+                    <Text style={s.badge}>دقیقاً مشابه نمایش واقعی</Text>
+                  </View>
+                  <View style={s.previewPhoneStage}>
+                    <PopupCardPreview
+                      previewMode
+                      title={popupTitle}
+                      body={popupBody}
+                      variant={popupVariant}
+                      badgeText={popupBadge}
+                      imageUrl={popupImageUrl}
+                      ctaLabel={popupCtaLabel}
+                      ctaUrl={popupCtaUrl}
+                      dismissLabel={popupDismissLabel}
+                      blocking={popupDisplayMode === 'persistent_blocking'}
+                      directTarget={popupTargetScope === 'user'}
+                      onPressCta={() => setNotice('این پیش‌نمایش است؛ پس از انتشار، این دکمه زبان‌آموز را به مقصد هدایت می‌کند.')}
+                      onDismiss={popupDisplayMode === 'persistent_blocking' ? undefined : () => undefined}
+                    />
+                  </View>
+                  <Text style={s.small}>
+                    نکته: به‌محض فشردن دکمهٔ انتشار، هر زبان‌آموزی که اپ اصلی یا اپ ترکی روی گوشی یا مرورگرش باز باشد در لحظه این پاپ‌آپ را می‌بیند.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Published Popups & Live Telemetry */}
+              <View style={s.card}>
+                <View style={s.sectionHead}>
+                  <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 7 }}>
+                    <ChartBar size={17} color="#1769D2" />
+                    <Text style={s.cardTitle}>پاپ‌آپ‌های ثبت‌شده و آمار زنده ({fa(popups.length)})</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {([
+                      ['all', 'همه'],
+                      ['active', 'در حال پخش'],
+                      ['inactive', 'متوقف / منقضی'],
+                    ] as const).map(([fId, fTitle]) => (
+                      <Pressable
+                        key={fId}
+                        accessibilityRole="button"
+                        onPress={() => setPopupFilter(fId)}
+                        style={[s.filter, popupFilter === fId && { backgroundColor: '#E2EFFF' }]}
+                      >
+                        <Text style={s.small}>{fTitle}</Text>
+                      </Pressable>
+                    ))}
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => void task(async () => {
+                        await broadcastAdminPopupSignal();
+                        await refreshPopupsOnly();
+                        setNotice('سیگنال همگام‌سازی آنی به تمام اپ‌های باز ارسال شد.');
+                      })}
+                      style={s.ghostBtn}
+                    >
+                      <Radio size={14} color="#1769D2" />
+                      <Text style={s.actionText}>ارسال سیگنال Realtime</Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                {!visiblePopups.length ? (
+                  <View style={s.empty}>
+                    <Megaphone size={32} color="#1769D2" />
+                    <Text style={s.cardTitle}>هنوز پاپ‌آپی در این دسته وجود ندارد</Text>
+                    <Text style={s.small}>از فرم بالا یک پاپ‌آپ همگانی یا اختصاصی بسازید تا آمار زندهٔ بازدید و کلیک آن اینجا ثبت شود.</Text>
+                  </View>
+                ) : (
+                  visiblePopups.map(item => {
+                    const isExpired = Boolean(item.expires_at && Date.parse(item.expires_at) <= Date.now());
+                    const isLive = item.is_active && !isExpired;
+                    const ctr = item.unique_impressions > 0
+                      ? Math.round((item.unique_clicks / item.unique_impressions) * 100)
+                      : 0;
+                    const targetUser = item.target_user_id ? userById.get(item.target_user_id) : null;
+                    return (
+                      <View key={item.id} style={s.popupRecordCard}>
+                        <View style={s.sectionHead}>
+                          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8, flex: 1 }}>
+                            <View style={[s.statusPill, isLive ? s.statusLive : s.statusPaused]}>
+                              <Text style={[s.statusPillText, { color: isLive ? '#15803D' : '#9A3412' }]}>
+                                {isLive ? '● در حال نمایش زنده' : isExpired ? 'منقضی‌شده' : 'متوقف‌شده'}
+                              </Text>
+                            </View>
+                            <Text style={[s.cardTitle, { flex: 1 }]}>{item.title}</Text>
+                          </View>
+                          <Text style={s.small}>ایجاد: {formatDateTimeFa(item.created_at)}</Text>
+                        </View>
+
+                        <Text numberOfLines={2} style={s.small}>{item.body}</Text>
+
+                        <View style={s.popupMetaChips}>
+                          <Text style={s.badge}>
+                            {item.target_scope === 'user'
+                              ? `گیرنده: ${targetUser ? `${targetUser.full_name} (${targetUser.email})` : item.target_user_id}`
+                              : item.target_edition === 'main'
+                                ? 'مخاطب: نسخهٔ اصلی (EN/DE/RU)'
+                                : item.target_edition === 'turkish'
+                                  ? 'مخاطب: نسخهٔ ترکی (EN/DE/TR)'
+                                  : 'مخاطب: همهٔ کاربران (اصلی + ترکی)'}
+                          </Text>
+                          <Text style={s.badge}>
+                            {item.display_mode === 'persistent_blocking'
+                              ? 'حالت: اجباری (بدون بستن)'
+                              : item.display_mode === 'every_launch'
+                                ? 'حالت: هر بار ورود'
+                                : 'حالت: یک‌بار نمایش'}
+                          </Text>
+                          {item.cta_url && (
+                            <Text style={s.badge}>مقصد دکمه: {item.cta_url}</Text>
+                          )}
+                          {item.expires_at && (
+                            <Text style={s.badge}>انقضا: {formatDateTimeFa(item.expires_at)}</Text>
+                          )}
+                        </View>
+
+                        {/* Real Telemetry Strip */}
+                        <View style={s.telemetryRow}>
+                          <View style={s.telemetryBox}>
+                            <Eye size={14} color="#1769D2" />
+                            <Text style={s.telemetryValue}>{fa(item.unique_impressions)}</Text>
+                            <Text style={s.small}>بازدیدکننده یکتا ({fa(item.total_impressions)} کل نمایش)</Text>
+                          </View>
+                          <View style={s.telemetryBox}>
+                            <MousePointerClick size={14} color="#0D9488" />
+                            <Text style={s.telemetryValue}>{fa(item.unique_clicks)} ({fa(ctr)}٪)</Text>
+                            <Text style={s.small}>کلیک روی دکمهٔ اقدام</Text>
+                          </View>
+                          <View style={s.telemetryBox}>
+                            <CircleCheck size={14} color="#64748B" />
+                            <Text style={s.telemetryValue}>{fa(item.unique_dismissals)}</Text>
+                            <Text style={s.small}>بسته‌شده توسط کاربر</Text>
+                          </View>
+                          {item.last_event_at && (
+                            <View style={s.telemetryBox}>
+                              <Clock size={14} color="#6366F1" />
+                              <Text style={s.small}>آخرین تعامل: {formatDateTimeFa(item.last_event_at)}</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Manager Controls */}
+                        <View style={s.popupActionRow}>
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={busy}
+                            onPress={() => void task(async () => {
+                              await toggleAdminPopupActive(item.id, !item.is_active);
+                              await refreshPopupsOnly();
+                              setNotice(!item.is_active
+                                ? `پاپ‌آپ «${item.title}» فعال شد و روی اپ‌ها به نمایش درآمد.`
+                                : `پاپ‌آپ «${item.title}» بلافاصله متوقف شد.`);
+                            })}
+                            style={[s.ghostBtn, item.is_active && { backgroundColor: '#FFF7ED' }]}
+                          >
+                            {item.is_active ? <Pause size={14} color="#C2410C" /> : <Play size={14} color="#15803D" />}
+                            <Text style={[s.actionText, { color: item.is_active ? '#C2410C' : '#15803D' }]}>
+                              {item.is_active ? 'توقف آنی نمایش' : 'فعال‌سازی نمایش'}
+                            </Text>
+                          </Pressable>
+
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={busy}
+                            onPress={() => startEditPopup(item)}
+                            style={s.ghostBtn}
+                          >
+                            <SquarePen size={14} color="#1769D2" />
+                            <Text style={s.actionText}>ویرایش</Text>
+                          </Pressable>
+
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={busy}
+                            onPress={() => void task(async () => {
+                              await republishAdminPopup(item.id);
+                              await refreshPopupsOnly();
+                              setNotice(`پاپ‌آپ «${item.title}» مجدداً برای همهٔ کاربران (حتی کسانی که قبلاً بسته بودند) ارسال شد.`);
+                            })}
+                            style={s.ghostBtn}
+                          >
+                            <Send size={14} color="#1769D2" />
+                            <Text style={s.actionText}>ارسال مجدد به همه</Text>
+                          </Pressable>
+
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={busy}
+                            onPress={() => confirmDeletePopup(item)}
+                            style={s.deleteBtn}
+                          >
+                            <Trash2 size={14} color="#B42318" />
+                            <Text style={s.deleteText}>حذف</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </>
+          )}
+
+          {/* ==================== TAB 3: REGISTERED USERS ==================== */}
+          {tab === 'registered' && (
+            <View style={s.card}>
+              <View style={s.sectionHead}>
+                <Text style={s.cardTitle}>کاربران ثبت‌شده اپ زبان</Text>
+                <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }}>
+                  <Text style={s.small}>{fa(registeredUsers.length)} حساب واقعی</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={!registeredUsers.length}
+                    onPress={() => {
+                      downloadRegisteredUsers(registeredUsers).catch(cause => setError(educationError(cause)));
+                    }}
+                    style={[s.ghostBtn, !registeredUsers.length && { opacity: 0.45 }]}
+                  >
+                    <Download size={16} color="#1769D2" />
+                    <Text style={s.actionText}>دانلود فهرست CSV</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <Text style={s.subtitle}>
+                این فهرست شامل اطلاعات حساب، پلتفرم، نسخهٔ اپ و وضعیت فعالیت است؛ پیام‌های خصوصی و فایل‌های شخصی نمایش داده نمی‌شوند.
+              </Text>
+
+              <View style={s.toolbar}>
+                <View style={s.search}>
+                  <Search size={17} color="#8390A1" />
+                  <TextInput
+                    accessibilityLabel="جستجوی کاربر ثبت‌شده"
+                    placeholder="جستجو بر اساس نام یا ایمیل…"
+                    placeholderTextColor="#8B9AB0"
+                    value={search}
+                    onChangeText={setSearch}
+                    style={s.searchInput}
+                  />
+                </View>
+                <View style={s.filters}>
+                  {([
+                    ['all', 'همه'],
+                    ['recent', 'فعال ۲۴ساعت'],
+                    ['android', 'اندروید'],
+                    ['web', 'وب'],
+                    ['blocked', 'مسدود چت'],
+                  ] as const).map(([fId, fLabel]) => (
+                    <Pressable
+                      key={fId}
+                      accessibilityRole="button"
+                      onPress={() => setUserFilter(fId)}
+                      style={[s.filter, userFilter === fId && { backgroundColor: '#E2EFFF' }]}
+                    >
+                      <Text style={s.small}>{fLabel}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {!visibleUsers.length && (
+                <View style={s.empty}>
+                  <Users size={34} color="#1769D2" />
+                  <Text style={s.cardTitle}>
+                    {registeredUsers.length ? 'کاربری با این فیلتر پیدا نشد' : 'هنوز کاربری ثبت‌نام نکرده است'}
+                  </Text>
+                </View>
+              )}
+
+              {visibleUsers.map((user, index) => {
+                const isBlocked = Boolean(chatBlockedUsers[user.user_id]);
+                const activeRecent = isActiveWithinHours(user.last_seen_at, 24);
+                return (
+                  <View key={user.user_id} style={s.studentRow}>
+                    <View style={[s.avatar, { backgroundColor: ['#E5F3F0', '#EEF0FF', '#FFF1DC'][index % 3] }]}>
+                      <Text style={s.avatarText}>{user.full_name.slice(0, 1)}</Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 125 }}>
+                      <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6 }}>
+                        {activeRecent && <View style={s.liveGreenDot} />}
+                        <Text style={s.studentName}>{user.full_name}</Text>
+                      </View>
+                      <Text style={s.emailText}>{user.email}</Text>
+                    </View>
+                    <View>
+                      <Text style={s.small}>ثبت‌نام: {formatDateFa(user.registered_at)}</Text>
+                      <Text style={s.small}>آخرین فعالیت: {formatDateTimeFa(user.last_seen_at)}</Text>
+                    </View>
+                    <Text style={s.badge}>{user.platform || 'نامشخص'} · {user.app_version || '—'}</Text>
+
+                    <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 }}>
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => startDirectPopupForUser(user.user_id, user.full_name)}
+                        style={s.ghostBtn}
+                      >
+                        <Megaphone size={14} color="#1769D2" />
+                        <Text style={s.actionText}>پاپ‌آپ مستقیم</Text>
+                      </Pressable>
+
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => void task(async () => {
+                          await setChatUserBlocked(user.user_id, !isBlocked);
+                          setChatBlockedUsers(current => ({ ...current, [user.user_id]: !isBlocked }));
+                          setNotice(isBlocked ? 'دسترسی گفتگو برای کاربر آزاد شد.' : 'دسترسی گفتگو برای کاربر مسدود شد.');
+                        })}
+                        style={[s.ghostBtn, { backgroundColor: isBlocked ? '#E8F6EF' : '#FFF1E8' }]}
+                      >
+                        <Text style={[s.small, { color: isBlocked ? '#178055' : '#B34B22', fontFamily: 'Vazir-Bold' }]}>
+                          {isBlocked ? 'آزادسازی چت' : 'مسدود چت'}
+                        </Text>
+                      </Pressable>
+
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => confirmDeleteUser(user)}
+                        style={[s.deleteBtn, busy && { opacity: 0.45 }]}
+                      >
+                        <Trash2 size={15} color="#B42318" />
+                        <Text style={s.deleteText}>حذف</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* ==================== TAB 4: SUPPORT ==================== */}
+          {tab === 'support' && (
+            <View style={s.card}>
+              <View style={s.sectionHead}>
+                <Text style={s.cardTitle}>گفتگوی زندهٔ پشتیبانی</Text>
+                <Text style={s.small}>
+                  {fa(openSupportCount)} باز از مجموع {fa(supportContacts.length)} گفتگو
+                </Text>
+              </View>
+              <Text style={s.subtitle}>
+                زبان‌آموزان از دکمهٔ پشتیبانی اپ به شما پیام می‌دهند. هر گفتگو خصوصی و دوطرفه بین شما و همان زبان‌آموز است.
+              </Text>
+
+              <View style={s.toolbar}>
+                <View style={s.search}>
+                  <Search size={17} color="#8390A1" />
+                  <TextInput
+                    accessibilityLabel="جستجوی گفتگوی پشتیبانی"
+                    placeholder="جستجوی نام زبان‌آموز…"
+                    placeholderTextColor="#8B9AB0"
+                    value={search}
+                    onChangeText={setSearch}
+                    style={s.searchInput}
+                  />
+                </View>
+                <View style={s.filters}>
+                  {([
+                    ['all', 'همه'],
+                    ['open', 'باز'],
+                    ['resolved', 'پاسخ‌داده‌شده'],
+                    ['moderated', 'مسدود / پنهان'],
+                  ] as const).map(([fId, fTitle]) => (
+                    <Pressable
+                      key={fId}
+                      accessibilityRole="button"
+                      onPress={() => setSupportFilter(fId)}
+                      style={[s.filter, supportFilter === fId && { backgroundColor: '#E2EFFF' }]}
+                    >
+                      <Text style={s.small}>{fTitle}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {!visibleSupport.length && (
+                <View style={s.empty}>
+                  <MessageCircle size={34} color="#1769D2" />
+                  <Text style={s.cardTitle}>
+                    {supportContacts.length ? 'گفتگویی با این فیلتر پیدا نشد' : 'هنوز پیامی از زبان‌آموزان ثبت نشده است'}
+                  </Text>
+                </View>
+              )}
+
+              {visibleSupport.map(contact => {
+                const status = supportStatuses[contact.conversationId] || 'open';
+                const nextStatus: SupportRequestStatus = status === 'open' ? 'resolved' : 'open';
+                const isBlocked = Boolean(chatBlockedUsers[contact.id]);
+                const isDeleted = Boolean(deletedChats[contact.conversationId]);
+                return (
+                  <View key={contact.conversationId} style={[s.studentRow, isDeleted && { opacity: 0.65 }]}>
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={isDeleted}
+                      style={{ flex: 1, minWidth: 140, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }}
+                      onPress={() => router.push({
+                        pathname: '/conversations/human/[conversationId]',
+                        params: { conversationId: contact.conversationId, name: contact.displayName },
+                      } as never)}
+                    >
+                      <View style={[s.avatar, { backgroundColor: '#EEF0FF' }]}>
+                        <Text style={s.avatarText}>{contact.displayName.slice(0, 1)}</Text>
+                      </View>
+                      <View style={{ flex: 1, minWidth: 80 }}>
+                        <Text style={s.studentName}>{contact.displayName}</Text>
+                        <Text style={s.small}>
+                          {isBlocked
+                            ? 'دسترسی چت مسدود است'
+                            : isDeleted
+                              ? 'گفتگو پنهان شده'
+                              : `آخرین فعالیت: ${formatDateTimeFa(contact.lastSeen)}`}
+                        </Text>
+                      </View>
+                      {!isDeleted && <ArrowUpLeft size={18} color="#1769D2" />}
+                    </Pressable>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={status === 'open' ? `بستن درخواست پشتیبانی ${contact.displayName}` : `بازکردن دوباره درخواست پشتیبانی ${contact.displayName}`}
+                      disabled={busy}
+                      onPress={() => void task(async () => {
+                        await updateSupportRequestStatus(contact.conversationId, nextStatus);
+                        setSupportStatuses(current => ({ ...current, [contact.conversationId]: nextStatus }));
+                        setNotice(nextStatus === 'resolved'
+                          ? 'درخواست پاسخ‌داده‌شده ثبت شد؛ زبان‌آموز اعلان می‌گیرد.'
+                          : 'درخواست دوباره باز شد؛ زبان‌آموز اعلان می‌گیرد.');
+                      })}
+                      style={{ paddingHorizontal: 9, paddingVertical: 6, borderRadius: 8, backgroundColor: status === 'resolved' ? '#E8F6EF' : '#EAF3FF' }}
+                    >
+                      <Text style={[s.small, { color: status === 'resolved' ? '#178055' : '#1769D2', fontFamily: 'Vazir-Bold' }]}>
+                        {status === 'resolved' ? 'پاسخ‌داده‌شده' : 'باز'}
+                      </Text>
+                    </Pressable>
+
+                    <View style={{ width: '100%', flexDirection: 'row-reverse', justifyContent: 'flex-start', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => startDirectPopupForUser(contact.id, contact.displayName)}
+                        style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: '#EAF4FF' }}
+                      >
+                        <Text style={[s.small, { color: '#1769D2', fontFamily: 'Vazir-Bold' }]}>پاپ‌آپ به این کاربر</Text>
+                      </Pressable>
+
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => void task(async () => {
+                          await setChatUserBlocked(contact.id, !isBlocked);
+                          setChatBlockedUsers(current => ({ ...current, [contact.id]: !isBlocked }));
+                          setNotice(isBlocked ? 'دسترسی گفتگو برای این کاربر مجاز شد.' : 'دسترسی گفتگو برای این کاربر مسدود شد.');
+                        })}
+                        style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: isBlocked ? '#E8F6EF' : '#FFF1E8' }}
+                      >
+                        <Text style={[s.small, { color: isBlocked ? '#178055' : '#B34B22' }]}>
+                          {isBlocked ? 'اجازهٔ دسترسی' : 'مسدودکردن چت'}
+                        </Text>
+                      </Pressable>
+
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => confirmConversationDeletion(contact)}
+                        style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: isDeleted ? '#E8F6EF' : '#FFF0F0' }}
+                      >
+                        <Text style={[s.small, { color: isDeleted ? '#178055' : '#B42336' }]}>
+                          {isDeleted ? 'بازیابی گفتگو' : 'حذف گفتگو'}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* ==================== TAB 5: ENROLLED STUDENTS ==================== */}
+          {tab === 'students' && (
+            <>
+              <View style={s.card}>
+                <View style={s.sectionHead}>
+                  <Text style={s.cardTitle}>پیشرفت زبان‌آموزان دارای رضایت اشتراک ({fa(students.length)})</Text>
+                  <Text style={s.small}>گزارش واقعی همگام‌شده از دستگاه</Text>
+                </View>
+
+                <View style={s.toolbar}>
+                  <View style={s.search}>
+                    <Search size={18} color="#8390A1" />
+                    <TextInput
+                      accessibilityLabel="جستجوی نام زبان‌آموز"
+                      placeholder="جستجوی نام زبان‌آموز…"
+                      placeholderTextColor="#8B9AB0"
+                      value={search}
+                      onChangeText={setSearch}
+                      style={s.searchInput}
+                    />
+                  </View>
+                  <View style={s.filters}>
+                    {([
+                      ['all', 'همه'],
+                      ['active', 'فعال'],
+                      ['paused', 'متوقف'],
+                    ] as const).map(([id, title]) => (
+                      <Pressable
+                        key={id}
+                        accessibilityRole="button"
+                        onPress={() => setStudentFilter(id)}
+                        style={[s.filter, studentFilter === id && { backgroundColor: '#E2EFFF' }]}
+                      >
+                        <Text style={s.small}>{title}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                {!visibleStudents.length && (
+                  <View style={s.empty}>
+                    <Users size={34} color="#1769D2" />
+                    <Text style={s.cardTitle}>
+                      {students.length ? 'نتیجه‌ای پیدا نشد' : 'هنوز عضوی دعوت آموزشی را نپذیرفته است'}
+                    </Text>
+                    <Text style={s.small}>از تب «دعوت‌نامه‌ها» کد اختصاصی بسازید تا پیشرفت چندزبانهٔ عضو اینجا نمایش داده شود.</Text>
+                  </View>
+                )}
+
+                {visibleStudents.map((r, i) => {
+                  const m = progressMetrics(r.summary);
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      key={r.student_id}
+                      onPress={() => setSelected(r)}
+                      style={s.studentRow}
+                    >
+                      <View style={[s.avatar, { backgroundColor: ['#E5F3F0', '#EEF0FF', '#FFF1DC'][i % 3] }]}>
+                        <Text style={s.avatarText}>{r.display_name.slice(0, 1)}</Text>
+                      </View>
+                      <View style={{ flex: 1, minWidth: 120 }}>
+                        <Text style={s.studentName}>{r.display_name}</Text>
+                        <Text style={s.small}>
+                          {r.status === 'paused' ? 'گزارش متوقف است' : `آخرین همگام‌سازی: ${formatDateTimeFa(r.synced_at)}`}
+                        </Text>
+                      </View>
+                      <View style={{ width: wide ? 200 : 115 }}>
+                        <Text style={s.small}>
+                          {r.summary ? `انگلیسی: ${fa(m.lessons)} از ${fa(SENTENCE_LESSONS.length)} درس` : 'بدون گزارش'}
+                        </Text>
+                        <View style={s.track}>
+                          <View style={[s.fill, { width: `${m.percent}%` }]} />
+                        </View>
+                      </View>
+                      <Text style={[s.badge, r.status === 'paused' && { backgroundColor: '#FFF3DF', color: '#A36512' }]}>
+                        {r.status === 'active' ? 'فعال' : 'متوقف'}
+                      </Text>
+                      <ArrowUpLeft size={17} color="#8190A5" />
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {selected && (() => {
+                const m = progressMetrics(selected.summary);
+                return (
+                  <View style={s.card}>
+                    <View style={s.sectionHead}>
+                      <Text style={s.cardTitle}>جزئیات پیشرفت {selected.display_name}</Text>
+                      <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => startDirectPopupForUser(selected.student_id, selected.display_name)}
+                          style={s.ghostBtn}
+                        >
+                          <Megaphone size={14} color="#1769D2" />
+                          <Text style={s.actionText}>ارسال پاپ‌آپ تشویقی</Text>
+                        </Pressable>
+                        {button('بستن', () => setSelected(null), true)}
+                      </View>
+                    </View>
+                    <Text style={s.subtitle}>
+                      عضویت با رضایت: {formatDateFa(selected.consent_at)} • آخرین همگام‌سازی: {formatDateTimeFa(selected.synced_at)}
+                    </Text>
+                    {selected.summary ? (
+                      <>
+                        <Text style={s.detail}>
+                          انگلیسی: {fa(m.lessons)} درس ({fa(m.percent)}٪) · {fa(m.words)} واژه از ۵۰۴ · {fa(m.minutes)} دقیقه · زنجیره {fa(m.streak)} روز
+                        </Text>
+                        {(m.germanLessons > 0 || m.russianLessons > 0 || m.turkishLessons > 0 || m.pronunciationCount > 0) && (
+                          <Text style={s.detail}>
+                            سایر زبان‌ها — آلمانی: {fa(m.germanLessons)} درس · روسی: {fa(m.russianLessons)} درس · ترکی: {fa(m.turkishLessons)} درس · تمرین تلفظ: {fa(m.pronunciationCount)} مورد
+                          </Text>
+                        )}
+                      </>
+                    ) : (
+                      <Text style={s.small}>هنوز پیشرفتی از دستگاه این زبان‌آموز به سرور همگام نشده است.</Text>
+                    )}
+                    {button(
+                      selected.status === 'active' ? 'توقف دریافت گزارش این عضو' : 'فعال‌کردن دوباره گزارش',
+                      () => void task(async () => {
+                        const { error: updErr } = await adminClient()
+                          .from('education_enrollments')
+                          .update({ status: selected.status === 'active' ? 'paused' : 'active' })
+                          .eq('student_id', selected.student_id)
+                          .select('student_id');
+                        if (updErr) throw updErr;
+                        await refreshAll();
+                        setSelected(null);
+                        setNotice('وضعیت گزارش عضو به‌روزرسانی شد.');
+                      }),
+                      true,
+                    )}
+                  </View>
+                );
+              })()}
+            </>
+          )}
+
+          {/* ==================== TAB 6: INVITES ==================== */}
+          {tab === 'invites' && (
+            <View style={s.card}>
+              <Text style={s.cardTitle}>ساخت دعوت‌نامهٔ اختصاصی آموزشی</Text>
+              <Text style={s.subtitle}>
+                کد یک‌بارمصرف با اعتبار ۷ روز. زبان‌آموز پیش از عضویت، نام شما را می‌بیند و با رضایت صریح پیشرفت خود را همگام می‌کند.
+              </Text>
+              <TextInput
+                accessibilityLabel="عنوان دعوت"
+                placeholder="مثلاً: گروه مکالمه پاییز — سارا احمدی"
+                placeholderTextColor="#8B9AB0"
+                maxLength={80}
+                value={label}
+                onChangeText={setLabel}
+                style={s.input}
+              />
+              {button(
+                'ساخت کد دعوت اختصاصی',
+                () => void task(async () => {
+                  const { error: insErr } = await adminClient().from('education_invites').insert({ label: label.trim() });
+                  if (insErr) throw insErr;
+                  setLabel('');
+                  await refreshAll();
+                  setNotice('دعوت‌نامه ساخته شد؛ کد را کپی کرده و به زبان‌آموز بدهید.');
+                }),
+                false,
+                !label.trim(),
+              )}
+
+              {!invites.length && (
+                <Text style={s.emptyText}>هنوز دعوت‌نامه‌ای ثبت نشده است.</Text>
+              )}
+
+              {invites.map(inv => {
+                const expired = Date.parse(inv.expires_at) < Date.now();
+                return (
+                  <View key={inv.id} style={s.inviteRow}>
+                    <View style={s.sectionHead}>
+                      <Text style={s.cardTitle}>{inv.label}</Text>
+                      <Text style={[s.badge, inv.claimed_at ? { backgroundColor: '#E8F6EF', color: '#15803D' } : expired ? { backgroundColor: '#FEF2F2', color: '#B42318' } : undefined]}>
+                        {inv.claimed_at ? 'مصرف‌شده' : expired ? 'منقضی‌شده' : 'آماده استفاده'}
+                      </Text>
+                    </View>
+                    <Text selectable style={s.code}>{inv.code}</Text>
+                    <View style={s.sectionHead}>
+                      <Text style={s.small}>پایان اعتبار: {formatDateFa(inv.expires_at)}</Text>
+                      <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => {
+                            void copyTextSafe(inv.code).then(ok => {
+                              if (ok) setNotice(`کد دعوت «${inv.label}» کپی شد.`);
+                            });
+                          }}
+                          style={s.ghostBtn}
+                        >
+                          <Copy size={14} color="#1769D2" />
+                          <Text style={s.actionText}>کپی کد</Text>
+                        </Pressable>
+                        {!inv.claimed_at && button(
+                          'لغو دعوت',
+                          () => void task(async () => {
+                            const { error: delErr } = await adminClient().from('education_invites').delete().eq('id', inv.id);
+                            if (delErr) throw delErr;
+                            await refreshAll();
+                            setNotice('دعوت‌نامه لغو شد.');
+                          }),
+                          true,
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* ==================== TAB 7: 4-LANGUAGE CONTENT CATALOG ==================== */}
+          {tab === 'content' && (
+            <>
+              <View style={s.card}>
+                <View style={s.sectionHead}>
+                  <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 7 }}>
+                    <Layers size={18} color="#1769D2" />
+                    <Text style={s.cardTitle}>کاتالوگ کامل ۴ زبان پلتفرم Milo</Text>
+                  </View>
+                  <Text style={s.badge}>۴۵۵ درس · ۱۲٬۹۰۵ جمله</Text>
+                </View>
+                <Text style={s.subtitle}>
+                  نمای واقعی تمام دوره‌های فعال در نسخهٔ اصلی و نسخهٔ ترکی به همراه امکان معرفی سریع هر دوره با پاپ‌آپ.
+                </Text>
+
+                {ALL_COURSES_CATALOG.map(course => (
+                  <View key={course.id} style={s.contentRow}>
+                    <View style={[s.levelDot, { backgroundColor: course.color }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.studentName}>{course.title}</Text>
+                      <Text style={s.small}>{course.edition} · مسیر ورود: {course.route}</Text>
+                    </View>
+                    <Text style={s.badge}>{fa(course.lessons)} درس · {fa(course.sentences)} جمله</Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        resetPopupForm();
+                        setPopupTitle(`شروع دورهٔ ${course.title}`);
+                        setPopupBadge('پیشنهاد آموزشی');
+                        setPopupBody(`بیش از ${fa(course.sentences)} جملهٔ کاربردی در ${fa(course.lessons)} درس گام‌به‌گام آمادهٔ تمرین شماست.`);
+                        setPopupCtaLabel('ورود به دوره');
+                        setPopupCtaUrl(course.route);
+                        setPopupTargetEdition(course.id === 'tr' ? 'turkish' : course.id === 'ru' ? 'main' : 'all');
+                        setTab('popups');
+                        setNotice(`قالب پاپ‌آپ معرفی «${course.title}» در استودیو بارگذاری شد.`);
+                      }}
+                      style={s.ghostBtn}
+                    >
+                      <Megaphone size={13} color="#1769D2" />
+                      <Text style={s.actionText}>معرفی با پاپ‌آپ</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+
+              <View style={s.card}>
+                <Text style={s.cardTitle}>سرفصل سطوح دورهٔ انگلیسی ({fa(SENTENCE_LESSONS.length)} درس · ۵۰۴ واژه مرجع)</Text>
+                {COURSE_LEVELS.map(l => (
+                  <View key={l.id} style={s.contentRow}>
+                    <View style={[s.levelDot, { backgroundColor: l.color }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.studentName}>{l.title}</Text>
+                      <Text style={s.small}>{l.description}</Text>
+                    </View>
+                    <Text style={s.badge}>{fa(SENTENCE_LESSONS.filter(x => x.levelId === l.id).length)} درس</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          <View style={s.footer}>
+            <ShieldCheck size={16} color="#7A899B" />
+            <Text style={s.small}>
+              کنسول مدیریت واقعی Milo • بدون دسترسی به پیام‌های خصوصی کاربران • همگام‌سازی زنده با Supabase
+            </Text>
+          </View>
+          {Constants.expoConfig?.extra?.appRole !== 'admin' && (
+            button('بازگشت به اپ آموزشی', () => router.replace('/languages' as never), true)
+          )}
+        </ScrollView>
+      </View>
     </View>
-  </View>;
+  );
 }
-const s=StyleSheet.create({
- root:{flex:1,backgroundColor:'#F4F8FD'},ghostBtn:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:12,paddingVertical:9,borderRadius:12,backgroundColor:'#EAF4FF'},actionText:{fontFamily:'Vazir-Bold',fontSize:13,color:'#1769D2'},deleteBtn:{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:10,paddingVertical:8,borderRadius:10,backgroundColor:'#FDECEC'},deleteText:{fontFamily:'Vazir-Bold',fontSize:12,color:'#B42318'},shell:{flex:1,flexDirection:'row-reverse'},content:{flex:1},sidebar:{width:268,backgroundColor:'#FFFFFF',padding:22,gap:20,borderLeftWidth:1,borderColor:'#DDE9F7',shadowColor:'#1D4E89',shadowOpacity:.07,shadowRadius:16,shadowOffset:{width:-4,height:0},elevation:3},sidebarMobile:{width:90,paddingHorizontal:6,paddingVertical:10,gap:7,borderLeftWidth:1},brand:{flexDirection:'row-reverse',gap:11,alignItems:'center'},brandMobile:{flexDirection:'column',gap:6,justifyContent:'center'},brandTitle:{fontFamily:'Vazir-Bold',fontSize:15,color:'#102A56'},mobileBrandTitle:{fontFamily:'Vazir-Bold',fontSize:10,color:'#102A56',textAlign:'center'},logo:{width:50,height:50,borderRadius:16,backgroundColor:'#1769D2',alignItems:'center',justifyContent:'center',shadowColor:'#1769D2',shadowOpacity:.22,shadowRadius:10,shadowOffset:{width:0,height:5},elevation:4},logoMobile:{width:36,height:36,borderRadius:11},navLabel:{fontFamily:'Vazir',fontSize:11,color:'#98a3b2',textAlign:'right'},navLabelMobile:{textAlign:'center',fontSize:8,marginTop:1},navList:{gap:8},navListMobile:{gap:6},navItem:{flexDirection:'row-reverse',alignItems:'center',gap:11,minHeight:48,paddingHorizontal:14,paddingVertical:11,borderRadius:14},navActive:{backgroundColor:'#EAF3FF',borderWidth:1,borderColor:'#C9DFFF'},navText:{fontFamily:'Vazir-Medium',fontSize:13,color:'#64748B'},navTextActive:{fontFamily:'Vazir-Bold',color:'#1769D2'},mobileNavItem:{minHeight:57,paddingHorizontal:3,paddingVertical:5,flexDirection:'column',justifyContent:'center',gap:3},mobileNavText:{fontFamily:'Vazir',fontSize:8,lineHeight:13,textAlign:'center'},mobileLogout:{minHeight:49,paddingHorizontal:3,paddingVertical:5,flexDirection:'column',justifyContent:'center',gap:3,borderTopWidth:1,borderColor:'#E3ECF7',borderRadius:12},privacy:{backgroundColor:'#F2F7FD',padding:17,gap:10,borderRadius:16,alignItems:'flex-end'},main:{padding:32,gap:20,maxWidth:1280,width:'100%',alignSelf:'center'},mainMobile:{paddingHorizontal:8,paddingVertical:9,gap:8},header:{flexDirection:'row-reverse',justifyContent:'space-between',alignItems:'center',gap:16,flexWrap:'wrap',borderRadius:24,borderWidth:1,borderColor:'#D7E7FA',padding:22,shadowColor:'#2D6FB7',shadowOpacity:.08,shadowRadius:16,shadowOffset:{width:0,height:7},elevation:3},headerMobile:{padding:10,borderRadius:14,gap:7},eyebrow:{fontFamily:'Vazir',fontSize:9,color:'#8190a2',textAlign:'right',marginBottom:8},title:{fontFamily:'Vazir-Bold',fontSize:18,color:'#102A56',textAlign:'right'},titleMobile:{fontSize:15,lineHeight:24},subtitle:{fontFamily:'Vazir',fontSize:10,color:'#6c7c8e',textAlign:'right',lineHeight:19},pill:{flexDirection:'row-reverse',alignItems:'center',gap:8,backgroundColor:'#fff',borderRadius:18,padding:8},pillMobile:{paddingHorizontal:7,paddingVertical:5},dot:{width:7,height:7,borderRadius:4,backgroundColor:'#1769D2'},pillText:{fontFamily:'Vazir',fontSize:9,color:'#334E68'},demoBanner:{fontFamily:'Vazir',fontSize:9,lineHeight:17,color:'#8b641c',backgroundColor:'#fff5dc',padding:9,borderRadius:10,textAlign:'right'},stats:{flexDirection:'row-reverse',flexWrap:'wrap',gap:8},stat:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#DDE9F7',padding:11,borderRadius:14,flex:1,minWidth:110,gap:4,shadowColor:'#2D6FB7',shadowOpacity:.06,shadowRadius:12,shadowOffset:{width:0,height:5},elevation:2},statLabel:{fontFamily:'Vazir',fontSize:10,color:'#788697',textAlign:'right'},statNumber:{fontFamily:'Vazir-Bold',fontSize:16,color:'#102A56',textAlign:'right'},small:{fontFamily:'Vazir',fontSize:9,color:'#7d8c9e',textAlign:'right',lineHeight:16},hero:{backgroundColor:'#123E76',padding:14,borderRadius:15,flexDirection:'row-reverse',alignItems:'center',flexWrap:'wrap',gap:10},heroTitle:{fontFamily:'Vazir-Bold',fontSize:14,color:'#fff',fontWeight:'700',textAlign:'right',marginBottom:5},heroText:{fontFamily:'Vazir',fontSize:9,color:'#D9E9FF',textAlign:'right',lineHeight:18},card:{backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#DDE9F7',borderRadius:15,padding:12,gap:10,shadowColor:'#2D6FB7',shadowOpacity:.055,shadowRadius:14,shadowOffset:{width:0,height:6},elevation:2},cardTitle:{fontFamily:'Vazir-Bold',fontSize:12,color:'#1E293B',textAlign:'right'},sectionHead:{flexDirection:'row-reverse',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:7},toolbar:{flexDirection:'row-reverse',flexWrap:'wrap',gap:7,alignItems:'center'},search:{flex:1,minWidth:125,flexDirection:'row-reverse',alignItems:'center',gap:6,backgroundColor:'#f5f7fa',borderRadius:8,paddingHorizontal:8},searchInput:{flex:1,fontFamily:'Vazir',fontSize:9,textAlign:'right',padding:8,color:'#1E293B'},filters:{flexDirection:'row-reverse',gap:4},filter:{paddingHorizontal:9,paddingVertical:5,borderRadius:8},studentRow:{flexDirection:'row-reverse',alignItems:'center',gap:8,paddingVertical:11,borderTopWidth:1,borderColor:'#edf1f5',flexWrap:'wrap'},avatar:{width:34,height:34,borderRadius:11,alignItems:'center',justifyContent:'center'},avatarText:{fontFamily:'Vazir-Bold',fontSize:14,color:'#2878DE'},studentName:{fontFamily:'Vazir-Bold',fontSize:10,color:'#123E76',textAlign:'right'},badge:{fontFamily:'Vazir',fontSize:9,color:'#1769D2',backgroundColor:'#EAF3FF',paddingVertical:4,paddingHorizontal:8,borderRadius:7,overflow:'hidden'},track:{height:5,backgroundColor:'#edf2f6',borderRadius:5,marginTop:8,overflow:'hidden',alignItems:'flex-end'},fill:{height:5,backgroundColor:'#2878DE',borderRadius:5},button:{backgroundColor:'#1769D2',minHeight:38,paddingHorizontal:13,paddingVertical:9,borderRadius:10,alignItems:'center',justifyContent:'center'},secondary:{backgroundColor:'#f0f4f7'},buttonText:{fontFamily:'Vazir-Bold',color:'#fff',fontSize:9,fontWeight:'700'},input:{fontFamily:'Vazir',fontSize:10,color:'#1E293B',backgroundColor:'#f7f9fb',borderWidth:1,borderColor:'#dce5ed',borderRadius:9,padding:10,textAlign:'right'},ltr:{textAlign:'left'},emailText:{fontFamily:'Vazir',fontSize:9,fontWeight:'700',color:'#7d8c9e',textAlign:'left',writingDirection:'ltr'},label:{fontFamily:'Vazir',fontSize:10,color:'#52667c',textAlign:'right'},loginPage:{flexGrow:1,backgroundColor:'#F2F7FD',alignItems:'center',justifyContent:'center',padding:24},loginCard:{backgroundColor:'#FFFFFF',padding:30,borderRadius:28,width:'100%',maxWidth:520,gap:16,borderWidth:1,borderColor:'#D7E7FA',shadowColor:'#2D6FB7',shadowOpacity:.12,shadowRadius:22,shadowOffset:{width:0,height:10},elevation:5},error:{fontFamily:'Vazir',color:'#aa3030',backgroundColor:'#fff0f0',padding:14,borderRadius:10,textAlign:'right',lineHeight:24},notice:{fontFamily:'Vazir',color:'#1259B5',backgroundColor:'#EAF3FF',padding:14,textAlign:'right',borderRadius:10},empty:{alignItems:'center',padding:18,gap:9},emptyText:{fontFamily:'Vazir',fontSize:9,color:'#8090a1',padding:14,textAlign:'center'},detail:{fontFamily:'Vazir',color:'#1259B5',fontSize:10,textAlign:'right',lineHeight:20},inviteRow:{borderTopWidth:1,borderColor:'#e7edf4',paddingTop:11,gap:8},code:{fontFamily:'Vazir-Bold',fontSize:10,color:'#285b86',textAlign:'left',padding:8,backgroundColor:'#f3f7fb',borderRadius:7},contentRow:{flexDirection:'row-reverse',alignItems:'center',gap:10,paddingVertical:11,borderTopWidth:1,borderColor:'#eef2f5'},levelDot:{width:8,height:27,borderRadius:4},footer:{flexDirection:'row-reverse',alignItems:'center',justifyContent:'center',gap:8},
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#F4F8FD' },
+  checkingScreen: { flex: 1, backgroundColor: '#F4F8FD', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
+  checkingText: { fontFamily: 'Vazir-Medium', fontSize: 13, color: '#334E68', textAlign: 'center' },
+  ghostBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 11, backgroundColor: '#EAF4FF' },
+  actionText: { fontFamily: 'Vazir-Bold', fontSize: 11, color: '#1769D2' },
+  deleteBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: '#FDECEC' },
+  deleteText: { fontFamily: 'Vazir-Bold', fontSize: 11, color: '#B42318' },
+  shell: { flex: 1, flexDirection: 'row-reverse' },
+  content: { flex: 1 },
+  sidebar: { width: 268, backgroundColor: '#FFFFFF', padding: 20, gap: 16, borderLeftWidth: 1, borderColor: '#DDE9F7', shadowColor: '#1D4E89', shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: -4, height: 0 }, elevation: 3 },
+  sidebarMobile: { width: 90, paddingHorizontal: 6, paddingVertical: 10, gap: 7, borderLeftWidth: 1 },
+  brand: { flexDirection: 'row-reverse', gap: 11, alignItems: 'center' },
+  brandMobile: { flexDirection: 'column', gap: 6, justifyContent: 'center' },
+  brandTitle: { fontFamily: 'Vazir-Bold', fontSize: 15, color: '#102A56', textAlign: 'right' },
+  mobileBrandTitle: { fontFamily: 'Vazir-Bold', fontSize: 10, color: '#102A56', textAlign: 'center' },
+  logo: { width: 50, height: 50, borderRadius: 16, backgroundColor: '#1769D2', alignItems: 'center', justifyContent: 'center', shadowColor: '#1769D2', shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
+  logoMobile: { width: 36, height: 36, borderRadius: 11 },
+  navLabel: { fontFamily: 'Vazir', fontSize: 11, color: '#98A3B2', textAlign: 'right' },
+  navLabelMobile: { textAlign: 'center', fontSize: 8, marginTop: 1 },
+  navList: { gap: 6 },
+  navListMobile: { gap: 5 },
+  navItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, minHeight: 46, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 14 },
+  navActive: { backgroundColor: '#EAF3FF', borderWidth: 1, borderColor: '#C9DFFF' },
+  navIconWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  navBadge: { position: 'absolute', top: -6, left: -10, minWidth: 17, height: 17, borderRadius: 9, backgroundColor: '#1769D2', paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
+  navBadgeText: { fontFamily: 'Vazir-Bold', fontSize: 8, color: '#FFFFFF' },
+  navText: { fontFamily: 'Vazir-Medium', fontSize: 12, color: '#64748B', textAlign: 'right' },
+  navTextActive: { fontFamily: 'Vazir-Bold', color: '#1769D2' },
+  mobileNavItem: { minHeight: 54, paddingHorizontal: 3, paddingVertical: 5, flexDirection: 'column', justifyContent: 'center', gap: 3 },
+  mobileNavText: { fontFamily: 'Vazir', fontSize: 8, lineHeight: 12, textAlign: 'center' },
+  mobileLogout: { minHeight: 48, paddingHorizontal: 3, paddingVertical: 5, flexDirection: 'column', justifyContent: 'center', gap: 3, borderTopWidth: 1, borderColor: '#E3ECF7', borderRadius: 12 },
+  privacy: { backgroundColor: '#F2F7FD', padding: 14, gap: 8, borderRadius: 16, alignItems: 'flex-end' },
+  main: { padding: 28, gap: 18, maxWidth: 1280, width: '100%', alignSelf: 'center' },
+  mainMobile: { paddingHorizontal: 8, paddingVertical: 9, gap: 9 },
+  header: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap', borderRadius: 22, borderWidth: 1, borderColor: '#D7E7FA', padding: 20, shadowColor: '#2D6FB7', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 3 },
+  headerMobile: { padding: 11, borderRadius: 15, gap: 8 },
+  headerRightGroup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  eyebrow: { fontFamily: 'Vazir', fontSize: 9, color: '#64748B', textAlign: 'right', marginBottom: 4 },
+  title: { fontFamily: 'Vazir-Bold', fontSize: 18, color: '#102A56', textAlign: 'right' },
+  titleMobile: { fontSize: 14, lineHeight: 22 },
+  subtitle: { fontFamily: 'Vazir', fontSize: 10, color: '#52667C', textAlign: 'right', lineHeight: 19 },
+  pill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: '#D7E7FA' },
+  pillMobile: { paddingHorizontal: 8, paddingVertical: 5 },
+  liveGreenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#16A34A' },
+  pillText: { fontFamily: 'Vazir-Bold', fontSize: 9, color: '#1E293B' },
+  refreshBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#C9DFFF', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 14 },
+  refreshBtnText: { fontFamily: 'Vazir-Bold', fontSize: 10, color: '#1769D2' },
+  stats: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
+  stat: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE9F7', padding: 11, borderRadius: 14, flex: 1, minWidth: 115, gap: 4, shadowColor: '#2D6FB7', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
+  statLabel: { fontFamily: 'Vazir', fontSize: 10, color: '#64748B', textAlign: 'right' },
+  statNumber: { fontFamily: 'Vazir-Bold', fontSize: 16, color: '#102A56', textAlign: 'right' },
+  small: { fontFamily: 'Vazir', fontSize: 9, color: '#64748B', textAlign: 'right', lineHeight: 16 },
+  inlineLink: { fontFamily: 'Vazir-Bold', fontSize: 10, color: '#1769D2' },
+  hero: { padding: 16, borderRadius: 18, flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
+  heroTitle: { fontFamily: 'Vazir-Bold', fontSize: 14, color: '#FFFFFF', textAlign: 'right', marginBottom: 4 },
+  heroText: { fontFamily: 'Vazir', fontSize: 10, color: '#DBEAFE', textAlign: 'right', lineHeight: 18 },
+  heroWhiteBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF', paddingHorizontal: 13, paddingVertical: 9, borderRadius: 12 },
+  heroWhiteBtnText: { fontFamily: 'Vazir-Bold', fontSize: 11, color: '#102A56' },
+  heroOutlineBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12 },
+  heroOutlineBtnText: { fontFamily: 'Vazir-Bold', fontSize: 11, color: '#FFFFFF' },
+  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE9F7', borderRadius: 15, padding: 12, gap: 10, shadowColor: '#2D6FB7', shadowOpacity: 0.055, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  cardTitle: { fontFamily: 'Vazir-Bold', fontSize: 12, color: '#1E293B', textAlign: 'right' },
+  sectionHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 7 },
+  toolbar: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7, alignItems: 'center' },
+  search: { flex: 1, minWidth: 135, flexDirection: 'row-reverse', alignItems: 'center', gap: 6, backgroundColor: '#F5F7FA', borderRadius: 9, paddingHorizontal: 9 },
+  searchInput: { flex: 1, fontFamily: 'Vazir', fontSize: 10, textAlign: 'right', padding: 8, color: '#1E293B' },
+  filters: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 },
+  filter: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8 },
+  studentRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingVertical: 11, borderTopWidth: 1, borderColor: '#EDF1F5', flexWrap: 'wrap' },
+  avatar: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontFamily: 'Vazir-Bold', fontSize: 14, color: '#2878DE' },
+  studentName: { fontFamily: 'Vazir-Bold', fontSize: 11, color: '#123E76', textAlign: 'right' },
+  badge: { fontFamily: 'Vazir', fontSize: 9, color: '#1769D2', backgroundColor: '#EAF3FF', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 7, overflow: 'hidden' },
+  track: { height: 5, backgroundColor: '#EDF2F6', borderRadius: 5, marginTop: 6, overflow: 'hidden', alignItems: 'flex-end' },
+  fill: { height: 5, backgroundColor: '#2878DE', borderRadius: 5 },
+  button: { backgroundColor: '#1769D2', minHeight: 40, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  secondary: { backgroundColor: '#F0F4F8' },
+  buttonText: { fontFamily: 'Vazir-Bold', color: '#FFFFFF', fontSize: 11 },
+  input: { fontFamily: 'Vazir', fontSize: 11, color: '#1E293B', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#DCE5ED', borderRadius: 10, paddingHorizontal: 11, paddingVertical: 9, textAlign: 'right' },
+  ltr: { fontFamily: 'Inter-ExtraBold', textAlign: 'left', writingDirection: 'ltr' },
+  emailText: { fontFamily: 'Vazir', fontSize: 9, fontWeight: '700', color: '#64748B', textAlign: 'left', writingDirection: 'ltr' },
+  label: { fontFamily: 'Vazir-Bold', fontSize: 10, color: '#334E68', textAlign: 'right', marginTop: 2 },
+  loginPage: { flexGrow: 1, backgroundColor: '#EEF5FC', alignItems: 'center', justifyContent: 'center', padding: 18 },
+  loginCard: { backgroundColor: '#FFFFFF', padding: 24, borderRadius: 26, width: '100%', maxWidth: 480, gap: 13, borderWidth: 1, borderColor: '#D7E7FA', shadowColor: '#2D6FB7', shadowOpacity: 0.12, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 5 },
+  loginTopRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+  liveServerBadge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  liveServerText: { fontFamily: 'Vazir-Bold', fontSize: 10, color: '#047857' },
+  loginTitle: { fontFamily: 'Vazir-Bold', fontSize: 20, color: '#102A56', textAlign: 'right' },
+  securityInfoBox: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 8, backgroundColor: '#F1F7FE', borderRadius: 12, padding: 11, borderWidth: 1, borderColor: '#D8E8FA' },
+  error: { fontFamily: 'Vazir', color: '#B42318', backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', padding: 12, borderRadius: 11, textAlign: 'right', lineHeight: 21, fontSize: 11 },
+  notice: { fontFamily: 'Vazir', color: '#0F4C81', backgroundColor: '#EAF4FF', borderWidth: 1, borderColor: '#BFDBFE', padding: 12, textAlign: 'right', borderRadius: 11, lineHeight: 20, fontSize: 11 },
+  empty: { alignItems: 'center', padding: 18, gap: 8 },
+  emptyText: { fontFamily: 'Vazir', fontSize: 10, color: '#8090A1', padding: 14, textAlign: 'center' },
+  detail: { fontFamily: 'Vazir-Medium', color: '#1259B5', fontSize: 10, textAlign: 'right', lineHeight: 20 },
+  inviteRow: { borderTopWidth: 1, borderColor: '#E7EDF4', paddingTop: 11, gap: 8 },
+  code: { fontFamily: 'Vazir-Bold', fontSize: 11, color: '#1E3A8A', textAlign: 'left', padding: 9, backgroundColor: '#F3F7FB', borderRadius: 8, writingDirection: 'ltr' },
+  contentRow: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingVertical: 11, borderTopWidth: 1, borderColor: '#EEF2F5' },
+  levelDot: { width: 8, height: 28, borderRadius: 4 },
+  footer: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8 },
+  schemaAlertCard: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FCD34D', borderRadius: 15, padding: 13, gap: 9 },
+  primaryActionChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, backgroundColor: '#D97706', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
+  primaryActionChipText: { fontFamily: 'Vazir-Bold', fontSize: 11, color: '#FFFFFF' },
+  warnChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA', paddingHorizontal: 9, paddingVertical: 6, borderRadius: 9 },
+  warnChipText: { fontFamily: 'Vazir-Bold', fontSize: 10, color: '#C2410C' },
+  studioGrid: { gap: 12 },
+  studioGridWide: { flexDirection: 'row-reverse', alignItems: 'flex-start' },
+  chipsRow: { flexDirection: 'row-reverse', gap: 7, paddingVertical: 2 },
+  chipsWrap: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
+  templateChip: { backgroundColor: '#F0F7FF', borderWidth: 1, borderColor: '#C9DFFF', paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999 },
+  templateChipText: { fontFamily: 'Vazir-Bold', fontSize: 10, color: '#1769D2' },
+  choiceChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10 },
+  choiceChipActive: { backgroundColor: '#1769D2', borderColor: '#1769D2' },
+  choiceChipText: { fontFamily: 'Vazir-Bold', fontSize: 10, color: '#334E68' },
+  choiceChipTextActive: { color: '#FFFFFF' },
+  routeChip: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8 },
+  routeChipActive: { backgroundColor: '#EAF3FF', borderColor: '#93C5FD' },
+  routeChipText: { fontFamily: 'Vazir', fontSize: 9, color: '#475569' },
+  userPickerBox: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#DCE5ED', borderRadius: 12, padding: 10, gap: 7 },
+  userPickRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 7, paddingHorizontal: 8, borderRadius: 8, borderBottomWidth: 1, borderColor: '#EDF2F7' },
+  userPickRowActive: { backgroundColor: '#EAF3FF' },
+  previewPhoneStage: { backgroundColor: '#E2E8F0', borderRadius: 20, padding: 12, alignItems: 'center', justifyContent: 'center' },
+  popupRecordCard: { borderTopWidth: 1, borderColor: '#E2E8F0', paddingTop: 12, marginTop: 4, gap: 9 },
+  statusPill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
+  statusLive: { backgroundColor: '#DCFCE7' },
+  statusPaused: { backgroundColor: '#FFEDD5' },
+  statusPillText: { fontFamily: 'Vazir-Bold', fontSize: 9 },
+  popupMetaChips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
+  telemetryRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 9, borderWidth: 1, borderColor: '#E2E8F0' },
+  telemetryBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 6 },
+  telemetryValue: { fontFamily: 'Vazir-Bold', fontSize: 12, color: '#0F172A' },
+  popupActionRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7 },
 });

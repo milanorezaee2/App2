@@ -140,15 +140,19 @@ if ! timeout 30s adb exec-out screencap -p > "$screenshot_file"; then
   echo 'Warning: screenshot capture failed; continuing with the UI hierarchy check.'
 fi
 
-failed_step="verifying the mandatory learner registration rendered"
+failed_step="verifying the learner home or registration screen rendered"
 registration_gate=false
+direct_catalog_home=false
 if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'ساخت حساب و دریافت کد' "$ui_file"; then
   registration_gate=true
   echo 'Android emulator opened MiloMultilang and rendered its mandatory registration gate.'
+elif grep -Fq 'شروع مسیر یادگیری' "$ui_file" || grep -Fq 'آکادمی چندزبانهٔ میلو' "$ui_file"; then
+  direct_catalog_home=true
+  echo 'Android emulator opened MiloMultilang (no-login edition) and rendered the language catalog.'
 elif (grep -Fq 'MILO' "$ui_file" || grep -Fq 'Milo' "$ui_file") && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
   echo 'Android emulator restored an authenticated learner and rendered the language home.'
 else
-  echo 'Neither the learner registration gate nor the authenticated language home was found.'
+  echo 'Neither the learner registration gate nor the language home was found.'
   exit 1
 fi
 
@@ -192,7 +196,7 @@ fi
 # A clean CI install intentionally has no production learner credentials. Chat
 # geometry remains covered when an authenticated test session is restored; on a
 # first install we verify the account gate and continue with the separate admin APK.
-if [[ "$registration_gate" == false ]]; then
+if [[ "$registration_gate" == false && "$direct_catalog_home" == false ]]; then
 failed_step="opening the Emma chat keyboard test route"
 timeout 60s adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/emma' com.devicecontrol.mml
 sleep 8
@@ -430,4 +434,60 @@ if [[ -s "$login_apk_path" ]]; then
   fi
 fi
 
-echo 'Android emulator verified the standalone management APK and protected manager login.'
+turkish_apk_path="MiloTurkish.apk"
+if [[ -s "$turkish_apk_path" ]]; then
+  failed_step="installing the Turkish learner APK"
+  adb install -r "$turkish_apk_path"
+  adb shell pm path com.devicecontrol.miloturkish
+  adb shell am force-stop com.devicecontrol.miloturkish
+  failed_step="launching the Turkish learner APK"
+  timeout 90s adb shell am start -W -n com.devicecontrol.miloturkish/.MainActivity
+  sleep 20
+  capture_ui
+  failed_step="verifying the Turkish learner APK rendered"
+  turkish_rendered=false
+  for tr_attempt in 1 2 3; do
+    if grep -Fq 'ترکی' "$ui_file" || grep -Fq 'شروع مسیر یادگیری' "$ui_file"; then
+      turkish_rendered=true
+      echo 'Android emulator launched MiloTurkish.apk and rendered the Turkish course screen.'
+      break
+    fi
+    if [[ "$tr_attempt" == 3 ]]; then break; fi
+    sleep 15
+    capture_ui
+  done
+  if [[ "$turkish_rendered" != true ]]; then
+    echo 'MiloTurkish.apk did not render the Turkish course home.'
+    exit 1
+  fi
+fi
+
+turkish_login_apk_path="MiloTurkish-Login.apk"
+if [[ -s "$turkish_login_apk_path" ]]; then
+  failed_step="installing the Turkish learner login APK"
+  adb install -r "$turkish_login_apk_path"
+  adb shell pm path com.devicecontrol.miloturkishlogin
+  adb shell am force-stop com.devicecontrol.miloturkishlogin
+  failed_step="launching the Turkish learner login APK"
+  timeout 90s adb shell am start -W -n com.devicecontrol.miloturkishlogin/.MainActivity
+  sleep 20
+  capture_ui
+  failed_step="verifying the Turkish learner login APK rendered"
+  turkish_login_rendered=false
+  for tr_login_attempt in 1 2 3; do
+    if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'ترکی' "$ui_file"; then
+      turkish_login_rendered=true
+      echo 'Android emulator launched MiloTurkish-Login.apk and rendered its registration gate.'
+      break
+    fi
+    if [[ "$tr_login_attempt" == 3 ]]; then break; fi
+    sleep 15
+    capture_ui
+  done
+  if [[ "$turkish_login_rendered" != true ]]; then
+    echo 'MiloTurkish-Login.apk did not render its registration gate.'
+    exit 1
+  fi
+fi
+
+echo 'Android emulator verified all standalone APKs and protected manager login.'

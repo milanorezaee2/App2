@@ -23,13 +23,16 @@ const build = () => {
   // (without this flag) stays exactly as it is today.
   const turkishEdition = process.env.EXPO_PUBLIC_TURKISH_EDITION === 'true';
   if (!admin && turkishEdition) {
+    const turkishPkg = learnerLogin
+      ? 'com.devicecontrol.miloturkishlogin'
+      : 'com.devicecontrol.miloturkish';
     return {
       ...base,
-      name: 'MiloMultiLanguage Turkish',
+      name: learnerLogin ? 'MiloMultiLanguage Turkish' : 'Milo Turkish',
       slug: learnerLogin ? 'milomultilanguage-turkish-login' : 'milomultilanguage-turkish',
       scheme: 'miloturkish',
-      android: { ...base.android, package: 'com.devicecontrol.miloturkish' },
-      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.miloturkish' },
+      android: { ...base.android, package: turkishPkg },
+      ios: { ...base.ios, bundleIdentifier: turkishPkg },
       extra: { ...base.extra, turkishEdition: true, learnerLogin },
     };
   }
@@ -61,7 +64,7 @@ const build = () => {
     android: {
       ...base.android,
       package: 'com.devicecontrol.miloadmin',
-      versionCode: 1,
+      versionCode: 2,
     },
     ios: {
       ...base.ios,

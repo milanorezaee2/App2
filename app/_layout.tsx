@@ -18,6 +18,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';
 import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
+import { LearnerPopupBridge } from '@/components/LearnerPopupBridge';
 import { RegistrationGate } from '@/components/RegistrationGate';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
 import { isSupabaseConfigured } from '@/lib/pairing';
@@ -260,6 +261,7 @@ export default function RootLayout() {
               </Stack>
               <NavigatorMountProbe onMounted={handleNavigatorMounted} />
               <ChatNotificationBridge />
+              {!IS_ADMIN_APP && <LearnerPopupBridge />}
             </RegistrationGate>
           </AppLockGate>
           <StatusBar style="dark" />

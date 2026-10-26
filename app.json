@@ -2,7 +2,7 @@
   "expo": {
     "name": "MiloMultiLanguage",
     "slug": "companion-english",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "companionenglish",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.devicecontrol.companion",
-      "versionCode": 6,
+      "versionCode": 7,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
