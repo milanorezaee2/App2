@@ -23,7 +23,7 @@ export const SELECTED_NARRATOR_CAST: Record<NarratorLocale, { voiceId: string; l
   'en-US': { voiceId: 'en-au-storyteller-4', locale: 'en-AU', label: 'English · Sydney native' },
   'de-DE': { voiceId: 'de-de-storyteller-1', locale: 'de-DE', label: 'Deutsch · native warm' },
   'ru-RU': { voiceId: 'Erinome', locale: 'ru-RU', label: 'Русский · clear female' },
-  'tr-TR': { voiceId: 'tr-tr-teacher', locale: 'tr-TR', label: 'Türkçe · clear female' },
+  'tr-TR': { voiceId: 'tr-tr-teacher', locale: 'tr-TR', label: 'Türkçe · İstanbul native' },
 };
 
 export function selectedNarratorLabel(locale: NarratorLocale): string {
@@ -51,7 +51,7 @@ export function prepareTextForTts(text: string, locale?: string): string {
 const FEMININE_NAMES: Record<NarratorLocale, RegExp> = {
   'en-US': /(?:^|[^a-z])(?:aria|jenny|ava|emma|michelle|sonia|libby|natasha|clara|samantha|karen|moira|tessa|victoria|allison|susan|zoe|zira|hazel|serena|kate|stephanie|olivia|amy|joanna|salli|kimberly|ivy|kendra|nicole|female|woman|google us english|google uk english female)(?:$|[^a-z])/i,
   'de-DE': /(?:^|[^a-z])(?:amala|seraphina|katja|hedda|anna|petra|helena|marlene|vicki|ingrid|maja|steffi|eva|claudia|klarissa|louisa|google deutsch|female|frau|de-de-x-deb)(?:$|[^a-z])/i,
-  'tr-TR': /(?:^|[^a-zçğıöşü])(?:yelda|filiz|seda|aylin|ayşe|ayse|zeynep|merve|elif|selin|melis|esra|dilara|cemre|ipek|gizem|meltem|sevgi|türkçe|turkce|turkish|female|kadın|kadin|tr-tr-x-trf)(?:$|[^a-zçğıöşü])/i,
+  'tr-TR': /(?:^|[^a-zçğıöşü])(?:emel|yelda|filiz|seda|aylin|ayşe|ayse|zeynep|merve|elif|selin|melis|esra|dilara|cemre|ipek|gizem|meltem|sevgi|defne|ecem|buse|türkçe|turkce|turkish|female|kadın|kadin|tr-tr-x-(?:trf|tmc|tmg|efu)|wavenet-[acd]|standard-[acd])(?:$|[^a-zçğıöşü])/i,
   'ru-RU': /(?:^|[^a-zа-яё])(?:svetlana|dariya|daria|milena|irina|anna|anastasia|anastasiya|elena|alyona|alena|maria|mariya|natalia|natalya|olga|oksana|oxana|yulia|julia|tatiana|tatyana|nina|vera|valentina|ekaterina|katya|polina|ksenia|google русский|female|женский|ru-ru-x-ruf)(?:$|[^a-zа-яё])/i,
 };
 
@@ -59,7 +59,7 @@ const FEMININE_NAMES: Record<NarratorLocale, RegExp> = {
 const MASCULINE_NAMES: Record<NarratorLocale, RegExp> = {
   'en-US': /(?:^|[^a-z])(?:alex|daniel|fred|arthur|aaron|guy|tom|ryan|brian|eric|matthew|joey|justin|david|mark|george|james|oliver|thomas|male|man|rocko|grandpa|ralph)(?:$|[^a-z])/i,
   'de-DE': /(?:^|[^a-z])(?:conrad|killian|bernd|markus|martin|hans|stefan|klaus|male|mann|de-de-x-deg)(?:$|[^a-z])/i,
-  'tr-TR': /(?:^|[^a-zçğıöşü])(?:tolga|ahmet|mehmet|emre|burak|kerem|mustafa|ali|male|erkek|tr-tr-x-trm)(?:$|[^a-zçğıöşü])/i,
+  'tr-TR': /(?:^|[^a-zçğıöşü])(?:ahmet|tolga|mehmet|emre|burak|kerem|mustafa|ali|male|erkek|tr-tr-x-(?:trm|ama|cfs)|wavenet-[be]|standard-[be])(?:$|[^a-zçğıöşü])/i,
   'ru-RU': /(?:^|[^a-zа-яё])(?:yuri|yuriy|dmitri|dmitry|pavel|ivan|sergei|sergey|nikolai|igor|alexey|alexei|andrei|andrey|mikhail|oleg|vladimir|konstantin|male|мужской|ru-ru-x-rud)(?:$|[^a-zа-яё])/i,
 };
 

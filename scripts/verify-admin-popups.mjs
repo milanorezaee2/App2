@@ -267,8 +267,8 @@ const cfgLogin = loadAppConfig({ MILO_ADMIN_APP: undefined, EXPO_PUBLIC_APP_EDIT
 
 ok('App 1 (Admin) uses com.devicecontrol.miloadmin', cfgAdmin.android.package === 'com.devicecontrol.miloadmin');
 ok('App 2 (No-Login EN+RU) uses com.devicecontrol.mml without login', cfgEnRu.android.package === 'com.devicecontrol.mml' && cfgEnRu.extra.edition === 'en_ru' && cfgEnRu.extra.learnerLogin === false);
-ok('App 3 (No-Login All 4) uses com.devicecontrol.miloall without login', cfgAll4.android.package === 'com.devicecontrol.miloall' && cfgAll4.extra.edition === 'all_four' && cfgAll4.extra.learnerLogin === false);
-ok('App 4 (Login EN+DE+TR) uses com.devicecontrol.milomultilang with login', cfgLogin.android.package === 'com.devicecontrol.milomultilang' && cfgLogin.extra.edition === 'login_en_de_tr' && cfgLogin.extra.learnerLogin === true);
+ok('App 3 (No-Login All 4) uses com.devicecontrol.miloall without login and keeps Turkish cloud narrator untouched', cfgAll4.android.package === 'com.devicecontrol.miloall' && cfgAll4.extra.edition === 'all_four' && cfgAll4.extra.learnerLogin === false && !cfgAll4.extra.turkishCloudNarrator);
+ok('App 4 (Login EN+DE+TR) uses com.devicecontrol.milomultilang (versionCode 9) with login and Turkish automatic narrator enabled', cfgLogin.android.package === 'com.devicecontrol.milomultilang' && cfgLogin.android.versionCode === 9 && cfgLogin.extra.edition === 'login_en_de_tr' && cfgLogin.extra.learnerLogin === true && cfgLogin.extra.turkishCloudNarrator === true);
 
 await db.close();
 console.log(`\nAdmin popups, language access & 4-APK suite: ${passed} checks passed`);

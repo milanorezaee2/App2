@@ -11,7 +11,8 @@ import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
 import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
 import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import * as Speech from '@/lib/narration';
-import { narrate, primeNarrator, stopNarration } from '@/lib/narrator/engine';
+import { narrate, primeNarrator, setTurkishDeviceFallbackEnabled, stopNarration } from '@/lib/narrator/engine';
+import { FEATURES } from '@/lib/features';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { LuxuryTopBar } from '@/components/LuxuryLanguageShell';
 import { luxuryReviewStyles as styles } from '@/components/luxuryReviewStyles';
@@ -63,6 +64,7 @@ export default function TurkishReview() {
 
   useFocusEffect(useCallback(() => {
     void preloadSpeechVoices();
+    if (FEATURES.turkishCloudNarrator) setTurkishDeviceFallbackEnabled(true);
     void primeNarrator('tr-TR').catch(() => undefined);
     void load();
     return () => {

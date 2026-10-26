@@ -19,6 +19,7 @@ import {
   type NarratorLocale,
   type NarratorSpeed,
   narratorRateFor,
+  resolveNarratorVoice,
   selectedNarratorLabel,
 } from './voiceCast';
 
@@ -135,6 +136,51 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
  * must not mistake that internal stop for a learner pressing another button.
  */
 let internalStop = false;
+let turkishDeviceFallbackEnabled = false;
+
+/**
+ * Enables graceful female `tr-TR` voice fallback exclusively for App #4 Turkish
+ * lessons in case the cloud Edge Function has not been redeployed with `tr` yet
+ * or the device is momentarily offline. Cloud neural audio always remains first.
+ */
+export function setTurkishDeviceFallbackEnabled(enabled: boolean): void {
+  turkishDeviceFallbackEnabled = enabled;
+}
+
+async function speakTurkishDeviceFallback(
+  text: string,
+  speed: NarratorSpeed,
+  id: number,
+): Promise<boolean> {
+  try {
+    const resolved = await resolveNarratorVoice('tr-TR');
+    if (id !== requestId || !resolved.voice) return false;
+    update({
+      status: 'speaking',
+      engine: null,
+      voiceLabel: `${resolved.label} · ${resolved.quality}`,
+      qualityLabel: resolved.quality,
+      message: '',
+    });
+    await new Promise<void>((resolve, reject) => {
+      Speech.speak(text, {
+        language: resolved.language,
+        voice: resolved.voice,
+        rate: narratorRateFor('tr-TR', speed),
+        pitch: 1,
+        onDone: () => resolve(),
+        onStopped: () => resolve(),
+        onError: () => reject(new Error('TR_DEVICE_TTS_FAILED')),
+      });
+    });
+    if (id === requestId) {
+      update({ status: snapshot.status === 'paused' ? 'paused' : 'idle' });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function haltPlayback(): void {
   stopCloudNarration();
@@ -194,9 +240,23 @@ export async function narrate(
         update({ status: 'blocked', message: 'برای شنیدن نریتور، یک‌بار دکمهٔ پخش را لمس کنید.' });
         return;
       }
-      update({ cloudAvailable: false, status: 'error', engine: null, message: 'فایل صوتی تأییدشدهٔ این جمله در CDN یا سرویس نریتور در دسترس نیست.' });
+      if (locale === 'tr-TR' && turkishDeviceFallbackEnabled) {
+        const spokeFallback = await speakTurkishDeviceFallback(clean, speed, id);
+        if (spokeFallback || id !== requestId) return;
+      }
+      update({
+        ...(locale === 'tr-TR' ? {} : { cloudAvailable: false }),
+        status: 'error',
+        engine: null,
+        message: 'فایل صوتی تأییدشدهٔ این جمله در CDN یا سرویس نریتور در دسترس نیست.',
+      });
       return;
     }
+  }
+
+  if (locale === 'tr-TR' && turkishDeviceFallbackEnabled) {
+    const spokeFallback = await speakTurkishDeviceFallback(clean, speed, id);
+    if (spokeFallback || id !== requestId) return;
   }
 
   if (id === requestId) {

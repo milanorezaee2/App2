@@ -73,4 +73,9 @@ export const FEATURES = Object.freeze({
     : resolveCourseFlag('russianCourse', APP_EDITION === 'all_four' || APP_EDITION === 'en_ru' || !TURKISH_EDITION),
   /** Turkish is included in `all_four`, `login_en_de_tr`, and `turkish` editions. */
   turkishCourse: resolveCourseFlag('turkishCourse', APP_EDITION === 'all_four' || TURKISH_EDITION),
+  /** Automatic native Istanbul Turkish narrator — enabled exclusively in App #4 (`login_en_de_tr`) or explicit env override. */
+  turkishCloudNarrator:
+    extra.turkishCloudNarrator === true
+    || process.env.EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR === 'true'
+    || APP_EDITION === 'login_en_de_tr',
 });

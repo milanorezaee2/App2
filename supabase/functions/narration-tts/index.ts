@@ -89,17 +89,34 @@ const ELEVEN_RUSSIAN_CROSSLINGUAL_SETTINGS: ElevenVoiceSettings = {
   use_speaker_boost: false,
 };
 
+const ELEVEN_TURKISH_NATIVE_SETTINGS: ElevenVoiceSettings = {
+  stability: 0.52,
+  similarity_boost: 0.82,
+  style: 0.14,
+  use_speaker_boost: true,
+};
+
+const ELEVEN_TURKISH_CROSSLINGUAL_SETTINGS: ElevenVoiceSettings = {
+  stability: 0.58,
+  similarity_boost: 0.44,
+  style: 0.0,
+  use_speaker_boost: false,
+};
+
 const LANGUAGE_NAME: Record<LanguageCode, string> = {
   en: 'American English',
   de: 'Standard German (Hochdeutsch)',
   ru: 'Standard Russian',
-  tr: 'Standard Turkish',
+  tr: 'Istanbul Turkish (İstanbul Türkçesi)',
 };
 
 const PERSONA = (lang: LanguageCode) =>
   `You are a warm, friendly native female ${LANGUAGE_NAME[lang]} teacher speaking one-to-one with an adult learner. ` +
   'Say the sentence exactly once, like a real human in a relaxed lesson: natural connected speech, ' +
   'authentic native phonology and vowel reduction, gentle intonation, and tiny natural pauses at punctuation. ' +
+  (lang === 'tr'
+    ? 'Use authentic native Istanbul Turkish pronunciation: crisp vowel harmony, exact distinction between ı and i, ö and o, ü and u, soft ğ vowel lengthening (never a hard g), natural ç and ş, and a light tapped Turkish r (never an American retroflex r). '
+    : '') +
   'Never sound robotic, never use an English accent on non-English words, never read word by word. ' +
   'Read only the sentence you are given, exactly as written. Do not add, greet, explain, translate, emphasise or repeat.';
 
@@ -111,10 +128,11 @@ type Provider = 'openai' | 'elevenlabs';
 
 interface ResolvedElevenVoice {
   voiceId: string;
-  isNativeRussian: boolean;
+  isNativeVoice: boolean;
 }
 
 let cachedRussianVoice: { resolvedAt: number; value: ResolvedElevenVoice } | null = null;
+let cachedTurkishVoice: { resolvedAt: number; value: ResolvedElevenVoice } | null = null;
 const VOICE_DISCOVERY_TTL_MS = 30 * 60 * 1000;
 
 function resolveProvider(): Provider | null {
@@ -213,23 +231,69 @@ function scoreRussianAccountVoice(voice: ElevenAccountVoice): { score: number; n
   return { score: fallbackScore, native: false };
 }
 
+function scoreTurkishAccountVoice(voice: ElevenAccountVoice): { score: number; native: boolean } {
+  if (!voice.voice_id) return { score: -999, native: false };
+  const labels = voice.labels ?? {};
+  const gender = (labels.gender || '').toLowerCase();
+  if (gender === 'male') return { score: -500, native: false };
+
+  const langLabel = (labels.language || '').toLowerCase();
+  const accentLabel = (labels.accent || '').toLowerCase();
+  const descLabel = (labels.description || '').toLowerCase();
+  const name = voice.name || '';
+  const hasVerifiedTr = Boolean(
+    voice.verified_languages?.some(item => (item.language || '').toLowerCase().startsWith('tr')),
+  );
+  const isTurkishLabel =
+    hasVerifiedTr ||
+    langLabel === 'tr' ||
+    langLabel === 'turkish' ||
+    accentLabel.includes('turkish') ||
+    accentLabel.includes('istanbul') ||
+    /[çğıöşüÇĞİÖŞÜ]/.test(name);
+  const isEnglishPremadeAccent = /\b(american|us|australian)\b/.test(accentLabel);
+  const hasTurkishFemaleName =
+    !isEnglishPremadeAccent &&
+    /\b(aylin|yelda|filiz|seda|zeynep|elif|selin|merve|ayşe|ayse|dilara|ipek|melis|esra|cemre|gizem|meltem|sevgi|defne|ecem|buse|emel)\b/i.test(name);
+
+  if (isTurkishLabel || (hasTurkishFemaleName && voice.category !== 'premade')) {
+    let score = 200;
+    if (hasVerifiedTr) score += 60;
+    if (langLabel === 'tr' || accentLabel.includes('turkish') || accentLabel.includes('istanbul')) score += 50;
+    if (gender === 'female') score += 30;
+    if (voice.category !== 'premade') score += 20;
+    if (/warm|calm|clear|soft|narration|conversational|teacher/.test(descLabel)) score += 10;
+    return { score, native: true };
+  }
+
+  // Among premade voices, prefer neutral/European female voices without American retroflex R.
+  let fallbackScore = 0;
+  if (voice.voice_id === DEFAULT_ELEVEN_EUROPEAN_FEMALE_VOICE) fallbackScore += 60; // Lily
+  if (voice.voice_id === 'XB0fDUnXU5powFXDhCwa') fallbackScore += 55; // Charlotte
+  if (voice.voice_id === 'Xb7hH8MSUJpSbSDYk0k2') fallbackScore += 45; // Alice
+  if (gender === 'female') fallbackScore += 20;
+  if (isEnglishPremadeAccent) fallbackScore -= 40;
+  return { score: fallbackScore, native: false };
+}
+
 async function resolveElevenLabsVoice(apiKey: string, lang: LanguageCode): Promise<ResolvedElevenVoice> {
   const explicit = (Deno.env.get(ELEVEN_VOICE_ENV[lang]) || '').trim();
   if (explicit) {
-    return { voiceId: explicit, isNativeRussian: lang === 'ru' };
+    return { voiceId: explicit, isNativeVoice: lang === 'ru' || lang === 'tr' };
   }
-  if (lang !== 'ru') {
-    return { voiceId: DEFAULT_ELEVEN_VOICE, isNativeRussian: false };
+  if (lang !== 'ru' && lang !== 'tr') {
+    return { voiceId: DEFAULT_ELEVEN_VOICE, isNativeVoice: false };
   }
 
   const now = Date.now();
-  if (cachedRussianVoice && now - cachedRussianVoice.resolvedAt < VOICE_DISCOVERY_TTL_MS) {
-    return cachedRussianVoice.value;
+  const cachedEntry = lang === 'ru' ? cachedRussianVoice : cachedTurkishVoice;
+  if (cachedEntry && now - cachedEntry.resolvedAt < VOICE_DISCOVERY_TTL_MS) {
+    return cachedEntry.value;
   }
 
   let resolved: ResolvedElevenVoice = {
     voiceId: DEFAULT_ELEVEN_EUROPEAN_FEMALE_VOICE,
-    isNativeRussian: false,
+    isNativeVoice: false,
   };
 
   const controller = new AbortController();
@@ -245,10 +309,12 @@ async function resolveElevenLabsVoice(apiKey: string, lang: LanguageCode): Promi
       const voices = Array.isArray(payload.voices) ? payload.voices : [];
       let bestScore = -999;
       for (const candidate of voices) {
-        const { score, native } = scoreRussianAccountVoice(candidate);
+        const { score, native } = lang === 'tr'
+          ? scoreTurkishAccountVoice(candidate)
+          : scoreRussianAccountVoice(candidate);
         if (score > bestScore && candidate.voice_id) {
           bestScore = score;
-          resolved = { voiceId: candidate.voice_id, isNativeRussian: native };
+          resolved = { voiceId: candidate.voice_id, isNativeVoice: native };
         }
       }
     }
@@ -258,7 +324,8 @@ async function resolveElevenLabsVoice(apiKey: string, lang: LanguageCode): Promi
     clearTimeout(timer);
   }
 
-  cachedRussianVoice = { resolvedAt: now, value: resolved };
+  if (lang === 'ru') cachedRussianVoice = { resolvedAt: now, value: resolved };
+  else cachedTurkishVoice = { resolvedAt: now, value: resolved };
   return resolved;
 }
 
@@ -269,6 +336,9 @@ function modelSupportsLanguageCode(modelId: string): boolean {
 function defaultElevenModelFor(lang: LanguageCode): string {
   if (lang === 'ru') {
     return Deno.env.get('ELEVENLABS_MODEL_RU') || Deno.env.get('ELEVENLABS_MODEL') || 'eleven_turbo_v2_5';
+  }
+  if (lang === 'tr') {
+    return Deno.env.get('ELEVENLABS_MODEL_TR') || Deno.env.get('ELEVENLABS_MODEL') || 'eleven_turbo_v2_5';
   }
   return Deno.env.get('ELEVENLABS_MODEL') || 'eleven_multilingual_v2';
 }
@@ -319,8 +389,10 @@ async function synthesizeElevenLabs(
 ): Promise<Uint8Array> {
   const model = defaultElevenModelFor(lang);
   const voiceSettings: ElevenVoiceSettings = lang === 'ru'
-    ? (resolvedVoice.isNativeRussian ? ELEVEN_RUSSIAN_NATIVE_SETTINGS : ELEVEN_RUSSIAN_CROSSLINGUAL_SETTINGS)
-    : ELEVEN_VOICE_SETTINGS[lang];
+    ? (resolvedVoice.isNativeVoice ? ELEVEN_RUSSIAN_NATIVE_SETTINGS : ELEVEN_RUSSIAN_CROSSLINGUAL_SETTINGS)
+    : lang === 'tr'
+      ? (resolvedVoice.isNativeVoice ? ELEVEN_TURKISH_NATIVE_SETTINGS : ELEVEN_TURKISH_CROSSLINGUAL_SETTINGS)
+      : ELEVEN_VOICE_SETTINGS[lang];
 
   const primaryBody: Record<string, unknown> = {
     text,
@@ -364,10 +436,10 @@ Deno.serve(async request => {
       ok: true,
       provider,
       model: provider === 'elevenlabs'
-        ? Deno.env.get('ELEVENLABS_MODEL') || 'eleven_turbo_v2_5 (ru) / eleven_multilingual_v2'
+        ? Deno.env.get('ELEVENLABS_MODEL') || 'eleven_turbo_v2_5 (ru,tr) / eleven_multilingual_v2'
         : Deno.env.get('OPENAI_TTS_MODEL') || 'gpt-4o-mini-tts',
-      persona: 'warm-female-teacher-v3-ru-native',
-      languages: ['en', 'de', 'ru'],
+      persona: 'warm-female-teacher-v4-tr-ru-native',
+      languages: ['en', 'de', 'ru', 'tr'],
     });
   }
 

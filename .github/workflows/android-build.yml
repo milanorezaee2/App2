@@ -53,6 +53,7 @@ jobs:
           npm run typecheck
           npm run validate:admin
           npm run validate:admin-popups
+          npm run validate:narrator
           npm run validate:turkish
           node scripts/verify-russian-course.cjs
 
@@ -191,10 +192,10 @@ jobs:
         shell: bash
         run: |
           rm -rf android /tmp/metro-* /tmp/haste-map-* node_modules/.cache
-          EXPO_PUBLIC_APP_EDITION=login_en_de_tr EXPO_PUBLIC_LEARNER_LOGIN=true npx expo prebuild --platform android --no-install
+          EXPO_PUBLIC_APP_EDITION=login_en_de_tr EXPO_PUBLIC_LEARNER_LOGIN=true EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR=true npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew
-          EXPO_PUBLIC_APP_EDITION=login_en_de_tr EXPO_PUBLIC_LEARNER_LOGIN=true ./gradlew assembleRelease --no-daemon
+          EXPO_PUBLIC_APP_EDITION=login_en_de_tr EXPO_PUBLIC_LEARNER_LOGIN=true EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR=true ./gradlew assembleRelease --no-daemon
           cd ..
           cp android/app/build/outputs/apk/release/app-release.apk 4-MiloLogin-EN-DE-TR.apk
           python3 - <<'PY'

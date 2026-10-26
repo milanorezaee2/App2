@@ -3,7 +3,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from '@/lib/narration';
-import { narrate, primeNarrator, stopNarration } from '@/lib/narrator/engine';
+import { narrate, primeNarrator, setTurkishDeviceFallbackEnabled, stopNarration } from '@/lib/narrator/engine';
+import { FEATURES } from '@/lib/features';
 import BookOpen from 'lucide-react-native/dist/esm/icons/book-open';
 import BookOpenCheck from 'lucide-react-native/dist/esm/icons/book-open-check';
 import Check from 'lucide-react-native/dist/esm/icons/check';
@@ -49,6 +50,7 @@ export default function TurkishHome() {
   useFocusEffect(useCallback(() => {
     let alive = true;
     void preloadSpeechVoices();
+    if (FEATURES.turkishCloudNarrator) setTurkishDeviceFallbackEnabled(true);
     void primeNarrator('tr-TR').catch(() => undefined);
     void Promise.all([
       turkishProgress.getCourseProgress(),
