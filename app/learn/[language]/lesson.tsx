@@ -18,7 +18,9 @@ import { LuxuryPalette, setLastActiveLanguage } from '@/components/luxuryTheme';
 import { PageNavigation } from '@/components/PageNavigation';
 import { findGermanLesson, germanProgress } from '@/lib/languages/catalog';
 import { findRussianLesson, type RussianCourseLesson } from '@/lib/languages/russian';
+import { findTurkishLesson } from '@/lib/languages/turkish';
 import RussianLesson from '@/components/RussianLesson';
+import TurkishLesson from '@/components/TurkishLesson';
 import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { GermanSentenceBuilder } from '@/components/GermanSentenceBuilder';
 import { LessonNarrator } from '@/components/LessonNarrator';
@@ -41,7 +43,13 @@ const SLOW_SPEECH_RATE = 0.5;
 export default function LanguageLessonRoute() {
   const { language, id } = useLocalSearchParams<{ language: string; id: string }>();
   const lesson =
-    language === 'de' ? findGermanLesson(id) : language === 'ru' ? findRussianLesson(id) : undefined;
+    language === 'de'
+      ? findGermanLesson(id)
+      : language === 'ru'
+        ? findRussianLesson(id)
+        : language === 'tr'
+          ? findTurkishLesson(id)
+          : undefined;
   if (!lesson) {
     return (
       <CoursePage title="درس پیدا نشد" subtitle="از صفحه انتخاب زبان، یک درس معتبر باز کنید.">
@@ -49,11 +57,13 @@ export default function LanguageLessonRoute() {
       </CoursePage>
     );
   }
-  return language === 'ru' ? (
-    <RussianLesson key={lesson.id} lesson={lesson as RussianCourseLesson} />
-  ) : (
-    <GermanLesson key={lesson.id} lesson={lesson} />
-  );
+  if (language === 'ru') {
+    return <RussianLesson key={lesson.id} lesson={lesson as RussianCourseLesson} />;
+  }
+  if (language === 'tr') {
+    return <TurkishLesson key={lesson.id} lesson={lesson as Parameters<typeof TurkishLesson>[0]['lesson']} />;
+  }
+  return <GermanLesson key={lesson.id} lesson={lesson} />;
 }
 
 function GermanLesson({ lesson }: { lesson: LearningLesson }) {

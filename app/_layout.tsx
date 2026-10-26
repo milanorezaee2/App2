@@ -24,7 +24,7 @@ import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
 import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
-import { RUSSIAN_ONLY_BUILD } from '@/lib/features';
+import { RUSSIAN_ONLY_BUILD, TURKISH_EDITION } from '@/lib/features';
 
 // Android native mirroring is disabled in withStableLayoutDirection. Persian
 // and course-language direction are applied explicitly, independent of device locale.
@@ -118,7 +118,13 @@ export default function RootLayout() {
   const navigationRef = useNavigationContainerRef();
   const [navigatorMounted, setNavigatorMounted] = useState(false);
   const handleNavigatorMounted = useCallback(() => setNavigatorMounted(true), []);
-  const homeRoute = IS_ADMIN_APP ? '/admin' : RUSSIAN_ONLY_BUILD ? '/learn/ru' : '/languages';
+  const homeRoute = IS_ADMIN_APP
+    ? '/admin'
+    : TURKISH_EDITION
+      ? '/learn/tr'
+      : RUSSIAN_ONLY_BUILD
+        ? '/learn/ru'
+        : '/languages';
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);

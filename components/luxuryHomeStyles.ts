@@ -249,6 +249,16 @@ export const luxuryHomeStyles = StyleSheet.create({
     textAlign: 'left',
     writingDirection: 'ltr',
   },
+  /** Turkish uses the same target-script style as Russian (LTR Latin). */
+  sentenceTurkish: {
+    fontFamily: 'Inter-ExtraBold',
+    color: '#FFFFFF',
+    fontSize: 19,
+    lineHeight: 29,
+    fontWeight: '800',
+    textAlign: 'left',
+    writingDirection: 'ltr',
+  },
   sentencePersian: {
     fontFamily: Typography.fontFamily,
     color: 'rgba(255,255,255,0.86)',
@@ -310,6 +320,7 @@ export const luxuryHomeStyles = StyleSheet.create({
   },
   wordChipEn: { fontSize: 10, color: '#FFFFFF' },
   wordChipRussian: { fontSize: 10, color: '#FFFFFF' },
+  wordChipTurkish: { fontSize: 10, color: '#FFFFFF' },
   wordChipDivider: { fontSize: 10, color: '#C6C8FF' },
   wordChipFa: { fontSize: 10, color: '#E4E6FF' },
 

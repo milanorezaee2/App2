@@ -58,6 +58,13 @@ const languageMeta = {
     nativeName: 'Русский',
     badgeColors: ['#0B1A3E', '#255EE8'] as [string, string],
   },
+  tr: {
+    flag: '🇹🇷',
+    code: 'TR',
+    persianName: 'ترکی استانبولی',
+    nativeName: 'Türkçe',
+    badgeColors: ['#7C2D12', '#EA580C'] as [string, string],
+  },
 } as const;
 
 const learningSteps = [
@@ -66,7 +73,7 @@ const learningSteps = [
   { icon: Target, number: '۰۳', title: 'به‌خاطر بسپار', detail: 'با مرور هوشمند تثبیت کن' },
 ] as const;
 
-const learningStats = [
+const buildLearningStats = (languageCount: number) => [
   {
     value: fa(TOTAL_LESSON_COUNT),
     label: 'درس گام‌به‌گام',
@@ -75,8 +82,8 @@ const learningStats = [
     value: fa(TOTAL_SENTENCE_COUNT),
     label: 'جملهٔ کاربردی',
   },
-  { value: '۳ زبان', label: 'مسیر یکپارچه' },
-] as const;
+  { value: `${fa(languageCount)} زبان`, label: 'مسیر یکپارچه' },
+];
 
 const productFeatures = [
   {
@@ -128,8 +135,17 @@ export default function LanguagesHome() {
   const compact = !ready || width < 720;
   const tiny = !ready || width < 390;
   const languages = LANGUAGES.filter(language =>
-    language.id === 'ru' ? FEATURES.russianCourse : !RUSSIAN_ONLY_BUILD,
+    language.id === 'ru'
+      ? FEATURES.russianCourse
+      : language.id === 'tr'
+        ? FEATURES.turkishCourse
+        : !RUSSIAN_ONLY_BUILD,
   );
+  const learningStats = buildLearningStats(languages.length);
+  const languageNamesFa = languages
+    .map(language => languageMeta[language.id as keyof typeof languageMeta]?.persianName ?? language.name)
+    .join('، ')
+    .replace(/، ([^،]*)$/, ' و $1');
 
   return (
     <View style={styles.root}>
@@ -196,7 +212,7 @@ export default function LanguagesHome() {
                   با جمله‌های واقعی،{`\n`}روان‌تر حرف بزن
                 </Text>
                 <Text style={styles.heroDescription}>
-                  انگلیسی، آلمانی و روسی را با تمرین‌های کوتاه و هدفمند یاد بگیر.
+                  {languageNamesFa} را با تمرین‌های کوتاه و هدفمند یاد بگیر.
                 </Text>
                 <Pressable
                   accessibilityRole="button"

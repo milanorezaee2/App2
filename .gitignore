@@ -4,6 +4,7 @@ node_modules/
 # expo
 .expo/
 dist/
+dist-turkish/
 web-build/
 expo-env.d.ts
 android/
