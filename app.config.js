@@ -1,8 +1,42 @@
 const base = require('./app.json').expo;
 
+/**
+ * Official 4-APK Milo Android Suite (in strict release order):
+ *  1. Admin App (`MILO_ADMIN_APP=true`)
+ *     -> package `com.devicecontrol.miloadmin`, manages Login Learner App ONLY
+ *  2. Learner No-Login EN+RU (`EXPO_PUBLIC_APP_EDITION=en_ru`)
+ *     -> package `com.devicecontrol.mml`, English + Russian ONLY, no login
+ *  3. Learner No-Login All 4 Languages (`EXPO_PUBLIC_APP_EDITION=all_four`)
+ *     -> package `com.devicecontrol.miloall`, English + German + Russian + Turkish, no login
+ *  4. Learner With-Login EN+DE+TR (`EXPO_PUBLIC_LEARNER_LOGIN=true` / `edition=login_en_de_tr`)
+ *     -> package `com.devicecontrol.milomultilang`, English + German + Turkish (NO Russian), cloud login + Admin control
+ */
 const build = () => {
   const admin = process.env.MILO_ADMIN_APP === 'true' || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
-  if (process.env.EXPO_PUBLIC_RUSSIAN_ONLY === 'true' && !admin) {
+  if (admin) {
+    return {
+      ...base,
+      name: 'Adminapp',
+      slug: 'milo-language-admin',
+      scheme: 'miloadmin',
+      android: {
+        ...base.android,
+        package: 'com.devicecontrol.miloadmin',
+        versionCode: 3,
+      },
+      ios: {
+        ...base.ios,
+        bundleIdentifier: 'com.devicecontrol.miloadmin',
+      },
+      extra: {
+        ...base.extra,
+        appRole: 'admin',
+        edition: 'admin',
+      },
+    };
+  }
+
+  if (process.env.EXPO_PUBLIC_RUSSIAN_ONLY === 'true') {
     return {
       ...base,
       name: 'MiloMultiLanguage Russian',
@@ -18,61 +52,91 @@ const build = () => {
       },
     };
   }
-  const learnerLogin = process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true';
-  // Second edition: Turkish replaces the Russian track. The default edition
-  // (without this flag) stays exactly as it is today.
-  const turkishEdition = process.env.EXPO_PUBLIC_TURKISH_EDITION === 'true';
-  if (!admin && turkishEdition) {
-    const turkishPkg = learnerLogin
-      ? 'com.devicecontrol.miloturkishlogin'
-      : 'com.devicecontrol.miloturkish';
-    return {
-      ...base,
-      name: learnerLogin ? 'MiloMultiLanguage Turkish' : 'Milo Turkish',
-      slug: learnerLogin ? 'milomultilanguage-turkish-login' : 'milomultilanguage-turkish',
-      scheme: 'miloturkish',
-      android: { ...base.android, package: turkishPkg },
-      ios: { ...base.ios, bundleIdentifier: turkishPkg },
-      extra: { ...base.extra, turkishEdition: true, learnerLogin },
-    };
-  }
-  if (!admin && learnerLogin) {
+
+  const edition = (process.env.EXPO_PUBLIC_APP_EDITION || '').trim();
+  const learnerLogin = process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true' || edition === 'login_en_de_tr';
+
+  // App #4: With-Login Learner App (English + German + Turkish ONLY — NEVER Russian)
+  if (learnerLogin) {
     return {
       ...base,
       name: 'MiloMultiLanguage',
       slug: 'milomultilanguage-login',
+      scheme: 'milologin',
       android: { ...base.android, package: 'com.devicecontrol.milomultilang' },
       ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.milomultilang' },
-      extra: { ...base.extra, learnerLogin: true },
+      extra: {
+        ...base.extra,
+        edition: 'login_en_de_tr',
+        learnerLogin: true,
+        turkishEdition: true,
+        englishCourse: true,
+        germanCourse: true,
+        russianCourse: false,
+        turkishCourse: true,
+      },
     };
   }
-  if (!admin) {
+
+  // App #3: No-Login Learner App with ALL 4 languages (English + German + Russian + Turkish)
+  if (edition === 'all_four') {
     return {
       ...base,
-      name: 'MML',
-      slug: 'mml',
-      android: { ...base.android, package: 'com.devicecontrol.mml' },
-      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.mml' },
-      extra: { ...base.extra, learnerLogin: false },
+      name: 'Milo 4Lang',
+      slug: 'milo-all-languages',
+      scheme: 'miloall',
+      android: { ...base.android, package: 'com.devicecontrol.miloall' },
+      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.miloall' },
+      extra: {
+        ...base.extra,
+        edition: 'all_four',
+        learnerLogin: false,
+        englishCourse: true,
+        germanCourse: true,
+        russianCourse: true,
+        turkishCourse: true,
+      },
     };
   }
+
+  // Legacy Turkish-only edition switch preserved for course validation scripts
+  if (process.env.EXPO_PUBLIC_TURKISH_EDITION === 'true') {
+    return {
+      ...base,
+      name: 'Milo Turkish',
+      slug: 'milomultilanguage-turkish',
+      scheme: 'miloturkish',
+      android: { ...base.android, package: 'com.devicecontrol.miloturkish' },
+      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.miloturkish' },
+      extra: {
+        ...base.extra,
+        edition: 'turkish',
+        turkishEdition: true,
+        learnerLogin: false,
+        englishCourse: true,
+        germanCourse: true,
+        russianCourse: false,
+        turkishCourse: true,
+      },
+    };
+  }
+
+  // App #2 (Default no-login APK): English + Russian ONLY (`en_ru`)
   return {
     ...base,
-    name: 'Adminapp',
-    slug: 'milo-language-admin',
-    scheme: 'miloadmin',
-    android: {
-      ...base.android,
-      package: 'com.devicecontrol.miloadmin',
-      versionCode: 2,
-    },
-    ios: {
-      ...base.ios,
-      bundleIdentifier: 'com.devicecontrol.miloadmin',
-    },
+    name: 'Milo EN-RU',
+    slug: 'mml',
+    scheme: 'companionenglish',
+    android: { ...base.android, package: 'com.devicecontrol.mml' },
+    ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.mml' },
     extra: {
       ...base.extra,
-      appRole: 'admin',
+      edition: edition === 'en_ru' ? 'en_ru' : 'en_ru',
+      learnerLogin: false,
+      englishCourse: true,
+      germanCourse: false,
+      russianCourse: true,
+      turkishCourse: false,
     },
   };
 };

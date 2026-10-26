@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-apk_path="MiloMultilang.apk"
-admin_apk_path="MiloAdmin.apk"
+apk_path="2-MiloNoLogin-EN-RU.apk"
+admin_apk_path="1-MiloAdmin.apk"
 diag_dir="${RUNNER_TEMP:-/tmp}"
 log_file="$diag_dir/milomultilang-emulator-smoke.log"
 full_logcat_file="$diag_dir/milomultilang-emulator-logcat.txt"
@@ -148,7 +148,15 @@ if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'سا
   echo 'Android emulator opened MiloMultilang and rendered its mandatory registration gate.'
 elif grep -Fq 'شروع مسیر یادگیری' "$ui_file" || grep -Fq 'آکادمی چندزبانهٔ میلو' "$ui_file"; then
   direct_catalog_home=true
-  echo 'Android emulator opened MiloMultilang (no-login edition) and rendered the language catalog.'
+  if ! grep -Fq 'انگلیسی' "$ui_file" || ! grep -Fq 'روسی' "$ui_file"; then
+    echo 'App 2 (No-Login EN+RU) did not display both English and Russian on the catalog home.'
+    exit 1
+  fi
+  if grep -Fq 'آلمانی' "$ui_file" || grep -Fq 'ترکی' "$ui_file"; then
+    echo 'App 2 (No-Login EN+RU) leaked German or Turkish onto its catalog home.'
+    exit 1
+  fi
+  echo 'Android emulator opened App 2 (2-MiloNoLogin-EN-RU.apk) and verified ONLY English + Russian.'
 elif (grep -Fq 'MILO' "$ui_file" || grep -Fq 'Milo' "$ui_file") && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
   echo 'Android emulator restored an authenticated learner and rendered the language home.'
 else
@@ -405,28 +413,58 @@ if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
 fi
 
 
-login_apk_path="MiloMultilang-Login.apk"
-if [[ -s "$login_apk_path" ]]; then
-  failed_step="installing the learner login APK"
+all4_apk_path="3-MiloNoLogin-All4.apk"
+if [[ -s "$all4_apk_path" ]]; then
+  failed_step="installing App 3 (No-Login All 4 Languages APK)"
   adb shell am force-stop com.devicecontrol.miloadmin || true
+  adb install -r "$all4_apk_path"
+  adb shell pm path com.devicecontrol.miloall
+  adb shell am force-stop com.devicecontrol.miloall
+  failed_step="launching App 3 (No-Login All 4 Languages APK)"
+  timeout 90s adb shell am start -W -n com.devicecontrol.miloall/.MainActivity
+  sleep 20
+  capture_ui
+  failed_step="verifying App 3 rendered all 4 languages without login"
+  all4_rendered=false
+  for all4_attempt in 1 2 3; do
+    if grep -Fq 'انگلیسی' "$ui_file" && grep -Fq 'آلمانی' "$ui_file" && grep -Fq 'روسی' "$ui_file" && grep -Fq 'ترکی' "$ui_file"; then
+      all4_rendered=true
+      echo 'Android emulator launched 3-MiloNoLogin-All4.apk and verified all 4 languages (EN, DE, RU, TR).'
+      break
+    fi
+    if [[ "$all4_attempt" == 3 ]]; then break; fi
+    sleep 15
+    capture_ui
+  done
+  if [[ "$all4_rendered" != true ]]; then
+    echo 'App 3 (3-MiloNoLogin-All4.apk) did not render all 4 languages.'
+    exit 1
+  fi
+  if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
+    echo 'App 3 (No-Login All 4) unexpectedly showed the login gate.'
+    exit 1
+  fi
+fi
+
+login_apk_path="4-MiloLogin-EN-DE-TR.apk"
+if [[ -s "$login_apk_path" ]]; then
+  failed_step="installing App 4 (Learner Login EN+DE+TR APK)"
+  adb shell am force-stop com.devicecontrol.miloall || true
   adb install -r "$login_apk_path"
-  failed_step="verifying the learner login APK package"
+  failed_step="verifying App 4 package"
   adb shell pm path com.devicecontrol.milomultilang
   adb shell am force-stop com.devicecontrol.milomultilang
-  failed_step="launching the learner login APK"
+  failed_step="launching App 4 (Learner Login EN+DE+TR APK)"
   timeout 90s adb shell am start -W -n com.devicecontrol.milomultilang/.MainActivity
-  failed_step="allowing the learner login APK to render"
+  failed_step="allowing App 4 to render"
   sleep 25
   capture_ui
-  failed_step="verifying the learner login APK rendered"
-  # Same tolerance as the management check above: on a loaded hosted emulator the
-  # accessibility tree can still be empty while the first screen is animating, so
-  # re-dump before deciding the login variant failed to render.
+  failed_step="verifying App 4 registration gate rendered"
   login_rendered=false
   for login_attempt in 1 2 3; do
     if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'هر روز، یک قدم' "$ui_file"; then
       login_rendered=true
-      echo 'Android emulator launched the learner login APK and rendered its first screen.'
+      echo 'Android emulator launched 4-MiloLogin-EN-DE-TR.apk and verified its registration gate.'
       break
     fi
     if [[ "$login_attempt" == 3 ]]; then
@@ -437,67 +475,9 @@ if [[ -s "$login_apk_path" ]]; then
     capture_ui
   done
   if [[ "$login_rendered" != true ]]; then
-    echo 'The learner login APK did not render the registration gate or the language home.'
+    echo 'App 4 (4-MiloLogin-EN-DE-TR.apk) did not render the registration gate.'
     exit 1
   fi
 fi
 
-turkish_apk_path="MiloTurkish.apk"
-if [[ -s "$turkish_apk_path" ]]; then
-  failed_step="installing the Turkish learner APK"
-  adb shell am force-stop com.devicecontrol.milomultilang || true
-  adb install -r "$turkish_apk_path"
-  adb shell pm path com.devicecontrol.miloturkish
-  adb shell am force-stop com.devicecontrol.miloturkish
-  failed_step="launching the Turkish learner APK"
-  timeout 90s adb shell am start -W -n com.devicecontrol.miloturkish/.MainActivity
-  sleep 20
-  capture_ui
-  failed_step="verifying the Turkish learner APK rendered"
-  turkish_rendered=false
-  for tr_attempt in 1 2 3; do
-    if grep -Fq 'ترکی' "$ui_file" || grep -Fq 'شروع مسیر یادگیری' "$ui_file"; then
-      turkish_rendered=true
-      echo 'Android emulator launched MiloTurkish.apk and rendered the Turkish course screen.'
-      break
-    fi
-    if [[ "$tr_attempt" == 3 ]]; then break; fi
-    sleep 15
-    capture_ui
-  done
-  if [[ "$turkish_rendered" != true ]]; then
-    echo 'MiloTurkish.apk did not render the Turkish course home.'
-    exit 1
-  fi
-fi
-
-turkish_login_apk_path="MiloTurkish-Login.apk"
-if [[ -s "$turkish_login_apk_path" ]]; then
-  failed_step="installing the Turkish learner login APK"
-  adb shell am force-stop com.devicecontrol.miloturkish || true
-  adb install -r "$turkish_login_apk_path"
-  adb shell pm path com.devicecontrol.miloturkishlogin
-  adb shell am force-stop com.devicecontrol.miloturkishlogin
-  failed_step="launching the Turkish learner login APK"
-  timeout 90s adb shell am start -W -n com.devicecontrol.miloturkishlogin/.MainActivity
-  sleep 20
-  capture_ui
-  failed_step="verifying the Turkish learner login APK rendered"
-  turkish_login_rendered=false
-  for tr_login_attempt in 1 2 3; do
-    if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'ترکی' "$ui_file"; then
-      turkish_login_rendered=true
-      echo 'Android emulator launched MiloTurkish-Login.apk and rendered its registration gate.'
-      break
-    fi
-    if [[ "$tr_login_attempt" == 3 ]]; then break; fi
-    sleep 15
-    capture_ui
-  done
-  if [[ "$turkish_login_rendered" != true ]]; then
-    echo 'MiloTurkish-Login.apk did not render its registration gate.'
-    exit 1
-  fi
-fi
-
-echo 'Android emulator verified all standalone APKs and protected manager login.'
+echo 'Android emulator verified all 4 standalone APKs in the Milo suite.'

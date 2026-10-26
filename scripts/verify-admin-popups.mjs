@@ -197,5 +197,78 @@ ok(
     && !('secretField' in mlRoster[0].summary),
 );
 
+// 6. Global & Per-User Language Access Policies (__MILO_LANG_ACCESS_V1__)
+await as(studentA);
+await rejected(
+  'non-admin learner cannot forge language access policy row',
+  "INSERT INTO public.admin_popups (title, body, badge_text) VALUES ('[SYSTEM] Global', '{\"v\":1,\"enabled\":[\"en\"]}', '__MILO_LANG_ACCESS_V1__')",
+);
+
+await as(admin);
+const globalLangRow = (await db.query(
+  `INSERT INTO public.admin_popups (title, body, badge_text, target_scope, target_edition, is_active, priority)
+   VALUES ('[SYSTEM] Global Language Access', '{"v":1,"enabled":["en","tr"],"message":"آلمانی موقتاً بسته است"}', '__MILO_LANG_ACCESS_V1__', 'all', 'all', true, 0)
+   RETURNING id`,
+)).rows[0];
+const userALangLockAll = (await db.query(
+  `INSERT INTO public.admin_popups (title, body, badge_text, target_scope, target_user_id, target_edition, is_active, priority)
+   VALUES ('[SYSTEM] User Language Access', '{"v":1,"enabled":[],"message":"همه زبان‌ها بسته شدند"}', '__MILO_LANG_ACCESS_V1__', 'user', $1, 'all', true, 0)
+   RETURNING id`,
+  [studentA],
+)).rows[0];
+ok('admin stored global language policy and per-user disable-all policy', Boolean(globalLangRow.id && userALangLockAll.id));
+
+await as(studentA);
+const studentAPolicies = (await db.query(
+  "SELECT target_scope, body FROM public.admin_popups WHERE badge_text = '__MILO_LANG_ACCESS_V1__' AND is_active = true",
+)).rows;
+ok(
+  'studentA receives both global policy and their own disable-all language policy',
+  studentAPolicies.length === 2
+    && JSON.parse(studentAPolicies.find(r => r.target_scope === 'user').body).enabled.length === 0,
+);
+
+await as(studentB);
+const studentBPolicies = (await db.query(
+  "SELECT target_scope, body FROM public.admin_popups WHERE badge_text = '__MILO_LANG_ACCESS_V1__' AND is_active = true",
+)).rows;
+ok(
+  'studentB sees only global language policy (never studentA lock)',
+  studentBPolicies.length === 1 && studentBPolicies[0].target_scope === 'all',
+);
+
+// 7. Verify 4-APK app.config.js editions
+const { createRequire } = await import('node:module');
+const requireCjs = createRequire(import.meta.url);
+const loadAppConfig = (envVars) => {
+  const prev = {};
+  for (const [k, v] of Object.entries(envVars)) {
+    prev[k] = process.env[k];
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+  try {
+    delete requireCjs.cache[requireCjs.resolve('../app.config.js')];
+    const mod = requireCjs('../app.config.js');
+    const base = JSON.parse(readFileSync(new URL('../app.json', import.meta.url), 'utf8'));
+    return mod({ config: base.expo });
+  } finally {
+    for (const [k, v] of Object.entries(prev)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+};
+
+const cfgAdmin = loadAppConfig({ MILO_ADMIN_APP: 'true', EXPO_PUBLIC_APP_EDITION: undefined, EXPO_PUBLIC_LEARNER_LOGIN: undefined });
+const cfgEnRu = loadAppConfig({ MILO_ADMIN_APP: undefined, EXPO_PUBLIC_APP_EDITION: 'en_ru', EXPO_PUBLIC_LEARNER_LOGIN: undefined });
+const cfgAll4 = loadAppConfig({ MILO_ADMIN_APP: undefined, EXPO_PUBLIC_APP_EDITION: 'all_four', EXPO_PUBLIC_LEARNER_LOGIN: undefined });
+const cfgLogin = loadAppConfig({ MILO_ADMIN_APP: undefined, EXPO_PUBLIC_APP_EDITION: 'login_en_de_tr', EXPO_PUBLIC_LEARNER_LOGIN: 'true' });
+
+ok('App 1 (Admin) uses com.devicecontrol.miloadmin', cfgAdmin.android.package === 'com.devicecontrol.miloadmin');
+ok('App 2 (No-Login EN+RU) uses com.devicecontrol.mml without login', cfgEnRu.android.package === 'com.devicecontrol.mml' && cfgEnRu.extra.edition === 'en_ru' && cfgEnRu.extra.learnerLogin === false);
+ok('App 3 (No-Login All 4) uses com.devicecontrol.miloall without login', cfgAll4.android.package === 'com.devicecontrol.miloall' && cfgAll4.extra.edition === 'all_four' && cfgAll4.extra.learnerLogin === false);
+ok('App 4 (Login EN+DE+TR) uses com.devicecontrol.milomultilang with login', cfgLogin.android.package === 'com.devicecontrol.milomultilang' && cfgLogin.extra.edition === 'login_en_de_tr' && cfgLogin.extra.learnerLogin === true);
+
 await db.close();
-console.log(`\nAdmin popups & pro analytics SQL: ${passed} checks passed`);
+console.log(`\nAdmin popups, language access & 4-APK suite: ${passed} checks passed`);

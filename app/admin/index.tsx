@@ -90,15 +90,27 @@ import {
 } from '@/lib/educationAdmin';
 import { FEATURES } from '@/lib/features';
 import { toPersianDigits as fa } from '@/lib/format';
+import {
+  DEFAULT_ALL_LANGUAGES_DISABLED_MESSAGE,
+  LOGIN_APP_LANGUAGE_IDS,
+  LOGIN_APP_LANGUAGE_INFO,
+  clearUserLanguagePolicy,
+  loadAdminLanguagePolicies,
+  resolveEffectiveUserLanguages,
+  saveGlobalLanguagePolicy,
+  saveUserLanguagePolicy,
+  type AdminGlobalLanguagePolicy,
+  type AdminUserLanguagePolicy,
+  type LoginAppLanguageId,
+} from '@/lib/languageAccess';
 import { downloadRegisteredUsers } from '@/lib/userExport';
 
-type Tab = 'overview' | 'popups' | 'registered' | 'support' | 'students' | 'invites' | 'content';
+type Tab = 'overview' | 'languages' | 'popups' | 'registered' | 'support' | 'students' | 'invites' | 'content';
 
 const ALL_COURSES_CATALOG = [
-  { id: 'en', title: 'انگلیسی (English)', lessons: 174, sentences: 3862, color: '#6356D9', route: '/lang', edition: 'هر دو نسخه (اصلی و ترکی)' },
-  { id: 'de', title: 'آلمانی (Deutsch)', lessons: 95, sentences: 4715, color: '#087E75', route: '/learn/de', edition: 'هر دو نسخه (اصلی و ترکی)' },
-  { id: 'ru', title: 'روسی (Русский)', lessons: 120, sentences: 3800, color: '#4267A8', route: '/learn/ru', edition: 'نسخهٔ اصلی (Milo MultiLanguage)' },
-  { id: 'tr', title: 'ترکی استانبولی (Türkçe)', lessons: 66, sentences: 528, color: '#C2410C', route: '/learn/tr', edition: 'نسخهٔ دوم (Milo Turkish)' },
+  { id: 'en', title: 'انگلیسی (English)', lessons: 174, sentences: 3862, color: '#6356D9', route: '/lang', edition: 'اپ زبان‌آموز با لاگین' },
+  { id: 'de', title: 'آلمانی (Deutsch)', lessons: 95, sentences: 4715, color: '#087E75', route: '/learn/de', edition: 'اپ زبان‌آموز با لاگین' },
+  { id: 'tr', title: 'ترکی استانبولی (Türkçe)', lessons: 66, sentences: 528, color: '#C2410C', route: '/learn/tr', edition: 'اپ زبان‌آموز با لاگین' },
 ] as const;
 
 const POPUP_TEMPLATES: ReadonlyArray<{
@@ -120,7 +132,7 @@ const POPUP_TEMPLATES: ReadonlyArray<{
     variant: 'celebration',
     ctaLabel: 'شروع دورهٔ ترکی',
     ctaUrl: '/learn/tr',
-    edition: 'turkish',
+    edition: 'all',
     mode: 'once',
   },
   {
@@ -240,6 +252,18 @@ function EducationAdmin() {
   const [popups, setPopups] = useState<AdminPopupWithStats[]>([]);
   const [popupSchemaMissing, setPopupSchemaMissing] = useState(false);
 
+  // Live language access policies for Login App (global + per-user)
+  const [globalLangPolicy, setGlobalLangPolicy] = useState<AdminGlobalLanguagePolicy>({
+    rowId: null,
+    enabled: [...LOGIN_APP_LANGUAGE_IDS],
+    message: DEFAULT_ALL_LANGUAGES_DISABLED_MESSAGE,
+    updatedAt: null,
+  });
+  const [userLangPolicies, setUserLangPolicies] = useState<Record<string, AdminUserLanguagePolicy>>({});
+  const [globalLockMessage, setGlobalLockMessage] = useState(DEFAULT_ALL_LANGUAGES_DISABLED_MESSAGE);
+  const [langUserSearch, setLangUserSearch] = useState('');
+  const [langUserFilter, setLangUserFilter] = useState<'all' | 'custom' | 'all_disabled'>('all');
+
   // Support & Moderation live state
   const [supportContacts, setSupportContacts] = useState<RealContact[]>([]);
   const [supportStatuses, setSupportStatuses] = useState<Record<string, SupportRequestStatus>>({});
@@ -326,25 +350,34 @@ function EducationAdmin() {
   }, []);
 
   const refreshAll = useCallback(async () => {
-    const [core, popupResult] = await Promise.all([
+    const [core, popupResult, langResult] = await Promise.all([
       loadAdminData(),
       loadAdminPopupsWithStats(),
+      loadAdminLanguagePolicies(),
     ]);
     setManagerName(core.managerName);
     setStudents(core.students);
     setInvites(core.invites);
     setRegisteredUsers(core.registeredUsers);
     setPopups(popupResult.popups);
-    setPopupSchemaMissing(popupResult.schemaMissing);
+    setPopupSchemaMissing(popupResult.schemaMissing || langResult.schemaMissing);
+    setGlobalLangPolicy(langResult.globalPolicy);
+    setGlobalLockMessage(langResult.globalPolicy.message);
+    setUserLangPolicies(langResult.userPolicies);
     setLastSyncedAt(new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     await loadSupportAndModeration(core.registeredUsers.map(u => u.user_id));
   }, [loadSupportAndModeration]);
 
   const refreshPopupsOnly = useCallback(async () => {
     try {
-      const popupResult = await loadAdminPopupsWithStats();
+      const [popupResult, langResult] = await Promise.all([
+        loadAdminPopupsWithStats(),
+        loadAdminLanguagePolicies(),
+      ]);
       setPopups(popupResult.popups);
-      setPopupSchemaMissing(popupResult.schemaMissing);
+      setPopupSchemaMissing(popupResult.schemaMissing || langResult.schemaMissing);
+      setGlobalLangPolicy(langResult.globalPolicy);
+      setUserLangPolicies(langResult.userPolicies);
     } catch {
       // Silent background telemetry refresh
     }
@@ -506,7 +539,7 @@ function EducationAdmin() {
         dismiss_label: popupDismissLabel || 'متوجه شدم',
         display_mode: popupDisplayMode,
         target_scope: popupTargetScope,
-        target_edition: popupTargetScope === 'user' ? 'all' : popupTargetEdition,
+        target_edition: 'all',
         target_user_id: popupTargetScope === 'user' ? popupTargetUserId : null,
         priority: Number.isFinite(parsedPriority) ? parsedPriority : 10,
         is_active: popupStartActive,
@@ -515,15 +548,79 @@ function EducationAdmin() {
       };
       if (editingPopupId) {
         await updateAdminPopup(editingPopupId, draft);
-        setNotice('پاپ‌آپ ویرایش شد و به‌صورت آنی در اپ‌های فعال به‌روزرسانی گردید.');
+        setNotice('پاپ‌آپ ویرایش شد و به‌صورت آنی در اپ زبان‌آموز با لاگین به‌روزرسانی گردید.');
       } else {
         await createAdminPopup(draft);
         setNotice(popupStartActive
-          ? 'پاپ‌آپ با موفقیت منتشر شد و هم‌اکنون در اپ اصلی به نمایش درآمد.'
+          ? 'پاپ‌آپ با موفقیت منتشر شد و هم‌اکنون در اپ زبان‌آموز با لاگین به نمایش درآمد.'
           : 'پاپ‌آپ به‌صورت غیرفعال ذخیره شد؛ هر زمان خواستید آن را فعال کنید.');
       }
       resetPopupForm();
       await refreshPopupsOnly();
+    });
+  }
+
+  function applyGlobalLanguages(nextEnabled: LoginAppLanguageId[], customNotice: string) {
+    void task(async () => {
+      await saveGlobalLanguagePolicy(nextEnabled, globalLockMessage);
+      await refreshPopupsOnly();
+      setNotice(customNotice);
+    });
+  }
+
+  function toggleGlobalLanguageItem(langId: LoginAppLanguageId) {
+    const currentlyOn = globalLangPolicy.enabled.includes(langId);
+    const next = currentlyOn
+      ? globalLangPolicy.enabled.filter(id => id !== langId)
+      : LOGIN_APP_LANGUAGE_IDS.filter(id => id === langId || globalLangPolicy.enabled.includes(id));
+    const langFa = LOGIN_APP_LANGUAGE_INFO.find(l => l.id === langId)?.fa || langId;
+    applyGlobalLanguages(
+      next,
+      currentlyOn
+        ? `زبان «${langFa}» به‌صورت سراسری در اپ با لاگین غیرفعال شد.`
+        : `زبان «${langFa}» به‌صورت سراسری در اپ با لاگین فعال شد.`,
+    );
+  }
+
+  function toggleUserLanguageItem(user: RegisteredUser, langId: LoginAppLanguageId) {
+    const current = resolveEffectiveUserLanguages(user.user_id, globalLangPolicy, userLangPolicies);
+    const currentlyOn = current.enabled.includes(langId);
+    const next = currentlyOn
+      ? current.enabled.filter(id => id !== langId)
+      : LOGIN_APP_LANGUAGE_IDS.filter(id => id === langId || current.enabled.includes(id));
+    const langFa = LOGIN_APP_LANGUAGE_INFO.find(l => l.id === langId)?.fa || langId;
+    void task(async () => {
+      await saveUserLanguagePolicy(user.user_id, next, globalLockMessage);
+      await refreshPopupsOnly();
+      setNotice(
+        currentlyOn
+          ? `زبان «${langFa}» برای «${user.full_name}» غیرفعال شد.`
+          : `زبان «${langFa}» برای «${user.full_name}» فعال شد.`,
+      );
+    });
+  }
+
+  function setAllUserLanguages(user: RegisteredUser, enableAll: boolean) {
+    void task(async () => {
+      await saveUserLanguagePolicy(
+        user.user_id,
+        enableAll ? [...LOGIN_APP_LANGUAGE_IDS] : [],
+        globalLockMessage,
+      );
+      await refreshPopupsOnly();
+      setNotice(
+        enableAll
+          ? `تمام ۳ زبان برای «${user.full_name}» فعال شدند.`
+          : `تمام زبان‌ها برای «${user.full_name}» به‌صورت آنی غیرفعال شدند.`,
+      );
+    });
+  }
+
+  function resetUserLanguageToGlobal(user: RegisteredUser) {
+    void task(async () => {
+      await clearUserLanguagePolicy(user.user_id);
+      await refreshPopupsOnly();
+      setNotice(`دسترسی زبان‌های «${user.full_name}» به حالت سراسری بازگردانده شد.`);
     });
   }
 
@@ -639,16 +736,37 @@ function EducationAdmin() {
     () => supportContacts.filter(c => !deletedChats[c.conversationId] && (supportStatuses[c.conversationId] || 'open') === 'open').length,
     [supportContacts, deletedChats, supportStatuses],
   );
+  const restrictedUserCount = useMemo(
+    () => Object.values(userLangPolicies).filter(p => p.enabled.length < LOGIN_APP_LANGUAGE_IDS.length).length,
+    [userLangPolicies],
+  );
 
   const tabs: ReadonlyArray<{ id: Tab; title: string; icon: typeof LayoutDashboard; badge?: number }> = [
     { id: 'overview', title: 'نمای کلی', icon: LayoutDashboard },
-    { id: 'popups', title: 'پاپ‌آپ اپ', icon: Megaphone, badge: livePopups.length || undefined },
+    {
+      id: 'languages',
+      title: 'دسترسی زبان‌ها',
+      icon: Globe,
+      badge: (globalLangPolicy.enabled.length < 3 ? 1 : 0) + restrictedUserCount || undefined,
+    },
+    { id: 'popups', title: 'پاپ‌آپ اپ با لاگین', icon: Megaphone, badge: livePopups.length || undefined },
     { id: 'registered', title: 'کاربران ثبت‌شده', icon: Users, badge: registeredUsers.length || undefined },
     { id: 'support', title: 'پشتیبانی', icon: MessageCircle, badge: openSupportCount || undefined },
     { id: 'students', title: 'زبان‌آموزان', icon: GraduationCap },
     { id: 'invites', title: 'دعوت‌نامه‌ها', icon: Ticket },
     { id: 'content', title: 'محتوای آموزشی', icon: BookOpen },
   ];
+
+  const visibleLangUsers = registeredUsers.filter(u => {
+    const matchesQuery = `${u.full_name} ${u.email}`
+      .toLowerCase()
+      .includes(langUserSearch.trim().toLowerCase());
+    if (!matchesQuery) return false;
+    const resolved = resolveEffectiveUserLanguages(u.user_id, globalLangPolicy, userLangPolicies);
+    if (langUserFilter === 'custom') return resolved.customized;
+    if (langUserFilter === 'all_disabled') return resolved.enabled.length === 0;
+    return true;
+  });
 
   const visibleStudents = students.filter(
     r => r.display_name.toLowerCase().includes(search.trim().toLowerCase())
@@ -718,9 +836,9 @@ function EducationAdmin() {
             </View>
           </View>
           <Text style={s.eyebrow}>MILO MULTILANGUAGE · ADMIN CONSOLE</Text>
-          <Text style={s.loginTitle}>کنسول مدیریت زنده و یکپارچه</Text>
+          <Text style={s.loginTitle}>کنسول مدیریت اپ زبان‌آموز با لاگین</Text>
           <Text style={s.subtitle}>
-            مدیریت واقعی کاربران، ارسال آنی پاپ‌آپ به اپ اصلی و ترکی، پشتیبانی زنده و پایش پیشرفت آموزشی در چهار زبان.
+            مدیریت اختصاصی اپ زبان‌آموز با لاگین (انگلیسی، آلمانی و ترکی استانبولی): فعال یا غیرفعال کردن تک‌تک یا همهٔ زبان‌ها برای کاربران، ارسال آنی پاپ‌آپ و پشتیبانی زنده.
           </Text>
 
           <Text style={s.label}>ایمیل حساب مدیر</Text>
@@ -873,10 +991,12 @@ function EducationAdmin() {
               <Text style={s.eyebrow}>کنسول مدیریت زنده / {tabs.find(t => t.id === tab)?.title}</Text>
               <Text style={[s.title, !wide && s.titleMobile]}>
                 {tab === 'overview'
-                  ? 'فرماندهی زندهٔ اپ‌های Milo'
-                  : tab === 'popups'
-                    ? 'استودیوی پاپ‌آپ و اعلان آنی در اپ اصلی'
-                    : tabs.find(t => t.id === tab)?.title}
+                  ? 'فرماندهی زندهٔ اپ زبان‌آموز با لاگین'
+                  : tab === 'languages'
+                    ? 'کنترل زندهٔ فعال و غیرفعال‌سازی زبان‌ها (حتی بستن همه)'
+                    : tab === 'popups'
+                      ? 'استودیوی پاپ‌آپ آنی ویژهٔ اپ با لاگین'
+                      : tabs.find(t => t.id === tab)?.title}
               </Text>
               <Text style={s.subtitle}>
                 متصل به پایگاه‌دادهٔ واقعی و Realtime • {lastSyncedAt ? `آخرین همگام‌سازی: ${lastSyncedAt}` : 'همگام‌سازی خودکار فعال'}
@@ -955,12 +1075,16 @@ function EducationAdmin() {
             <>
               <View style={s.stats}>
                 {[
-                  ['کاربران ثبت‌شده', fa(registeredUsers.length), `${fa(active24hCount)} فعال در ۲۴ ساعت اخیر`],
+                  ['کاربران اپ با لاگین', fa(registeredUsers.length), `${fa(active24hCount)} فعال در ۲۴ ساعت اخیر`],
+                  [
+                    'زبان‌های فعال سراسری',
+                    globalLangPolicy.enabled.length === 0 ? 'همه بسته' : `${fa(globalLangPolicy.enabled.length)} از ۳ زبان`,
+                    `${fa(restrictedUserCount)} کاربر دارای محدودیت اختصاصی`,
+                  ],
                   ['پاپ‌آپ‌های در حال پخش', fa(livePopups.length), `${fa(popupTotals.impressions)} بازدید · نرخ کلیک ${fa(popupTotals.ctr)}٪`],
                   ['پشتیبانی منتظر پاسخ', fa(openSupportCount), `از مجموع ${fa(supportContacts.length)} گفتگوی پشتیبانی`],
-                  ['زبان‌آموزان همگام', fa(activeStudents.length), `${fa(syncedStudents.length)} عضو با گزارش پیشرفت`],
                   ['میانگین پیشرفت انگلیسی', `${fa(avgProgress)}٪`, `${fa(totalMinutesAll)} دقیقه مطالعه ثبت‌شده`],
-                  ['ظرفیت ۴ دوره فعال', `${fa(455)} درس`, 'انگلیسی · آلمانی · روسی · ترکی'],
+                  ['ظرفیت ۳ دوره اپ با لاگین', `${fa(335)} درس`, 'انگلیسی · آلمانی · ترکی استانبولی'],
                 ].map(([name, value, hint]) => (
                   <View key={name} style={s.stat}>
                     <Text style={s.statLabel}>{name}</Text>
@@ -979,21 +1103,21 @@ function EducationAdmin() {
                 <View style={{ flex: 1, minWidth: 190 }}>
                   <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <Radio size={16} color="#93C5FD" />
-                    <Text style={[s.eyebrow, { color: '#BFDBFE', marginBottom: 0 }]}>REALTIME IN-APP POPUP ENGINE</Text>
+                    <Text style={[s.eyebrow, { color: '#BFDBFE', marginBottom: 0 }]}>LOGIN APP LIVE CONTROL</Text>
                   </View>
-                  <Text style={s.heroTitle}>ارسال مستقیم پاپ‌آپ به صفحهٔ زبان‌آموزان در کمتر از یک ثانیه</Text>
+                  <Text style={s.heroTitle}>کنترل آنی زبان‌ها و ارسال پاپ‌آپ ویژهٔ اپ زبان‌آموز با لاگین</Text>
                   <Text style={s.heroText}>
-                    بدون نیاز به آپدیت اپ، اطلاعیه، بنر دورهٔ جدید، لینک داخلی یا پیام اختصاصی برای یک کاربر خاص بفرستید و آمار بازدید و کلیک واقعی را زنده ببینید.
+                    این پنل منحصراً به اپ زبان‌آموز با لاگین (انگلیسی، آلمانی و ترکی استانبولی) متصل است. هر زبان یا همهٔ زبان‌ها را سراسری یا برای یک کاربر خاص بلافاصله فعال/غیرفعال کنید.
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 }}>
-                  <Pressable accessibilityRole="button" onPress={() => setTab('popups')} style={s.heroWhiteBtn}>
-                    <Megaphone size={15} color="#102A56" />
-                    <Text style={s.heroWhiteBtnText}>ساخت پاپ‌آپ جدید</Text>
+                  <Pressable accessibilityRole="button" onPress={() => setTab('languages')} style={s.heroWhiteBtn}>
+                    <Globe size={15} color="#102A56" />
+                    <Text style={s.heroWhiteBtnText}>مدیریت دسترسی زبان‌ها</Text>
                   </Pressable>
-                  <Pressable accessibilityRole="button" onPress={() => setTab('support')} style={s.heroOutlineBtn}>
-                    <MessageCircle size={15} color="#FFFFFF" />
-                    <Text style={s.heroOutlineBtnText}>صندوق پشتیبانی ({fa(openSupportCount)})</Text>
+                  <Pressable accessibilityRole="button" onPress={() => setTab('popups')} style={s.heroOutlineBtn}>
+                    <Megaphone size={15} color="#FFFFFF" />
+                    <Text style={s.heroOutlineBtnText}>ساخت پاپ‌آپ جدید</Text>
                   </Pressable>
                 </View>
               </LinearGradient>
@@ -1001,7 +1125,7 @@ function EducationAdmin() {
               {/* Active Popups Live Snapshot */}
               <View style={s.card}>
                 <View style={s.sectionHead}>
-                  <Text style={s.cardTitle}>پاپ‌آپ‌های فعال در اپ اصلی و ترکی ({fa(livePopups.length)})</Text>
+                  <Text style={s.cardTitle}>پاپ‌آپ‌های فعال در اپ زبان‌آموز با لاگین ({fa(livePopups.length)})</Text>
                   <Pressable accessibilityRole="button" onPress={() => setTab('popups')}>
                     <Text style={s.inlineLink}>مدیریت همهٔ پاپ‌آپ‌ها ←</Text>
                   </Pressable>
@@ -1009,8 +1133,8 @@ function EducationAdmin() {
                 {!livePopups.length ? (
                   <View style={s.empty}>
                     <BellRing size={30} color="#1769D2" />
-                    <Text style={s.cardTitle}>در حال حاضر هیچ پاپ‌آپ فعالی روی اپ‌ها نمایش داده نمی‌شود</Text>
-                    <Text style={s.small}>از تب «پاپ‌آپ اپ» می‌توانید اولین اعلان همگانی یا اختصاصی را منتشر کنید.</Text>
+                    <Text style={s.cardTitle}>در حال حاضر هیچ پاپ‌آپ فعالی روی اپ با لاگین نمایش داده نمی‌شود</Text>
+                    <Text style={s.small}>از تب «پاپ‌آپ اپ با لاگین» می‌توانید اعلان همگانی یا اختصاصی منتشر کنید.</Text>
                   </View>
                 ) : (
                   livePopups.slice(0, 4).map(p => (
@@ -1023,11 +1147,7 @@ function EducationAdmin() {
                         <Text style={s.small}>
                           {p.target_scope === 'user'
                             ? `اختصاصی: ${userById.get(p.target_user_id || '')?.full_name || 'کاربر مشخص'}`
-                            : p.target_edition === 'main'
-                              ? 'نسخهٔ اصلی (EN/DE/RU)'
-                              : p.target_edition === 'turkish'
-                                ? 'نسخهٔ ترکی (EN/DE/TR)'
-                                : 'همهٔ نسخه‌ها'}
+                            : 'همهٔ کاربران اپ با لاگین'}
                           {' · '}
                           {fa(p.unique_impressions)} بازدید · {fa(p.unique_clicks)} کلیک
                         </Text>
@@ -1052,7 +1172,7 @@ function EducationAdmin() {
               {/* Recent Active Registered Users */}
               <View style={s.card}>
                 <View style={s.sectionHead}>
-                  <Text style={s.cardTitle}>آخرین کاربران فعال در اپ زبان</Text>
+                  <Text style={s.cardTitle}>آخرین کاربران فعال در اپ با لاگین</Text>
                   <Pressable accessibilityRole="button" onPress={() => setTab('registered')}>
                     <Text style={s.inlineLink}>مشاهدهٔ همه ({fa(registeredUsers.length)}) ←</Text>
                   </Pressable>
@@ -1060,7 +1180,7 @@ function EducationAdmin() {
                 {!registeredUsers.length ? (
                   <View style={s.empty}>
                     <Users size={30} color="#1769D2" />
-                    <Text style={s.small}>هنوز کاربری در جدول حساب‌های اپ ثبت‌نام نکرده است.</Text>
+                    <Text style={s.small}>هنوز کاربری در اپ زبان‌آموز با لاگین ثبت‌نام نکرده است.</Text>
                   </View>
                 ) : (
                   [...registeredUsers]
@@ -1068,6 +1188,7 @@ function EducationAdmin() {
                     .slice(0, 5)
                     .map((u, idx) => {
                       const onlineToday = isActiveWithinHours(u.last_seen_at, 24);
+                      const resolvedLangs = resolveEffectiveUserLanguages(u.user_id, globalLangPolicy, userLangPolicies);
                       return (
                         <View key={u.user_id} style={s.studentRow}>
                           <View style={[s.avatar, { backgroundColor: ['#E5F3F0', '#EEF0FF', '#FFF1DC'][idx % 3] }]}>
@@ -1080,18 +1201,317 @@ function EducationAdmin() {
                             </View>
                             <Text style={s.emailText}>{u.email}</Text>
                           </View>
-                          <Text style={s.small}>فعالیت: {formatDateTimeFa(u.last_seen_at)}</Text>
+                          <Text
+                            style={[
+                              s.badge,
+                              resolvedLangs.enabled.length === 0 && { backgroundColor: '#FEE2E2', color: '#B42318' },
+                            ]}
+                          >
+                            {resolvedLangs.enabled.length === 0
+                              ? 'همهٔ زبان‌ها غیرفعال'
+                              : `${fa(resolvedLangs.enabled.length)} زبان فعال`}
+                          </Text>
                           <Pressable
                             accessibilityRole="button"
-                            onPress={() => startDirectPopupForUser(u.user_id, u.full_name)}
+                            onPress={() => {
+                              setLangUserSearch(u.email);
+                              setTab('languages');
+                            }}
                             style={s.ghostBtn}
                           >
-                            <Send size={13} color="#1769D2" />
-                            <Text style={s.actionText}>پاپ‌آپ</Text>
+                            <Globe size={13} color="#1769D2" />
+                            <Text style={s.actionText}>زبان‌ها</Text>
                           </Pressable>
                         </View>
                       );
                     })
+                )}
+              </View>
+            </>
+          )}
+
+          {/* ==================== TAB 2: LIVE LANGUAGE ACCESS CONTROL ==================== */}
+          {tab === 'languages' && (
+            <>
+              <View style={s.card}>
+                <View style={s.sectionHead}>
+                  <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <Globe size={19} color="#1769D2" />
+                    <Text style={s.cardTitle}>۱. دسترسی سراسری زبان‌ها در اپ با لاگین</Text>
+                  </View>
+                  <View
+                    style={[
+                      s.statusPill,
+                      globalLangPolicy.enabled.length === 0
+                        ? { backgroundColor: '#FEE2E2' }
+                        : globalLangPolicy.enabled.length < 3
+                          ? s.statusPaused
+                          : s.statusLive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        s.statusPillText,
+                        {
+                          color:
+                            globalLangPolicy.enabled.length === 0
+                              ? '#B42318'
+                              : globalLangPolicy.enabled.length < 3
+                                ? '#9A3412'
+                                : '#15803D',
+                        },
+                      ]}
+                    >
+                      {globalLangPolicy.enabled.length === 0
+                        ? '● همهٔ زبان‌ها سراسری غیرفعال'
+                        : `${fa(globalLangPolicy.enabled.length)} از ۳ زبان فعال`}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={s.subtitle}>
+                  اپ زبان‌آموز با لاگین دارای ۳ زبان «انگلیسی، آلمانی و ترکی استانبولی» است (زبان روسی در نسخهٔ با لاگین وجود ندارد). با خاموش کردن هر زبان یا همهٔ زبان‌ها، تغییر در کمتر از یک ثانیه روی گوشی تمام کاربران لاگین‌کرده اعمال می‌شود.
+                </Text>
+
+                <View style={s.chipsWrap}>
+                  {LOGIN_APP_LANGUAGE_INFO.map(lang => {
+                    const isOn = globalLangPolicy.enabled.includes(lang.id);
+                    return (
+                      <Pressable
+                        key={lang.id}
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => toggleGlobalLanguageItem(lang.id)}
+                        style={[
+                          s.langToggleCard,
+                          isOn ? s.langToggleCardOn : s.langToggleCardOff,
+                          busy && { opacity: 0.5 },
+                        ]}
+                      >
+                        <Text style={{ fontSize: 18 }}>{lang.flag}</Text>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={[s.studentName, { color: isOn ? '#065F46' : '#991B1B' }]}>
+                            {lang.fa}
+                          </Text>
+                          <Text style={[s.small, { color: isOn ? '#047857' : '#B91C1C' }]}>
+                            {isOn ? '● فعال برای کاربران' : '✕ غیرفعال شده'}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Text style={s.label}>پیام نمایشی در صفحهٔ قفل (وقتی همهٔ ۳ زبان غیرفعال می‌شوند)</Text>
+                <TextInput
+                  accessibilityLabel="پیام قفل دسترسی زبان‌ها"
+                  value={globalLockMessage}
+                  onChangeText={setGlobalLockMessage}
+                  maxLength={320}
+                  multiline
+                  numberOfLines={2}
+                  placeholder="متن پیام برای زمانی که همهٔ زبان‌ها غیرفعال هستند…"
+                  placeholderTextColor="#8B9AB0"
+                  style={[s.input, { minHeight: 58, textAlignVertical: 'top' }]}
+                />
+
+                <View style={s.popupActionRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={busy}
+                    onPress={() =>
+                      applyGlobalLanguages(
+                        [],
+                        'هر ۳ زبان به‌صورت سراسری برای تمام کاربران اپ با لاگین غیرفعال شدند.',
+                      )
+                    }
+                    style={[s.deleteBtn, busy && { opacity: 0.45 }]}
+                  >
+                    <ShieldAlert size={15} color="#B42318" />
+                    <Text style={s.deleteText}>غیرفعال کردن همهٔ زبان‌ها (سراسری)</Text>
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={busy}
+                    onPress={() =>
+                      applyGlobalLanguages(
+                        [...LOGIN_APP_LANGUAGE_IDS],
+                        'هر ۳ زبان (انگلیسی، آلمانی و ترکی) به‌صورت سراسری فعال شدند.',
+                      )
+                    }
+                    style={[s.ghostBtn, { backgroundColor: '#ECFDF5' }, busy && { opacity: 0.45 }]}
+                  >
+                    <CircleCheck size={15} color="#047857" />
+                    <Text style={[s.actionText, { color: '#047857' }]}>فعال کردن همهٔ زبان‌ها (سراسری)</Text>
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={busy}
+                    onPress={() =>
+                      applyGlobalLanguages(
+                        globalLangPolicy.enabled,
+                        'پیام و تنظیمات سراسری دسترسی زبان‌ها ذخیره و اعمال شد.',
+                      )
+                    }
+                    style={[s.ghostBtn, busy && { opacity: 0.45 }]}
+                  >
+                    <Send size={14} color="#1769D2" />
+                    <Text style={s.actionText}>ذخیرهٔ پیام توقف</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={s.card}>
+                <View style={s.sectionHead}>
+                  <Text style={s.cardTitle}>
+                    ۲. کنترل اختصاصی زبان‌ها برای هر کاربر ({fa(registeredUsers.length)} کاربر)
+                  </Text>
+                  {langUserSearch ? (
+                    <Pressable accessibilityRole="button" onPress={() => setLangUserSearch('')}>
+                      <Text style={s.inlineLink}>نمایش همهٔ کاربران</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                <Text style={s.subtitle}>
+                  می‌توانید برای هر کاربر لاگین‌کرده به‌طور مستقل یک زبان، دو زبان یا هر ۳ زبان را یک‌جا غیرفعال کنید تا درس‌ها فوراً روی گوشی همان کاربر بسته شوند.
+                </Text>
+
+                <View style={s.toolbar}>
+                  <View style={s.search}>
+                    <Search size={17} color="#8390A1" />
+                    <TextInput
+                      accessibilityLabel="جستجوی کاربر برای کنترل زبان"
+                      placeholder="جستجوی نام یا ایمیل کاربر…"
+                      placeholderTextColor="#8B9AB0"
+                      value={langUserSearch}
+                      onChangeText={setLangUserSearch}
+                      style={s.searchInput}
+                    />
+                  </View>
+                  <View style={s.filters}>
+                    {([
+                      ['all', 'همه'],
+                      ['custom', 'دارای تنظیم اختصاصی'],
+                      ['all_disabled', 'همهٔ زبان‌ها بسته'],
+                    ] as const).map(([fId, fLabel]) => (
+                      <Pressable
+                        key={fId}
+                        accessibilityRole="button"
+                        onPress={() => setLangUserFilter(fId)}
+                        style={[s.filter, langUserFilter === fId && { backgroundColor: '#E2EFFF' }]}
+                      >
+                        <Text style={s.small}>{fLabel}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                {!visibleLangUsers.length ? (
+                  <View style={s.empty}>
+                    <Users size={32} color="#1769D2" />
+                    <Text style={s.cardTitle}>
+                      {registeredUsers.length ? 'کاربری با این فیلتر پیدا نشد' : 'هنوز کاربری در اپ با لاگین ثبت‌نام نکرده است'}
+                    </Text>
+                  </View>
+                ) : (
+                  visibleLangUsers.map((user, idx) => {
+                    const resolved = resolveEffectiveUserLanguages(user.user_id, globalLangPolicy, userLangPolicies);
+                    const allOff = resolved.enabled.length === 0;
+                    return (
+                      <View key={user.user_id} style={s.popupRecordCard}>
+                        <View style={s.sectionHead}>
+                          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8, flex: 1 }}>
+                            <View style={[s.avatar, { backgroundColor: ['#E5F3F0', '#EEF0FF', '#FFF1DC'][idx % 3] }]}>
+                              <Text style={s.avatarText}>{user.full_name.slice(0, 1)}</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={s.studentName}>{user.full_name}</Text>
+                              <Text style={s.emailText}>{user.email}</Text>
+                            </View>
+                          </View>
+                          <Text
+                            style={[
+                              s.badge,
+                              allOff
+                                ? { backgroundColor: '#FEE2E2', color: '#B42318' }
+                                : resolved.customized
+                                  ? { backgroundColor: '#FEF3C7', color: '#92400E' }
+                                  : { backgroundColor: '#ECFDF5', color: '#047857' },
+                            ]}
+                          >
+                            {allOff
+                              ? 'همهٔ زبان‌ها بسته'
+                              : resolved.customized
+                                ? `اختصاصی (${fa(resolved.enabled.length)} زبان)`
+                                : 'پیرو تنظیم سراسری'}
+                          </Text>
+                        </View>
+
+                        <View style={s.popupActionRow}>
+                          {LOGIN_APP_LANGUAGE_INFO.map(lang => {
+                            const on = resolved.enabled.includes(lang.id);
+                            return (
+                              <Pressable
+                                key={lang.id}
+                                accessibilityRole="button"
+                                disabled={busy}
+                                onPress={() => toggleUserLanguageItem(user, lang.id)}
+                                style={[
+                                  s.choiceChip,
+                                  on
+                                    ? { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }
+                                    : { backgroundColor: '#FEE2E2', borderColor: '#FECACA' },
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    s.choiceChipText,
+                                    { color: on ? '#166534' : '#991B1B' },
+                                  ]}
+                                >
+                                  {lang.flag} {lang.fa}: {on ? 'فعال' : 'غیرفعال'}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={busy}
+                            onPress={() => setAllUserLanguages(user, false)}
+                            style={[s.deleteBtn, busy && { opacity: 0.45 }]}
+                          >
+                            <X size={14} color="#B42318" />
+                            <Text style={s.deleteText}>بستن همهٔ زبان‌ها</Text>
+                          </Pressable>
+
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={busy}
+                            onPress={() => setAllUserLanguages(user, true)}
+                            style={[s.ghostBtn, { backgroundColor: '#ECFDF5' }]}
+                          >
+                            <CircleCheck size={14} color="#047857" />
+                            <Text style={[s.actionText, { color: '#047857' }]}>باز کردن همه</Text>
+                          </Pressable>
+
+                          {resolved.customized ? (
+                            <Pressable
+                              accessibilityRole="button"
+                              disabled={busy}
+                              onPress={() => resetUserLanguageToGlobal(user)}
+                              style={s.ghostBtn}
+                            >
+                              <RefreshCw size={13} color="#1769D2" />
+                              <Text style={s.actionText}>بازگشت به سراسری</Text>
+                            </Pressable>
+                          ) : null}
+                        </View>
+                      </View>
+                    );
+                  })
                 )}
               </View>
             </>
@@ -1168,7 +1588,7 @@ function EducationAdmin() {
                     ))}
                   </View>
 
-                  <Text style={s.label}>۲. مخاطب هدف پاپ‌آپ</Text>
+                  <Text style={s.label}>۲. مخاطب هدف پاپ‌آپ (ویژهٔ اپ زبان‌آموز با لاگین)</Text>
                   <View style={s.chipsWrap}>
                     <Pressable
                       accessibilityRole="button"
@@ -1177,7 +1597,7 @@ function EducationAdmin() {
                     >
                       <Globe size={13} color={popupTargetScope === 'all' ? '#FFFFFF' : '#334E68'} />
                       <Text style={[s.choiceChipText, popupTargetScope === 'all' && s.choiceChipTextActive]}>
-                        ارسال همگانی (حتی بدون لاگین)
+                        همهٔ کاربران اپ با لاگین
                       </Text>
                     </Pressable>
                     <Pressable
@@ -1187,32 +1607,12 @@ function EducationAdmin() {
                     >
                       <UserCheck size={13} color={popupTargetScope === 'user' ? '#FFFFFF' : '#334E68'} />
                       <Text style={[s.choiceChipText, popupTargetScope === 'user' && s.choiceChipTextActive]}>
-                        کاربر ثبت‌شدهٔ مشخص
+                        کاربر لاگین‌کردهٔ مشخص
                       </Text>
                     </Pressable>
                   </View>
 
-                  {popupTargetScope === 'all' ? (
-                    <>
-                      <Text style={s.label}>تفکیک نسخهٔ اپ</Text>
-                      <View style={s.chipsWrap}>
-                        {([
-                          ['all', 'هر دو اپ (اصلی + ترکی)'],
-                          ['main', 'فقط اپ اصلی (EN/DE/RU)'],
-                          ['turkish', 'فقط اپ ترکی (EN/DE/TR)'],
-                        ] as const).map(([ed, text]) => (
-                          <Pressable
-                            key={ed}
-                            accessibilityRole="button"
-                            onPress={() => setPopupTargetEdition(ed)}
-                            style={[s.choiceChip, popupTargetEdition === ed && s.choiceChipActive]}
-                          >
-                            <Text style={[s.choiceChipText, popupTargetEdition === ed && s.choiceChipTextActive]}>{text}</Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </>
-                  ) : (
+                  {popupTargetScope === 'user' && (
                     <View style={s.userPickerBox}>
                       <Text style={s.label}>
                         انتخاب کاربر گیرنده {selectedTargetUser ? `(انتخاب‌شده: ${selectedTargetUser.full_name})` : ''}
@@ -1244,7 +1644,7 @@ function EducationAdmin() {
                             );
                           })}
                         {!registeredUsers.length && (
-                          <Text style={s.small}>هنوز هیچ کاربر ثبت‌شده‌ای وجود ندارد؛ برای تست فوری از «ارسال همگانی» استفاده کنید.</Text>
+                          <Text style={s.small}>هنوز هیچ کاربر ثبت‌شده‌ای وجود ندارد؛ برای تست فوری از «همهٔ کاربران اپ با لاگین» استفاده کنید.</Text>
                         )}
                       </ScrollView>
                     </View>
@@ -1510,11 +1910,7 @@ function EducationAdmin() {
                           <Text style={s.badge}>
                             {item.target_scope === 'user'
                               ? `گیرنده: ${targetUser ? `${targetUser.full_name} (${targetUser.email})` : item.target_user_id}`
-                              : item.target_edition === 'main'
-                                ? 'مخاطب: نسخهٔ اصلی (EN/DE/RU)'
-                                : item.target_edition === 'turkish'
-                                  ? 'مخاطب: نسخهٔ ترکی (EN/DE/TR)'
-                                  : 'مخاطب: همهٔ کاربران (اصلی + ترکی)'}
+                              : 'مخاطب: همهٔ کاربران اپ با لاگین'}
                           </Text>
                           <Text style={s.badge}>
                             {item.display_mode === 'persistent_blocking'
@@ -1686,6 +2082,8 @@ function EducationAdmin() {
               {visibleUsers.map((user, index) => {
                 const isBlocked = Boolean(chatBlockedUsers[user.user_id]);
                 const activeRecent = isActiveWithinHours(user.last_seen_at, 24);
+                const resolvedLangs = resolveEffectiveUserLanguages(user.user_id, globalLangPolicy, userLangPolicies);
+                const allLangsDisabled = resolvedLangs.enabled.length === 0;
                 return (
                   <View key={user.user_id} style={s.studentRow}>
                     <View style={[s.avatar, { backgroundColor: ['#E5F3F0', '#EEF0FF', '#FFF1DC'][index % 3] }]}>
@@ -1702,9 +2100,53 @@ function EducationAdmin() {
                       <Text style={s.small}>ثبت‌نام: {formatDateFa(user.registered_at)}</Text>
                       <Text style={s.small}>آخرین فعالیت: {formatDateTimeFa(user.last_seen_at)}</Text>
                     </View>
-                    <Text style={s.badge}>{user.platform || 'نامشخص'} · {user.app_version || '—'}</Text>
+                    <Text
+                      style={[
+                        s.badge,
+                        allLangsDisabled && { backgroundColor: '#FEE2E2', color: '#B42318' },
+                      ]}
+                    >
+                      {allLangsDisabled
+                        ? 'همهٔ زبان‌ها مسدود'
+                        : `زبان‌ها: ${resolvedLangs.enabled.map(id => id.toUpperCase()).join(' · ')}`}
+                    </Text>
 
                     <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 }}>
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => {
+                          setLangUserSearch(user.email);
+                          setTab('languages');
+                        }}
+                        style={s.ghostBtn}
+                      >
+                        <Globe size={14} color="#1769D2" />
+                        <Text style={s.actionText}>زبان‌ها</Text>
+                      </Pressable>
+
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={busy}
+                        onPress={() => setAllUserLanguages(user, allLangsDisabled)}
+                        style={[
+                          s.ghostBtn,
+                          { backgroundColor: allLangsDisabled ? '#ECFDF5' : '#FEE2E2' },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            s.small,
+                            {
+                              color: allLangsDisabled ? '#047857' : '#B42318',
+                              fontFamily: 'Vazir-Bold',
+                            },
+                          ]}
+                        >
+                          {allLangsDisabled ? 'باز کردن زبان‌ها' : 'بستن همهٔ زبان‌ها'}
+                        </Text>
+                      </Pressable>
+
                       <Pressable
                         accessibilityRole="button"
                         disabled={busy}
@@ -2001,9 +2443,9 @@ function EducationAdmin() {
                         <Text style={s.detail}>
                           انگلیسی: {fa(m.lessons)} درس ({fa(m.percent)}٪) · {fa(m.words)} واژه از ۵۰۴ · {fa(m.minutes)} دقیقه · زنجیره {fa(m.streak)} روز
                         </Text>
-                        {(m.germanLessons > 0 || m.russianLessons > 0 || m.turkishLessons > 0 || m.pronunciationCount > 0) && (
+                        {(m.germanLessons > 0 || m.turkishLessons > 0 || m.pronunciationCount > 0) && (
                           <Text style={s.detail}>
-                            سایر زبان‌ها — آلمانی: {fa(m.germanLessons)} درس · روسی: {fa(m.russianLessons)} درس · ترکی: {fa(m.turkishLessons)} درس · تمرین تلفظ: {fa(m.pronunciationCount)} مورد
+                            سایر زبان‌های اپ با لاگین — آلمانی: {fa(m.germanLessons)} درس · ترکی استانبولی: {fa(m.turkishLessons)} درس · تمرین تلفظ: {fa(m.pronunciationCount)} مورد
                           </Text>
                         )}
                       </>
@@ -2108,19 +2550,19 @@ function EducationAdmin() {
             </View>
           )}
 
-          {/* ==================== TAB 7: 4-LANGUAGE CONTENT CATALOG ==================== */}
+          {/* ==================== TAB 8: LOGIN APP 3-LANGUAGE CONTENT CATALOG ==================== */}
           {tab === 'content' && (
             <>
               <View style={s.card}>
                 <View style={s.sectionHead}>
                   <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 7 }}>
                     <Layers size={18} color="#1769D2" />
-                    <Text style={s.cardTitle}>کاتالوگ کامل ۴ زبان پلتفرم Milo</Text>
+                    <Text style={s.cardTitle}>کاتالوگ ۳ زبان اپ زبان‌آموز با لاگین</Text>
                   </View>
-                  <Text style={s.badge}>۴۵۵ درس · ۱۲٬۹۰۵ جمله</Text>
+                  <Text style={s.badge}>۳۳۵ درس · ۹٬۱۰۵ جمله</Text>
                 </View>
                 <Text style={s.subtitle}>
-                  نمای واقعی تمام دوره‌های فعال در نسخهٔ اصلی و نسخهٔ ترکی به همراه امکان معرفی سریع هر دوره با پاپ‌آپ.
+                  اپ زبان‌آموز با لاگین منحصراً شامل ۳ زبان انگلیسی، آلمانی و ترکی استانبولی است (بدون روسی) و از تب «دسترسی زبان‌ها» قابل فعال/غیرفعال‌سازی زنده است.
                 </Text>
 
                 {ALL_COURSES_CATALOG.map(course => (
@@ -2140,7 +2582,7 @@ function EducationAdmin() {
                         setPopupBody(`بیش از ${fa(course.sentences)} جملهٔ کاربردی در ${fa(course.lessons)} درس گام‌به‌گام آمادهٔ تمرین شماست.`);
                         setPopupCtaLabel('ورود به دوره');
                         setPopupCtaUrl(course.route);
-                        setPopupTargetEdition(course.id === 'tr' ? 'turkish' : course.id === 'ru' ? 'main' : 'all');
+                        setPopupTargetEdition('all');
                         setTab('popups');
                         setNotice(`قالب پاپ‌آپ معرفی «${course.title}» در استودیو بارگذاری شد.`);
                       }}
@@ -2316,4 +2758,23 @@ const s = StyleSheet.create({
   telemetryBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingHorizontal: 6 },
   telemetryValue: { fontFamily: 'Vazir-Bold', fontSize: 12, color: '#0F172A' },
   popupActionRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 7 },
+  langToggleCard: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 150,
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  langToggleCardOn: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#6EE7B7',
+  },
+  langToggleCardOff: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
 });

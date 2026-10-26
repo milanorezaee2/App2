@@ -32,6 +32,8 @@ const esbuild = require('esbuild');
         }));
         build.onResolve({ filter: /^@react-native-async-storage\/async-storage$/ }, () => ({ path: 'async-storage', namespace: 'russian-storage-stub' }));
         build.onLoad({ filter: /.*/, namespace: 'russian-storage-stub' }, () => ({ contents: 'export default { async getItem() { return null; }, async setItem() {}, async removeItem() {} };', loader: 'js' }));
+        build.onResolve({ filter: /^expo-constants$/ }, () => ({ path: 'expo-constants', namespace: 'russian-constants-stub' }));
+        build.onLoad({ filter: /.*/, namespace: 'russian-constants-stub' }, () => ({ contents: 'export default { expoConfig: { extra: {} } };', loader: 'js' }));
         build.onResolve({ filter: /^react-native$/ }, () => ({ path: 'react-native', namespace: 'russian-platform-stub' }));
         build.onLoad({ filter: /.*/, namespace: 'russian-platform-stub' }, () => ({ contents: 'export const Platform = { OS: "web" };', loader: 'js' }));
       },

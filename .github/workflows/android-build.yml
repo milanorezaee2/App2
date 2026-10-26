@@ -48,6 +48,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Run TypeScript, SQL RLS, and 4-APK course validations
+        run: |
+          npm run typecheck
+          npm run validate:admin
+          npm run validate:admin-popups
+          npm run validate:turkish
+          node scripts/verify-russian-course.cjs
+
       - name: Configure Expo project id for push notifications
         run: |
           EAS_PROJECT_ID="${EAS_PROJECT_ID:-af0dc4eb-5312-4157-ad1d-e1fd71aba769}"
@@ -112,16 +120,18 @@ jobs:
             "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
           fi
 
-      - name: Generate native Android project
-        run: npx expo prebuild --platform android --no-install
+      - name: Generate native Android project (App 2 — No-Login EN+RU)
+        run: |
+          rm -rf android /tmp/metro-* /tmp/haste-map-* node_modules/.cache
+          EXPO_PUBLIC_APP_EDITION=en_ru npx expo prebuild --platform android --no-install
 
-      - name: Build standalone release APK
+      - name: Build standalone release APK (App 2 — No-Login EN+RU)
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          EXPO_PUBLIC_APP_EDITION=en_ru ./gradlew assembleRelease --no-daemon
 
-      - name: Verify and preserve the learner APK
+      - name: Verify and preserve App 2 (2-MiloNoLogin-EN-RU.apk)
         run: |
           python3 - <<'PY'
           from zipfile import ZipFile
@@ -132,93 +142,72 @@ jobs:
               raise SystemExit('APK structure validation failed.')
           if 'assets/index.android.bundle' not in names:
               raise SystemExit('Standalone JS bundle is missing; refusing to publish an APK that needs Metro.')
-          print('Standalone learner APK verified.')
+          print('App 2 (No-Login EN+RU) APK verified.')
           PY
-          cp android/app/build/outputs/apk/release/app-release.apk MiloMultilang.apk
+          cp android/app/build/outputs/apk/release/app-release.apk 2-MiloNoLogin-EN-RU.apk
 
-      - name: Generate and build the private management APK
+      - name: Generate and build App 1 — Admin APK (1-MiloAdmin.apk)
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
-          rm -rf android
+          rm -rf android /tmp/metro-* /tmp/haste-map-* node_modules/.cache
           MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew
           MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true ./gradlew assembleRelease --no-daemon
           cd ..
-          cp android/app/build/outputs/apk/release/app-release.apk MiloAdmin.apk
+          cp android/app/build/outputs/apk/release/app-release.apk 1-MiloAdmin.apk
           python3 - <<'PY'
           from zipfile import ZipFile
-          with ZipFile('MiloAdmin.apk') as archive:
+          with ZipFile('1-MiloAdmin.apk') as archive:
               names = set(archive.namelist())
           if 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
               raise SystemExit('Management APK structure validation failed.')
-          print('Standalone private management APK verified.')
+          print('App 1 (Admin) APK verified.')
           PY
 
-      - name: Generate and build the learner login APK
+      - name: Generate and build App 3 — No-Login All 4 Languages APK (3-MiloNoLogin-All4.apk)
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
-          rm -rf android
-          EXPO_PUBLIC_LEARNER_LOGIN=true npx expo prebuild --platform android --no-install
+          rm -rf android /tmp/metro-* /tmp/haste-map-* node_modules/.cache
+          EXPO_PUBLIC_APP_EDITION=all_four npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew
-          EXPO_PUBLIC_LEARNER_LOGIN=true ./gradlew assembleRelease --no-daemon
+          EXPO_PUBLIC_APP_EDITION=all_four ./gradlew assembleRelease --no-daemon
           cd ..
-          cp android/app/build/outputs/apk/release/app-release.apk MiloMultilang-Login.apk
+          cp android/app/build/outputs/apk/release/app-release.apk 3-MiloNoLogin-All4.apk
           python3 - <<'PY'
           from zipfile import ZipFile
-          with ZipFile('MiloMultilang-Login.apk') as archive:
-              names = set(archive.namelist())
-          if 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
-              raise SystemExit('Login APK structure validation failed.')
-          print('Learner login APK verified.')
-          PY
-
-      - name: Generate and build the Turkish learner APK
-        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
-        shell: bash
-        run: |
-          rm -rf android
-          EXPO_PUBLIC_TURKISH_EDITION=true npx expo prebuild --platform android --no-install
-          cd android
-          chmod +x gradlew
-          EXPO_PUBLIC_TURKISH_EDITION=true ./gradlew assembleRelease --no-daemon
-          cd ..
-          cp android/app/build/outputs/apk/release/app-release.apk MiloTurkish.apk
-          python3 - <<'PY'
-          from zipfile import ZipFile
-          with ZipFile('MiloTurkish.apk') as archive:
+          with ZipFile('3-MiloNoLogin-All4.apk') as archive:
               names = set(archive.namelist())
           if 'AndroidManifest.xml' not in names or 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
-              raise SystemExit('Turkish APK structure validation failed.')
-          print('Turkish learner APK verified.')
+              raise SystemExit('All-4-languages APK structure validation failed.')
+          print('App 3 (No-Login All 4 Languages) APK verified.')
           PY
 
-      - name: Generate and build the Turkish learner login APK
+      - name: Generate and build App 4 — Login EN+DE+TR APK (4-MiloLogin-EN-DE-TR.apk)
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
-          rm -rf android
-          EXPO_PUBLIC_TURKISH_EDITION=true EXPO_PUBLIC_LEARNER_LOGIN=true npx expo prebuild --platform android --no-install
+          rm -rf android /tmp/metro-* /tmp/haste-map-* node_modules/.cache
+          EXPO_PUBLIC_APP_EDITION=login_en_de_tr EXPO_PUBLIC_LEARNER_LOGIN=true npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew
-          EXPO_PUBLIC_TURKISH_EDITION=true EXPO_PUBLIC_LEARNER_LOGIN=true ./gradlew assembleRelease --no-daemon
+          EXPO_PUBLIC_APP_EDITION=login_en_de_tr EXPO_PUBLIC_LEARNER_LOGIN=true ./gradlew assembleRelease --no-daemon
           cd ..
-          cp android/app/build/outputs/apk/release/app-release.apk MiloTurkish-Login.apk
+          cp android/app/build/outputs/apk/release/app-release.apk 4-MiloLogin-EN-DE-TR.apk
           python3 - <<'PY'
           from zipfile import ZipFile
-          with ZipFile('MiloTurkish-Login.apk') as archive:
+          with ZipFile('4-MiloLogin-EN-DE-TR.apk') as archive:
               names = set(archive.namelist())
           if 'AndroidManifest.xml' not in names or 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
-              raise SystemExit('Turkish login APK structure validation failed.')
-          print('Turkish learner login APK verified.')
+              raise SystemExit('Login EN+DE+TR APK structure validation failed.')
+          print('App 4 (Login EN+DE+TR, no Russian) APK verified.')
           PY
 
-      - name: Smoke-test both APKs on Android emulator
+      - name: Smoke-test all 4 APKs on Android emulator
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
-        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -244,36 +233,36 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
-      - name: Confirm all release APKs are ready
+      - name: Confirm all 4 release APKs are ready
         if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
         run: |
-          test -s MiloMultilang.apk && test -s MiloAdmin.apk
           if [ "${{ env.EXPO_PUBLIC_RUSSIAN_ONLY }}" != "true" ]; then
-            test -s MiloMultilang-Login.apk && test -s MiloTurkish.apk && test -s MiloTurkish-Login.apk
+            test -s 1-MiloAdmin.apk
+            test -s 2-MiloNoLogin-EN-RU.apk
+            test -s 3-MiloNoLogin-All4.apk
+            test -s 4-MiloLogin-EN-DE-TR.apk
           fi
 
-      - name: Publish direct APK downloads
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') }}
+      - name: Publish direct APK downloads (Ordered 1 to 4)
+        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-release]') && env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: milomultilang-android-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          name: "Milo Android Suite #${{ github.run_number }} (Admin Live Popups + Main + Turkish)"
+          name: "Milo Android Suite #${{ github.run_number }} (Ordered 4-APK Release)"
           body: |
-            مجموعهٔ کامل فایل‌های نصبی اندروید (امضاشده و مستقل بدون نیاز به سرور Metro):
+            مجموعهٔ رسمی و مرتب‌شدهٔ ۴ فایل نصبی اندروید (امضاشده و تست‌شده روی شبیه‌ساز اندروید):
 
-            - **MiloAdmin.apk** — پنل مدیریت ۱۰۰٪ واقعی + ارسال آنی پاپ‌آپ زنده (`com.devicecontrol.miloadmin`)
-            - **MiloMultilang.apk** — اپ اصلی زبان‌آموز بدون صفحهٔ ورود: انگلیسی، آلمانی، روسی (`com.devicecontrol.mml`)
-            - **MiloMultilang-Login.apk** — اپ اصلی زبان‌آموز با ثبت‌نام و ورود ابری (`com.devicecontrol.milomultilang`)
-            - **MiloTurkish.apk** — اپ نسخهٔ ترکی بدون صفحهٔ ورود: انگلیسی، آلمانی، ترکی استانبولی (`com.devicecontrol.miloturkish`)
-            - **MiloTurkish-Login.apk** — اپ نسخهٔ ترکی با ثبت‌نام و ورود ابری (`com.devicecontrol.miloturkishlogin`)
+            1. **1-MiloAdmin.apk** — اپ ادمین: مدیریت اختصاصی اپ با لاگین، فعال/غیرفعال‌سازی تک‌تک یا همهٔ زبان‌ها، ارسال پاپ‌آپ زنده (`com.devicecontrol.miloadmin`)
+            2. **2-MiloNoLogin-EN-RU.apk** — اپ زبان‌آموز بدون لاگین: فقط انگلیسی و روسی (`com.devicecontrol.mml`)
+            3. **3-MiloNoLogin-All4.apk** — اپ زبان‌آموز بدون لاگین: انگلیسی، آلمانی، روسی و ترکی استانبولی (`com.devicecontrol.miloall`)
+            4. **4-MiloLogin-EN-DE-TR.apk** — اپ زبان‌آموز با لاگین: انگلیسی، آلمانی و ترکی استانبولی — بدون روسی (`com.devicecontrol.milomultilang`)
           prerelease: true
           files: |
-            MiloAdmin.apk
-            MiloMultilang.apk
-            MiloMultilang-Login.apk
-            MiloTurkish.apk
-            MiloTurkish-Login.apk
+            1-MiloAdmin.apk
+            2-MiloNoLogin-EN-RU.apk
+            3-MiloNoLogin-All4.apk
+            4-MiloLogin-EN-DE-TR.apk
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -281,7 +270,7 @@ jobs:
       - name: Name and publish the Russian-only APK
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY == 'true' }}
         run: |
-          cp MiloMultilang.apk MiloRussian.apk
+          cp 2-MiloNoLogin-EN-RU.apk MiloRussian.apk
           test -s MiloRussian.apk
 
       - name: Publish Russian-only APK release
@@ -313,10 +302,9 @@ jobs:
         with:
           name: Milo-android-apks
           path: |
-            MiloAdmin.apk
-            MiloMultilang.apk
-            MiloMultilang-Login.apk
-            MiloTurkish.apk
-            MiloTurkish-Login.apk
+            1-MiloAdmin.apk
+            2-MiloNoLogin-EN-RU.apk
+            3-MiloNoLogin-All4.apk
+            4-MiloLogin-EN-DE-TR.apk
           if-no-files-found: error
           retention-days: 7

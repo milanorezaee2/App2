@@ -26,10 +26,10 @@ import Target from 'lucide-react-native/dist/esm/icons/target';
 import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 // Lightweight metadata only: the home screen must not pull the multi-MB
 // lesson arrays into the startup path (see lib/languages/catalogMeta.ts).
-import { LANGUAGES, TOTAL_LESSON_COUNT, TOTAL_SENTENCE_COUNT } from '@/lib/languages/catalogMeta';
+import { useLearnerLanguageAccess } from '@/components/LearnerLanguageAccess';
 import { ensureSupportConversation } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
-import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
+import { FEATURES } from '@/lib/features';
 import { LuxuryPalette, LuxuryShadows } from '@/components/luxuryTheme';
 import { toPersianDigits as fa } from '@/lib/format';
 import { LtrDirection, Typography } from '@/lib/theme';
@@ -73,17 +73,24 @@ const learningSteps = [
   { icon: Target, number: '۰۳', title: 'به‌خاطر بسپار', detail: 'با مرور هوشمند تثبیت کن' },
 ] as const;
 
-const buildLearningStats = (languageCount: number) => [
+const buildLearningStats = (lessonCount: number, sentenceCount: number, languageCount: number) => [
   {
-    value: fa(TOTAL_LESSON_COUNT),
+    value: fa(lessonCount),
     label: 'درس گام‌به‌گام',
   },
   {
-    value: fa(TOTAL_SENTENCE_COUNT),
+    value: fa(sentenceCount),
     label: 'جملهٔ کاربردی',
   },
   { value: `${fa(languageCount)} زبان`, label: 'مسیر یکپارچه' },
 ];
+
+function resolveStatsLeadTitle(languageCount: number): string {
+  if (languageCount >= 4) return 'یک ساختار یکپارچه برای هر چهار زبان';
+  if (languageCount === 3) return 'یک ساختار یکپارچه برای هر سه زبان';
+  if (languageCount === 2) return 'یک ساختار یکپارچه برای هر دو زبان';
+  return 'ساختار یکپارچه و گام‌به‌گام یادگیری';
+}
 
 const productFeatures = [
   {
@@ -134,18 +141,24 @@ export default function LanguagesHome() {
   useEffect(() => setReady(true), []);
   const compact = !ready || width < 720;
   const tiny = !ready || width < 390;
-  const languages = LANGUAGES.filter(language =>
-    language.id === 'ru'
-      ? FEATURES.russianCourse
-      : language.id === 'tr'
-        ? FEATURES.turkishCourse
-        : !RUSSIAN_ONLY_BUILD,
-  );
-  const learningStats = buildLearningStats(languages.length);
-  const languageNamesFa = languages
-    .map(language => languageMeta[language.id as keyof typeof languageMeta]?.persianName ?? language.name)
-    .join('، ')
-    .replace(/، ([^،]*)$/, ' و $1');
+  const {
+    allowedLanguages: languages,
+    allDisabledByAdmin,
+    disabledMessage,
+    loadingAccess,
+    refreshAccess,
+  } = useLearnerLanguageAccess();
+  const totalLessons = languages.reduce((sum, language) => sum + language.lessonsCount, 0);
+  const totalSentences = languages.reduce((sum, language) => sum + language.sentencesCount, 0);
+  const learningStats = buildLearningStats(totalLessons, totalSentences, languages.length);
+  const statsLeadTitle = resolveStatsLeadTitle(languages.length);
+  const languageNamesFa = languages.length > 0
+    ? languages
+        .map(language => languageMeta[language.id as keyof typeof languageMeta]?.persianName ?? language.name)
+        .join('، ')
+        .replace(/، ([^،]*)$/, ' و $1')
+    : '';
+  const fourGridCompact = compact && languages.length >= 4;
 
   return (
     <View style={styles.root}>
@@ -156,15 +169,17 @@ export default function LanguagesHome() {
               <MiloLogoMotion size="header" play={false} />
             </View>
             <View style={styles.headerActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="گفتگو با پشتیبانی"
-                disabled={openingSupport}
-                style={({ pressed }) => [styles.actionIconBtn, pressed && styles.pressed]}
-                onPress={openSupport}
-              >
-                <LifeBuoy size={17} color={LuxuryPalette.primary} />
-              </Pressable>
+              {FEATURES.learnerLogin ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="گفتگو با پشتیبانی"
+                  disabled={openingSupport}
+                  style={({ pressed }) => [styles.actionIconBtn, pressed && styles.pressed]}
+                  onPress={openSupport}
+                >
+                  <LifeBuoy size={17} color={LuxuryPalette.primary} />
+                </Pressable>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="تنظیم قفل برنامه"
@@ -174,8 +189,10 @@ export default function LanguagesHome() {
                 <LockKeyhole size={17} color={LuxuryPalette.primary} />
               </Pressable>
               <View style={styles.statusPill}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>آمادهٔ یادگیری</Text>
+                <View style={[styles.statusDot, allDisabledByAdmin && { backgroundColor: '#DC2626' }]} />
+                <Text style={styles.statusText}>
+                  {allDisabledByAdmin ? 'محدودشده توسط مدیر' : 'آمادهٔ یادگیری'}
+                </Text>
               </View>
             </View>
           </View>
@@ -212,7 +229,9 @@ export default function LanguagesHome() {
                   با جمله‌های واقعی،{`\n`}روان‌تر حرف بزن
                 </Text>
                 <Text style={styles.heroDescription}>
-                  {languageNamesFa} را با تمرین‌های کوتاه و هدفمند یاد بگیر.
+                  {allDisabledByAdmin
+                    ? 'دسترسی به زبان‌های آموزشی این حساب توسط مدیریت غیرفعال شده است.'
+                    : `${languageNamesFa} را با تمرین‌های کوتاه و هدفمند یاد بگیر.`}
                 </Text>
                 <Pressable
                   accessibilityRole="button"
@@ -220,7 +239,9 @@ export default function LanguagesHome() {
                   onPress={() => scrollRef.current?.scrollTo({ y: languageSectionY.current, animated: true })}
                   style={({ pressed }) => [styles.heroCta, compact && styles.heroCtaCompact, pressed && styles.pressed]}
                 >
-                  <Text style={styles.heroCtaText}>شروع مسیر یادگیری</Text>
+                  <Text style={styles.heroCtaText}>
+                    {allDisabledByAdmin ? 'مشاهدهٔ وضعیت دسترسی' : 'شروع مسیر یادگیری'}
+                  </Text>
                   <ArrowLeft size={16} color="#F5D993" strokeWidth={2.7} />
                 </Pressable>
               </View>
@@ -234,113 +255,172 @@ export default function LanguagesHome() {
           >
             <View style={styles.sectionHeaderRow}>
               <View style={styles.sectionHeaderCopy}>
-                <Text style={styles.sectionEyebrow}>انتخاب مسیر یادگیری</Text>
-                <Text style={styles.sectionTitle}>می‌خواهی کدام زبان را تمرین کنی؟</Text>
+                <Text style={styles.sectionEyebrow}>
+                  {allDisabledByAdmin ? 'وضعیت حساب آموزشی' : 'انتخاب مسیر یادگیری'}
+                </Text>
+                <Text style={styles.sectionTitle}>
+                  {allDisabledByAdmin
+                    ? 'دسترسی دوره‌های آموزشی متوقف شده است'
+                    : 'می‌خواهی کدام زبان را تمرین کنی؟'}
+                </Text>
               </View>
             </View>
 
-            <View style={[styles.languageGrid, compact && styles.languageGridCompact]}>
-              {languages.map(language => {
-                const meta = languageMeta[language.id as keyof typeof languageMeta];
-                return compact ? (
-                  <Pressable
-                    key={language.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`ورود به زبان ${language.name}، ${fa(language.lessonsCount)} درس`}
-                    onPress={() => router.push(language.home as never)}
-                    style={({ pressed }) => [styles.languageRowCard, styles.languageRowCardCompact, pressed && styles.pressed]}
-                  >
-                    <View style={styles.languageCompactTop}>
-                      <LinearGradient
-                        colors={meta.badgeColors}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.monogramWrapCompact}
-                      >
-                        <Text style={styles.monogramCode}>{meta.code}</Text>
-                      </LinearGradient>
-                      <Text style={styles.flagCompact}>{meta.flag}</Text>
-                    </View>
-
-                    <View style={styles.languageIdentityCompact}>
-                      <Text style={styles.languagePersianNameCompact} numberOfLines={1}>{meta.persianName}</Text>
-                      <Text style={styles.languageNativeNameCompact} numberOfLines={1}>{meta.nativeName}</Text>
-                      <Text style={styles.languageLessonCompact} numberOfLines={2}>{fa(language.lessonsCount)} درس جمله‌محور</Text>
-                    </View>
-
-                    <View style={styles.languageArrowCompact}>
-                      <Text style={styles.enterText}>ورود</Text>
-                      <ArrowLeft size={13} color="#FFFFFF" strokeWidth={2.5} />
-                    </View>
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    key={language.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`ورود به زبان ${language.name}`}
-                    onPress={() => router.push(language.home as never)}
-                    style={({ pressed }) => [
-                      styles.languageCard,
-                      styles.languageCardDesktop,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <View style={styles.languageCardTop}>
-                      <LinearGradient
-                        colors={meta.badgeColors}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.monogramWrap}
-                      >
-                        <Text style={styles.monogramCode}>{meta.code}</Text>
-                      </LinearGradient>
-
-                      <View style={styles.languageIdentity}>
-                        <View style={styles.languageNameRow}>
-                          <Text style={styles.languagePersianName}>{meta.persianName}</Text>
-                          <Text style={styles.flag}>{meta.flag}</Text>
-                        </View>
-                        <Text style={styles.languageNativeName}>{meta.nativeName}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.languageCardFooter}>
-                      <View style={styles.lessonCountBadge}>
-                        <Text style={styles.languageLessonCount}>{fa(language.lessonsCount)} درس جمله‌محور</Text>
-                      </View>
-                      <View style={styles.languageArrow}>
-                        <Text style={styles.enterText}>ورود</Text>
-                        <ArrowLeft size={14} color="#FFFFFF" strokeWidth={2.5} />
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={[styles.statsStrip, compact && styles.statsStripCompact]}>
-            <View style={[styles.statsLead, !compact && styles.statsLeadDesktop]}>
-              <View style={styles.statsLeadIcon}>
-                <BarChart3 size={18} color={LuxuryPalette.primary} />
-              </View>
-              <View style={styles.statsLeadCopy}>
-                <Text style={styles.statsLeadTitle}>یک ساختار یکپارچه برای هر سه زبان</Text>
-                <Text style={styles.statsLeadDetail}>درس، کتابخانه، تلفظ و مرور فاصله‌دار هماهنگ</Text>
-              </View>
-            </View>
-            <View style={[styles.statsValues, !compact ? styles.statsValuesDesktop : styles.statsValuesCompact]}>
-              {learningStats.map((item, index) => (
-                <View key={item.label} style={styles.statItem}>
-                  <Text style={styles.statValue}>{item.value}</Text>
-                  <Text style={styles.statLabel} numberOfLines={1}>
-                    {item.label}
-                  </Text>
-                  {index < learningStats.length - 1 ? <View style={styles.statDivider} /> : null}
+            {allDisabledByAdmin ? (
+              <View style={styles.adminLockedCard}>
+                <View style={styles.adminLockedIconWrap}>
+                  <LockKeyhole size={26} color="#B42318" />
                 </View>
-              ))}
-            </View>
+                <Text style={styles.adminLockedTitle}>
+                  دسترسی به دوره‌های آموزشی توسط مدیریت غیرفعال شده است
+                </Text>
+                <Text style={styles.adminLockedDesc}>
+                  {disabledMessage}
+                </Text>
+                <View style={styles.adminLockedActions}>
+                  {FEATURES.learnerLogin ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={openingSupport}
+                      onPress={openSupport}
+                      style={({ pressed }) => [styles.adminLockedPrimaryBtn, pressed && styles.pressed]}
+                    >
+                      <LifeBuoy size={16} color="#FFFFFF" />
+                      <Text style={styles.adminLockedPrimaryText}>
+                        {openingSupport ? 'در حال باز کردن...' : 'گفتگو با پشتیبانی Milo'}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={loadingAccess}
+                    onPress={() => { void refreshAccess(); }}
+                    style={({ pressed }) => [styles.adminLockedSecondaryBtn, pressed && styles.pressed]}
+                  >
+                    <RefreshCw size={15} color={LuxuryPalette.primary} />
+                    <Text style={styles.adminLockedSecondaryText}>
+                      {loadingAccess ? 'در حال بررسی...' : 'بررسی مجدد دسترسی'}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <View
+                style={[
+                  styles.languageGrid,
+                  compact && styles.languageGridCompact,
+                  fourGridCompact && styles.languageGridCompactFour,
+                ]}
+              >
+                {languages.map(language => {
+                  const meta = languageMeta[language.id as keyof typeof languageMeta];
+                  return compact ? (
+                    <Pressable
+                      key={language.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`ورود به زبان ${language.name}، ${fa(language.lessonsCount)} درس`}
+                      onPress={() => router.push(language.home as never)}
+                      style={({ pressed }) => [
+                        styles.languageRowCard,
+                        styles.languageRowCardCompact,
+                        fourGridCompact && styles.languageRowCardCompactFour,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View style={styles.languageCompactTop}>
+                        <LinearGradient
+                          colors={meta.badgeColors}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.monogramWrapCompact}
+                        >
+                          <Text style={styles.monogramCode}>{meta.code}</Text>
+                        </LinearGradient>
+                        <Text style={styles.flagCompact}>{meta.flag}</Text>
+                      </View>
+
+                      <View style={styles.languageIdentityCompact}>
+                        <Text style={styles.languagePersianNameCompact} numberOfLines={1}>{meta.persianName}</Text>
+                        <Text style={styles.languageNativeNameCompact} numberOfLines={1}>{meta.nativeName}</Text>
+                        <Text style={styles.languageLessonCompact} numberOfLines={2}>{fa(language.lessonsCount)} درس جمله‌محور</Text>
+                      </View>
+
+                      <View style={styles.languageArrowCompact}>
+                        <Text style={styles.enterText}>ورود</Text>
+                        <ArrowLeft size={13} color="#FFFFFF" strokeWidth={2.5} />
+                      </View>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      key={language.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={`ورود به زبان ${language.name}`}
+                      onPress={() => router.push(language.home as never)}
+                      style={({ pressed }) => [
+                        styles.languageCard,
+                        styles.languageCardDesktop,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View style={styles.languageCardTop}>
+                        <LinearGradient
+                          colors={meta.badgeColors}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.monogramWrap}
+                        >
+                          <Text style={styles.monogramCode}>{meta.code}</Text>
+                        </LinearGradient>
+
+                        <View style={styles.languageIdentity}>
+                          <View style={styles.languageNameRow}>
+                            <Text style={styles.languagePersianName}>{meta.persianName}</Text>
+                            <Text style={styles.flag}>{meta.flag}</Text>
+                          </View>
+                          <Text style={styles.languageNativeName}>{meta.nativeName}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.languageCardFooter}>
+                        <View style={styles.lessonCountBadge}>
+                          <Text style={styles.languageLessonCount}>{fa(language.lessonsCount)} درس جمله‌محور</Text>
+                        </View>
+                        <View style={styles.languageArrow}>
+                          <Text style={styles.enterText}>ورود</Text>
+                          <ArrowLeft size={14} color="#FFFFFF" strokeWidth={2.5} />
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
+
+          {languages.length > 0 ? (
+            <View style={[styles.statsStrip, compact && styles.statsStripCompact]}>
+              <View style={[styles.statsLead, !compact && styles.statsLeadDesktop]}>
+                <View style={styles.statsLeadIcon}>
+                  <BarChart3 size={18} color={LuxuryPalette.primary} />
+                </View>
+                <View style={styles.statsLeadCopy}>
+                  <Text style={styles.statsLeadTitle}>{statsLeadTitle}</Text>
+                  <Text style={styles.statsLeadDetail}>درس، کتابخانه، تلفظ و مرور فاصله‌دار هماهنگ</Text>
+                </View>
+              </View>
+              <View style={[styles.statsValues, !compact ? styles.statsValuesDesktop : styles.statsValuesCompact]}>
+                {learningStats.map((item, index) => (
+                  <View key={item.label} style={styles.statItem}>
+                    <Text style={styles.statValue}>{item.value}</Text>
+                    <Text style={styles.statLabel} numberOfLines={1}>
+                      {item.label}
+                    </Text>
+                    {index < learningStats.length - 1 ? <View style={styles.statDivider} /> : null}
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           <View style={styles.flowCard}>
             <View style={styles.flowHeader}>
@@ -674,6 +754,10 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     gap: 8,
   },
+  languageGridCompactFour: {
+    flexWrap: 'wrap',
+    gap: 10,
+  },
   languageRowCard: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -698,6 +782,97 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingHorizontal: 8,
     paddingVertical: 10,
+  },
+  languageRowCardCompactFour: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    maxWidth: '49%',
+    minHeight: 152,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  adminLockedCard: {
+    width: '100%',
+    borderRadius: 22,
+    padding: 22,
+    gap: 12,
+    alignItems: 'center',
+    backgroundColor: '#FFFBFB',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    ...LuxuryShadows.card,
+  },
+  adminLockedIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adminLockedTitle: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: '#991B1B',
+    fontSize: 16.5,
+    lineHeight: 26,
+    fontWeight: '900',
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  adminLockedDesc: {
+    width: '100%',
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.inkSoft,
+    fontSize: 13,
+    lineHeight: 22,
+    fontWeight: '500',
+    textAlign: 'center',
+    writingDirection: 'rtl',
+  },
+  adminLockedActions: {
+    width: '100%',
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 4,
+  },
+  adminLockedPrimaryBtn: {
+    minHeight: 44,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+    borderRadius: 13,
+    backgroundColor: LuxuryPalette.primary,
+  },
+  adminLockedPrimaryText: {
+    fontFamily: Typography.fontFamily,
+    color: '#FFFFFF',
+    fontSize: 12.5,
+    fontWeight: '800',
+    writingDirection: 'rtl',
+  },
+  adminLockedSecondaryBtn: {
+    minHeight: 44,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingHorizontal: 16,
+    borderRadius: 13,
+    backgroundColor: LuxuryPalette.primarySoft,
+    borderWidth: 1,
+    borderColor: '#C9DFFF',
+  },
+  adminLockedSecondaryText: {
+    fontFamily: Typography.fontFamily,
+    color: LuxuryPalette.primaryDeep,
+    fontSize: 12.5,
+    fontWeight: '800',
+    writingDirection: 'rtl',
   },
   languageCompactTop: {
     width: '100%',

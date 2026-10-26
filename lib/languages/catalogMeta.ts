@@ -1,5 +1,5 @@
 import type { LanguageDefinition, LanguageId } from './types';
-import { TURKISH_EDITION } from '../features';
+import { FEATURES } from '../features';
 
 /**
  * Lightweight language catalog — zero course-data imports.
@@ -14,7 +14,7 @@ export interface LanguageMeta extends LanguageDefinition {
   sentencesCount: number;
 }
 
-const ALL_LANGUAGE_META: readonly LanguageMeta[] = [
+export const ALL_LANGUAGE_META: readonly LanguageMeta[] = [
   {
     id: 'en',
     name: 'انگلیسی',
@@ -65,15 +65,35 @@ const ALL_LANGUAGE_META: readonly LanguageMeta[] = [
   },
 ];
 
+/** The 3 courses available in the With-Login Learner App (managed by Admin). */
+export const LOGIN_APP_LANGUAGE_META: readonly LanguageMeta[] = ALL_LANGUAGE_META.filter(
+  language => language.id !== 'ru',
+);
+
+export function isBuildLanguageEnabled(id: LanguageId | string): boolean {
+  switch (id) {
+    case 'en':
+      return FEATURES.englishCourse;
+    case 'de':
+      return FEATURES.germanCourse;
+    case 'ru':
+      return FEATURES.russianCourse;
+    case 'tr':
+      return FEATURES.turkishCourse;
+    default:
+      return false;
+  }
+}
+
 /**
- * Two editions, one code base:
- *  - default edition → English, German, Russian
- *  - Turkish edition (`EXPO_PUBLIC_TURKISH_EDITION=true`) → English, German, Turkish
- * The Russian card disappears from the Turkish edition, and the Turkish card is
- * not advertised in the original edition, so the two versions stay distinct.
+ * Build-filtered language catalog:
+ *  - App #2 (`en_ru`, no login)        → English, Russian
+ *  - App #3 (`all_four`, no login)     → English, German, Russian, Turkish
+ *  - App #4 (`login_en_de_tr`, login)  → English, German, Turkish (NEVER Russian)
+ *  - Plain Node default (unit tests)   → English, German, Russian
  */
 export const LANGUAGE_META: readonly LanguageMeta[] = ALL_LANGUAGE_META.filter(
-  language => (TURKISH_EDITION ? language.id !== 'ru' : language.id !== 'tr'),
+  language => isBuildLanguageEnabled(language.id),
 );
 
 /** Same shape as the old `LANGUAGES` export, without the extra count field. */

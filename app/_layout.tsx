@@ -18,6 +18,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLockGate } from '@/components/AppLockGate';
 import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
+import { LearnerLanguageAccessProvider } from '@/components/LearnerLanguageAccess';
 import { LearnerPopupBridge } from '@/components/LearnerPopupBridge';
 import { RegistrationGate } from '@/components/RegistrationGate';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
@@ -25,7 +26,7 @@ import { isSupabaseConfigured } from '@/lib/pairing';
 import { RtlDirection } from '@/lib/theme';
 import { useRealAgent } from '@/lib/useRealAgent';
 import { warmSpeech } from '@/lib/responsiveSpeech';
-import { RUSSIAN_ONLY_BUILD, TURKISH_EDITION } from '@/lib/features';
+import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
 
 // Android native mirroring is disabled in withStableLayoutDirection. Persian
 // and course-language direction are applied explicitly, independent of device locale.
@@ -121,11 +122,9 @@ export default function RootLayout() {
   const handleNavigatorMounted = useCallback(() => setNavigatorMounted(true), []);
   const homeRoute = IS_ADMIN_APP
     ? '/admin'
-    : TURKISH_EDITION
-      ? '/learn/tr'
-      : RUSSIAN_ONLY_BUILD
-        ? '/learn/ru'
-        : '/languages';
+    : RUSSIAN_ONLY_BUILD
+      ? '/learn/ru'
+      : '/languages';
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
@@ -182,8 +181,8 @@ export default function RootLayout() {
     } catch {
       // A device without playback support still opens the learner home.
     }
-    warmSpeech('en-US');
-    setTimeout(() => warmSpeech('de-DE'), 350);
+    if (FEATURES.englishCourse) warmSpeech('en-US');
+    if (FEATURES.germanCourse) setTimeout(() => warmSpeech('de-DE'), 350);
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
@@ -253,19 +252,21 @@ export default function RootLayout() {
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <AppLockGate>
             <RegistrationGate>
-              {!IS_ADMIN_APP && <RuntimeGate />}
-              <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-                <Stack.Screen name="index" />
-                <Stack.Screen name="admin/index" />
-                <Stack.Screen name="agent" />
-                <Stack.Screen name="permissions" />
-                <Stack.Screen name="app-lock" />
-                <Stack.Screen name="lang/index" />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-              <NavigatorMountProbe onMounted={handleNavigatorMounted} />
-              <ChatNotificationBridge />
-              {!IS_ADMIN_APP && <LearnerPopupBridge />}
+              <LearnerLanguageAccessProvider>
+                {!IS_ADMIN_APP && <RuntimeGate />}
+                <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="admin/index" />
+                  <Stack.Screen name="agent" />
+                  <Stack.Screen name="permissions" />
+                  <Stack.Screen name="app-lock" />
+                  <Stack.Screen name="lang" />
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+                <NavigatorMountProbe onMounted={handleNavigatorMounted} />
+                {(IS_ADMIN_APP || FEATURES.learnerLogin) && <ChatNotificationBridge />}
+                {!IS_ADMIN_APP && FEATURES.learnerLogin && <LearnerPopupBridge />}
+              </LearnerLanguageAccessProvider>
             </RegistrationGate>
           </AppLockGate>
           <StatusBar style="dark" />

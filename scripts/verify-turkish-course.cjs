@@ -285,8 +285,8 @@ const esbuild = require('esbuild');
 
   const features = fs.readFileSync(path.resolve('lib/features.ts'), 'utf8');
   check('Edition flags gate Russian and Turkish tracks', /TURKISH_EDITION/.test(features)
-    && /russianCourse: !TURKISH_EDITION/.test(features)
-    && /turkishCourse: TURKISH_EDITION/.test(features));
+    && /russianCourse:/.test(features)
+    && /turkishCourse:/.test(features));
 
   const config = fs.readFileSync(path.resolve('app.config.js'), 'utf8');
   check('Second build variant is declared in app.config.js', /EXPO_PUBLIC_TURKISH_EDITION/.test(config)

@@ -22,6 +22,7 @@ import {
   type RealContact,
 } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
+import { FEATURES } from '@/lib/features';
 import { isSupabaseConfigured } from '@/lib/pairing';
 import { SupabaseSetupNotice } from '@/components/SupabaseSetupNotice';
 import { Typography } from '@/lib/theme';
@@ -123,7 +124,7 @@ export default function ConversationsHome() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          {configured && (
+          {configured && FEATURES.learnerLogin && (
             <Pressable
               accessibilityRole="button"
               style={({ pressed }) => [styles.supportBanner, pressed && styles.pressed]}

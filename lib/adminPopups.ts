@@ -5,7 +5,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { adminClient } from './educationAdmin';
 import { isSupabaseConfigured } from './pairing';
-import { TURKISH_EDITION } from './features';
+import { FEATURES, TURKISH_EDITION } from './features';
 
 export type PopupVariant = 'info' | 'celebration' | 'warning' | 'update';
 export type PopupDisplayMode = 'once' | 'every_launch' | 'persistent_blocking';
@@ -64,6 +64,7 @@ export interface AdminPopupDraft {
 }
 
 export const POPUP_LIVE_CHANNEL = 'milo-admin-popups-live';
+export const SYSTEM_LANGUAGE_POLICY_BADGE = '__MILO_LANG_ACCESS_V1__';
 const POPUP_CLIENT_ID_KEY = 'milo_popup_client_id_v1';
 const SEEN_POPUPS_STORAGE_KEY = 'milo_seen_popups_v1';
 
@@ -71,8 +72,7 @@ export const INTERNAL_POPUP_ROUTES: ReadonlyArray<{ label: string; route: string
   { label: 'فهرست زبان‌ها', route: '/languages' },
   { label: 'دوره انگلیسی', route: '/lang' },
   { label: 'دوره آلمانی', route: '/learn/de' },
-  { label: 'دوره روسی', route: '/learn/ru', edition: 'main' },
-  { label: 'دوره ترکی استانبولی', route: '/learn/tr', edition: 'turkish' },
+  { label: 'دوره ترکی استانبولی', route: '/learn/tr' },
   { label: 'تعیین سطح هوشمند', route: '/placement' },
   { label: 'مرور فاصله‌دار', route: '/review' },
   { label: 'گفتگوها و پشتیبانی', route: '/conversations' },
@@ -240,9 +240,9 @@ function sortPopupsForLearner(popups: AdminPopup[]): AdminPopup[] {
   });
 }
 
-/** Fetches active, eligible popups for the current learner app & edition. */
+/** Fetches active, eligible popups strictly for the With-Login learner app. */
 export async function fetchEligibleLearnerPopups(): Promise<AdminPopup[]> {
-  if (!isInteractiveRuntime() || !isSupabaseConfigured()) return [];
+  if (!FEATURES.learnerLogin || !isInteractiveRuntime() || !isSupabaseConfigured()) return [];
   const edition = currentLearnerEdition();
   let currentUserId: string | null = null;
   try {
@@ -251,6 +251,8 @@ export async function fetchEligibleLearnerPopups(): Promise<AdminPopup[]> {
   } catch {
     currentUserId = null;
   }
+  // Admin features apply strictly to authenticated users of the With-Login app.
+  if (!currentUserId) return [];
 
   const { data, error } = await supabase
     .from('admin_popups')
@@ -258,7 +260,7 @@ export async function fetchEligibleLearnerPopups(): Promise<AdminPopup[]> {
     .eq('is_active', true)
     .order('priority', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(25);
+    .limit(40);
 
   if (error) {
     if (isMissingPopupSchema(error)) return [];
@@ -270,9 +272,10 @@ export async function fetchEligibleLearnerPopups(): Promise<AdminPopup[]> {
   const eligible = (data || [])
     .map(row => normalizePopupRow(row as Record<string, unknown>))
     .filter(popup => {
+      if (popup.badge_text === SYSTEM_LANGUAGE_POLICY_BADGE) return false;
       if (!popup.id || !isPopupCurrentlyInWindow(popup, nowMs)) return false;
       if (popup.target_edition !== 'all' && popup.target_edition !== edition) return false;
-      if (popup.target_scope === 'user' && (!currentUserId || popup.target_user_id !== currentUserId)) return false;
+      if (popup.target_scope === 'user' && popup.target_user_id !== currentUserId) return false;
       const token = popupSeenToken(popup);
       if (popup.display_mode === 'once' && (seenOnce.has(token) || sessionDismissedKeys.has(token))) return false;
       if (popup.display_mode === 'every_launch' && sessionDismissedKeys.has(token)) return false;
@@ -429,7 +432,7 @@ export function validateAdminPopupDraft(draft: AdminPopupDraft): {
   }
 
   const badgeText = draft.badge_text?.trim() || null;
-  if (badgeText && badgeText.length > 40) {
+  if (badgeText && (badgeText.length > 40 || badgeText === SYSTEM_LANGUAGE_POLICY_BADGE)) {
     throw new Error('POPUP_BADGE_INVALID');
   }
 
@@ -509,7 +512,9 @@ export async function loadAdminPopupsWithStats(): Promise<{
     throw error;
   }
   const popups = Array.isArray(data)
-    ? data.map(row => normalizePopupStatsRow(row as Record<string, unknown>))
+    ? data
+        .map(row => normalizePopupStatsRow(row as Record<string, unknown>))
+        .filter(row => row.badge_text !== SYSTEM_LANGUAGE_POLICY_BADGE)
     : [];
   return { popups, schemaMissing: false };
 }
