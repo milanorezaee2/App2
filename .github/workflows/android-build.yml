@@ -135,6 +135,16 @@ jobs:
       - name: Verify and preserve App 2 (2-MiloNoLogin-EN-RU.apk)
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk 2-MiloNoLogin-EN-RU.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" sign \
+            --ks android/app/debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --ks-key-alias androiddebugkey \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            2-MiloNoLogin-EN-RU.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose 2-MiloNoLogin-EN-RU.apk
           python3 - <<'PY'
           import json
           from zipfile import ZipFile
@@ -145,8 +155,6 @@ jobs:
               raise SystemExit('APK structure validation failed.')
           if 'assets/index.android.bundle' not in names:
               raise SystemExit('Standalone JS bundle is missing; refusing to publish an APK that needs Metro.')
-          if not any(name.startswith('META-INF/') and name.endswith(('.RSA', '.DSA', '.EC')) for name in names):
-              raise SystemExit('APK v1 signature certificate is missing.')
           extra = cfg.get('extra') or {}
           assert cfg.get('android', {}).get('package') == 'com.devicecontrol.mml.v2', cfg
           assert int(cfg.get('android', {}).get('versionCode', 0)) >= 200, cfg
@@ -168,6 +176,16 @@ jobs:
           MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true ./gradlew assembleRelease --no-daemon
           cd ..
           cp android/app/build/outputs/apk/release/app-release.apk 1-MiloAdmin.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" sign \
+            --ks android/app/debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --ks-key-alias androiddebugkey \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            1-MiloAdmin.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose 1-MiloAdmin.apk
           python3 - <<'PY'
           import json
           from zipfile import ZipFile
@@ -176,8 +194,6 @@ jobs:
               cfg = json.loads(archive.read('assets/app.config').decode('utf-8'))
           if 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
               raise SystemExit('Management APK structure validation failed.')
-          if not any(name.startswith('META-INF/') and name.endswith(('.RSA', '.DSA', '.EC')) for name in names):
-              raise SystemExit('Admin APK signature certificate is missing.')
           extra = cfg.get('extra') or {}
           assert cfg.get('android', {}).get('package') == 'com.devicecontrol.miloadmin.v2', cfg
           assert int(cfg.get('android', {}).get('versionCode', 0)) >= 200, cfg
@@ -196,6 +212,16 @@ jobs:
           EXPO_PUBLIC_APP_EDITION=all_four ./gradlew assembleRelease --no-daemon
           cd ..
           cp android/app/build/outputs/apk/release/app-release.apk 3-MiloNoLogin-All4.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" sign \
+            --ks android/app/debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --ks-key-alias androiddebugkey \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            3-MiloNoLogin-All4.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose 3-MiloNoLogin-All4.apk
           python3 - <<'PY'
           import json
           from zipfile import ZipFile
@@ -204,8 +230,6 @@ jobs:
               cfg = json.loads(archive.read('assets/app.config').decode('utf-8'))
           if 'AndroidManifest.xml' not in names or 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
               raise SystemExit('All-4-languages APK structure validation failed.')
-          if not any(name.startswith('META-INF/') and name.endswith(('.RSA', '.DSA', '.EC')) for name in names):
-              raise SystemExit('App 3 APK signature certificate is missing.')
           extra = cfg.get('extra') or {}
           assert cfg.get('android', {}).get('package') == 'com.devicecontrol.miloall.v2', cfg
           assert int(cfg.get('android', {}).get('versionCode', 0)) >= 200, cfg
@@ -226,6 +250,16 @@ jobs:
           EXPO_PUBLIC_APP_EDITION=login_en_de_tr EXPO_PUBLIC_LEARNER_LOGIN=true EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR=true ./gradlew assembleRelease --no-daemon
           cd ..
           cp android/app/build/outputs/apk/release/app-release.apk 4-MiloLogin-EN-DE-TR.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" sign \
+            --ks android/app/debug.keystore \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --ks-key-alias androiddebugkey \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            4-MiloLogin-EN-DE-TR.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose 4-MiloLogin-EN-DE-TR.apk
           python3 - <<'PY'
           import json
           from zipfile import ZipFile
@@ -234,8 +268,6 @@ jobs:
               cfg = json.loads(archive.read('assets/app.config').decode('utf-8'))
           if 'AndroidManifest.xml' not in names or 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
               raise SystemExit('Login EN+DE+TR APK structure validation failed.')
-          if not any(name.startswith('META-INF/') and name.endswith(('.RSA', '.DSA', '.EC')) for name in names):
-              raise SystemExit('App 4 APK signature certificate is missing.')
           extra = cfg.get('extra') or {}
           assert cfg.get('android', {}).get('package') == 'com.devicecontrol.milomultilang.v2', cfg
           assert int(cfg.get('android', {}).get('versionCode', 0)) >= 200, cfg
