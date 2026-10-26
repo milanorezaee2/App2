@@ -3,30 +3,36 @@ const base = require('./app.json').expo;
 /**
  * Official 4-APK Milo Android Suite (in strict release order):
  *  1. Admin App (`MILO_ADMIN_APP=true`)
- *     -> package `com.devicecontrol.miloadmin`, manages Login Learner App ONLY
+ *     -> package `com.devicecontrol.miloadmin.v2`, manages Login Learner App ONLY
  *  2. Learner No-Login EN+RU (`EXPO_PUBLIC_APP_EDITION=en_ru`)
- *     -> package `com.devicecontrol.mml`, English + Russian ONLY, no login
+ *     -> package `com.devicecontrol.mml.v2`, English + Russian ONLY, no login
  *  3. Learner No-Login All 4 Languages (`EXPO_PUBLIC_APP_EDITION=all_four`)
- *     -> package `com.devicecontrol.miloall`, English + German + Russian + Turkish, no login
+ *     -> package `com.devicecontrol.miloall.v2`, English + German + Russian + Turkish, no login
  *  4. Learner With-Login EN+DE+TR (`EXPO_PUBLIC_LEARNER_LOGIN=true` / `edition=login_en_de_tr`)
- *     -> package `com.devicecontrol.milomultilang`, English + German + Turkish (NO Russian), cloud login + Admin control
+ *     -> package `com.devicecontrol.milomultilang.v2`, English + German + Turkish (NO Russian), cloud login + Admin control
  */
+const resolveAndroidVersionCode = () => {
+  const parsed = Number.parseInt(process.env.ANDROID_VERSION_CODE || '', 10);
+  return Number.isFinite(parsed) && parsed >= 200 ? parsed : 200;
+};
+
 const build = () => {
+  const versionCode = resolveAndroidVersionCode();
   const admin = process.env.MILO_ADMIN_APP === 'true' || process.env.EXPO_PUBLIC_MILO_ADMIN_APP === 'true';
   if (admin) {
     return {
       ...base,
-      name: 'Adminapp',
+      name: '1-MiloAdmin',
       slug: 'milo-language-admin',
-      scheme: 'miloadmin',
+      scheme: 'miloadminv2',
       android: {
         ...base.android,
-        package: 'com.devicecontrol.miloadmin',
-        versionCode: 3,
+        package: 'com.devicecontrol.miloadmin.v2',
+        versionCode,
       },
       ios: {
         ...base.ios,
-        bundleIdentifier: 'com.devicecontrol.miloadmin',
+        bundleIdentifier: 'com.devicecontrol.miloadmin.v2',
       },
       extra: {
         ...base.extra,
@@ -45,6 +51,7 @@ const build = () => {
       android: {
         ...base.android,
         package: 'com.devicecontrol.milorussian',
+        versionCode,
       },
       ios: {
         ...base.ios,
@@ -60,11 +67,11 @@ const build = () => {
   if (learnerLogin) {
     return {
       ...base,
-      name: 'MiloMultiLanguage',
+      name: '4-Milo Login',
       slug: 'milomultilanguage-login',
-      scheme: 'milologin',
-      android: { ...base.android, package: 'com.devicecontrol.milomultilang', versionCode: 9 },
-      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.milomultilang' },
+      scheme: 'milologinv2',
+      android: { ...base.android, package: 'com.devicecontrol.milomultilang.v2', versionCode },
+      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.milomultilang.v2' },
       extra: {
         ...base.extra,
         edition: 'login_en_de_tr',
@@ -83,15 +90,16 @@ const build = () => {
   if (edition === 'all_four') {
     return {
       ...base,
-      name: 'Milo 4Lang',
+      name: '3-Milo All4',
       slug: 'milo-all-languages',
-      scheme: 'miloall',
-      android: { ...base.android, package: 'com.devicecontrol.miloall' },
-      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.miloall' },
+      scheme: 'miloallv2',
+      android: { ...base.android, package: 'com.devicecontrol.miloall.v2', versionCode },
+      ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.miloall.v2' },
       extra: {
         ...base.extra,
         edition: 'all_four',
         learnerLogin: false,
+        turkishCloudNarrator: false,
         englishCourse: true,
         germanCourse: true,
         russianCourse: true,
@@ -107,7 +115,7 @@ const build = () => {
       name: 'Milo Turkish',
       slug: 'milomultilanguage-turkish',
       scheme: 'miloturkish',
-      android: { ...base.android, package: 'com.devicecontrol.miloturkish' },
+      android: { ...base.android, package: 'com.devicecontrol.miloturkish', versionCode },
       ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.miloturkish' },
       extra: {
         ...base.extra,
@@ -125,15 +133,16 @@ const build = () => {
   // App #2 (Default no-login APK): English + Russian ONLY (`en_ru`)
   return {
     ...base,
-    name: 'Milo EN-RU',
+    name: '2-Milo EN-RU',
     slug: 'mml',
     scheme: 'companionenglish',
-    android: { ...base.android, package: 'com.devicecontrol.mml' },
-    ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.mml' },
+    android: { ...base.android, package: 'com.devicecontrol.mml.v2', versionCode },
+    ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.mml.v2' },
     extra: {
       ...base.extra,
       edition: edition === 'en_ru' ? 'en_ru' : 'en_ru',
       learnerLogin: false,
+      turkishCloudNarrator: false,
       englishCourse: true,
       germanCourse: false,
       russianCourse: true,

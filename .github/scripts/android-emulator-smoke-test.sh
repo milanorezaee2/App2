@@ -91,7 +91,7 @@ failed_step="clearing Android logcat"
 adb logcat -c
 
 failed_step="launching the main activity"
-timeout 90s adb shell am start -W -n com.devicecontrol.mml/.MainActivity
+timeout 90s adb shell am start -W -n com.devicecontrol.mml.v2/.MainActivity
 
 failed_step="allowing the first screen to finish rendering"
 sleep 30
@@ -206,7 +206,7 @@ fi
 # first install we verify the account gate and continue with the separate admin APK.
 if [[ "$registration_gate" == false && "$direct_catalog_home" == false ]]; then
 failed_step="opening the Emma chat keyboard test route"
-timeout 60s adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/emma' com.devicecontrol.mml
+timeout 60s adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/emma' com.devicecontrol.mml.v2
 sleep 8
 capture_ui
 
@@ -294,7 +294,7 @@ echo 'Android emulator verified the full-height Emma composer with the software 
 
 failed_step="opening the human chat keyboard test route"
 adb shell input keyevent KEYCODE_BACK
-adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/human/00000000-0000-0000-0000-000000000001?name=Test' com.devicecontrol.mml
+adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/human/00000000-0000-0000-0000-000000000001?name=Test' com.devicecontrol.mml.v2
 sleep 8
 capture_ui
 
@@ -382,12 +382,12 @@ echo 'Android emulator verified both complete chat composers and their side butt
 fi
 
 failed_step="installing the private management APK"
-adb shell am force-stop com.devicecontrol.mml || true
+adb shell am force-stop com.devicecontrol.mml.v2 || true
 adb install -r "$admin_apk_path"
-adb shell am force-stop com.devicecontrol.miloadmin
+adb shell am force-stop com.devicecontrol.miloadmin.v2
 
 failed_step="launching the private management app"
-timeout 90s adb shell am start -W -n com.devicecontrol.miloadmin/.MainActivity
+timeout 90s adb shell am start -W -n com.devicecontrol.miloadmin.v2/.MainActivity
 sleep 15
 capture_ui
 
@@ -416,12 +416,12 @@ fi
 all4_apk_path="3-MiloNoLogin-All4.apk"
 if [[ -s "$all4_apk_path" ]]; then
   failed_step="installing App 3 (No-Login All 4 Languages APK)"
-  adb shell am force-stop com.devicecontrol.miloadmin || true
+  adb shell am force-stop com.devicecontrol.miloadmin.v2 || true
   adb install -r "$all4_apk_path"
-  adb shell pm path com.devicecontrol.miloall
-  adb shell am force-stop com.devicecontrol.miloall
+  adb shell pm path com.devicecontrol.miloall.v2
+  adb shell am force-stop com.devicecontrol.miloall.v2
   failed_step="launching App 3 (No-Login All 4 Languages APK)"
-  timeout 90s adb shell am start -W -n com.devicecontrol.miloall/.MainActivity
+  timeout 90s adb shell am start -W -n com.devicecontrol.miloall.v2/.MainActivity
   sleep 20
   capture_ui
   failed_step="verifying App 3 rendered all 4 languages without login"
@@ -449,13 +449,13 @@ fi
 login_apk_path="4-MiloLogin-EN-DE-TR.apk"
 if [[ -s "$login_apk_path" ]]; then
   failed_step="installing App 4 (Learner Login EN+DE+TR APK)"
-  adb shell am force-stop com.devicecontrol.miloall || true
+  adb shell am force-stop com.devicecontrol.miloall.v2 || true
   adb install -r "$login_apk_path"
   failed_step="verifying App 4 package"
-  adb shell pm path com.devicecontrol.milomultilang
-  adb shell am force-stop com.devicecontrol.milomultilang
+  adb shell pm path com.devicecontrol.milomultilang.v2
+  adb shell am force-stop com.devicecontrol.milomultilang.v2
   failed_step="launching App 4 (Learner Login EN+DE+TR APK)"
-  timeout 90s adb shell am start -W -n com.devicecontrol.milomultilang/.MainActivity
+  timeout 90s adb shell am start -W -n com.devicecontrol.milomultilang.v2/.MainActivity
   failed_step="allowing App 4 to render"
   sleep 25
   capture_ui
@@ -479,5 +479,11 @@ if [[ -s "$login_apk_path" ]]; then
     exit 1
   fi
 fi
+
+failed_step="verifying all 4 APKs coexist simultaneously without conflict"
+adb shell pm path com.devicecontrol.miloadmin.v2
+adb shell pm path com.devicecontrol.mml.v2
+adb shell pm path com.devicecontrol.miloall.v2
+adb shell pm path com.devicecontrol.milomultilang.v2
 
 echo 'Android emulator verified all 4 standalone APKs in the Milo suite.'

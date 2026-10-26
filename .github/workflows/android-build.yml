@@ -90,7 +90,7 @@ jobs:
             throw new Error('Supabase settings must be single-line values.');
           }
           fs.appendFileSync(process.env.GITHUB_ENV,
-            `EXPO_PUBLIC_SUPABASE_URL=${url}\nEXPO_PUBLIC_SUPABASE_ANON_KEY=${key}\n`);
+            `EXPO_PUBLIC_SUPABASE_URL=${url}\nEXPO_PUBLIC_SUPABASE_ANON_KEY=${key}\nEXPO_PUBLIC_NARRATOR_CLOUD=on\nANDROID_VERSION_CODE=${200 + Number(process.env.GITHUB_RUN_NUMBER || 1)}\n`);
           NODE
 
       - name: Set up Java
@@ -123,7 +123,7 @@ jobs:
 
       - name: Generate native Android project (App 2 — No-Login EN+RU)
         run: |
-          rm -rf android /tmp/metro-* /tmp/haste-map-* node_modules/.cache
+          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
           EXPO_PUBLIC_APP_EDITION=en_ru npx expo prebuild --platform android --no-install
 
       - name: Build standalone release APK (App 2 — No-Login EN+RU)
@@ -134,24 +134,34 @@ jobs:
 
       - name: Verify and preserve App 2 (2-MiloNoLogin-EN-RU.apk)
         run: |
+          cp android/app/build/outputs/apk/release/app-release.apk 2-MiloNoLogin-EN-RU.apk
           python3 - <<'PY'
+          import json
           from zipfile import ZipFile
-          apk = 'android/app/build/outputs/apk/release/app-release.apk'
-          with ZipFile(apk) as archive:
+          with ZipFile('2-MiloNoLogin-EN-RU.apk') as archive:
               names = set(archive.namelist())
+              cfg = json.loads(archive.read('assets/app.config').decode('utf-8'))
           if 'AndroidManifest.xml' not in names or not any(name.endswith('classes.dex') for name in names):
               raise SystemExit('APK structure validation failed.')
           if 'assets/index.android.bundle' not in names:
               raise SystemExit('Standalone JS bundle is missing; refusing to publish an APK that needs Metro.')
-          print('App 2 (No-Login EN+RU) APK verified.')
+          if not any(name.startswith('META-INF/') and name.endswith(('.RSA', '.DSA', '.EC')) for name in names):
+              raise SystemExit('APK v1 signature certificate is missing.')
+          extra = cfg.get('extra') or {}
+          assert cfg.get('android', {}).get('package') == 'com.devicecontrol.mml.v2', cfg
+          assert int(cfg.get('android', {}).get('versionCode', 0)) >= 200, cfg
+          assert extra.get('edition') == 'en_ru' and extra.get('learnerLogin') is False, extra
+          assert extra.get('englishCourse') is True and extra.get('russianCourse') is True, extra
+          assert extra.get('germanCourse') is False and extra.get('turkishCourse') is False, extra
+          assert not extra.get('turkishCloudNarrator'), extra
+          print('App 2 (No-Login EN+RU) APK verified:', cfg['android']['package'], cfg['android']['versionCode'])
           PY
-          cp android/app/build/outputs/apk/release/app-release.apk 2-MiloNoLogin-EN-RU.apk
 
       - name: Generate and build App 1 — Admin APK (1-MiloAdmin.apk)
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
-          rm -rf android /tmp/metro-* /tmp/haste-map-* node_modules/.cache
+          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
           MILO_ADMIN_APP=true EXPO_PUBLIC_MILO_ADMIN_APP=true EXPO_PUBLIC_ENABLE_EDUCATION_ADMIN=true npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew
@@ -159,19 +169,27 @@ jobs:
           cd ..
           cp android/app/build/outputs/apk/release/app-release.apk 1-MiloAdmin.apk
           python3 - <<'PY'
+          import json
           from zipfile import ZipFile
           with ZipFile('1-MiloAdmin.apk') as archive:
               names = set(archive.namelist())
+              cfg = json.loads(archive.read('assets/app.config').decode('utf-8'))
           if 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
               raise SystemExit('Management APK structure validation failed.')
-          print('App 1 (Admin) APK verified.')
+          if not any(name.startswith('META-INF/') and name.endswith(('.RSA', '.DSA', '.EC')) for name in names):
+              raise SystemExit('Admin APK signature certificate is missing.')
+          extra = cfg.get('extra') or {}
+          assert cfg.get('android', {}).get('package') == 'com.devicecontrol.miloadmin.v2', cfg
+          assert int(cfg.get('android', {}).get('versionCode', 0)) >= 200, cfg
+          assert extra.get('appRole') == 'admin' and extra.get('edition') == 'admin', extra
+          print('App 1 (Admin) APK verified:', cfg['android']['package'], cfg['android']['versionCode'])
           PY
 
       - name: Generate and build App 3 — No-Login All 4 Languages APK (3-MiloNoLogin-All4.apk)
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
-          rm -rf android /tmp/metro-* /tmp/haste-map-* node_modules/.cache
+          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
           EXPO_PUBLIC_APP_EDITION=all_four npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew
@@ -179,19 +197,29 @@ jobs:
           cd ..
           cp android/app/build/outputs/apk/release/app-release.apk 3-MiloNoLogin-All4.apk
           python3 - <<'PY'
+          import json
           from zipfile import ZipFile
           with ZipFile('3-MiloNoLogin-All4.apk') as archive:
               names = set(archive.namelist())
+              cfg = json.loads(archive.read('assets/app.config').decode('utf-8'))
           if 'AndroidManifest.xml' not in names or 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
               raise SystemExit('All-4-languages APK structure validation failed.')
-          print('App 3 (No-Login All 4 Languages) APK verified.')
+          if not any(name.startswith('META-INF/') and name.endswith(('.RSA', '.DSA', '.EC')) for name in names):
+              raise SystemExit('App 3 APK signature certificate is missing.')
+          extra = cfg.get('extra') or {}
+          assert cfg.get('android', {}).get('package') == 'com.devicecontrol.miloall.v2', cfg
+          assert int(cfg.get('android', {}).get('versionCode', 0)) >= 200, cfg
+          assert extra.get('edition') == 'all_four' and extra.get('learnerLogin') is False, extra
+          assert extra.get('englishCourse') is True and extra.get('germanCourse') is True and extra.get('russianCourse') is True and extra.get('turkishCourse') is True, extra
+          assert not extra.get('turkishCloudNarrator'), extra
+          print('App 3 (No-Login All 4 Languages) APK verified:', cfg['android']['package'], cfg['android']['versionCode'])
           PY
 
       - name: Generate and build App 4 — Login EN+DE+TR APK (4-MiloLogin-EN-DE-TR.apk)
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         shell: bash
         run: |
-          rm -rf android /tmp/metro-* /tmp/haste-map-* node_modules/.cache
+          rm -rf android .expo /tmp/metro-* /tmp/haste-map-* node_modules/.cache node_modules/expo-constants/android/build
           EXPO_PUBLIC_APP_EDITION=login_en_de_tr EXPO_PUBLIC_LEARNER_LOGIN=true EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR=true npx expo prebuild --platform android --no-install
           cd android
           chmod +x gradlew
@@ -199,12 +227,23 @@ jobs:
           cd ..
           cp android/app/build/outputs/apk/release/app-release.apk 4-MiloLogin-EN-DE-TR.apk
           python3 - <<'PY'
+          import json
           from zipfile import ZipFile
           with ZipFile('4-MiloLogin-EN-DE-TR.apk') as archive:
               names = set(archive.namelist())
+              cfg = json.loads(archive.read('assets/app.config').decode('utf-8'))
           if 'AndroidManifest.xml' not in names or 'assets/index.android.bundle' not in names or not any(name.endswith('classes.dex') for name in names):
               raise SystemExit('Login EN+DE+TR APK structure validation failed.')
-          print('App 4 (Login EN+DE+TR, no Russian) APK verified.')
+          if not any(name.startswith('META-INF/') and name.endswith(('.RSA', '.DSA', '.EC')) for name in names):
+              raise SystemExit('App 4 APK signature certificate is missing.')
+          extra = cfg.get('extra') or {}
+          assert cfg.get('android', {}).get('package') == 'com.devicecontrol.milomultilang.v2', cfg
+          assert int(cfg.get('android', {}).get('versionCode', 0)) >= 200, cfg
+          assert extra.get('edition') == 'login_en_de_tr' and extra.get('learnerLogin') is True, extra
+          assert extra.get('englishCourse') is True and extra.get('germanCourse') is True and extra.get('turkishCourse') is True, extra
+          assert extra.get('russianCourse') is False, extra
+          assert extra.get('turkishCloudNarrator') is True, extra
+          print('App 4 (Login EN+DE+TR + Turkish Narrator) APK verified:', cfg['android']['package'], cfg['android']['versionCode'])
           PY
 
       - name: Smoke-test all 4 APKs on Android emulator
@@ -250,15 +289,16 @@ jobs:
         with:
           tag_name: milomultilang-android-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          name: "Milo Android Suite #${{ github.run_number }} (Ordered 4-APK Release)"
+          name: "Milo Android Suite #${{ github.run_number }} (Clean v2.0 — Ordered 4-APK Release)"
           body: |
-            مجموعهٔ رسمی و مرتب‌شدهٔ ۴ فایل نصبی اندروید (امضاشده و تست‌شده روی شبیه‌ساز اندروید):
+            مجموعهٔ رسمی، سبک‌شده و بدون تداخل ۴ فایل نصبی اندروید (نسخهٔ `v2.0.0` با شناسه‌های پکیج جدید `.v2` برای نصب مستقیم و بدون هیچ خطای تداخل روی همهٔ گوشی‌ها):
 
-            1. **1-MiloAdmin.apk** — اپ ادمین: مدیریت اختصاصی اپ با لاگین، فعال/غیرفعال‌سازی تک‌تک یا همهٔ زبان‌ها، ارسال پاپ‌آپ زنده (`com.devicecontrol.miloadmin`)
-            2. **2-MiloNoLogin-EN-RU.apk** — اپ زبان‌آموز بدون لاگین: فقط انگلیسی و روسی (`com.devicecontrol.mml`)
-            3. **3-MiloNoLogin-All4.apk** — اپ زبان‌آموز بدون لاگین: انگلیسی، آلمانی، روسی و ترکی استانبولی (`com.devicecontrol.miloall`)
-            4. **4-MiloLogin-EN-DE-TR.apk** — اپ زبان‌آموز با لاگین: انگلیسی، آلمانی و ترکی استانبولی — بدون روسی (`com.devicecontrol.milomultilang`)
-          prerelease: true
+            1. **1-MiloAdmin.apk** (`1-MiloAdmin` / `com.devicecontrol.miloadmin.v2`) — اپ ادمین: مدیریت اختصاصی اپ با لاگین، فعال/غیرفعال‌سازی تک‌تک یا همهٔ زبان‌ها، ارسال پاپ‌آپ زنده
+            2. **2-MiloNoLogin-EN-RU.apk** (`2-Milo EN-RU` / `com.devicecontrol.mml.v2`) — اپ زبان‌آموز بدون لاگین: فقط انگلیسی و روسی
+            3. **3-MiloNoLogin-All4.apk** (`3-Milo All4` / `com.devicecontrol.miloall.v2`) — اپ زبان‌آموز بدون لاگین: انگلیسی، آلمانی، روسی و ترکی استانبولی
+            4. **4-MiloLogin-EN-DE-TR.apk** (`4-Milo Login` / `com.devicecontrol.milomultilang.v2`) — اپ زبان‌آموز با لاگین: انگلیسی، آلمانی و ترکی استانبولی + نریتور اتوماتیک ترکی استانبولی (بدون روسی)
+          prerelease: false
+          make_latest: true
           files: |
             1-MiloAdmin.apk
             2-MiloNoLogin-EN-RU.apk
