@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Download, FileCheck2, RotateCcw, ShieldCheck } from 'lucide-react-native';
+import Download from 'lucide-react-native/dist/esm/icons/download';
+import FileCheck2 from 'lucide-react-native/dist/esm/icons/file-check-2';
+import RotateCcw from 'lucide-react-native/dist/esm/icons/rotate-ccw';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { PageNavigation } from '@/components/PageNavigation';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';

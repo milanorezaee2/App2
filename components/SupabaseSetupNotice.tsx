@@ -1,5 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { Database, KeyRound, ShieldCheck } from 'lucide-react-native';
+import Database from 'lucide-react-native/dist/esm/icons/database';
+import KeyRound from 'lucide-react-native/dist/esm/icons/key-round';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 
 /** Missing app configuration is not evidence that the database needs setup again. */

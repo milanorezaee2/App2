@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Check } from 'lucide-react-native';
+import Check from 'lucide-react-native/dist/esm/icons/check';
 import { COURSE_LEVELS, type CourseLevelId } from '@/lib/courseContent';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { toPersianDigits } from '@/lib/format';

@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowRight, Home } from 'lucide-react-native';
+import ArrowRight from 'lucide-react-native/dist/esm/icons/arrow-right';
+import Home from 'lucide-react-native/dist/esm/icons/house';
 
 export type PageNavigationTone = 'light' | 'dark';
 

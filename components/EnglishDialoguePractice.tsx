@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Speech from '@/lib/narration';
-import { ChevronLeft, ChevronRight, Volume2 } from 'lucide-react-native';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
+import ChevronRight from 'lucide-react-native/dist/esm/icons/chevron-right';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import type { SentenceLesson } from '@/lib/courseContent';
 import { EnglishPalette as Palette } from './EnglishSupplementTask';
 

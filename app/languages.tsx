@@ -12,27 +12,24 @@ import {
 import { MiloLogoMotion } from '@/components/MiloLogoMotion';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import {
-  ArrowLeft,
-  BarChart3,
-  ChevronDown,
-  Headphones,
-  LifeBuoy,
-  LockKeyhole,
-  Mic2,
-  RefreshCw,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  Volume2,
-} from 'lucide-react-native';
-import { LANGUAGES } from '@/lib/languages/catalog';
-import { RUSSIAN_LESSONS } from '@/lib/languages/russian';
+import ArrowLeft from 'lucide-react-native/dist/esm/icons/arrow-left';
+import BarChart3 from 'lucide-react-native/dist/esm/icons/chart-column';
+import ChevronDown from 'lucide-react-native/dist/esm/icons/chevron-down';
+import Headphones from 'lucide-react-native/dist/esm/icons/headphones';
+import LifeBuoy from 'lucide-react-native/dist/esm/icons/life-buoy';
+import LockKeyhole from 'lucide-react-native/dist/esm/icons/lock-keyhole';
+import Mic2 from 'lucide-react-native/dist/esm/icons/mic-vocal';
+import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Target from 'lucide-react-native/dist/esm/icons/target';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
+// Lightweight metadata only: the home screen must not pull the multi-MB
+// lesson arrays into the startup path (see lib/languages/catalogMeta.ts).
+import { LANGUAGES, TOTAL_LESSON_COUNT, TOTAL_SENTENCE_COUNT } from '@/lib/languages/catalogMeta';
 import { ensureSupportConversation } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
 import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
-import { SENTENCE_LESSONS } from '@/lib/courseContent';
-import { GERMAN_SENTENCE_LESSONS } from '@/lib/languages/germanSentenceCourse';
 import { LuxuryPalette, LuxuryShadows } from '@/components/luxuryTheme';
 import { toPersianDigits as fa } from '@/lib/format';
 import { LtrDirection, Typography } from '@/lib/theme';
@@ -69,17 +66,13 @@ const learningSteps = [
   { icon: Target, number: '۰۳', title: 'به‌خاطر بسپار', detail: 'با مرور هوشمند تثبیت کن' },
 ] as const;
 
-const englishSentenceCount = SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
-const germanSentenceCount = GERMAN_SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
-const russianSentenceCount = RUSSIAN_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0);
-
 const learningStats = [
   {
-    value: fa(SENTENCE_LESSONS.length + GERMAN_SENTENCE_LESSONS.length + RUSSIAN_LESSONS.length),
+    value: fa(TOTAL_LESSON_COUNT),
     label: 'درس گام‌به‌گام',
   },
   {
-    value: fa(englishSentenceCount + germanSentenceCount + russianSentenceCount),
+    value: fa(TOTAL_SENTENCE_COUNT),
     label: 'جملهٔ کاربردی',
   },
   { value: '۳ زبان', label: 'مسیر یکپارچه' },
@@ -173,14 +166,31 @@ export default function LanguagesHome() {
 
           <View style={[styles.hero, compact && styles.heroCompact]}>
             <View pointerEvents="none" style={styles.heroGoldEdge} />
-            <View style={styles.heroTopline}>
+            <View style={[styles.heroTopline, compact && styles.heroToplineCompact]}>
               <View style={styles.eyebrow}>
                 <Sparkles size={13} color={LuxuryPalette.goldLight} />
                 <Text style={styles.eyebrowText}>آکادمی چندزبانهٔ میلو</Text>
               </View>
             </View>
 
+            {/*
+              Compact (mobile) uses a plain column with visual-first JSX order instead of
+              column-reverse: some Android Paper Yoga builds drop the card's horizontal padding
+              for reversed subtrees, which pushed this block (and its CTA) flush to the card
+              edges. The visual-first order with a normal column renders identically.
+            */}
             <View style={[styles.heroMain, compact && styles.heroMainCompact]}>
+              <View style={[styles.heroVisual, compact && styles.heroVisualCompact]}>
+                <LinearGradient colors={['#315FD4', '#10265D']} style={styles.heroArtDisk} />
+                <View pointerEvents="none" style={styles.heroArtRing} />
+                <Image
+                  source={require('../assets/images/milo-hero-sculpture-cutout.png')}
+                  resizeMode="contain"
+                  accessibilityLabel="کتاب باز با جریان طلایی و سه حباب گفت‌وگو"
+                  style={styles.heroArtwork}
+                />
+              </View>
+
               <View style={[styles.heroCopy, !compact && styles.heroCopyDesktop]}>
                 <Text accessibilityRole="header" style={[styles.heroTitle, tiny && styles.heroTitleTiny]}>
                   با جمله‌های واقعی،{`\n`}روان‌تر حرف بزن
@@ -197,17 +207,6 @@ export default function LanguagesHome() {
                   <Text style={styles.heroCtaText}>شروع مسیر یادگیری</Text>
                   <ArrowLeft size={16} color="#F5D993" strokeWidth={2.7} />
                 </Pressable>
-              </View>
-
-              <View style={[styles.heroVisual, compact && styles.heroVisualCompact]}>
-                <LinearGradient colors={['#315FD4', '#10265D']} style={styles.heroArtDisk} />
-                <View pointerEvents="none" style={styles.heroArtRing} />
-                <Image
-                  source={require('../assets/images/milo-hero-sculpture-cutout.png')}
-                  resizeMode="contain"
-                  accessibilityLabel="کتاب باز با جریان طلایی و سه حباب گفت‌وگو"
-                  style={styles.heroArtwork}
-                />
               </View>
             </View>
 
@@ -480,10 +479,13 @@ const styles = StyleSheet.create({
   },
   heroCompact: {
     borderRadius: 22,
-    paddingHorizontal: 16,
+    // Horizontal padding is intentionally 0 on compact: the topline and heroMain carry
+    // their own horizontal margins so Android Paper Yoga cannot drop the insets.
+    paddingHorizontal: 0,
     paddingVertical: 16,
     gap: 7,
   },
+  heroToplineCompact: { marginHorizontal: 16 },
   heroGoldEdge: {
     position: 'absolute',
     top: 0,
@@ -519,15 +521,19 @@ const styles = StyleSheet.create({
   },
   heroMain: {
     minHeight: 270,
-    flexDirection: 'row-reverse',
+    // JSX order is visual-first, copy-second, so a plain row keeps visual on the left
+    // and copy on the right (previously achieved with row-reverse + reversed JSX).
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
   },
   heroMainCompact: {
     minHeight: 0,
-    flexDirection: 'column-reverse',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     gap: 0,
+    marginHorizontal: 16,
   },
   heroCopy: {
     flex: 1,
@@ -589,7 +595,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   heroVisualCompact: {
-    width: '100%',
+    // Stretched by heroMainCompact (alignItems: 'stretch'); no percentage width, which
+    // also resolves against the wrong box on some Android Yoga builds.
     height: 218,
     marginTop: -5,
     marginBottom: 2,

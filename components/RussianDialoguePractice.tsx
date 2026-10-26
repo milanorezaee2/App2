@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Volume2 } from 'lucide-react-native';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
+import ChevronRight from 'lucide-react-native/dist/esm/icons/chevron-right';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import type { LearningLesson } from '@/lib/languages/types';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { Typography } from '@/lib/theme';

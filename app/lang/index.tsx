@@ -3,24 +3,22 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Speech from '@/lib/narration';
-import {
-  BookOpen,
-  BookOpenCheck,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronUp,
-  Cloud,
-  Compass,
-  Download,
-  Flame,
-  MessageCircle,
-  Play,
-  RefreshCw,
-  RotateCcw,
-  Sparkles,
-  Volume2,
-} from 'lucide-react-native';
+import BookOpen from 'lucide-react-native/dist/esm/icons/book-open';
+import BookOpenCheck from 'lucide-react-native/dist/esm/icons/book-open-check';
+import Check from 'lucide-react-native/dist/esm/icons/check';
+import ChevronDown from 'lucide-react-native/dist/esm/icons/chevron-down';
+import ChevronLeft from 'lucide-react-native/dist/esm/icons/chevron-left';
+import ChevronUp from 'lucide-react-native/dist/esm/icons/chevron-up';
+import Cloud from 'lucide-react-native/dist/esm/icons/cloud';
+import Compass from 'lucide-react-native/dist/esm/icons/compass';
+import Download from 'lucide-react-native/dist/esm/icons/download';
+import Flame from 'lucide-react-native/dist/esm/icons/flame';
+import MessageCircle from 'lucide-react-native/dist/esm/icons/message-circle';
+import Play from 'lucide-react-native/dist/esm/icons/play';
+import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
+import RotateCcw from 'lucide-react-native/dist/esm/icons/rotate-ccw';
+import Sparkles from 'lucide-react-native/dist/esm/icons/sparkles';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import { AppBottomNav } from '@/components/AppBottomNav';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { EnglishLevelRail, EnglishProgressTrack, displayEnglishModuleLabel } from '@/components/EnglishUI';

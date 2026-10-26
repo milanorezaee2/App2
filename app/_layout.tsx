@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { Stack, usePathname, useRootNavigationState, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Stack, useNavigationContainerRef, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts } from 'expo-font';
+import { useFonts, FontDisplay } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
 import { AppState, I18nManager, Platform, Text, TextInput } from 'react-native';
@@ -89,6 +89,25 @@ function CompanionRuntime() {
 }
 
 /**
+ * Renders nothing, but its effect runs only once the sibling <Stack> has
+ * actually mounted. RootLayout returns null until fonts load and AppLockGate
+ * shows its own spinner until its config read resolves, so this is the
+ * reliable signal that a navigator exists in the tree (useRootNavigationState
+ * could already expose a `.key` before the container reported ready, which
+ * made router.replace throw "Attempted to navigate before mounting the Root
+ * Layout component").
+ */
+function NavigatorMountProbe({ onMounted }: { onMounted: () => void }) {
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (mounted.current) return;
+    mounted.current = true;
+    onMounted();
+  }, [onMounted]);
+  return null;
+}
+
+/**
  * Phone-2 companion only. There is no role chooser and no controller route in
  * this APK; it always boots into the companion connection screen.
  */
@@ -96,30 +115,36 @@ export default function RootLayout() {
   useFrameworkReady();
   const router = useRouter();
   const pathname = usePathname();
-  const rootNavigationState = useRootNavigationState();
+  const navigationRef = useNavigationContainerRef();
+  const [navigatorMounted, setNavigatorMounted] = useState(false);
+  const handleNavigatorMounted = useCallback(() => setNavigatorMounted(true), []);
   const homeRoute = IS_ADMIN_APP ? '/admin' : RUSSIAN_ONLY_BUILD ? '/learn/ru' : '/languages';
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
+  // `swap` is web-only: text paints immediately with a fallback face and the
+  // custom font takes over when it finishes downloading, instead of staying
+  // invisible (the default font-display:auto block period). Native ignores it.
+  const swap = (font: number) => ({ uri: font, display: FontDisplay.SWAP }) as const;
   const [fontsLoaded, fontError] = useFonts({
     // Bundle Vazir locally so Persian typography and numerals stay identical
     // offline and independent of each Android manufacturer's system fonts.
-    Vazir: Vazirmatn_400Regular,
-    'Vazir-Medium': Vazirmatn_500Medium,
-    'Vazir-Bold': Vazirmatn_700Bold,
-    'Vazir-Black': Vazirmatn_900Black,
+    Vazir: swap(Vazirmatn_400Regular),
+    'Vazir-Medium': swap(Vazirmatn_500Medium),
+    'Vazir-Bold': swap(Vazirmatn_700Bold),
+    'Vazir-Black': swap(Vazirmatn_900Black),
     // Latin teaching content uses bundled faces too, eliminating Android OEM
     // font and fallback-metric differences between phones.
-    Inter: Inter_400Regular,
-    'Inter-SemiBold': Inter_600SemiBold,
-    'Inter-ExtraBold': Inter_800ExtraBold,
+    Inter: swap(Inter_400Regular),
+    'Inter-SemiBold': swap(Inter_600SemiBold),
+    'Inter-ExtraBold': swap(Inter_800ExtraBold),
     // Legacy aliases now resolve to Vazir too, preventing an old screen from
     // silently falling back to an OEM font.
-    Lalezar: Vazirmatn_400Regular,
-    Vazirmatn: Vazirmatn_400Regular,
-    'Vazirmatn-Medium': Vazirmatn_500Medium,
-    'Vazirmatn-Bold': Vazirmatn_700Bold,
+    Lalezar: swap(Vazirmatn_400Regular),
+    Vazirmatn: swap(Vazirmatn_400Regular),
+    'Vazirmatn-Medium': swap(Vazirmatn_500Medium),
+    'Vazirmatn-Bold': swap(Vazirmatn_700Bold),
   });
 
   useEffect(() => {
@@ -167,19 +192,23 @@ export default function RootLayout() {
       }
       if (state === 'active' && wasBackgrounded.current) {
         wasBackgrounded.current = false;
-        if (pathnameRef.current !== homeRoute) router.replace(homeRoute as never);
+        if (navigationRef.isReady() && pathnameRef.current !== homeRoute) {
+          router.replace(homeRoute as never);
+        }
       }
     });
     return () => subscription.remove();
-  }, [homeRoute, introComplete, router]);
+  }, [homeRoute, introComplete, navigationRef, router]);
 
-  // Wait for the root navigator before normalizing an Android-restored route.
-  // AppLockGate/RegistrationGate can temporarily defer mounting the Stack.
+  // Wait for our own Stack to be mounted before normalizing an Android-restored
+  // route. AppLockGate/RegistrationGate can temporarily defer mounting the
+  // Stack, and fonts keep RootLayout at `return null`; isReady() is the exact
+  // readiness check expo-router performs before accepting a navigation call.
   useEffect(() => {
-    if (!introComplete || !rootNavigationState?.key || startupRouteLocked.current) return;
+    if (!introComplete || !navigatorMounted || !navigationRef.isReady() || startupRouteLocked.current) return;
     startupRouteLocked.current = true;
     if (pathname !== homeRoute) router.replace(homeRoute as never);
-  }, [homeRoute, introComplete, pathname, rootNavigationState?.key, router]);
+  }, [homeRoute, introComplete, pathname, navigatorMounted, navigationRef, router]);
 
   // On web, AppState is unavailable — use page visibility instead so that
   // returning to the tab also starts from the home screen, not the last
@@ -187,15 +216,24 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS !== 'web' || !introComplete) return;
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && pathnameRef.current !== homeRoute) {
+      if (
+        document.visibilityState === 'visible'
+        && navigationRef.isReady()
+        && pathnameRef.current !== homeRoute
+      ) {
         router.replace(homeRoute as never);
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [homeRoute, introComplete, router]);
+  }, [homeRoute, introComplete, navigationRef, router]);
 
-  if (!fontsLoaded && !fontError) return null;
+  // Native must wait for the registered faces: the global Vazir Text defaults
+  // applied above can measure/crash before the font module is ready. On web
+  // the @font-face rules are injected at startup with font-display:swap, so
+  // gating the whole tree here would only delay first paint behind ~1.5MB of
+  // font downloads; render immediately and let the faces swap in when ready.
+  if (Platform.OS !== 'web' && !fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
@@ -214,6 +252,7 @@ export default function RootLayout() {
                 <Stack.Screen name="lang/index" />
                 <Stack.Screen name="+not-found" />
               </Stack>
+              <NavigatorMountProbe onMounted={handleNavigatorMounted} />
               <ChatNotificationBridge />
             </RegistrationGate>
           </AppLockGate>

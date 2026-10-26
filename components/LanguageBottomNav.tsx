@@ -1,6 +1,11 @@
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
-import { BookOpen, ClipboardList, Home, MessageCircle, RefreshCw, Volume2 } from 'lucide-react-native';
+import BookOpen from 'lucide-react-native/dist/esm/icons/book-open';
+import ClipboardList from 'lucide-react-native/dist/esm/icons/clipboard-list';
+import Home from 'lucide-react-native/dist/esm/icons/house';
+import MessageCircle from 'lucide-react-native/dist/esm/icons/message-circle';
+import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
+import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import { Radius, Typography } from '@/lib/theme';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { setLastActiveLanguage } from '@/components/luxuryTheme';

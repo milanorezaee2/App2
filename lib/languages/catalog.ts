@@ -1,16 +1,41 @@
 import type { LanguageDefinition } from './types';
+import { LANGUAGE_META, LANGUAGES } from './catalogMeta';
 import { SENTENCE_LESSONS } from '../courseContent';
 import { GERMAN_SENTENCE_LESSONS } from './germanSentenceCourse';
 import { RUSSIAN_LESSONS, russianProgress } from './russian';
 import { createCourseProgressStore } from '../createCourseProgressStore';
 
-export const LANGUAGES: readonly LanguageDefinition[] = [
-  { id: 'en', name: 'انگلیسی', nativeName: 'English', speechLocale: 'en-US', accent: '#6356d9', lessonsCount: SENTENCE_LESSONS.length, description: 'جمله‌های کاربردی، کارگاه تلفظ، مرور و مجموعه ۵۰۴', status: 'available', home: '/lang' },
-  { id: 'de', name: 'آلمانی', nativeName: 'Deutsch', speechLocale: 'de-DE', accent: '#087e75', lessonsCount: GERMAN_SENTENCE_LESSONS.length, description: 'درس‌های جمله‌محور، کارگاه تلفظ و تمرین واژگان در چهار مرحله', status: 'available', home: '/learn/de' },
-  { id: 'ru', name: 'روسی', nativeName: 'Русский', speechLocale: 'ru-RU', accent: '#4267a8', lessonsCount: RUSSIAN_LESSONS.length, description: '۱۲۰ درس از Foundation تا Advanced، با ۳۸۰۰ جمله و واژه‌های پیوندخورده با بافت', status: 'available', home: '/learn/ru' },
-];
+export { LANGUAGES };
 export { russianProgress };
-export function findLanguage(id: string | undefined) { return LANGUAGES.find(l => l.id === id); }
+
+/**
+ * The home screen reads static counts from the lightweight `catalogMeta`
+ * module so it never has to load the full lesson arrays. This module is the
+ * only place that imports both the static metadata and the real data, so it
+ * owns the drift check: if a course gains or loses a lesson/sentence, update
+ * the constants in catalogMeta.ts.
+ */
+if (process.env.NODE_ENV !== 'production') {
+  const liveCounts = {
+    en: { lessons: SENTENCE_LESSONS.length, sentences: SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0) },
+    de: { lessons: GERMAN_SENTENCE_LESSONS.length, sentences: GERMAN_SENTENCE_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0) },
+    ru: { lessons: RUSSIAN_LESSONS.length, sentences: RUSSIAN_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0) },
+  } as const;
+  for (const meta of LANGUAGE_META) {
+    const live = liveCounts[meta.id];
+    if (meta.lessonsCount !== live.lessons || meta.sentencesCount !== live.sentences) {
+      throw new Error(
+        `catalogMeta drift for ${meta.id}: metadata says ${meta.lessonsCount} lessons / ${meta.sentencesCount} sentences, ` +
+          `course data has ${live.lessons} / ${live.sentences}. Update lib/languages/catalogMeta.ts.`,
+      );
+    }
+  }
+}
+
+export function findLanguage(id: string | undefined) {
+  return LANGUAGES.find((language: LanguageDefinition) => language.id === id);
+}
+
 export const germanProgress = createCourseProgressStore({
   key: 'sentence_course_progress_de_v2',
   lessons: GERMAN_SENTENCE_LESSONS,

@@ -2,7 +2,10 @@ import { type PropsWithChildren, useCallback, useEffect, useRef, useState } from
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
-import { BookOpenCheck, LogIn, ShieldCheck, UserPlus } from 'lucide-react-native';
+import BookOpenCheck from 'lucide-react-native/dist/esm/icons/book-open-check';
+import LogIn from 'lucide-react-native/dist/esm/icons/log-in';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import UserPlus from 'lucide-react-native/dist/esm/icons/user-plus';
 import { supabase } from '@/lib/supabase';
 import { KeyboardAwareScrollView, KeyboardAvoidingView } from '@/components/KeyboardRuntime';
 import { generateLoginCode, getRegisteredSession, loginLearner, readCachedRegistration, registerLearner, registrationError, touchLearnerActivity } from '@/lib/userRegistration';

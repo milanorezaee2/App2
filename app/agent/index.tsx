@@ -6,22 +6,20 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
-import {
-  Smartphone,
-  Link2,
-  BatteryCharging,
-  Wifi,
-  HardDrive,
-  Cpu,
-  MapPin,
-  MailWarning,
-  CheckCircle2,
-  Unplug,
-  RefreshCw,
-  ShieldCheck,
-  Send,
-  GraduationCap,
-} from 'lucide-react-native';
+import Smartphone from 'lucide-react-native/dist/esm/icons/smartphone';
+import Link2 from 'lucide-react-native/dist/esm/icons/link-2';
+import BatteryCharging from 'lucide-react-native/dist/esm/icons/battery-charging';
+import Wifi from 'lucide-react-native/dist/esm/icons/wifi';
+import HardDrive from 'lucide-react-native/dist/esm/icons/hard-drive';
+import Cpu from 'lucide-react-native/dist/esm/icons/cpu';
+import MapPin from 'lucide-react-native/dist/esm/icons/map-pin';
+import MailWarning from 'lucide-react-native/dist/esm/icons/mail-warning';
+import CheckCircle2 from 'lucide-react-native/dist/esm/icons/circle-check';
+import Unplug from 'lucide-react-native/dist/esm/icons/unplug';
+import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import Send from 'lucide-react-native/dist/esm/icons/send';
+import GraduationCap from 'lucide-react-native/dist/esm/icons/graduation-cap';
 import { Colors, Typography, Spacing, Radius, RtlDirection } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
 import { toPersianDigits } from '@/lib/format';

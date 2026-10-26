@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Copy, Link2, QrCode, RefreshCw, Send, ShieldCheck, UserPlus } from 'lucide-react-native';
+import Copy from 'lucide-react-native/dist/esm/icons/copy';
+import Link2 from 'lucide-react-native/dist/esm/icons/link-2';
+import QrCode from 'lucide-react-native/dist/esm/icons/qr-code';
+import RefreshCw from 'lucide-react-native/dist/esm/icons/refresh-cw';
+import Send from 'lucide-react-native/dist/esm/icons/send';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
+import UserPlus from 'lucide-react-native/dist/esm/icons/user-plus';
 import {
   claimRealContactInvite,
   createRealContactInvite,

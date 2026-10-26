@@ -1,7 +1,7 @@
 import { FEATURES } from '@/lib/features';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ShieldCheck } from 'lucide-react-native';
+import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
 import { PageNavigation } from '@/components/PageNavigation';
 import { supabase } from '@/lib/supabase';
 import { requireSupabaseConfigured } from '@/lib/errors';
