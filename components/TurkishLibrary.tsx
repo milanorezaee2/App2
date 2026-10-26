@@ -22,7 +22,7 @@ import { TurkishBottomNav } from '@/components/TurkishBottomNav';
 import { TURKISH_LEVELS, TURKISH_LESSONS, turkishProgress, type TurkishLevelId } from '@/lib/languages/turkish';
 import type { CourseProgress } from '@/lib/courseProgress';
 import { clearTurkishLessonSession, loadTurkishLessonSession, type TurkishLessonSession } from '@/lib/languages/turkishStudyState';
-import { toPersianDigits as fa } from '@/lib/format';
+import { bidiIsolate, toPersianDigits as fa } from '@/lib/format';
 
 const LESSONS_PER_GROUP = 10;
 
@@ -314,7 +314,7 @@ export default function TurkishLibrary() {
                                         <Text style={[styles.lessonStatusText, complete && styles.lessonStatusTextDone, resumable && styles.lessonStatusTextResume]}>{status}</Text>
                                       </View>
                                     </View>
-                                    <Text style={styles.lessonSubtitle} numberOfLines={1}>{item.subtitle}</Text>
+                                    <Text style={styles.lessonSubtitle} numberOfLines={1}>{bidiIsolate(item.subtitle)}</Text>
                                     <View style={styles.lessonSentencePreview}>
                                       <View style={styles.lessonSentenceHeader}><Volume2 size={12} color={Palette.primary} /><Text style={styles.lessonSentenceEyebrow}>جملهٔ آغازین</Text></View>
                                       <Text style={styles.lessonSentenceTarget} numberOfLines={1}>{sentence.text}</Text>

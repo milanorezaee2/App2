@@ -53,7 +53,35 @@ const esbuild = require('esbuild');
   const cyrillic = /[\u0400-\u04FF]/;
   const persian = /[\u0600-\u06FF]/;
 
-  check('Turkish course registers 28 lessons in four levels', lessons.length === 28
+  /**
+   * ترتیب رسمی سطح ۱ (A1) — بیست موضوع، به همین ترتیب. اگر کسی درس‌ها را
+   * جابه‌جا یا حذف کند، این بررسی می‌شکند.
+   */
+  const foundationTopics = app.TURKISH_LEVELS[0].modules;
+  const EXPECTED_TOPICS = [
+    'سلام و احوال‌پرسی',
+    'معرفی خود و دیگران',
+    'ضمایر شخصی در جمله',
+    'جمله‌های اسمی ساده با پسوندهای شخصی',
+    'ملیت، زبان و محل زندگی',
+    'جمله‌های فعلی ساده در زمان حال استمراری',
+    'پرسش‌های ساده و پاسخ به آن‌ها',
+    'جمله‌های منفی',
+    'اعداد، سن و اطلاعات شخصی',
+    'مالکیت و خانواده',
+    'اسم‌ها، جمع و پسوندهای ملکی',
+    'توصیف اشخاص، اشیا و مکان‌ها',
+    'بیان نیازها، خواسته‌ها و علایق',
+    'مکان، جهت و موقعیت مکانی',
+    'زمان، روزها و برنامهٔ روزانه',
+    'توانایی، درخواست و اجازه',
+    'فعل‌های حرکتی پایه و بیان مسیر',
+    'جمله‌های ساده در زمان گذشته',
+    'بیان قصد و برنامهٔ آینده',
+    'اتصال دو جمله ساده با حروف ربط پایه',
+  ];
+
+  check('Turkish course registers 40 lessons in four levels', lessons.length === 40
     && app.TURKISH_LEVELS.length === 4
     && app.TURKISH_LEVELS.map(level => level.id).join('|') === '0|1|2|3');
   check('Every level has lessons and an available status', app.TURKISH_LEVELS.every(level =>
@@ -64,13 +92,24 @@ const esbuild = require('esbuild');
     && level.cefr));
   check('Course order runs Foundation → Survival → Everyday → Communication', lessons.every((lesson, index) =>
     lesson.order === index + 1
-    && lesson.levelId === (index < 8 ? 0 : index < 16 ? 1 : index < 24 ? 2 : 3))
-    && lessons.slice(0, 8).every(lesson => lesson.id.startsWith('tr-l1-'))
-    && lessons.slice(8, 16).every(lesson => lesson.id.startsWith('tr-l2-'))
-    && lessons.slice(16, 24).every(lesson => lesson.id.startsWith('tr-l3-'))
-    && lessons.slice(24).every(lesson => lesson.id.startsWith('tr-l4-')));
-  check('Course contains 224 sentences, eight per lesson', sentences.length === 224 && lessons.every(lesson => lesson.sentences.length === 8));
-  check('Sentence ids are unique and namespaced', new Set(sentenceIds).size === sentenceIds.length && sentenceIds.every(id => /^tr\d-\d{2}$/.test(id)));
+    && lesson.levelId === (index < 20 ? 0 : index < 28 ? 1 : index < 36 ? 2 : 3))
+    && lessons.slice(0, 20).every(lesson => lesson.id.startsWith('tr-l1-'))
+    && lessons.slice(20, 28).every(lesson => lesson.id.startsWith('tr-l2-'))
+    && lessons.slice(28, 36).every(lesson => lesson.id.startsWith('tr-l3-'))
+    && lessons.slice(36).every(lesson => lesson.id.startsWith('tr-l4-')));
+  check('Level 1 (A1) follows the official 20-topic order, one lesson per topic',
+    foundationTopics.length === 20
+    && foundationTopics.every((topic, index) => topic === EXPECTED_TOPICS[index])
+    && lessons.filter(lesson => lesson.levelId === 0).length === 20
+    && lessons.filter(lesson => lesson.levelId === 0).map(lesson => lesson.title).join('|')
+      === EXPECTED_TOPICS.join('|'));
+  check('Level 1 lessons are numbered 01…20 in that order',
+    lessons.filter(lesson => lesson.levelId === 0).every((lesson, index) =>
+      lesson.id === `tr-l1-${String(index + 1).padStart(2, '0')}-${lesson.id.split('-').slice(3).join('-')}`));
+  check('Course contains 320 sentences, eight per lesson', sentences.length === 320 && lessons.every(lesson => lesson.sentences.length === 8));
+  check('Sentence ids are unique and namespaced', new Set(sentenceIds).size === sentenceIds.length && sentenceIds.every(id => /^tr\d-\d{2,3}$/.test(id)));
+  check('No sentence text is repeated anywhere in the course',
+    new Set(sentences.map(sentence => sentence.text.toLocaleLowerCase('tr-TR'))).size === sentences.length);
   check('Every sentence teaches text, meaning, pronunciation, vocabulary and a pattern', sentences.every(sentence =>
     sentence.text.trim().length > 0
     && persian.test(sentence.fa)
@@ -106,7 +145,7 @@ const esbuild = require('esbuild');
 
   const turkishMeta = fs.readFileSync(path.resolve('lib/languages/catalogMeta.ts'), 'utf8');
   check('Turkish catalog entry uses the tr-TR speech locale', /id: 'tr'/.test(turkishMeta) && /speechLocale: 'tr-TR'/.test(turkishMeta)
-    && /lessonsCount: 28/.test(turkishMeta) && /sentencesCount: 224/.test(turkishMeta));
+    && /lessonsCount: 40/.test(turkishMeta) && /sentencesCount: 320/.test(turkishMeta));
 
   const features = fs.readFileSync(path.resolve('lib/features.ts'), 'utf8');
   check('Edition flags gate Russian and Turkish tracks', /TURKISH_EDITION/.test(features)
@@ -119,7 +158,7 @@ const esbuild = require('esbuild');
     && /com\.devicecontrol\.miloturkish/.test(config)
     && /turkishEdition: true/.test(config));
 
-  const routes = ['app/learn/tr/index.tsx', 'app/learn/tr/lesson.tsx', 'app/learn/tr/library.tsx', 'app/learn/tr/review.tsx'];
+  const routes = ['app/learn/tr/index.tsx', 'app/learn/tr/lesson.tsx', 'app/learn/tr/library.tsx', 'app/learn/tr/review.tsx', 'app/learn/tr/pronunciation.tsx'];
   check('Turkish routes exist and are edition-guarded', routes.every(route =>
     fs.existsSync(route) && /FEATURES\.turkishCourse/.test(fs.readFileSync(route, 'utf8'))));
 

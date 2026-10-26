@@ -1,6 +1,7 @@
 import type { LearningLesson } from './types';
 import { createCourseProgressStore } from '../createCourseProgressStore';
-import { TURKISH_FOUNDATION_LESSONS } from './turkishFoundationLessons';
+import { TURKISH_FOUNDATION_LESSONS_A } from './turkishFoundationLessons';
+import { TURKISH_FOUNDATION_LESSONS_B } from './turkishFoundationLessonsB';
 import { TURKISH_SURVIVAL_LESSONS } from './turkishSurvivalLessons';
 import { TURKISH_EVERYDAY_LESSONS } from './turkishEverydayLessons';
 import { TURKISH_COMMUNICATION_LESSONS } from './turkishCommunicationLessons';
@@ -54,17 +55,29 @@ export const TURKISH_LEVELS: readonly TurkishCourseLevel[] = [
     title: 'Foundation Turkish',
     cefr: 'سطح ۱ · پایه (A1)',
     description:
-      '۸ درس پایه: سلام و معرفی، ادب کلامی، عدد و قیمت، فعل «بودن»، پرسش‌های پایه، نفی و صداهای ویژهٔ ترکی.',
+      '۲۰ درس پایه به همان ترتیب برنامهٔ آموزشی: از سلام و احوال‌پرسی تا اتصال دو جمله با حروف ربط؛ ۱۶۰ جمله با تلفظ و الگوی پسوندها.',
     color: '#C2410C',
     modules: [
       'سلام و احوال‌پرسی',
       'معرفی خود و دیگران',
-      'لطفاً و ممنون: ادب کلامی',
-      'اعداد، قیمت و زمان کوتاه',
-      'بودن: هستم، هستی، است',
-      'پرسش‌های پایه (چه، کجا، چرا)',
-      'نفی و «نمی‌فهمم»',
-      'صداها و هماهنگی واکه‌ها',
+      'ضمایر شخصی در جمله',
+      'جمله‌های اسمی ساده با پسوندهای شخصی',
+      'ملیت، زبان و محل زندگی',
+      'جمله‌های فعلی ساده در زمان حال استمراری',
+      'پرسش‌های ساده و پاسخ به آن‌ها',
+      'جمله‌های منفی',
+      'اعداد، سن و اطلاعات شخصی',
+      'مالکیت و خانواده',
+      'اسم‌ها، جمع و پسوندهای ملکی',
+      'توصیف اشخاص، اشیا و مکان‌ها',
+      'بیان نیازها، خواسته‌ها و علایق',
+      'مکان، جهت و موقعیت مکانی',
+      'زمان، روزها و برنامهٔ روزانه',
+      'توانایی، درخواست و اجازه',
+      'فعل‌های حرکتی پایه و بیان مسیر',
+      'جمله‌های ساده در زمان گذشته',
+      'بیان قصد و برنامهٔ آینده',
+      'اتصال دو جمله ساده با حروف ربط پایه',
     ],
     status: 'available',
   },
@@ -119,14 +132,28 @@ export const TURKISH_LEVELS: readonly TurkishCourseLevel[] = [
 ];
 
 const TURKISH_LESSON_META: Record<string, { levelId: TurkishLevelId; subtitle: string }> = {
-  'tr-l1-hello': { levelId: 0, subtitle: 'سلام، حال‌پرسی و گفتن نام' },
-  'tr-l1-introduce': { levelId: 0, subtitle: 'معرفی خود، ملیت و سن' },
-  'tr-l1-courtesy': { levelId: 0, subtitle: 'لطفاً، ممنون، بله/نه و عذرخواهی' },
-  'tr-l1-numbers': { levelId: 0, subtitle: 'اعداد، سفارش و قیمت' },
-  'tr-l1-to-be': { levelId: 0, subtitle: 'پسوندهای هستم/هستی/است' },
-  'tr-l1-questions': { levelId: 0, subtitle: 'چه، کی، کجا، چرا و کدام' },
-  'tr-l1-negative': { levelId: 0, subtitle: 'نمی‌فهمم، نمی‌دانم و درخواست تکرار' },
-  'tr-l1-sounds': { levelId: 0, subtitle: 'ç، ş، ğ، ı، ö، ü در جمله' },
+  /* سطح ۱ — ترتیب ۲۰موضوعی برنامهٔ پایه */
+  'tr-l1-01-greetings': { levelId: 0, subtitle: 'سلام، احوال‌پرسی و گفتن نام' },
+  'tr-l1-02-introduce': { levelId: 0, subtitle: 'معرفی دوست و همکار به دیگران' },
+  'tr-l1-03-pronouns': { levelId: 0, subtitle: 'من، تو، او، ما، شما، آن‌ها' },
+  'tr-l1-04-nominal-sentences': { levelId: 0, subtitle: 'هستم، هستی، است بدون فعل بودن' },
+  'tr-l1-05-nationality': { levelId: 0, subtitle: 'ملیت، زبان و شهری که در آن زندگی می‌کنید' },
+  'tr-l1-06-present-continuous': { levelId: 0, subtitle: 'همین حالا چه می‌کنید؛ زمان حال استمراری' },
+  'tr-l1-07-questions': { levelId: 0, subtitle: 'چه، کی، کجا، چرا و کدام' },
+  'tr-l1-08-negative': { levelId: 0, subtitle: 'نمی‌فهمم، نمی‌دانم و درخواست تکرار' },
+  'tr-l1-09-numbers-age': { levelId: 0, subtitle: 'اعداد، قیمت، سن و شمارهٔ تلفن' },
+  'tr-l1-10-family': { levelId: 0, subtitle: 'خانواده، var/yok و «مال کی»' },
+  'tr-l1-11-nouns-plural': { levelId: 0, subtitle: 'جمع بستن اسم و پسوندهای ملکی' },
+  'tr-l1-12-describing': { levelId: 0, subtitle: 'بلند، بزرگ، تمیز، شلوغ و کهنه' },
+  'tr-l1-13-needs': { levelId: 0, subtitle: 'نیاز دارم، می‌خواهم، دوست دارم' },
+  'tr-l1-14-location': { levelId: 0, subtitle: 'روی، داخل، کنار، راست و چپ' },
+  'tr-l1-15-time': { levelId: 0, subtitle: 'روزهای هفته، ساعت و برنامهٔ روز' },
+  'tr-l1-16-ability-request': { levelId: 0, subtitle: 'می‌توانم، لطفاً و اجازه گرفتن' },
+  'tr-l1-17-motion': { levelId: 0, subtitle: 'به، در، از همراه فعل‌های رفتن و آمدن' },
+  'tr-l1-18-past': { levelId: 0, subtitle: 'دیروز چه کار کردید؛ پسوند گذشته' },
+  'tr-l1-19-future': { levelId: 0, subtitle: 'فردا چه خواهید کرد؛ زمان آینده' },
+  'tr-l1-20-conjunctions': { levelId: 0, subtitle: 'و، ولی، چون، یا و ترتیب رویداد' },
+  /* سطح ۲ — موقعیت‌های بیرون از خانه */
   'tr-l2-cafe': { levelId: 1, subtitle: 'سفارش نوشیدنی و صورت‌حساب' },
   'tr-l2-restaurant': { levelId: 1, subtitle: 'منو، سفارش غذا و پرداخت' },
   'tr-l2-shopping': { levelId: 1, subtitle: 'قیمت، سایز، پرو و کارت' },
@@ -150,7 +177,8 @@ const TURKISH_LESSON_META: Record<string, { levelId: TurkishLevelId; subtitle: s
 };
 
 const TURKISH_SOURCE_LESSONS: readonly LearningLesson[] = [
-  ...TURKISH_FOUNDATION_LESSONS,
+  ...TURKISH_FOUNDATION_LESSONS_A,
+  ...TURKISH_FOUNDATION_LESSONS_B,
   ...TURKISH_SURVIVAL_LESSONS,
   ...TURKISH_EVERYDAY_LESSONS,
   ...TURKISH_COMMUNICATION_LESSONS,

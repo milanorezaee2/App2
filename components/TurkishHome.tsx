@@ -143,7 +143,7 @@ export default function TurkishHome() {
             <View style={styles.heroCopy}>
               <Text style={styles.heroEyebrow}>{nextLesson ? 'درس بعدی شما' : 'مسیر تکمیل‌شده'}</Text>
               <Text style={styles.heroTitle}>{nextLesson ? heroLesson.title : 'همهٔ درس‌ها تکمیل شد'}</Text>
-              <Text style={styles.heroDescription}>{nextLesson ? heroLesson.subtitle : 'درس‌های این مسیر را مرور کنید یا از کتابخانه انتخاب نمایید.'}</Text>
+              <Text style={styles.heroDescription}>{nextLesson ? bidiIsolate(heroLesson.subtitle) : 'درس‌های این مسیر را مرور کنید یا از کتابخانه انتخاب نمایید.'}</Text>
             </View>
 
             {firstSentence ? (
