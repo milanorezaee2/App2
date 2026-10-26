@@ -44,6 +44,8 @@
     "dev:turkish": "EXPO_PUBLIC_TURKISH_EDITION=true EXPO_PUBLIC_LEARNER_LOGIN=true EXPO_NO_TELEMETRY=1 node scripts/run-expo.mjs start",
     "build:web:turkish": "EXPO_PUBLIC_TURKISH_EDITION=true EXPO_PUBLIC_LEARNER_LOGIN=true node scripts/run-expo.mjs export --platform web --clear --output-dir dist-turkish",
     "preview:turkish": "PORT=8082 DIST_DIR=dist-turkish node scripts/serve-preview.mjs",
+    "build:turkish-course": "EXPO_PUBLIC_TURKISH_EDITION=true EXPO_PUBLIC_LEARNER_LOGIN=false node scripts/run-expo.mjs export --platform web --clear --output-dir node_modules/.cache/tr-nologin",
+    "preview:turkish-course": "PORT=8083 DIST_DIR=node_modules/.cache/tr-nologin node scripts/serve-preview.mjs",
     "validate:turkish": "node scripts/verify-turkish-course.cjs"
   },
   "dependencies": {
