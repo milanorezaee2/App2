@@ -82,10 +82,29 @@ capture_ui() {
 # New mobile language cards are full-width rows. Inspect actual cards while
 # scrolling instead of assuming all cards fit above the fold of every device.
 swipe_up() {
-  local screen_width screen_height
-  read -r screen_width screen_height <<< "$(adb shell wm size | python3 -c 'import re,sys; sizes=re.findall(r"(\d+)x(\d+)", sys.stdin.read()); print(*sizes[-1])')"
-  adb shell input swipe "$((screen_width / 2))" "$((screen_height * 4 / 5))" "$((screen_width / 2))" "$((screen_height / 3))" 450
-  sleep 2
+  local swipe_coords swipe_x swipe_start swipe_end
+  # Start in the scroll view's blank edge, not in the email input. A swipe
+  # originating inside Android EditText can be consumed as text selection.
+  swipe_coords="$(python3 - "$ui_file" <<'PYSCROLL'
+import re, sys, xml.etree.ElementTree as ET
+for node in ET.parse(sys.argv[1]).getroot().iter():
+    if node.attrib.get('scrollable') != 'true': continue
+    bounds = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+    if not bounds: continue
+    x1,y1,x2,y2=map(int,bounds.groups())
+    if y2-y1 < 200: continue
+    print(x1+max(8,(x2-x1)//25), y1+(y2-y1)*4//5, y1+(y2-y1)//5)
+    break
+PYSCROLL
+)"
+  if [[ -z "$swipe_coords" ]]; then
+    echo 'No scrollable Android view was found.'
+    return 1
+  fi
+  read -r swipe_x swipe_start swipe_end <<< "$swipe_coords"
+  echo "Scrolling at blank edge x=$swipe_x from y=$swipe_start to y=$swipe_end"
+  adb shell input touchscreen swipe "$swipe_x" "$swipe_start" "$swipe_x" "$swipe_end" 900
+  sleep 3
   capture_ui
 }
 
