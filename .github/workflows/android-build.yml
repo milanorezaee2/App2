@@ -407,7 +407,7 @@ jobs:
 
   verify-existing-apks:
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.reuse_run != '') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-retest:')) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       GH_TOKEN: ${{ github.token }}
@@ -475,6 +475,8 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          sudo udevadm settle
+          sudo chmod 0666 /dev/kvm
           test -r /dev/kvm && test -w /dev/kvm
       - name: Re-test all four signed APKs on Android
         uses: reactivecircus/android-emulator-runner@v2
