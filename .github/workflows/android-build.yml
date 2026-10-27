@@ -34,7 +34,7 @@ concurrency:
 
 jobs:
   build-android-apk:
-    if: ${{ (github.event_name != 'workflow_dispatch' || inputs.reuse_run == '') && !contains(github.event.head_commit.message, '[apk-verify-only]') }}
+    if: ${{ (github.event_name != 'workflow_dispatch' || inputs.reuse_run == '') && !contains(github.event.head_commit.message, '[apk-verify-only]') && !contains(github.event.head_commit.message, '[apk-retest:') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -406,7 +406,7 @@ jobs:
           retention-days: 7
 
   verify-existing-apks:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.reuse_run != '' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.reuse_run != '') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-retest:')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -417,7 +417,11 @@ jobs:
       - name: Validate source build and record provenance
         shell: bash
         run: |
+          if [[ -z "$SOURCE_RUN" ]]; then
+            SOURCE_RUN="$(git log -1 --pretty=%B | sed -n 's/.*\[apk-retest:\([0-9]*\)\].*/\1/p')"
+          fi
           [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          echo "SOURCE_RUN=$SOURCE_RUN" >> "$GITHUB_ENV"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > source-run.json
           python3 - <<'PYPROVENANCE'
           import json, os
@@ -434,7 +438,7 @@ jobs:
         with:
           name: Milo-android-apks
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.reuse_run }}
+          run-id: ${{ env.SOURCE_RUN }}
       - name: Verify all four APK signatures and identities again
         shell: bash
         run: |
