@@ -474,7 +474,7 @@ if [[ -s "$login_apk_path" ]]; then
   failed_step="verifying App 4 registration gate rendered"
   login_rendered=false
   for login_attempt in 1 2 3; do
-    if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+    if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'دریافت کد ورود' "$ui_file"; then
       login_rendered=true
       echo 'Android emulator launched 4-MiloLogin-EN-DE-TR.apk and verified its registration gate.'
       break

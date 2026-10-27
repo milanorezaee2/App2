@@ -133,7 +133,12 @@ export default function RootLayout() {
   // custom font takes over when it finishes downloading, instead of staying
   // invisible (the default font-display:auto block period). Native ignores it.
   const swap = (font: number) => ({ uri: font, display: FontDisplay.SWAP }) as const;
-  const [fontsLoaded, fontError] = useFonts({
+  // Standalone Android registers these aliases from immutable APK resources
+  // before React starts. Never rewrite/mmap runtime font-cache files on launch:
+  // Android 11 previously SIGBUS-crashed inside harfbuzz while loading them.
+  // Expo Go cannot use our native plugin, so it retains runtime loading.
+  const nativeFontsEmbedded = Platform.OS === 'android' && Constants.appOwnership !== 'expo';
+  const [fontsLoaded, fontError] = useFonts(nativeFontsEmbedded ? {} : {
     // Bundle Vazir locally so Persian typography and numerals stay identical
     // offline and independent of each Android manufacturer's system fonts.
     Vazir: swap(Vazirmatn_400Regular),

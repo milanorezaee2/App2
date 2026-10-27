@@ -138,7 +138,7 @@ export default function LanguagesHome() {
     setSwitchingLanguage(true);
     try {
       const previous = await getActiveLanguage();
-      if (previous && previous !== languageId) {
+      if (!FEATURES.learnerLogin && previous && previous !== languageId) {
         const previousName = languageMeta[previous as keyof typeof languageMeta]?.persianName ?? previous;
         const nextName = languageMeta[languageId as keyof typeof languageMeta]?.persianName ?? languageId;
         const message = `مسیر «${previousName}» بسته نمی‌شود و پیشرفت آن محفوظ می‌ماند. می‌خواهی وارد مسیر «${nextName}» شوی؟`;

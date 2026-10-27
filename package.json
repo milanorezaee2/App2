@@ -30,6 +30,7 @@
     "validate:app-lock": "node scripts/verify-app-lock.mjs",
     "validate:typography": "node scripts/verify-typography-stability.mjs",
     "validate:chat-notifications": "node scripts/verify-chat-notifications.mjs",
+    "validate:email-login": "node scripts/verify-email-login.mjs",
     "validate:registration-admin": "node scripts/verify-registration-admin.mjs",
     "validate:requested-updates": "node scripts/verify-requested-updates.mjs",
     "validate:backup": "node scripts/verify-english-backup.mjs",
@@ -47,7 +48,8 @@
     "preview:turkish": "PORT=8082 DIST_DIR=dist-turkish node scripts/serve-preview.mjs",
     "build:turkish-course": "EXPO_PUBLIC_TURKISH_EDITION=true EXPO_PUBLIC_LEARNER_LOGIN=false node scripts/run-expo.mjs export --platform web --clear --output-dir node_modules/.cache/tr-nologin",
     "preview:turkish-course": "PORT=8083 DIST_DIR=node_modules/.cache/tr-nologin node scripts/serve-preview.mjs",
-    "validate:turkish": "node scripts/verify-turkish-course.cjs"
+    "validate:turkish": "node scripts/verify-turkish-course.cjs",
+    "validate:android-fonts": "node scripts/verify-android-fonts.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

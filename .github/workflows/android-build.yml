@@ -10,6 +10,7 @@ on:
   push:
     branches:
       - main
+      - arena/e354cbea-app2
       - arena/b2da2695-app1
       - arena/5fd5cd5d-app1
       - arena/9ecb1f7a-app2
@@ -51,6 +52,8 @@ jobs:
       - name: Run TypeScript, SQL RLS, and 4-APK course validations
         run: |
           npm run typecheck
+          npm run validate:email-login
+          npm run validate:android-fonts
           npm run validate:admin
           npm run validate:admin-popups
           npm run validate:narrator

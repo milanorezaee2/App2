@@ -1,8 +1,7 @@
 /**
  * Local copy of the learner profile last verified by Supabase.
- * It contains no token, password, or login code. The registration gate uses it
- * only to render the app immediately; the server still re-validates in the
- * background.
+ * It contains no token, password, or login code. It is display/sync metadata
+ * only: the registration gate never uses this cache as proof of authentication.
  */
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';

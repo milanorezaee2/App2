@@ -28,7 +28,114 @@
     "plugins": [
       "expo-router",
       "./plugins/withStableLayoutDirection",
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "Vazir",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/vazirmatn/400Regular/Vazirmatn_400Regular.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Vazir-Medium",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/vazirmatn/500Medium/Vazirmatn_500Medium.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Vazir-Bold",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/vazirmatn/700Bold/Vazirmatn_700Bold.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Vazir-Black",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/vazirmatn/900Black/Vazirmatn_900Black.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Inter",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Inter-SemiBold",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Inter-ExtraBold",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Lalezar",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/vazirmatn/400Regular/Vazirmatn_400Regular.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Vazirmatn",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/vazirmatn/400Regular/Vazirmatn_400Regular.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Vazirmatn-Medium",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/vazirmatn/500Medium/Vazirmatn_500Medium.ttf",
+                    "weight": 400
+                  }
+                ]
+              },
+              {
+                "fontFamily": "Vazirmatn-Bold",
+                "fontDefinitions": [
+                  {
+                    "path": "./node_modules/@expo-google-fonts/vazirmatn/700Bold/Vazirmatn_700Bold.ttf",
+                    "weight": 400
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
       [
         "expo-notifications",
         {

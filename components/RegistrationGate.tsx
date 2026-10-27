@@ -9,7 +9,7 @@ import UserPlus from 'lucide-react-native/dist/esm/icons/user-plus';
 import LogIn from 'lucide-react-native/dist/esm/icons/log-in';
 import { supabase } from '@/lib/supabase';
 import { KeyboardAwareScrollView, KeyboardAvoidingView } from '@/components/KeyboardRuntime';
-import { getRegisteredSession, registrationError, requestEmailCode, touchLearnerActivity, verifyEmailCode, readCachedRegistration } from '@/lib/userRegistration';
+import { getRegisteredSession, registrationError, requestEmailCode, touchLearnerActivity, verifyEmailCode } from '@/lib/userRegistration';
 import { Colors, Radius, Typography } from '@/lib/theme';
 import { FEATURES } from '@/lib/features';
 
@@ -30,7 +30,7 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [cooldown, setCooldown] = useState(0);
-  const openedFromCache = useRef(false);
+  const verifying = useRef(false);
 
   const inspect = useCallback(async () => {
     if (BYPASS_GATE) return;
@@ -40,7 +40,7 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
       setReady(complete);
       if (complete) void touchLearnerActivity();
     } catch {
-      if (!openedFromCache.current) setReady(false);
+      setReady(false);
     } finally {
       setChecking(false);
     }
@@ -49,14 +49,12 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
   useEffect(() => {
     if (BYPASS_GATE) return;
     let alive = true;
-    void readCachedRegistration().then(cached => {
-      if (!alive || !cached) return;
-      openedFromCache.current = true;
-      setReady(true);
-      setChecking(false);
-    });
+    // A cached profile is display data, never proof of authentication.
     void inspect();
-    const { data } = supabase.auth.onAuthStateChange(() => { void inspect(); });
+    const { data } = supabase.auth.onAuthStateChange(() => {
+      // Run outside Supabase's auth lock; avoid opening routes mid-verification.
+      setTimeout(() => { if (alive && !verifying.current) void inspect(); }, 0);
+    });
     const appState = AppState.addEventListener('change', state => { if (state === 'active') void inspect(); });
     return () => { alive = false; data.subscription.unsubscribe(); appState.remove(); };
   }, [inspect]);
@@ -73,7 +71,7 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
     try {
       if (mode === 'register' && (fullName.trim().length < 2 || fullName.trim().length > 80)) throw new Error('NAME_INVALID');
       await requestEmailCode(email, mode === 'register' ? fullName : undefined);
-      setStage('code'); setCooldown(45);
+      setStage('code'); setCooldown(60);
       setNotice(`کد ۶ رقمی به ${email.trim().toLowerCase()} فرستاده شد.`);
     } catch (reason) {
       setError(registrationError(reason));
@@ -82,6 +80,7 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
 
   const verifyCode = async () => {
     if (busy) return;
+    verifying.current = true;
     setBusy(true); setError(''); setNotice('');
     try {
       await verifyEmailCode(email, code, fullName);
@@ -89,7 +88,7 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
       void inspect();
     } catch (reason) {
       setError(registrationError(reason));
-    } finally { setBusy(false); }
+    } finally { verifying.current = false; setBusy(false); }
   };
 
   if (BYPASS_GATE || ready) return <>{children}</>;
@@ -110,24 +109,24 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
 
           {stage === 'email' ? <>
             <View style={styles.switcher}>
-              <Pressable accessibilityRole="button" onPress={() => { setMode('register'); setError(''); setNotice(''); }} style={[styles.switchButton, mode === 'register' && styles.switchActive]}><UserPlus size={17} color={mode === 'register' ? '#FFFFFF' : Colors.primary[700]} /><Text style={[styles.switchText, mode === 'register' && styles.switchTextActive]}>ثبت‌نام</Text></Pressable>
-              <Pressable accessibilityRole="button" onPress={() => { setMode('login'); setError(''); setNotice(''); }} style={[styles.switchButton, mode === 'login' && styles.switchActive]}><LogIn size={17} color={mode === 'login' ? '#FFFFFF' : Colors.primary[700]} /><Text style={[styles.switchText, mode === 'login' && styles.switchTextActive]}>ورود</Text></Pressable>
+              <Pressable accessibilityRole="button" disabled={busy} onPress={() => { setMode('register'); setError(''); setNotice(''); }} style={[styles.switchButton, mode === 'register' && styles.switchActive]}><UserPlus size={17} color={mode === 'register' ? '#FFFFFF' : Colors.primary[700]} /><Text style={[styles.switchText, mode === 'register' && styles.switchTextActive]}>ثبت‌نام</Text></Pressable>
+              <Pressable accessibilityRole="button" disabled={busy} onPress={() => { setMode('login'); setError(''); setNotice(''); }} style={[styles.switchButton, mode === 'login' && styles.switchActive]}><LogIn size={17} color={mode === 'login' ? '#FFFFFF' : Colors.primary[700]} /><Text style={[styles.switchText, mode === 'login' && styles.switchTextActive]}>ورود</Text></Pressable>
             </View>
-            {mode === 'register' ? <><Text style={styles.label}>نام و نام خانوادگی</Text><TextInput accessibilityLabel="نام و نام خانوادگی" value={fullName} onChangeText={setFullName} style={styles.input} placeholder="مثلاً سارا احمدی" placeholderTextColor="#8799B2" textAlign="right" /></> : null}
+            {mode === 'register' ? <><Text style={styles.label}>نام و نام خانوادگی</Text><TextInput accessibilityLabel="نام و نام خانوادگی" value={fullName} editable={!busy} onChangeText={setFullName} style={styles.input} placeholder="مثلاً سارا احمدی" placeholderTextColor="#8799B2" textAlign="right" /></> : null}
             <Text style={styles.label}>ایمیل</Text>
-            <TextInput accessibilityLabel="ایمیل حساب" value={email} onChangeText={setEmail} style={[styles.input, styles.ltr]} placeholder="name@example.com" placeholderTextColor="#8799B2" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" onSubmitEditing={() => void sendCode()} />
+            <TextInput accessibilityLabel="ایمیل حساب" value={email} editable={!busy} autoComplete="email" onChangeText={setEmail} style={[styles.input, styles.ltr]} placeholder="name@example.com" placeholderTextColor="#8799B2" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" onSubmitEditing={() => void sendCode()} />
           </> : <>
             <Text style={styles.label}>کد تأیید ایمیل</Text>
-            <TextInput accessibilityLabel="کد تأیید ایمیل" value={code} onChangeText={value => setCode(value.replace(/\D/g, '').slice(0, 6))} style={[styles.input, styles.codeInput]} placeholder="۱۲۳۴۵۶" placeholderTextColor="#8799B2" keyboardType="number-pad" autoFocus onSubmitEditing={() => void verifyCode()} />
+            <TextInput accessibilityLabel="کد تأیید ایمیل" value={code} editable={!busy} autoComplete="one-time-code" textContentType="oneTimeCode" maxLength={6} onChangeText={value => setCode(value.replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit))).replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit))).replace(/\D/g, '').slice(0, 6))} style={[styles.input, styles.codeInput]} placeholder="۱۲۳۴۵۶" placeholderTextColor="#8799B2" keyboardType="number-pad" autoFocus onSubmitEditing={() => void verifyCode()} />
             <Pressable accessibilityRole="button" disabled={busy || cooldown > 0} onPress={() => void sendCode()}><Text style={[styles.resend, (busy || cooldown > 0) && styles.resendDisabled]}>{cooldown ? `ارسال دوباره تا ${cooldown} ثانیه` : 'ارسال دوبارهٔ کد'}</Text></Pressable>
           </>}
 
           {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
           {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-          <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} style={[styles.submit, busy && styles.disabled]} onPress={() => void (stage === 'email' ? sendCode() : verifyCode())}>
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy || (stage === 'email' ? cooldown > 0 : code.length !== 6) }} disabled={busy || (stage === 'email' ? cooldown > 0 : code.length !== 6)} style={[styles.submit, busy && styles.disabled]} onPress={() => void (stage === 'email' ? sendCode() : verifyCode())}>
             {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitText}>{stage === 'email' ? 'دریافت کد ورود' : 'تأیید و ورود'}</Text>}
           </Pressable>
-          {stage === 'code' && <Pressable accessibilityRole="button" onPress={() => { setStage('email'); setCode(''); setError(''); setNotice(''); }}><Text style={styles.changeEmail}>تغییر ایمیل</Text></Pressable>}
+          {stage === 'code' && <Pressable disabled={busy} accessibilityRole="button" onPress={() => { setStage('email'); setCode(''); setError(''); setNotice(''); }}><Text style={styles.changeEmail}>تغییر ایمیل</Text></Pressable>}
           <View style={styles.privacy}><ShieldCheck size={18} color="#16835D" /><Text style={styles.privacyText}>پیشرفت هر زبان جداگانه نگهداری می‌شود؛ با تغییر زبان، درس‌های قبلی پاک نمی‌شوند. پیام‌های خصوصی نمایش داده نمی‌شوند.</Text></View>
         </LinearGradient>
       </KeyboardAwareScrollView>

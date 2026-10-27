@@ -16,7 +16,7 @@ export type RegistrationProfile = {
 };
 
 export function isPermanentLearner(user: User | null | undefined): boolean {
-  return !!user?.email && !user.is_anonymous;
+  return !!user?.email && !!user.email_confirmed_at && !user.is_anonymous;
 }
 
 async function saveProfile(user: User, fullName: string): Promise<void> {
@@ -38,7 +38,10 @@ export async function getRegisteredSession(): Promise<{ session: Session | null;
   const { data, error } = await supabase.auth.getSession();
   if (error) throw error;
   const session = data.session;
-  if (!session || !isPermanentLearner(session.user)) return { session: null, profile: null };
+  if (!session || !isPermanentLearner(session.user)) {
+    await clearCachedRegistration();
+    return { session: null, profile: null };
+  }
   const { data: profile, error: profileError } = await supabase
     .from('app_user_profiles')
     .select('user_id,full_name,email,registered_at,last_seen_at')
@@ -138,10 +141,10 @@ export function registrationError(error: unknown): string {
   const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
   if (/NAME_INVALID/.test(message)) return 'نام و نام خانوادگی را کامل وارد کنید.';
   if (/EMAIL_INVALID|invalid.*email/i.test(message)) return 'ایمیل معتبر وارد کنید.';
-  if (/CODE_INVALID|token.*(invalid|expired)|otp/i.test(message)) return 'کد واردشده نادرست یا منقضی شده است.';
   if (/EMAIL_NOT_VERIFIED|not verified/i.test(message)) return 'تأیید ایمیل کامل نشد؛ دوباره کد بگیرید.';
   if (/rate limit|too many requests/i.test(message)) return 'تعداد درخواست‌ها زیاد شده است؛ چند دقیقه صبر کنید و دوباره امتحان کنید.';
-  if (/email provider|smtp|sending/i.test(message)) return 'ارسال ایمیل روی Supabase تنظیم نشده است؛ تنظیمات Email را بررسی کنید.';
+  if (/CODE_INVALID|token.*(invalid|expired)|otp_expired|otp_disabled/i.test(message)) return 'کد واردشده نادرست یا منقضی شده است؛ کد جدید بگیرید.';
+  if (/email provider|smtp|sending|email.*(not authorized|not allowed)/i.test(message)) return 'ارسال ایمیل روی Supabase تنظیم نشده است؛ تنظیمات Email را بررسی کنید.';
   if (/Invalid login credentials/i.test(message)) return 'ایمیل یا رمز عبور صحیح نیست.';
   if (/row-level security|permission denied/i.test(message)) return 'مجوز ثبت پروفایل روی سرور کامل نیست؛ migration ثبت‌نام را بررسی کنید.';
   if (/app_user_profiles|schema cache|does not exist/i.test(message)) return 'زیرساخت ثبت‌نام هنوز روی سرور فعال نشده است.';

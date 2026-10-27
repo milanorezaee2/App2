@@ -1846,23 +1846,23 @@ function EducationAdmin() {
                     ))}
                   </View>
 
-                  <View style={{ flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                  <View style={s.popupPublishToolbar}>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel="انتشار کامل پاپ‌آپ در اپ اصلی"
                       disabled={busy}
                       onPress={() => submitPopupForm(true)}
-                      style={[s.publishPrimaryBtn, { flex: 1, minWidth: 210 }, busy && { opacity: 0.6 }]}
+                      style={[s.publishPrimaryBtn, busy && { opacity: 0.6 }]}
                     >
                       {busy ? (
                         <ActivityIndicator color="#FFFFFF" size="small" />
                       ) : (
                         <>
-                          <Send size={16} color="#FFFFFF" />
+                          <Send size={12} color="#FFFFFF" />
                           <Text style={s.publishPrimaryBtnText}>
                             {editingPopupId
-                              ? 'ذخیره تغییرات و انتشار آنی'
-                              : 'انتشار و ارسال آنی پاپ‌آپ در اپ اصلی'}
+                              ? 'ذخیره و انتشار'
+                              : 'انتشار'}
                           </Text>
                         </>
                       )}
@@ -2844,25 +2844,30 @@ const s = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
   },
+  // Normal flow below the form, outside the image/preview. No overlay or stretch.
+  popupPublishToolbar: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
   publishPrimaryBtn: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    minHeight: 46,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: 13,
+    alignSelf: 'flex-start',
+    flexShrink: 0,
+    gap: 4,
+    minHeight: 32,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
     backgroundColor: '#059669',
-    shadowColor: '#059669',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
   },
   publishPrimaryBtnText: {
     fontFamily: 'Vazir-Bold',
-    fontSize: 12,
+    fontSize: 10,
     color: '#FFFFFF',
   },
 });
