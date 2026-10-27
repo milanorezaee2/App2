@@ -282,6 +282,14 @@ jobs:
           print('App 4 (Login EN+DE+TR + Turkish Narrator) APK verified:', cfg['android']['package'], cfg['android']['versionCode'])
           PY
 
+      - name: Enable hardware acceleration for reliable emulator input
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm && test -w /dev/kvm
+
       - name: Smoke-test all 4 APKs on Android emulator
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         uses: reactivecircus/android-emulator-runner@v2
