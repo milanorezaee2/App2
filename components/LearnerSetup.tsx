@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLearnerLanguageAccess } from '@/components/LearnerLanguageAccess';
 import { Typography } from '@/lib/theme';
 import {
-  FAMILIARITIES, JOURNEY_GOALS, isJourneyLanguage, suggestedLevel,
+  isJourneyLanguage,
   type Familiarity, type JourneyGoal, type JourneyLanguage, type LearnerJourney,
 } from '@/lib/learnerJourney';
 
@@ -16,61 +16,37 @@ export function LearnerSetup({ initial, onSave, onCancel, onSignOut }: {
 }) {
   const access = useLearnerLanguageAccess();
   const languages = access.allowedLanguages.filter(item => isJourneyLanguage(item.id));
-  const [step, setStep] = useState(0);
   const [language, setLanguage] = useState<JourneyLanguage | null>(initial?.language ?? null);
-  const [familiarity, setFamiliarity] = useState<Familiarity | null>(initial ? initial.paths[initial.language]?.familiarity ?? null : null);
-  const [goal, setGoal] = useState<JourneyGoal | null>(initial ? initial.paths[initial.language]?.goal ?? null : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const scroll = useRef<ScrollView>(null);
   const allowed = language !== null && languages.some(item => item.id === language);
-  const valid = allowed && (step === 0 || familiarity !== null) && (step < 2 || goal !== null);
-  const selected = languages.find(item => item.id === language);
-  useEffect(() => { scroll.current?.scrollTo({ y: 0, animated: false }); }, [step]);
-  // A realtime administrative revocation must also invalidate the confirmation.
-  useEffect(() => { if (!access.loadingAccess && language && !allowed) setStep(0); }, [access.loadingAccess, allowed, language]);
-  const chooseLanguage = (value: JourneyLanguage) => {
-    if (value !== language) {
-      setLanguage(value); setFamiliarity(initial?.paths[value]?.familiarity ?? null); setGoal(initial?.paths[value]?.goal ?? null);
-    }
-  };
+  const valid = allowed;
+  const chooseLanguage = (value: JourneyLanguage) => setLanguage(value);
   const finish = async () => {
-    if (!language || !familiarity || !goal || !allowed || busy) return;
+    if (!language || !allowed || busy) return;
     setBusy(true); setError('');
-    try { await onSave(language, familiarity, goal); }
+    try { await onSave(language, 'new', 'daily'); }
     catch { setError('انتخاب‌ها ذخیره نشدند. اتصال یا فضای ذخیره‌سازی را بررسی و دوباره تلاش کنید؛ سابقهٔ درس‌ها تغییر نکرد.'); }
     finally { setBusy(false); }
   };
-  const titles = ['دوست داری چه زبانی یاد بگیری؟', 'چقدر با این زبان آشنایی داری؟', 'برای چه چیزی یاد می‌گیری؟', 'کریدور یادگیری تو آماده است'];
   return <ScrollView ref={scroll} style={s.screen} contentContainerStyle={s.content}>
     <LinearGradient colors={['#102C57', '#175CA5']} style={s.hero}>
       <Text style={s.eyebrow}>MILO · YOUR LEARNING JOURNEY</Text>
       <Text style={s.heroTitle}>مسیر یادگیریِ خودت</Text>
-      <Text style={s.heroText}>سه انتخاب ساده؛ بعد، یک تصویر روشن از یادگیری تا امروز.</Text>
-      <View style={s.steps}>{[0, 1, 2, 3].map(index => <View key={index} style={[s.step, index <= step && s.stepActive]} />)}</View>
-      <Text style={s.heroText}>مرحلهٔ {String(step + 1).replace(/\d/g, n => '۰۱۲۳۴۵۶۷۸۹'[Number(n)])} از ۴</Text>
+      <Text style={s.heroText}>فقط زبان را انتخاب کن؛ مسیر همه از اولین درس شروع می‌شود.</Text>
     </LinearGradient>
-    <Text accessibilityRole="header" style={s.title}>{titles[step]}</Text>
+    <Text accessibilityRole="header" style={s.title}>چه زبانی می‌خواهی یاد بگیری؟</Text>
     {access.loadingAccess ? <ActivityIndicator color="#1769D2" accessibilityLabel="بررسی زبان‌های فعال" /> : languages.length === 0 ? <View style={s.notice}>
       <Text style={s.body}>{access.disabledMessage}</Text>
       <Pressable accessibilityRole="button" onPress={() => void access.refreshAccess()} style={s.secondary}><Text style={s.link}>بررسی دوبارهٔ زبان‌ها</Text></Pressable>
     </View> : <>
-      {step === 0 && languages.map(item => <Choice key={item.id} title={item.name} description={`${item.nativeName} · ${item.lessonsCount} درس موجود`} selected={language === item.id} disabled={busy} onPress={() => { if (isJourneyLanguage(item.id)) chooseLanguage(item.id); }} />)}
-      {step === 1 && <><Text style={s.body}>زبان انتخابی: {selected?.name}. این خودارزیابی است، نه آزمون یا مدرک سطح.</Text>{FAMILIARITIES.map(item => <Choice key={item.id} {...item} selected={familiarity === item.id} disabled={busy} onPress={() => setFamiliarity(item.id)} />)}</>}
-      {step === 2 && <><Text style={s.body}>هدف برای شخصی‌سازی مسیر ثبت می‌شود؛ محتوای درس‌ها و ترتیب آموزشی تغییر نمی‌کند.</Text>{JOURNEY_GOALS.map(item => <Choice key={item.id} {...item} selected={goal === item.id} disabled={busy} onPress={() => setGoal(item.id)} />)}</>}
-      {step === 3 && <View style={s.notice}>
-        <Text style={s.title}>{selected?.name}</Text>
-        <Text style={s.body}>{FAMILIARITIES.find(item => item.id === familiarity)?.title}</Text>
-        <Text style={s.body}>هدف: {JOURNEY_GOALS.find(item => item.id === goal)?.title}</Text>
-        <Text style={s.body}>مسیر پیشنهادی: مرحلهٔ {language && familiarity ? String(suggestedLevel(language, familiarity) + 1).replace(/\d/g, n => '۰۱۲۳۴۵۶۷۸۹'[Number(n)]) : '—'} از دورهٔ موجود؛ نام دقیق سطح و پیشرفت واقعی را در صفحهٔ بعد می‌بینی.</Text>
-        <Text style={s.body}>انتخاب سطح، هیچ درسی را تکمیل‌شده حساب نمی‌کند و هیچ سابقه‌ای را پاک نمی‌کند. می‌توانی هر زمان مسیرت را تغییر بدهی.</Text>
-        <Text style={s.caption}>انتخاب‌ها برای همین حساب روی این دستگاه ذخیره می‌شوند؛ دورهٔ موجود لزوماً معادل سطح واقعی یا مدرک زبان شما نیست.</Text>
-      </View>}
+      {languages.map(item => <Choice key={item.id} title={item.name} description={`${item.nativeName} · شروع از اولین درس`} selected={language === item.id} disabled={busy} onPress={() => { if (isJourneyLanguage(item.id)) chooseLanguage(item.id); }} />)}
+      <Text style={s.body}>بدون سؤال تعیین سطح، از سطح مقدماتی و درس اول شروع می‌کنیم. متن، تعداد جمله‌ها و ترتیب درس‌ها تغییری نمی‌کند. سابقهٔ قبلی پاک نمی‌شود.</Text>
       {!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
-      <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy || !valid }} disabled={busy || !valid} onPress={() => step < 3 ? setStep(value => value + 1) : void finish()} style={[s.primary, (busy || !valid) && s.disabled]}>
-        {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.primaryText}>{step === 3 ? 'ورود به کریدور و دیدن پیشرفت من' : 'ادامه'}</Text>}
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy || !valid }} disabled={busy || !valid} onPress={() => void finish()} style={[s.primary, (busy || !valid) && s.disabled]}>
+        {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.primaryText}>شروع از اولین درس</Text>}
       </Pressable>
-      {step > 0 && <Pressable accessibilityRole="button" disabled={busy} onPress={() => setStep(value => value - 1)} style={s.secondary}><Text style={s.link}>مرحلهٔ قبل</Text></Pressable>}
     </>}
     {onSignOut && <Pressable accessibilityRole="button" disabled={busy} onPress={onSignOut} style={s.secondary}><Text style={s.link}>خروج از حساب</Text></Pressable>}
     {onCancel && <Pressable accessibilityRole="button" disabled={busy} onPress={onCancel} style={s.secondary}><Text style={s.link}>انصراف؛ برگشت به گزارش</Text></Pressable>}

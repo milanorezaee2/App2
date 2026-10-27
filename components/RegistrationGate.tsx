@@ -35,20 +35,33 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
   const [notice, setNotice] = useState('');
   const [cooldown, setCooldown] = useState(0);
   const verifying = useRef(false);
+  const verifiedAccount = useRef<string | null>(null);
+  const inspection = useRef(0);
   const authenticatedCallback = useRef(onAuthenticated);
   authenticatedCallback.current = onAuthenticated;
 
   const inspect = useCallback(async () => {
     if (BYPASS_GATE || verifying.current) return;
+    const ticket = ++inspection.current;
     try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (ticket !== inspection.current) return;
+      if (sessionError) throw sessionError;
+      const user = data.session?.user;
+      if (user?.id && user.email_confirmed_at && !user.is_anonymous && verifiedAccount.current === user.id) {
+        setReady(true);
+        return; // Do not re-fetch the profile on every foreground/token refresh.
+      }
       const state = await getRegisteredSession();
+      if (ticket !== inspection.current) return;
       const complete = !!state.session && !!state.profile;
+      verifiedAccount.current = complete ? state.session!.user.id : null;
       setReady(complete);
-      if (complete) void touchLearnerActivity();
+      if (complete) void touchLearnerActivity().catch(() => undefined);
     } catch {
-      setReady(false);
+      if (ticket === inspection.current) setReady(false);
     } finally {
-      setChecking(false);
+      if (ticket === inspection.current) setChecking(false);
     }
   }, []);
 
@@ -82,12 +95,13 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
       // openAuthSessionAsync owns warm links while its browser is open.
       if (!verifying.current && isGoogleCallback(url)) void restore(url);
     });
-    const { data } = supabase.auth.onAuthStateChange(() => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) { ++inspection.current; verifiedAccount.current = null; setReady(false); }
       // Run outside Supabase's auth lock; avoid opening routes mid-verification.
       setTimeout(() => { if (alive && !verifying.current) void inspect(); }, 0);
     });
     const appState = AppState.addEventListener('change', state => { if (state === 'active') void inspect(); });
-    return () => { alive = false; data.subscription.unsubscribe(); appState.remove(); linkSubscription.remove(); };
+    return () => { alive = false; ++inspection.current; data.subscription.unsubscribe(); appState.remove(); linkSubscription.remove(); };
   }, [inspect]);
 
   useEffect(() => {

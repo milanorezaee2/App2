@@ -47,10 +47,10 @@ check('invalid schemas, language, level, goal, dates and missing path rejected',
     assert.throws(() => api.parseLearnerJourney(JSON.stringify({ ...profile('A'), ...bad }), 'A'));
   }
 });
-check('all self-assessments map to actual course levels', () => {
+check('every old/new self-assessment now starts at level zero', () => {
   for (const language of api.JOURNEY_LANGUAGES) for (const item of api.FAMILIARITIES) {
     const id = api.suggestedLevel(language, item.id);
-    assert([...(new Set(api[language.toUpperCase()].map(lesson => lesson.levelId)))].includes(id));
+    assert.equal(id,0,'old and new preferences always start in the existing introductory level');
   }
 });
 state.failWrite = true;

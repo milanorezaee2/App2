@@ -66,9 +66,8 @@ export async function saveLearnerJourney(profile: LearnerJourney): Promise<void>
   } else await AsyncStorage.setItem(journeyKey(profile.userId), raw);
 }
 
-/** A self-assessment selects an existing library, not completions or a certificate. */
-export function suggestedLevel(language: JourneyLanguage, familiarity: Familiarity): number {
-  const index = FAMILIARITIES.findIndex(item => item.id === familiarity);
-  return Math.min(Math.max(index, 0), language === 'en' ? 4 : 3);
+/** Every learner enters the existing introductory level; old preferences are compatible. */
+export function suggestedLevel(_language: JourneyLanguage, _familiarity: Familiarity): number {
+  return 0;
 }
 export const journeyLibrary = (language: JourneyLanguage) => language === 'en' ? '/lang/library' : `/learn/${language}/library`;

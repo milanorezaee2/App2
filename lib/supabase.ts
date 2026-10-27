@@ -1,3 +1,4 @@
+import { createBoundedFetch } from './boundedFetch';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -70,6 +71,7 @@ function createSafeClient() {
   try {
     return createClient(supabaseUrl, supabaseAnonKey, {
       auth: authOptions,
+      global: { fetch: createBoundedFetch() },
     });
   } catch (error) {
     console.error(
@@ -78,6 +80,7 @@ function createSafeClient() {
     );
     return createClient(FALLBACK_URL, FALLBACK_KEY, {
       auth: authOptions,
+      global: { fetch: createBoundedFetch() },
     });
   }
 }

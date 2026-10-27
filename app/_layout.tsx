@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts, FontDisplay } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
-import { AppState, I18nManager, InteractionManager, Platform, Text, TextInput } from 'react-native';
+import { I18nManager, InteractionManager, Platform, Text, TextInput } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
 import { createAudioPlayer } from 'expo-audio';
@@ -124,8 +124,6 @@ export default function RootLayout() {
     : RUSSIAN_ONLY_BUILD
       ? '/learn/ru'
       : FEATURES.learnerLogin ? '/journey' : '/languages';
-  const pathnameRef = useRef(pathname);
-  const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
   const handleNavigatorMounted = useCallback(() => {
     // Auth/account changes and app locking can unmount the Stack. Each new
@@ -203,31 +201,6 @@ export default function RootLayout() {
     });
   }, [fontsLoaded, fontError]);
 
-  useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
-
-  // Returning to the app after leaving it should always start from the same
-  // language chooser/home, not the last nested lesson, library, or conversation.
-  // Only a real background -> active transition triggers this; temporary native
-  // dialogs and permission prompts do not reset navigation.
-  useEffect(() => {
-    if (Platform.OS === 'web' || !introComplete) return;
-    const subscription = AppState.addEventListener('change', state => {
-      if (state === 'background') {
-        wasBackgrounded.current = true;
-        return;
-      }
-      if (state === 'active' && wasBackgrounded.current) {
-        wasBackgrounded.current = false;
-        if (stackMounted.current && navigationRef.isReady() && pathnameRef.current !== homeRoute) {
-          router.replace(homeRoute as never);
-        }
-      }
-    });
-    return () => subscription.remove();
-  }, [homeRoute, introComplete, navigationRef, router]);
-
   // Wait for our own Stack to be mounted before normalizing an Android-restored
   // route. AppLockGate/RegistrationGate can temporarily defer mounting the
   // Stack, and fonts keep RootLayout at `return null`; isReady() is the exact
@@ -238,24 +211,8 @@ export default function RootLayout() {
     if (pathname !== homeRoute) router.replace(homeRoute as never);
   }, [homeRoute, introComplete, pathname, navigatorMounted, navigationRef, router]);
 
-  // On web, AppState is unavailable — use page visibility instead so that
-  // returning to the tab also starts from the home screen, not the last
-  // lesson/library/conversation that was open before.
-  useEffect(() => {
-    if (Platform.OS !== 'web' || !introComplete) return;
-    const onVisible = () => {
-      if (
-        document.visibilityState === 'visible'
-        && stackMounted.current
-        && navigationRef.isReady()
-        && pathnameRef.current !== homeRoute
-      ) {
-        router.replace(homeRoute as never);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [homeRoute, introComplete, navigationRef, router]);
+  // Foregrounding, changing tabs, and audio/permission dialogs preserve the
+  // current lesson. Only a real navigator mount normalizes the entry route.
 
   // Native must wait for the registered faces: the global Vazir Text defaults
   // applied above can measure/crash before the font module is ready. On web

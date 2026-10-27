@@ -71,92 +71,69 @@ try {
   const button = label => page.getByRole('button', { name: label, exact: true });
   const radio = label => page.getByRole('radio', { name: label, exact: false });
   const heading = label => page.getByRole('heading', { name: label, exact: true });
-  const next = () => button('ادامه').click();
   let passed = 0;
   const check = async (name, fn) => { await fn(); passed++; console.log('PASS', name); };
   await page.goto(url);
-  await heading('دوست داری چه زبانی یاد بگیری؟').waitFor();
-  await check('fresh authenticated learner cannot skip language selection', async () => assert(await button('ادامه').isDisabled()));
-  await radio('ترکی استانبولی').click(); await next();
-  await check('familiarity required independently from language', async () => { await heading('چقدر با این زبان آشنایی داری؟').waitFor(); assert(await button('ادامه').isDisabled()); });
-  await radio('در موقعیت‌های روزمره ارتباط می‌گیرم').click(); await next();
-  await check('learning goal is required', async () => assert(await button('ادامه').isDisabled()));
-  await radio('سفر و زندگی در محیط تازه').click(); await next();
-  await page.screenshot({ path: path.join(cache, 'confirmation-mobile.png'), fullPage: true });
-  await button('ورود به کریدور و دیدن پیشرفت من').click();
-  await heading('مسیر من، پیشرفت واقعی من').waitFor();
-  await page.getByRole('progressbar').first().waitFor();
-  await check('save opens real dashboard, preserving raw learning storage', async () => {
-    const values = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage)));
-    assert.equal(JSON.parse(values['learner_journey_v1:A']).language, 'tr');
-    assert(!Object.keys(values).some(key => key.startsWith('sentence_course_progress')));
-    assert.equal(await page.getByRole('progressbar').count(), 3);
+  await heading('چه زبانی می‌خواهی یاد بگیری؟').waitFor();
+  await check('a language is required, but there is no level/goal questionnaire', async () => {
+    assert(await button('شروع از اولین درس').isDisabled());
+    assert.equal(await page.getByText('چقدر با این زبان آشنایی داری؟',{exact:true}).count(),0);
   });
-  await page.screenshot({ path: path.join(cache, 'dashboard-mobile.png'), fullPage: true });
-  await button('شروع از درس‌های سطح پیشنهادی').click();
-  await check('Turkish self-assessment opens actual A2 library, without completing lessons', async () => assert.deepEqual(await page.evaluate(() => window.__routes.at(-1)), { pathname: '/learn/tr/library', params: { level: '2' } }));
-  await button('باز کردن کریدور ترکی استانبولی').click();
-  await check('selected corridor opens correct home', async () => assert.equal(await page.evaluate(() => window.__routes.at(-1)), '/learn/tr'));
-  await page.reload(); await heading('مسیر من، پیشرفت واقعی من').waitFor();
-  await check('returning account resumes dashboard without repeat onboarding', async () => assert.equal(await heading('دوست داری چه زبانی یاد بگیری؟').count(), 0));
-  await button('تغییر زبان، سطح یا هدف').click();
-  await radio('آلمانی').click(); await next();
-  await check('switching language does not reuse another language self-assessment', async () => assert(await button('ادامه').isDisabled()));
-  await radio('از صفر شروع می‌کنم').click(); await next(); await radio('کار و ارتباط حرفه‌ای').click(); await next();
-  await button('ورود به کریدور و دیدن پیشرفت من').click(); await heading('مسیر من، پیشرفت واقعی من').waitFor();
-  await check('per-language preferences and prior Turkish path retained', async () => {
-    const p = await page.evaluate(() => JSON.parse(localStorage.getItem('learner_journey_v1:A')));
-    assert.equal(p.language, 'de'); assert.equal(p.paths.de.familiarity, 'new'); assert.equal(p.paths.tr.familiarity, 'everyday');
+  await radio('ترکی استانبولی').click();await button('شروع از اولین درس').click();
+  await heading('زبانت را انتخاب کن؛ از صفر شروع کن').waitFor();
+  await check('onboarding saves introductory preference and does not write learning records', async () => {
+    const values=await page.evaluate(()=>Object.fromEntries(Object.entries(localStorage)));
+    const p=JSON.parse(values['learner_journey_v1:A']);assert.equal(p.language,'tr');assert.equal(p.paths.tr.familiarity,'new');
+    assert(!Object.keys(values).some(k=>k.startsWith('sentence_course_progress')));
   });
-  await page.evaluate(() => window.__allow(['en']));
-  await check('admin revocation hides disabled language reports and entry buttons', async () => {
-    await heading('زبان انتخابی فعلاً غیرفعال است').waitFor();
-    assert.equal(await button('باز کردن کریدور آلمانی').count(), 0);
-    assert.equal(await heading('آلمانی').count(), 0);
+  await check('all three languages are immediately available with no eager report', async () => {
+    assert.equal(await page.getByRole('progressbar').count(),0);
+    for(const name of ['انگلیسی','آلمانی','ترکی استانبولی']) assert(await button(`شروع ${name} از درس اول`).isVisible());
   });
-  await button('تغییر زبان، سطح یا هدف').click();
-  await check('setup cannot select an admin-disabled language', async () => { assert.equal(await radio('آلمانی').count(), 0); assert(await button('ادامه').isDisabled()); });
-  await page.evaluate(() => window.__allow([]));
-  await page.getByText('همهٔ زبان‌ها غیرفعال‌اند', { exact: true }).waitFor();
-  await check('all-disabled state has retry, no proceed action', async () => { assert(await button('بررسی دوبارهٔ زبان‌ها').isVisible()); assert.equal(await button('ادامه').count(), 0); });
-  await page.evaluate(() => { window.__allow(['en','de','tr']); window.__account('B'); });
-  await heading('دوست داری چه زبانی یاد بگیری؟').waitFor();
-  await check('account switch discards previous account preferences in memory', async () => assert(await button('ادامه').isDisabled()));
-  // A failed write must keep the wizard open, not pretend completion.
-  await radio('انگلیسی').click(); await next(); await radio('از صفر شروع می‌کنم').click(); await next(); await radio('زندگی و گفت‌وگوی روزمره').click(); await next();
-  await page.evaluate(() => { window.__originalSet = Storage.prototype.setItem; Storage.prototype.setItem = function(){throw Error('disk full')}; });
-  await button('ورود به کریدور و دیدن پیشرفت من').click();
-  await check('storage failure is visible, does not finish onboarding', async () => {
-    await page.getByRole('alert').waitFor(); assert.equal(await heading('مسیر من، پیشرفت واقعی من').count(), 0);
-    assert.equal(await page.evaluate(() => localStorage.getItem('learner_journey_v1:B')), null);
+  for(const [language,name,pathname] of [['en','انگلیسی','/lang/library'],['de','آلمانی','/learn/de/library'],['tr','ترکی استانبولی','/learn/tr/library']]) {
+    await button(`شروع ${name} از درس اول`).click();
+    await page.waitForFunction(p=>window.__routes?.at(-1)?.pathname===p,pathname);
+    await check(`${language} always opens level zero`,async()=>assert.deepEqual(await page.evaluate(()=>window.__routes.at(-1)),{pathname,params:{level:'0'}}));
+  }
+  const before=await page.evaluate(()=>window.__routes.length);
+  await button('شروع انگلیسی از درس اول').evaluate(el=>{for(let i=0;i<8;i++)el.click()});
+  await page.waitForFunction(n=>window.__routes.length>n,before);
+  await check('rapid taps do not push duplicate screens',async()=>assert.equal(await page.evaluate(()=>window.__routes.length),before+1));
+  await button('دیدن گزارش پیشرفت قبلی').click();await page.getByRole('progressbar').nth(2).waitFor();
+  await check('real progress report loads only after explicit request',async()=>assert.equal(await page.getByRole('progressbar').count(),3));
+  await button('بازگشت به انتخاب سریع زبان').click();
+  await page.reload();await heading('زبانت را انتخاب کن؛ از صفر شروع کن').waitFor();
+  await check('returning user goes straight to fast language selection',async()=>assert.equal(await heading('چه زبانی می‌خواهی یاد بگیری؟').count(),0));
+  await page.evaluate(()=>window.__allow(['en']));
+  await check('revoked languages disappear from entry',async()=>{assert.equal(await button('شروع آلمانی از درس اول').count(),0);assert.equal(await button('شروع ترکی استانبولی از درس اول').count(),0)});
+  await page.evaluate(()=>window.__allow([]));await page.getByText('همهٔ زبان‌ها غیرفعال‌اند',{exact:true}).waitFor();
+  await check('all-disabled state provides retry instead of an unusable entry',async()=>assert(await button('بررسی دوبارهٔ زبان‌ها').isVisible()));
+  await page.evaluate(()=>{window.__allow(['en','de','tr']);window.__account('B')});
+  await heading('چه زبانی می‌خواهی یاد بگیری؟').waitFor();
+  await check('new account does not inherit another account language preference',async()=>assert(await button('شروع از اولین درس').isDisabled()));
+  await radio('انگلیسی').click();
+  await page.evaluate(()=>{window.__originalSet=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw Error('disk full')}});
+  await button('شروع از اولین درس').click();await page.getByRole('alert').waitFor();
+  await check('failed save leaves setup visible and no false completion',async()=>{assert.equal(await heading('زبانت را انتخاب کن؛ از صفر شروع کن').count(),0);assert.equal(await page.evaluate(()=>localStorage.getItem('learner_journey_v1:B')),null)});
+  await page.evaluate(()=>{Storage.prototype.setItem=window.__originalSet});
+  await button('شروع از اولین درس').click();await heading('زبانت را انتخاب کن؛ از صفر شروع کن').waitFor();
+  await check('storage recovery can be retried without restarting the app',async()=>assert.equal(await page.getByRole('alert').count(),0));
+  await page.evaluate(()=>{
+    localStorage.setItem('sentence_course_progress_v1',JSON.stringify({completedLessonIds:[window.__lessonIds[0]],reviewCards:[]}));
+    localStorage.setItem('learner_journey_v1:C',JSON.stringify({schemaVersion:1,userId:'C',language:'en',paths:{en:{familiarity:'fluent',goal:'work'}},updatedAt:new Date().toISOString()}));
+    window.__account('C');
   });
-  await page.evaluate(() => { Storage.prototype.setItem = window.__originalSet; });
-  await button('ورود به کریدور و دیدن پیشرفت من').click(); await heading('مسیر من، پیشرفت واقعی من').waitFor();
-  await check('retry after failed save succeeds', async () => assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('learner_journey_v1:B')).language), 'en'));
-  await button('همگام‌سازی سابقهٔ انگلیسی و آلمانی').click();
-  await check('unavailable remote sync is reported honestly and local report remains', async () => { await page.getByText('همگام‌سازی انجام نشد؛', { exact: false }).waitFor(); assert.equal(await page.getByRole('progressbar').count(), 3); });
-  await page.evaluate(() => {
-    const [first,second]=window.__lessonIds;
-    const d=new Date();const day=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    localStorage.setItem('sentence_course_progress_v1',JSON.stringify({completedLessonIds:[first,first],reviewCards:[],currentStreak:2,longestStreak:4,lastActiveDate:day,totalMinutes:88,updatedAt:d.toISOString()}));
-    localStorage.setItem('english_study_state_v1',JSON.stringify({version:1,days:{[day]:180000},sessions:{[second]:{stage:1,sentenceIndex:0,revealed:false,evidencePassed:false}},lessonEvidence:{}}));
-  });
-  await button('تازه‌سازی گزارش محلی').click();
-  await check('existing study history appears after refresh, without fabricated completions', async () => {
-    await page.getByText('۱ / ۱۷۴',{exact:true}).waitFor();
-    assert((await page.getByText('زمان اندازه‌گیری‌شدهٔ دورهٔ اصلی:',{exact:false}).textContent()).includes('۳ دقیقه'));
-    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('sentence_course_progress_v1')).completedLessonIds.length),2);
-  });
-  await page.evaluate(() => localStorage.setItem('sentence_course_progress_tr_v1','{broken'));
-  await button('تازه‌سازی گزارش محلی').click();
-  await check('corrupt language is shown as unreadable, not zero, while other reports survive', async () => {
-    await page.getByText('گزارش این زبان خوانده نشد.',{exact:false}).waitFor();
-    assert.equal(await page.getByRole('progressbar').count(),2);
-    assert.equal(await page.evaluate(()=>localStorage.getItem('sentence_course_progress_tr_v1')),'{broken');
-  });
-  await page.screenshot({path:path.join(cache,'existing-history-mobile.png'),fullPage:true});
+  await heading('زبانت را انتخاب کن؛ از صفر شروع کن').waitFor();
+  await button('شروع انگلیسی از درس اول').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('learner_journey_v1:C')).paths.en.familiarity==='new');
+  await check('old advanced preferences no longer skip introductory lessons or erase history',async()=>{assert.equal((await page.evaluate(()=>window.__routes.at(-1))).params.level,'0');assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('sentence_course_progress_v1')).completedLessonIds.length),1)});
+  await page.evaluate(()=>localStorage.setItem('sentence_course_progress_tr_v1','{broken'));
+  await button('دیدن گزارش پیشرفت قبلی').click();await page.getByText('گزارش این زبان خوانده نشد.',{exact:false}).waitFor();
+  await check('corrupt report is unknown, not fake zero, and other history remains visible',async()=>{assert.equal(await page.getByRole('progressbar').count(),2);assert.equal(await page.evaluate(()=>localStorage.getItem('sentence_course_progress_tr_v1')),'{broken')});
+  await button('بازگشت به انتخاب سریع زبان').click();
   await page.setViewportSize({width:320,height:640});
-  await check('mobile UI stays within viewport', async () => assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)));
-  await check('no unhandled React/runtime errors', async () => assert.deepEqual(errors, []));
-  console.log(`Learner onboarding browser integration: ${passed} checks passed (360px mobile). Auth/access are isolated test doubles, not a real provider login.`);
+  await check('small mobile viewport has no horizontal overflow',async()=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)));
+  await page.screenshot({path:path.join(cache,'fast-entry-mobile.png'),fullPage:true});
+  await check('no unhandled React/runtime errors',async()=>assert.deepEqual(errors,[]));
+  console.log(`Fast zero-start browser integration: ${passed} checks passed; auth/access are local fixtures.`);
+
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

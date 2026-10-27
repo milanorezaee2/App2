@@ -5,6 +5,8 @@ import { setAudioModeAsync } from 'expo-audio';
 import { Platform } from 'react-native';
 import {
   checkCloudNarrator,
+  cloudNarratorEndpoint,
+  narratorCdnEndpoint,
   isCloudNarratorActive,
   NarratorBlockedError,
   NarratorCloudUnavailableError,
@@ -34,7 +36,7 @@ import {
  */
 
 export type NarratorStatus = 'idle' | 'loading' | 'speaking' | 'paused' | 'blocked' | 'error';
-export type NarratorEngineKind = 'cloud' | null;
+export type NarratorEngineKind = 'cloud' | 'device' | null;
 
 export interface NarratorSnapshot {
   status: NarratorStatus;
@@ -137,6 +139,8 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
  */
 let internalStop = false;
 let turkishDeviceFallbackEnabled = false;
+const deviceLocales = new Set<NarratorLocale>();
+let finishDevice: (() => void) | null = null;
 
 /**
  * Enables graceful female `tr-TR` voice fallback exclusively for App #4 Turkish
@@ -147,31 +151,39 @@ export function setTurkishDeviceFallbackEnabled(enabled: boolean): void {
   turkishDeviceFallbackEnabled = enabled;
 }
 
-async function speakTurkishDeviceFallback(
+async function speakDeviceFallback(
   text: string,
+  locale: NarratorLocale,
   speed: NarratorSpeed,
   id: number,
 ): Promise<boolean> {
   try {
-    const resolved = await resolveNarratorVoice('tr-TR');
+    const resolved = await resolveNarratorVoice(locale);
     if (id !== requestId || !resolved.voice) return false;
     update({
       status: 'speaking',
-      engine: null,
-      voiceLabel: `${resolved.label} · ${resolved.quality}`,
-      qualityLabel: resolved.quality,
+      engine: 'device',
+      voiceLabel: `${resolved.label} · صدای کمکی دستگاه`,
+      qualityLabel: 'صدای کمکی دستگاه؛ نه نریتور اصلی',
       message: '',
     });
     await new Promise<void>((resolve, reject) => {
-      Speech.speak(text, {
-        language: resolved.language,
-        voice: resolved.voice,
-        rate: narratorRateFor('tr-TR', speed),
-        pitch: 1,
-        onDone: () => resolve(),
-        onStopped: () => resolve(),
-        onError: () => reject(new Error('TR_DEVICE_TTS_FAILED')),
-      });
+      let done = false;
+      const finish = (error?: Error) => {
+        if (done) return;
+        done = true; clearTimeout(timer);
+        if (finishDevice === stop) finishDevice = null;
+        if (error) reject(error); else resolve();
+      };
+      const stop = () => finish();
+      const timer = setTimeout(() => { finish(Error('Device voice timed out')); void Speech.stop().catch(() => undefined); }, 90000);
+      finishDevice = stop;
+      try {
+        Speech.speak(text, { language: resolved.language, voice: resolved.voice,
+          rate: narratorRateFor(locale, speed), pitch: 1,
+          onDone: () => finish(), onStopped: () => finish(),
+          onError: () => finish(Error('Device voice unavailable')) });
+      } catch { finish(Error('Device voice unavailable')); }
     });
     if (id === requestId) {
       update({ status: snapshot.status === 'paused' ? 'paused' : 'idle' });
@@ -183,10 +195,11 @@ async function speakTurkishDeviceFallback(
 }
 
 function haltPlayback(): void {
+  finishDevice?.();
   stopCloudNarration();
   internalStop = true;
   try {
-    void Speech.stop();
+    void Speech.stop().catch(() => undefined);
   } finally {
     internalStop = false;
   }
@@ -217,8 +230,14 @@ export async function narrate(
   if (id !== requestId) return;
 
   update({ status: 'loading', message: '', locale, text: clean });
+  if (deviceLocales.has(locale)) {
+    const success = await speakDeviceFallback(clean, locale, speed, id);
+    if (!success && id === requestId) update({ status: 'error', engine: 'device', message: 'صدای این زبان روی دستگاه پیدا نشد یا پخش نشد. بستهٔ گفتار همین زبان را در تنظیمات دستگاه نصب کنید یا به نریتور اصلی برگردید.' });
+    return;
+  }
 
-  const cloud = await checkCloudNarrator();
+
+  const cloud = Boolean(cloudNarratorEndpoint() || narratorCdnEndpoint());
   if (id !== requestId) return;
   update({ cloudAvailable: cloud, cloudChecked: true });
 
@@ -241,21 +260,21 @@ export async function narrate(
         return;
       }
       if (locale === 'tr-TR' && turkishDeviceFallbackEnabled) {
-        const spokeFallback = await speakTurkishDeviceFallback(clean, speed, id);
+        const spokeFallback = await speakDeviceFallback(clean, locale, speed, id);
         if (spokeFallback || id !== requestId) return;
       }
       update({
         ...(locale === 'tr-TR' ? {} : { cloudAvailable: false }),
         status: 'error',
         engine: null,
-        message: 'فایل صوتی تأییدشدهٔ این جمله در CDN یا سرویس نریتور در دسترس نیست.',
+        message: 'صدای نریتور اصلی دریافت نشد؛ اتصال یا سرویس صوتی در دسترس نیست. دوباره پخش کنید یا با انتخاب خودتان از صدای کمکی دستگاه استفاده کنید.',
       });
       return;
     }
   }
 
   if (locale === 'tr-TR' && turkishDeviceFallbackEnabled) {
-    const spokeFallback = await speakTurkishDeviceFallback(clean, speed, id);
+    const spokeFallback = await speakDeviceFallback(clean, locale, speed, id);
     if (spokeFallback || id !== requestId) return;
   }
 
@@ -264,25 +283,36 @@ export async function narrate(
   }
 }
 
+/** Explicit per-language opt-in only. The original cloud voice remains default. */
+export async function chooseDeviceNarration(text: string, locale: NarratorLocale): Promise<void> {
+  deviceLocales.add(locale);
+  await narrate(text, locale);
+}
+export async function chooseOriginalNarration(text: string, locale: NarratorLocale): Promise<void> {
+  deviceLocales.delete(locale);
+  await narrate(text, locale);
+}
+
 /** Stops narration and clears the current request. */
 export function stopNarration(): void {
   requestId += 1;
+  finishDevice?.();
   stopCloudNarration();
-  void Speech.stop();
-  update({ status: 'idle', message: '', engine: null });
+  void Speech.stop().catch(() => undefined);
+  update({ status: 'idle', message: '', engine: snapshot.engine === 'device' ? 'device' : null });
 }
 
 /** Pauses the approved cloud/CDN narrator. */
 export async function pauseNarration(): Promise<void> {
   if (snapshot.status !== 'speaking' && snapshot.status !== 'loading') return;
-  pauseCloudNarration();
+  if (snapshot.engine === 'device' || !pauseCloudNarration()) { ++requestId; haltPlayback(); }
   update({ status: 'paused' });
 }
 
 /** Resumes after a pause, or replays when the engine could not pause. */
 export async function resumeNarration(): Promise<void> {
   if (snapshot.status !== 'paused') return;
-  if (resumeCloudNarration()) {
+  if (snapshot.engine !== 'device' && resumeCloudNarration()) {
     update({ status: 'speaking', engine: 'cloud' });
     return;
   }
@@ -335,6 +365,8 @@ export function isNarratorBusy(): boolean {
 registerNarrationStopHandler(() => {
   stopCloudNarration();
   if (internalStop) return;
+  finishDevice?.();
+  if (snapshot.engine === 'device') { update({ status: 'idle' }); return; }
   if (snapshot.engine === 'cloud' && snapshot.status !== 'blocked') {
     update({ status: 'idle', engine: null });
   }
