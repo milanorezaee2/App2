@@ -2763,8 +2763,8 @@ function EducationAdmin() {
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <>
-                  <Send size={15} color="#FFFFFF" />
-                  <Text style={s.publishPrimaryBtnText}>
+                  <Send size={12} color="#FFFFFF" />
+                  <Text style={s.stickyPublishBtnText}>
                     {editingPopupId ? 'انتشار تغییرات' : 'انتشار پاپ‌آپ'}
                   </Text>
                 </>
@@ -2962,9 +2962,9 @@ const s = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderColor: '#C9DFFF',
@@ -2984,16 +2984,21 @@ const s = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    minHeight: 44,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    gap: 4,
+    minHeight: 30,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
     backgroundColor: '#059669',
     shadowColor: '#059669',
     shadowOpacity: 0.24,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  stickyPublishBtnText: {
+    fontFamily: 'Vazir-Bold',
+    fontSize: 9,
+    color: '#FFFFFF',
   },
 });
