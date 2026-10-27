@@ -192,20 +192,12 @@ export default function RootLayout() {
   }, [pathname]);
 
   const forceNavigateHome = useCallback(() => {
-    let attempts = 0;
-    const tryNavigate = () => {
-      if (navigationRef.isReady()) {
-        if (pathnameRef.current !== homeRoute) {
-          router.replace(homeRoute as never);
-        }
-        return;
+    setTimeout(() => {
+      if (!navigationRef.isReady()) return;
+      if (pathnameRef.current !== '/' && pathnameRef.current !== homeRoute) {
+        router.replace(homeRoute as never);
       }
-      attempts += 1;
-      if (attempts < 25) {
-        setTimeout(tryNavigate, 40);
-      }
-    };
-    tryNavigate();
+    }, 80);
   }, [homeRoute, navigationRef, router]);
 
   // Returning to the app after leaving it should always start from the same
@@ -231,24 +223,13 @@ export default function RootLayout() {
 
   // Wait for our own Stack to be mounted before normalizing an Android-restored
   // route. AppLockGate/RegistrationGate can temporarily defer mounting the
-  // Stack, and fonts keep RootLayout at `return null`; retry cleanly if
-  // navigationRef.isReady() flips true on the commit right after mount.
+  // Stack, and fonts keep RootLayout at `return null`; isReady() is the exact
+  // readiness check expo-router performs before accepting a navigation call.
   useEffect(() => {
-    if (!introComplete || !navigatorMounted || startupRouteLocked.current) return;
-    if (navigationRef.isReady()) {
-      startupRouteLocked.current = true;
-      if (pathnameRef.current !== homeRoute) router.replace(homeRoute as never);
-      return;
-    }
-    const timer = setInterval(() => {
-      if (!navigationRef.isReady()) return;
-      clearInterval(timer);
-      if (startupRouteLocked.current) return;
-      startupRouteLocked.current = true;
-      if (pathnameRef.current !== homeRoute) router.replace(homeRoute as never);
-    }, 35);
-    return () => clearInterval(timer);
-  }, [homeRoute, introComplete, navigatorMounted, navigationRef, router]);
+    if (!introComplete || !navigatorMounted || !navigationRef.isReady() || startupRouteLocked.current) return;
+    startupRouteLocked.current = true;
+    if (pathname !== '/' && pathname !== homeRoute) router.replace(homeRoute as never);
+  }, [homeRoute, introComplete, pathname, navigatorMounted, navigationRef, router]);
 
   // On web, AppState is unavailable — use page visibility instead so that
   // returning to the tab also starts from the home screen, not the last
@@ -286,7 +267,6 @@ export default function RootLayout() {
                 {!IS_ADMIN_APP && <RuntimeGate />}
                 <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
                   <Stack.Screen name="index" />
-                  <Stack.Screen name="languages" />
                   <Stack.Screen name="admin/index" />
                   <Stack.Screen name="agent" />
                   <Stack.Screen name="permissions" />

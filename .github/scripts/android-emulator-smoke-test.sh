@@ -31,8 +31,9 @@ on_exit() {
     printf '%s\n' "${activity_summary:-'(no resumed activity reported)'}"
     printf '\n--- Relevant recent logcat ---\n'
     adb logcat -d -v threadtime -t 5000 >"$full_logcat_file" 2>&1
-    log_summary="$(grep -E 'FATAL EXCEPTION|Unable to load script|AppStartupError|ReactNativeJS|AndroidRuntime|ReactNative|SoLoader|ActivityTaskManager|DEBUG|libc|Fatal signal' "$full_logcat_file" | grep -v 'com.android.commands.uiautomator' | tail -n 80 || true)"
-    printf '%s\n' "${log_summary:-'(no matching Android or React Native errors)'}"
+    crash_buffer="$(adb logcat -d -b crash -v brief -t 40 2>/dev/null | tr '\n' ' ' | cut -c1-900 || true)"
+    log_summary="$(grep -E 'FATAL EXCEPTION|Unable to load script|AppStartupError|ReactNativeJS|AndroidRuntime: E|SoLoader|Fatal signal' "$full_logcat_file" | grep -v 'com.android.commands.uiautomator' | tail -n 80 || true)"
+    printf 'CRASH BUFFER: %s\n%s\n' "${crash_buffer:-'(empty)'}" "${log_summary:-'(no matching Android or React Native errors)'}"
     ui_summary='(UI hierarchy unavailable)'
     if [[ -f "$ui_file" ]]; then
       printf '\n--- UI hierarchy (first 4000 bytes) ---\n'
@@ -53,7 +54,7 @@ print(' | '.join(values)[:1800] or '(no accessible text nodes)')
 PY
 )"
     fi
-    annotation="${failed_step} (exit ${status}); UI=${ui_summary}; ACTIVITY=${activity_summary:-none}; LOGCAT=$(printf '%s' "$log_summary" | tail -n 12 | tr '\n' ' ' | cut -c1-1800)"
+    annotation="${failed_step} (exit ${status}); UI=${ui_summary}; ACTIVITY=${activity_summary:-none}; CRASH=${crash_buffer:-none}; LOGCAT=$(printf '%s' "$log_summary" | tail -n 12 | tr '\n' ' ' | cut -c1-900)"
     annotation="${annotation//'%'/'%25'}"
     annotation="${annotation//$'\r'/'%0D'}"
     annotation="${annotation//$'\n'/'%0A'}"
