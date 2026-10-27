@@ -74,13 +74,13 @@ try {
   let passed = 0;
   const check = async (name, fn) => { await fn(); passed++; console.log('PASS', name); };
   await page.goto(url);
-  await heading('چه زبانی می‌خواهی یاد بگیری؟').waitFor();
-  await check('a language is required, but there is no level/goal questionnaire', async () => {
-    assert(await button('شروع از اولین درس').isDisabled());
-    assert.equal(await page.getByText('چقدر با این زبان آشنایی داری؟',{exact:true}).count(),0);
-  });
-  await radio('ترکی استانبولی').click();await button('شروع از اولین درس').click();
   await heading('زبانت را انتخاب کن؛ از صفر شروع کن').waitFor();
+  await check('new accounts see one language choice screen, with no setup questionnaire', async () => {
+    assert.equal(await heading('چه زبانی می‌خواهی یاد بگیری؟').count(),0);
+    assert.equal(await page.evaluate(()=>localStorage.getItem('learner_journey_v1:A')),null);
+  });
+  await button('شروع ترکی استانبولی از درس اول').click();
+  await page.waitForFunction(()=>window.__routes?.at(-1)?.params.level==='0');
   await check('onboarding saves introductory preference and does not write learning records', async () => {
     const values=await page.evaluate(()=>Object.fromEntries(Object.entries(localStorage)));
     const p=JSON.parse(values['learner_journey_v1:A']);assert.equal(p.language,'tr');assert.equal(p.paths.tr.familiarity,'new');
@@ -109,14 +109,13 @@ try {
   await page.evaluate(()=>window.__allow([]));await page.getByText('همهٔ زبان‌ها غیرفعال‌اند',{exact:true}).waitFor();
   await check('all-disabled state provides retry instead of an unusable entry',async()=>assert(await button('بررسی دوبارهٔ زبان‌ها').isVisible()));
   await page.evaluate(()=>{window.__allow(['en','de','tr']);window.__account('B')});
-  await heading('چه زبانی می‌خواهی یاد بگیری؟').waitFor();
-  await check('new account does not inherit another account language preference',async()=>assert(await button('شروع از اولین درس').isDisabled()));
-  await radio('انگلیسی').click();
+  await heading('زبانت را انتخاب کن؛ از صفر شروع کن').waitFor();
+  await check('new account does not inherit another account language preference',async()=>assert.equal(await page.evaluate(()=>localStorage.getItem('learner_journey_v1:B')),null));
   await page.evaluate(()=>{window.__originalSet=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw Error('disk full')}});
-  await button('شروع از اولین درس').click();await page.getByRole('alert').waitFor();
-  await check('failed save leaves setup visible and no false completion',async()=>{assert.equal(await heading('زبانت را انتخاب کن؛ از صفر شروع کن').count(),0);assert.equal(await page.evaluate(()=>localStorage.getItem('learner_journey_v1:B')),null)});
+  await button('شروع انگلیسی از درس اول').click();await page.getByRole('alert').waitFor();
+  await check('failed save leaves language entry visible and no false completion',async()=>{assert(await heading('زبانت را انتخاب کن؛ از صفر شروع کن').isVisible());assert.equal(await page.evaluate(()=>localStorage.getItem('learner_journey_v1:B')),null)});
   await page.evaluate(()=>{Storage.prototype.setItem=window.__originalSet});
-  await button('شروع از اولین درس').click();await heading('زبانت را انتخاب کن؛ از صفر شروع کن').waitFor();
+  await button('شروع انگلیسی از درس اول').click();await page.waitForFunction(()=>!!localStorage.getItem('learner_journey_v1:B'));
   await check('storage recovery can be retried without restarting the app',async()=>assert.equal(await page.getByRole('alert').count(),0));
   await page.evaluate(()=>{
     localStorage.setItem('sentence_course_progress_v1',JSON.stringify({completedLessonIds:[window.__lessonIds[0]],reviewCards:[]}));

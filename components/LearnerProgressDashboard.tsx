@@ -42,10 +42,11 @@ export default function LearnerProgressDashboard() {
     void refresh();
     return () => { ++request.current; };
   }, [refresh]));
-  const selected = visibleLanguages.find(item => item.id === profile.language);
-  const path = profile.paths[profile.language]!;
-  const level = suggestedLevel(profile.language, path.familiarity);
-  const selectedReport = reports.find(item => item.language === profile.language)?.data;
+  const language = profile?.language;
+  const selected = visibleLanguages.find(item => item.id === language);
+  const path = language ? profile?.paths[language] : undefined;
+  const level = suggestedLevel(language ?? 'en', path?.familiarity ?? 'new');
+  const selectedReport = reports.find(item => item.language === language)?.data;
   const selectedLevel = selectedReport?.levels.find(item => item.id === level);
   const openLibrary = (language: JourneyLanguage, target?: number) => {
     if (access.loadingAccess || !access.isLanguageAllowed(language)) return;
@@ -79,17 +80,17 @@ export default function LearnerProgressDashboard() {
       <Text style={s.heroText}>از همین‌جا ببین چه خوانده‌ای و قدم بعدی‌ات را انتخاب کن.</Text>
     </LinearGradient>
     <View style={styles.card}>
-      <Text accessibilityRole="header" style={s.title}>{access.loadingAccess ? 'در حال بررسی دسترسی به کریدور…' : selected ? `کریدور ${selected.name}` : 'زبان انتخابی فعلاً غیرفعال است'}</Text>
+      <Text accessibilityRole="header" style={s.title}>{access.loadingAccess ? 'در حال بررسی دسترسی به کریدور…' : selected ? `کریدور ${selected.name}` : language ? 'زبان انتخابی فعلاً غیرفعال است' : 'برای شروع، زبانت را انتخاب کن'}</Text>
       <Text style={s.body}>شروع مسیر: از سطح مقدماتی</Text>
-      <Text style={s.body}>هدف: {JOURNEY_GOALS.find(item => item.id === path.goal)?.title}</Text>
+      <Text style={s.body}>هدف: {JOURNEY_GOALS.find(item => item.id === path?.goal)?.title}</Text>
       {!!selectedLevel && <Text style={s.body}>سطح شروع دوره: {selectedLevel.title} · {selectedLevel.cefr}</Text>}
       <Text style={s.caption}>همه از اولین سطح شروع می‌کنند. محتوای آموزشی و سابقهٔ قبلی دست‌نخورده باقی می‌مانند.</Text>
       {selected && <>
-        <Action label={`باز کردن کریدور ${selected.name}`} disabled={access.loadingAccess} onPress={() => openCorridor(profile.language)} />
-        <Action label="درس‌های مقدماتی" secondary disabled={access.loadingAccess || !selectedLevel?.total} onPress={() => openLibrary(profile.language, level)} />
+        <Action label={`باز کردن کریدور ${selected.name}`} disabled={access.loadingAccess} onPress={() => openCorridor(selected.id as JourneyLanguage)} />
+        <Action label="درس‌های مقدماتی" secondary disabled={access.loadingAccess || !selectedLevel?.total} onPress={() => openLibrary(selected.id as JourneyLanguage, level)} />
       </>}
       <Action label="تغییر زبان" secondary onPress={() => setEditing(true)} />
-      {!selected && !access.loadingAccess && <Text style={s.body}>{access.disabledMessage}</Text>}
+      {language && !selected && !access.loadingAccess && <Text style={s.body}>{access.disabledMessage}</Text>}
     </View>
     <Text accessibilityRole="header" style={s.title}>گزارش یادگیری تا امروز</Text>
     <Text style={s.body}>نمای کلی دوره‌های جمله‌محورِ زبان‌های فعال. این گزارش داده‌های ذخیره‌شدهٔ همین دستگاه را می‌خواند؛ سابقهٔ قدیمی دستگاه لزوماً مختص این حساب نیست. برای دریافت سابقهٔ حساب از دستگاه دیگر، همگام‌سازی را بزن.</Text>

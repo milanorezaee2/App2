@@ -16,10 +16,8 @@ try{
  });
  await page.addInitScript(({user})=>{if(sessionStorage.getItem('fixture-ready'))return;sessionStorage.setItem('fixture-ready','true');const encode=o=>btoa(JSON.stringify(o)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');const expires_at=Math.floor(Date.now()/1000)+86400;localStorage.setItem('sb-doagwkssxtxseuavrxnr-auth-token',JSON.stringify({access_token:encode({alg:'HS256',typ:'JWT'})+'.'+encode({sub:user.id,exp:expires_at,aud:'authenticated',role:'authenticated'})+'.fixture-not-a-real-token',refresh_token:'fixture-not-a-real-refresh-token',token_type:'bearer',expires_in:86400,expires_at,user}));},{user});
  await page.goto((process.env.BROWSER_BASE_URL||'http://127.0.0.1:8081')+'/App2/');
- await page.getByRole('heading',{name:'چه زبانی می‌خواهی یاد بگیری؟',exact:true}).waitFor({timeout:45000});console.log('PASS production auth gate mounts simple language-only setup');
- const button=name=>page.getByRole('button',{name,exact:true});const radio=name=>page.getByRole('radio',{name,exact:false});
- await radio('آلمانی').click();await button('شروع از اولین درس').click();
- await page.getByRole('heading',{name:'زبانت را انتخاب کن؛ از صفر شروع کن',exact:true}).waitFor();assert(page.url().includes('/journey'));console.log('PASS setup goes straight to lightweight entry without level questions');
+ await page.getByRole('heading',{name:'زبانت را انتخاب کن؛ از صفر شروع کن',exact:true}).waitFor({timeout:45000});console.log('PASS production auth gate opens a single language entry, no setup questionnaire');
+ const button=name=>page.getByRole('button',{name,exact:true});
  assert.equal(await page.getByRole('progressbar').count(),0);
  await page.screenshot({path:'node_modules/.cache/journey-browser/production-fast-entry-mobile.png',fullPage:true});
  await button('شروع آلمانی از درس اول').click();await page.waitForURL('**/learn/de/library?level=0');await page.getByText('آلمانی مقدماتی',{exact:true}).filter({visible:true}).first().waitFor();console.log('PASS language choice opens the actual introductory library, not advanced self-assessed levels');
@@ -31,7 +29,7 @@ try{
  await button('حساب من و همگام‌سازی').click();await button('خروج از حساب (دادهٔ محلی پاک نمی‌شود)').click();
  await button('ورود').waitFor(); user={...user,id:'66666666-7777-4888-8999-aaaaaaaaaaaa',email:'second@example.invalid'};
  await button('ورود').click();await page.getByRole('textbox',{name:'ایمیل حساب',exact:true}).fill(user.email);await button('دریافت کد ورود').click();await page.getByRole('textbox',{name:'کد تأیید ایمیل',exact:true}).fill('123456');await button('تأیید و ورود').click();
- await page.getByRole('heading',{name:'چه زبانی می‌خواهی یاد بگیری؟',exact:true}).waitFor();
- await radio('انگلیسی').click();await button('شروع از اولین درس').click();await page.getByRole('heading',{name:'زبانت را انتخاب کن؛ از صفر شروع کن',exact:true}).waitFor();await page.waitForURL('**/journey');console.log('PASS second account gets its own simple setup and stable navigator landing');
+ await page.getByRole('heading',{name:'زبانت را انتخاب کن؛ از صفر شروع کن',exact:true}).waitFor();
+ await button('شروع انگلیسی از درس اول').click();await page.waitForURL('**/lang/library?level=0');console.log('PASS second account starts its chosen introductory library in one tap, without old route restoration');
  assert.deepEqual(errors,[]);console.log('PASS production routing has no navigation-before-mount or React errors; all backend HTTP responses were local fixtures, not remote login verification');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

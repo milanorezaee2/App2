@@ -116,7 +116,8 @@ check('landing page has no eager curriculum or report imports', () => {
   assert.match(read('app/journey.tsx'), /await import\('@\/components\/LearnerProgressDashboard'\)/);
   assert.match(read('app/journey.tsx'), /level: '0'/);
 });
-check('no familiarity/goal interrogation and all routes start at introductory level', () => {
+check('no duplicate setup/level questionnaire; all entry routes start at introductory level', () => {
+  assert(!read('components/LearnerJourneyGate.tsx').includes('if (!profile) return <LearnerSetup'));
   assert.doesNotMatch(read('components/LearnerSetup.tsx'), /FAMILIARITIES\.map|JOURNEY_GOALS\.map|setStep/);
   assert.match(read('components/LearnerSetup.tsx'), /onSave\(language, 'new', 'daily'\)/);
 });

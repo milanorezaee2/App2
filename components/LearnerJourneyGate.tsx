@@ -4,10 +4,10 @@ import { FEATURES, MANAGEMENT_BUILD } from '@/lib/features';
 import { supabase } from '@/lib/supabase';
 import { loadLearnerJourney, saveLearnerJourney, type Familiarity, type JourneyGoal, type JourneyLanguage, type LearnerJourney } from '@/lib/learnerJourney';
 import { useLearnerLanguageAccess } from './LearnerLanguageAccess';
-import { LearnerSetup, journeyStyles as s } from './LearnerSetup';
+import { journeyStyles as s } from './LearnerSetup';
 
 interface JourneyContextValue {
-  profile: LearnerJourney;
+  profile: LearnerJourney | null;
   save: (language: JourneyLanguage, familiarity: Familiarity, goal: JourneyGoal) => Promise<void>;
 }
 const JourneyContext = createContext<JourneyContextValue | null>(null);
@@ -73,6 +73,5 @@ function AuthenticatedJourney({ children }: PropsWithChildren) {
     {!!account.current && <Pressable accessibilityRole="button" onPress={() => { setProfile(null); setError(''); }} style={s.secondary}><Text style={s.link}>انتخاب دوبارهٔ مسیر؛ بدون تغییر سابقهٔ درس‌ها</Text></Pressable>}
     <Pressable accessibilityRole="button" onPress={() => void supabase.auth.signOut()} style={s.secondary}><Text style={s.link}>خروج از حساب</Text></Pressable>
   </View>;
-  if (!profile) return <LearnerSetup initial={null} onSave={save} onSignOut={() => void supabase.auth.signOut()} />;
   return <JourneyContext.Provider value={{ profile, save }}>{children}</JourneyContext.Provider>;
 }

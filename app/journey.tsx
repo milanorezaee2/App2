@@ -57,7 +57,7 @@ function QuickLanguageEntry() {
     {access.loadingAccess ? <ActivityIndicator accessibilityLabel="بررسی زبان‌های فعال" color="#1769D2" /> : access.allowedLanguages.filter(item => isJourneyLanguage(item.id)).map(item => <Pressable
       key={item.id} accessibilityRole="button" accessibilityLabel={`شروع ${item.name} از درس اول`}
       disabled={busy} accessibilityState={{ disabled: busy }} onPress={() => { if (isJourneyLanguage(item.id)) void choose(item.id); }}
-      style={[s.choice, item.id === profile.language && s.chosen, busy && s.disabled]}>
+      style={[s.choice, item.id === profile?.language && s.chosen, busy && s.disabled]}>
       <Text style={s.choiceTitle}>{item.name} · {item.nativeName}</Text>
       <Text style={s.body}>شروع از درس اول · بدون تغییر محتوا</Text>
     </Pressable>)}
