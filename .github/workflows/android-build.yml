@@ -503,8 +503,13 @@ jobs:
       - name: Publish only after the emulator retest succeeds
         shell: bash
         run: |
+          if gh release view "milomultilang-android-$SOURCE_NUMBER" >/dev/null 2>&1; then
+            gh release upload "milomultilang-android-$SOURCE_NUMBER" --clobber \
+              1-MiloAdmin.apk 2-MiloNoLogin-EN-RU.apk 3-MiloNoLogin-All4.apk 4-MiloLogin-EN-DE-TR.apk
+          else
           gh release create "milomultilang-android-$SOURCE_NUMBER" \
             --target "$SOURCE_SHA" \
             --title "Milo Android Suite #$SOURCE_NUMBER — Updated UI and Google button" \
             --notes "Four original signed APKs from source run $SOURCE_RUN ($SOURCE_SHA), successfully reverified and smoke-tested on Android in run $GITHUB_RUN_ID. Includes the updated compact hero, full Turkish language card title and Google sign-in button. Google login still requires server-side OAuth provider setup; email OTP remains available." \
             1-MiloAdmin.apk 2-MiloNoLogin-EN-RU.apk 3-MiloNoLogin-All4.apk 4-MiloLogin-EN-DE-TR.apk
+          fi
