@@ -3,7 +3,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from '@/lib/narration';
-import { narrate, primeNarrator, stopNarration } from '@/lib/narrator/engine';
+import { narrate, primeNarrator, setTurkishDeviceFallbackEnabled, stopNarration } from '@/lib/narrator/engine';
+import { FEATURES } from '@/lib/features';
 import BookOpen from 'lucide-react-native/dist/esm/icons/book-open';
 import BookOpenCheck from 'lucide-react-native/dist/esm/icons/book-open-check';
 import Check from 'lucide-react-native/dist/esm/icons/check';
@@ -49,6 +50,7 @@ export default function TurkishHome() {
   useFocusEffect(useCallback(() => {
     let alive = true;
     void preloadSpeechVoices();
+    if (FEATURES.turkishCloudNarrator) setTurkishDeviceFallbackEnabled(true);
     void primeNarrator('tr-TR').catch(() => undefined);
     void Promise.all([
       turkishProgress.getCourseProgress(),
@@ -87,17 +89,32 @@ export default function TurkishHome() {
   const completedCount = TURKISH_LESSONS.filter(lesson => completedSet.has(lesson.id)).length;
   const levelLessons = TURKISH_LESSONS.filter(lesson => lesson.levelId === activeLevel.id);
   const levelCompleted = levelLessons.filter(lesson => completedSet.has(lesson.id)).length;
-  const sentenceCount = TURKISH_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0);
-  const uniqueWords = new Set(TURKISH_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size;
+  const { sentenceCount, uniqueWords, staticLevelStats } = useMemo(() => {
+    const perLevel: Partial<Record<TurkishLevelId, { lessons: typeof TURKISH_LESSONS; sentences: number; words: number }>> = {};
+    TURKISH_RAIL_LEVELS.forEach(level => {
+      const lessons = TURKISH_LESSONS.filter(lesson => lesson.levelId === level.id);
+      perLevel[level.id] = {
+        lessons,
+        sentences: lessons.reduce((sum, lesson) => sum + lesson.sentences.length, 0),
+        words: new Set(lessons.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size,
+      };
+    });
+    return {
+      sentenceCount: TURKISH_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0),
+      uniqueWords: new Set(TURKISH_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size,
+      staticLevelStats: perLevel,
+    };
+  }, []);
   const firstSentence = heroLesson.sentences[0];
   const levelCounts = {} as Partial<Record<TurkishLevelId, { completed: number; total: number; sentences: number; words: number }>>;
   TURKISH_RAIL_LEVELS.forEach(level => {
-    const lessons = TURKISH_LESSONS.filter(lesson => lesson.levelId === level.id);
+    const stat = staticLevelStats[level.id];
+    const lessons = stat?.lessons ?? [];
     levelCounts[level.id] = {
       completed: lessons.filter(lesson => completedSet.has(lesson.id)).length,
       total: lessons.length,
-      sentences: lessons.reduce((sum, lesson) => sum + lesson.sentences.length, 0),
-      words: new Set(lessons.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size,
+      sentences: stat?.sentences ?? 0,
+      words: stat?.words ?? 0,
     };
   });
 

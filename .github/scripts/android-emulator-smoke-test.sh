@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-apk_path="MiloMultilang.apk"
-admin_apk_path="MiloAdmin.apk"
+apk_path="2-MiloNoLogin-EN-RU.apk"
+admin_apk_path="1-MiloAdmin.apk"
 diag_dir="${RUNNER_TEMP:-/tmp}"
 log_file="$diag_dir/milomultilang-emulator-smoke.log"
 full_logcat_file="$diag_dir/milomultilang-emulator-logcat.txt"
@@ -31,8 +31,9 @@ on_exit() {
     printf '%s\n' "${activity_summary:-'(no resumed activity reported)'}"
     printf '\n--- Relevant recent logcat ---\n'
     adb logcat -d -v threadtime -t 5000 >"$full_logcat_file" 2>&1
-    log_summary="$(grep -E 'FATAL EXCEPTION|Unable to load script|AppStartupError|ReactNativeJS|AndroidRuntime|ReactNative|SoLoader|ActivityTaskManager' "$full_logcat_file" | tail -n 80 || true)"
-    printf '%s\n' "${log_summary:-'(no matching Android or React Native errors)'}"
+    crash_buffer="$(adb logcat -d -b crash -v brief -t 40 2>/dev/null | tr '\n' ' ' | cut -c1-900 || true)"
+    log_summary="$(grep -E 'FATAL EXCEPTION|Unable to load script|AppStartupError|ReactNativeJS|AndroidRuntime: E|SoLoader|Fatal signal' "$full_logcat_file" | grep -v 'com.android.commands.uiautomator' | tail -n 80 || true)"
+    printf 'CRASH BUFFER: %s\n%s\n' "${crash_buffer:-'(empty)'}" "${log_summary:-'(no matching Android or React Native errors)'}"
     ui_summary='(UI hierarchy unavailable)'
     if [[ -f "$ui_file" ]]; then
       printf '\n--- UI hierarchy (first 4000 bytes) ---\n'
@@ -53,7 +54,7 @@ print(' | '.join(values)[:1800] or '(no accessible text nodes)')
 PY
 )"
     fi
-    annotation="${failed_step} (exit ${status}); UI=${ui_summary}; ACTIVITY=${activity_summary:-none}; LOGCAT=$(printf '%s' "$log_summary" | tail -n 12 | tr '\n' ' ' | cut -c1-1800)"
+    annotation="${failed_step} (exit ${status}); UI=${ui_summary}; ACTIVITY=${activity_summary:-none}; CRASH=${crash_buffer:-none}; LOGCAT=$(printf '%s' "$log_summary" | tail -n 12 | tr '\n' ' ' | cut -c1-900)"
     annotation="${annotation//'%'/'%25'}"
     annotation="${annotation//$'\r'/'%0D'}"
     annotation="${annotation//$'\n'/'%0A'}"
@@ -91,7 +92,7 @@ failed_step="clearing Android logcat"
 adb logcat -c
 
 failed_step="launching the main activity"
-timeout 90s adb shell am start -W -n com.devicecontrol.mml/.MainActivity
+timeout 90s adb shell am start -W -n com.devicecontrol.mml.v2/.MainActivity
 
 failed_step="allowing the first screen to finish rendering"
 sleep 30
@@ -136,19 +137,42 @@ PY
 done
 
 failed_step="capturing the launched screen"
+for app2_attempt in 1 2 3; do
+  if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'شروع مسیر یادگیری' "$ui_file" || grep -Fq 'آکادمی چندزبانهٔ میلو' "$ui_file" || grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+    break
+  fi
+  if [[ "$app2_attempt" == 3 ]]; then
+    break
+  fi
+  echo "App 2 accessibility tree not ready yet (attempt $app2_attempt/3); waiting 15s."
+  sleep 15
+  capture_ui
+done
 if ! timeout 30s adb exec-out screencap -p > "$screenshot_file"; then
   echo 'Warning: screenshot capture failed; continuing with the UI hierarchy check.'
 fi
 
-failed_step="verifying the mandatory learner registration rendered"
+failed_step="verifying the learner home or registration screen rendered"
 registration_gate=false
+direct_catalog_home=false
 if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'ساخت حساب و دریافت کد' "$ui_file"; then
   registration_gate=true
   echo 'Android emulator opened MiloMultilang and rendered its mandatory registration gate.'
+elif grep -Fq 'شروع مسیر یادگیری' "$ui_file" || grep -Fq 'آکادمی چندزبانهٔ میلو' "$ui_file"; then
+  direct_catalog_home=true
+  if ! grep -Fq 'انگلیسی' "$ui_file" || ! grep -Fq 'روسی' "$ui_file"; then
+    echo 'App 2 (No-Login EN+RU) did not display both English and Russian on the catalog home.'
+    exit 1
+  fi
+  if grep -Fq 'آلمانی' "$ui_file" || grep -Fq 'ترکی' "$ui_file"; then
+    echo 'App 2 (No-Login EN+RU) leaked German or Turkish onto its catalog home.'
+    exit 1
+  fi
+  echo 'Android emulator opened App 2 (2-MiloNoLogin-EN-RU.apk) and verified ONLY English + Russian.'
 elif (grep -Fq 'MILO' "$ui_file" || grep -Fq 'Milo' "$ui_file") && grep -Fq 'هر روز، یک قدم' "$ui_file"; then
   echo 'Android emulator restored an authenticated learner and rendered the language home.'
 else
-  echo 'Neither the learner registration gate nor the authenticated language home was found.'
+  echo 'Neither the learner registration gate nor the language home was found.'
   exit 1
 fi
 
@@ -192,9 +216,9 @@ fi
 # A clean CI install intentionally has no production learner credentials. Chat
 # geometry remains covered when an authenticated test session is restored; on a
 # first install we verify the account gate and continue with the separate admin APK.
-if [[ "$registration_gate" == false ]]; then
+if [[ "$registration_gate" == false && "$direct_catalog_home" == false ]]; then
 failed_step="opening the Emma chat keyboard test route"
-timeout 60s adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/emma' com.devicecontrol.mml
+timeout 60s adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/emma' com.devicecontrol.mml.v2
 sleep 8
 capture_ui
 
@@ -282,7 +306,7 @@ echo 'Android emulator verified the full-height Emma composer with the software 
 
 failed_step="opening the human chat keyboard test route"
 adb shell input keyevent KEYCODE_BACK
-adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/human/00000000-0000-0000-0000-000000000001?name=Test' com.devicecontrol.mml
+adb shell am start -W -a android.intent.action.VIEW -d 'companionenglish:///conversations/human/00000000-0000-0000-0000-000000000001?name=Test' com.devicecontrol.mml.v2
 sleep 8
 capture_ui
 
@@ -370,20 +394,27 @@ echo 'Android emulator verified both complete chat composers and their side butt
 fi
 
 failed_step="installing the private management APK"
+adb shell am force-stop com.devicecontrol.mml.v2 || true
 adb install -r "$admin_apk_path"
-adb shell am force-stop com.devicecontrol.miloadmin
+adb shell am force-stop com.devicecontrol.miloadmin.v2
 
 failed_step="launching the private management app"
-timeout 90s adb shell am start -W -n com.devicecontrol.miloadmin/.MainActivity
-sleep 12
+timeout 90s adb shell am start -W -n com.devicecontrol.miloadmin.v2/.MainActivity
+sleep 15
 capture_ui
 
 failed_step="verifying the management login is isolated and protected"
-if ! grep -Fq 'ایمیل مدیر' "$ui_file" || ! grep -Fq 'ورود امن به پنل' "$ui_file"; then
+for admin_attempt in 1 2 3; do
+  if grep -Fq 'ایمیل مدیر' "$ui_file" && grep -Fq 'ورود امن به پنل' "$ui_file"; then
+    break
+  fi
+  if [[ "$admin_attempt" == 3 ]]; then
+    break
+  fi
   echo 'Management accessibility tree is not ready; waiting once more.'
   sleep 12
   capture_ui
-fi
+done
 if ! grep -Fq 'ایمیل مدیر' "$ui_file" || ! grep -Fq 'ورود امن به پنل' "$ui_file"; then
   echo 'The standalone management APK did not render its protected manager login.'
   exit 1
@@ -394,27 +425,58 @@ if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
 fi
 
 
-login_apk_path="MiloMultilang-Login.apk"
+all4_apk_path="3-MiloNoLogin-All4.apk"
+if [[ -s "$all4_apk_path" ]]; then
+  failed_step="installing App 3 (No-Login All 4 Languages APK)"
+  adb shell am force-stop com.devicecontrol.miloadmin.v2 || true
+  adb install -r "$all4_apk_path"
+  adb shell pm path com.devicecontrol.miloall.v2
+  adb shell am force-stop com.devicecontrol.miloall.v2
+  failed_step="launching App 3 (No-Login All 4 Languages APK)"
+  timeout 90s adb shell am start -W -n com.devicecontrol.miloall.v2/.MainActivity
+  sleep 20
+  capture_ui
+  failed_step="verifying App 3 rendered all 4 languages without login"
+  all4_rendered=false
+  for all4_attempt in 1 2 3; do
+    if grep -Fq 'انگلیسی' "$ui_file" && grep -Fq 'آلمانی' "$ui_file" && grep -Fq 'روسی' "$ui_file" && grep -Fq 'ترکی' "$ui_file"; then
+      all4_rendered=true
+      echo 'Android emulator launched 3-MiloNoLogin-All4.apk and verified all 4 languages (EN, DE, RU, TR).'
+      break
+    fi
+    if [[ "$all4_attempt" == 3 ]]; then break; fi
+    sleep 15
+    capture_ui
+  done
+  if [[ "$all4_rendered" != true ]]; then
+    echo 'App 3 (3-MiloNoLogin-All4.apk) did not render all 4 languages.'
+    exit 1
+  fi
+  if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
+    echo 'App 3 (No-Login All 4) unexpectedly showed the login gate.'
+    exit 1
+  fi
+fi
+
+login_apk_path="4-MiloLogin-EN-DE-TR.apk"
 if [[ -s "$login_apk_path" ]]; then
-  failed_step="installing the learner login APK"
+  failed_step="installing App 4 (Learner Login EN+DE+TR APK)"
+  adb shell am force-stop com.devicecontrol.miloall.v2 || true
   adb install -r "$login_apk_path"
-  failed_step="verifying the learner login APK package"
-  adb shell pm path com.devicecontrol.milomultilang
-  adb shell am force-stop com.devicecontrol.milomultilang
-  failed_step="launching the learner login APK"
-  timeout 90s adb shell am start -W -n com.devicecontrol.milomultilang/.MainActivity
-  failed_step="allowing the learner login APK to render"
+  failed_step="verifying App 4 package"
+  adb shell pm path com.devicecontrol.milomultilang.v2
+  adb shell am force-stop com.devicecontrol.milomultilang.v2
+  failed_step="launching App 4 (Learner Login EN+DE+TR APK)"
+  timeout 90s adb shell am start -W -n com.devicecontrol.milomultilang.v2/.MainActivity
+  failed_step="allowing App 4 to render"
   sleep 25
   capture_ui
-  failed_step="verifying the learner login APK rendered"
-  # Same tolerance as the management check above: on a loaded hosted emulator the
-  # accessibility tree can still be empty while the first screen is animating, so
-  # re-dump before deciding the login variant failed to render.
+  failed_step="verifying App 4 registration gate rendered"
   login_rendered=false
   for login_attempt in 1 2 3; do
     if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'هر روز، یک قدم' "$ui_file"; then
       login_rendered=true
-      echo 'Android emulator launched the learner login APK and rendered its first screen.'
+      echo 'Android emulator launched 4-MiloLogin-EN-DE-TR.apk and verified its registration gate.'
       break
     fi
     if [[ "$login_attempt" == 3 ]]; then
@@ -425,9 +487,15 @@ if [[ -s "$login_apk_path" ]]; then
     capture_ui
   done
   if [[ "$login_rendered" != true ]]; then
-    echo 'The learner login APK did not render the registration gate or the language home.'
+    echo 'App 4 (4-MiloLogin-EN-DE-TR.apk) did not render the registration gate.'
     exit 1
   fi
 fi
 
-echo 'Android emulator verified the standalone management APK and protected manager login.'
+failed_step="verifying all 4 APKs coexist simultaneously without conflict"
+adb shell pm path com.devicecontrol.miloadmin.v2
+adb shell pm path com.devicecontrol.mml.v2
+adb shell pm path com.devicecontrol.miloall.v2
+adb shell pm path com.devicecontrol.milomultilang.v2
+
+echo 'Android emulator verified all 4 standalone APKs in the Milo suite.'

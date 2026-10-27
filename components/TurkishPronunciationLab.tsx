@@ -6,8 +6,21 @@ import Volume2 from 'lucide-react-native/dist/esm/icons/volume-2';
 import { EnglishPalette as Palette } from '@/components/EnglishSupplementTask';
 import { LuxuryTopBar } from '@/components/LuxuryLanguageShell';
 import { TurkishBottomNav } from '@/components/TurkishBottomNav';
+import { FEATURES } from '@/lib/features';
+import {
+  getNarratorSnapshot,
+  narrate,
+  setTurkishDeviceFallbackEnabled,
+} from '@/lib/narrator/engine';
 import { resolveSpeechOptions } from '@/lib/speechLanguage';
 import { Typography } from '@/lib/theme';
+
+const TURKISH_CLOUD_NARRATOR =
+  FEATURES.turkishCloudNarrator || process.env.EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR === 'true';
+
+if (TURKISH_CLOUD_NARRATOR) {
+  setTurkishDeviceFallbackEnabled(true);
+}
 
 /**
  * کارگاه صداها و حروف ویژهٔ ترکی.
@@ -95,23 +108,37 @@ export default function TurkishPronunciationLab() {
     if (!NARRATION_ENABLED) return;
     setError('');
     setActive(text);
-    void Speech.stop();
-    void resolveSpeechOptions('tr-TR').then(targetVoice => {
-      if (targetVoice.voice) {
-        Speech.speak(text, {
-          ...targetVoice,
-          rate: 0.72,
-          onDone: () => setActive(''),
-          onError: () => {
-            setActive('');
-            setError('صدای ترکی روی این دستگاه نصب نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.');
-          },
-        });
-      } else {
-        setActive('');
-        setError('صدای ترکی روی این دستگاه نصب نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.');
-      }
-    });
+    const speakWithDevice = () => {
+      void Speech.stop();
+      void resolveSpeechOptions('tr-TR').then(targetVoice => {
+        if (targetVoice.voice) {
+          Speech.speak(text, {
+            ...targetVoice,
+            rate: 0.72,
+            onDone: () => setActive(''),
+            onError: () => {
+              setActive('');
+              setError('صدای ترکی روی این دستگاه نصب نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.');
+            },
+          });
+        } else {
+          setActive('');
+          setError('صدای ترکی روی این دستگاه نصب نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.');
+        }
+      });
+    };
+
+    if (TURKISH_CLOUD_NARRATOR) {
+      void narrate(text, 'tr-TR')
+        .then(() => {
+          if (getNarratorSnapshot().status === 'error') speakWithDevice();
+          else setActive('');
+        })
+        .catch(speakWithDevice);
+      return;
+    }
+
+    speakWithDevice();
   }, []);
 
   return (

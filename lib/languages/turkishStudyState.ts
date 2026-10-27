@@ -100,6 +100,29 @@ export async function loadTurkishLessonSession(lessonId: string): Promise<Turkis
   return saved === undefined ? freshTurkishLessonSession() : validateSession(lessonId, saved);
 }
 
+export async function loadAllTurkishLessonSessions(): Promise<Record<string, TurkishLessonSession | null>> {
+  const result: Record<string, TurkishLessonSession | null> = {};
+  let sessions: Record<string, TurkishLessonSession> = {};
+  try {
+    sessions = parseState(await readRaw()).sessions;
+  } catch {
+    sessions = {};
+  }
+  for (const lesson of TURKISH_LESSONS) {
+    const saved = sessions[lesson.id];
+    if (saved === undefined) {
+      result[lesson.id] = freshTurkishLessonSession();
+    } else {
+      try {
+        result[lesson.id] = validateSession(lesson.id, saved);
+      } catch {
+        result[lesson.id] = null;
+      }
+    }
+  }
+  return result;
+}
+
 let queue: Promise<unknown> = Promise.resolve();
 function serial<T>(job: () => Promise<T>): Promise<T> {
   const next = queue.then(job, job);

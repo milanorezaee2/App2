@@ -33,17 +33,27 @@ import { resolveSpeechOptions } from '@/lib/speechLanguage';
 import { TURKISH_LESSONS, TURKISH_LEVELS, TURKISH_LESSON_STAGES, turkishProgress, type TurkishCourseLesson } from '@/lib/languages/turkish';
 import type { TurkishLessonSession } from '@/lib/languages/turkishStudyState';
 import { bidiIsolate, toPersianDigits as fa } from '@/lib/format';
+import { FEATURES } from '@/lib/features';
 import { Typography } from '@/lib/theme';
-import { narrate, stopNarration } from '@/lib/narrator/engine';
+import {
+  getNarratorSnapshot,
+  narrate,
+  setTurkishDeviceFallbackEnabled,
+  stopNarration,
+} from '@/lib/narrator/engine';
 
 const stages = TURKISH_LESSON_STAGES;
 
 /**
- * صدای درس ترکی فعلاً از گویندهٔ دستگاه (tr-TR) می‌آید؛ فایل‌های ابری/CDN برای
- * این دوره ساخته نشده‌اند. وقتی نریتور ابری ترکی منتشر شد، با
- * EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR=true نوار نریتور خودکار برمی‌گردد.
+ * در اپ شمارهٔ ۴ (نسخهٔ با لاگین)، نریتور خودکار ابری/نیتیو ترکی استانبولی
+ * فعال است (یا با EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR=true). سایر نسخه‌ها بدون تغییر می‌مانند.
  */
-const TURKISH_CLOUD_NARRATOR = process.env.EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR === 'true';
+const TURKISH_CLOUD_NARRATOR =
+  FEATURES.turkishCloudNarrator || process.env.EXPO_PUBLIC_TURKISH_CLOUD_NARRATOR === 'true';
+
+if (TURKISH_CLOUD_NARRATOR) {
+  setTurkishDeviceFallbackEnabled(true);
+}
 
 /** سرعت پخش: معمولی برای شنیدن خودکار و آهسته برای تکرار دقیق‌تر. */
 const NORMAL_SPEECH_RATE = 0.85;
@@ -109,23 +119,27 @@ export default function TurkishLesson({ lesson }: { lesson: TurkishCourseLesson 
   const speak = useCallback((text: string, rate = 0.78) => {
     if (!NARRATION_ENABLED) return;
     setSpeechError('');
-    void narrate(text, 'tr-TR', { speed: rate < 0.7 ? 'slow' : 'normal' })
-      .catch(() => {
-        // Turkish lesson audio is not on the CDN yet, so every speaker control
-        // falls back to the device's Turkish voice (tr-TR) instead of silence.
-        void Speech.stop();
-        void resolveSpeechOptions('tr-TR').then(targetVoice => {
-          if (targetVoice.voice) {
-            Speech.speak(text, {
-              ...targetVoice,
-              rate: rate < 0.7 ? 0.45 : 0.8,
-              onError: () => setSpeechError('صدای ترکی روی این دستگاه نصب نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
-            });
-          } else {
-            setSpeechError('صدای ترکی روی این دستگاه نصب نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.');
-          }
-        });
+    const fallbackDeviceSpeak = () => {
+      void Speech.stop();
+      void resolveSpeechOptions('tr-TR').then(targetVoice => {
+        if (targetVoice.voice) {
+          Speech.speak(text, {
+            ...targetVoice,
+            rate: rate < 0.7 ? 0.45 : 0.8,
+            onError: () => setSpeechError('صدای ترکی روی این دستگاه نصب نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.'),
+          });
+        } else {
+          setSpeechError('صدای ترکی روی این دستگاه نصب نیست؛ متن و راهنمای خوانش همچنان دیده می‌شوند.');
+        }
       });
+    };
+    void narrate(text, 'tr-TR', { speed: rate < 0.7 ? 'slow' : 'normal' })
+      .then(() => {
+        if (!TURKISH_CLOUD_NARRATOR && getNarratorSnapshot().status === 'error') {
+          fallbackDeviceSpeak();
+        }
+      })
+      .catch(fallbackDeviceSpeak);
   }, []);
 
   const selectSentence = (index: number, rate = 0.72) => {

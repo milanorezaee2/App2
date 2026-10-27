@@ -87,17 +87,32 @@ export default function RussianHome() {
   const completedCount = RUSSIAN_LESSONS.filter(lesson => completedSet.has(lesson.id)).length;
   const levelLessons = RUSSIAN_LESSONS.filter(lesson => lesson.levelId === activeLevel.id);
   const levelCompleted = levelLessons.filter(lesson => completedSet.has(lesson.id)).length;
-  const sentenceCount = RUSSIAN_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0);
-  const uniqueWords = new Set(RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size;
+  const { sentenceCount, uniqueWords, staticLevelStats } = useMemo(() => {
+    const perLevel: Partial<Record<RussianLevelId, { lessons: typeof RUSSIAN_LESSONS; sentences: number; words: number }>> = {};
+    RUSSIAN_RAIL_LEVELS.forEach(level => {
+      const lessons = RUSSIAN_LESSONS.filter(lesson => lesson.levelId === level.id);
+      perLevel[level.id] = {
+        lessons,
+        sentences: lessons.reduce((sum, lesson) => sum + lesson.sentences.length, 0),
+        words: new Set(lessons.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size,
+      };
+    });
+    return {
+      sentenceCount: RUSSIAN_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0),
+      uniqueWords: new Set(RUSSIAN_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size,
+      staticLevelStats: perLevel,
+    };
+  }, []);
   const firstSentence = heroLesson.sentences[0];
   const levelCounts = {} as Partial<Record<RussianLevelId, { completed: number; total: number; sentences: number; words: number }>>;
   RUSSIAN_RAIL_LEVELS.forEach(level => {
-    const lessons = RUSSIAN_LESSONS.filter(lesson => lesson.levelId === level.id);
+    const stat = staticLevelStats[level.id];
+    const lessons = stat?.lessons ?? [];
     levelCounts[level.id] = {
       completed: lessons.filter(lesson => completedSet.has(lesson.id)).length,
       total: lessons.length,
-      sentences: lessons.reduce((sum, lesson) => sum + lesson.sentences.length, 0),
-      words: new Set(lessons.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word)))).size,
+      sentences: stat?.sentences ?? 0,
+      words: stat?.words ?? 0,
     };
   });
 

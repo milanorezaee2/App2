@@ -38,6 +38,7 @@ import { requestHumanChatAssist, type HumanAssistMode, type HumanAssistResult } 
 import { Colors, Radius, Spacing, Typography } from '@/lib/theme';
 import { PageNavigation } from '@/components/PageNavigation';
 import { ONLINE_AUDIO_DISABLED_MESSAGE, ONLINE_AUDIO_ENABLED } from '@/lib/onlineAudioPolicy';
+import { MANAGEMENT_BUILD } from '@/lib/features';
 
 const containsRtlScript = (value: string) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(value);
 
@@ -211,7 +212,7 @@ export default function HumanConversationScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <PageNavigation tone="dark" backFallback="/conversations" />
+        <PageNavigation tone="dark" backFallback={MANAGEMENT_BUILD ? '/admin' : '/conversations'} />
         <View style={styles.avatar}><UserRound size={22} color={Colors.primary[300]} /></View>
         <View style={styles.headerText}><Text style={[styles.name, containsRtlScript(name || 'مخاطب واقعی') ? styles.rtlText : styles.ltrText]}>{name || 'مخاطب واقعی'}</Text><Text style={styles.status}>گفتگوی خصوصی</Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel="حذف این مخاطب و گفتگو" accessibilityState={{ disabled: sending }} style={styles.deleteButton} onPress={confirmDeleteConversation} disabled={sending}><Trash2 size={18} color={Colors.error[300]} /></Pressable>

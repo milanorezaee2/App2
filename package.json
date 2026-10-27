@@ -17,6 +17,7 @@
     "validate:logic": "node scripts/verify-app-logic.mjs",
     "validate:narrator": "node scripts/verify-narrator.mjs",
     "validate:admin": "node scripts/verify-education-admin.mjs",
+    "validate:admin-popups": "node scripts/verify-admin-popups.mjs",
     "validate:a1": "node scripts/verify-a1-editorial.cjs",
     "validate:german-levels": "node scripts/verify-german-completion.cjs",
     "validate:russian": "node scripts/verify-russian-course.cjs",

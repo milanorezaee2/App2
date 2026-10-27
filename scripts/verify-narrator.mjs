@@ -213,6 +213,8 @@ const VOICES = [
   { identifier: 'de-DE-KatjaNeural', name: 'Microsoft Katja Online (Natural) - German (Germany)', language: 'de-DE', quality: 'Enhanced' },
   { identifier: 'ru-RU-DmitryNeural', name: 'Microsoft Dmitry - Russian (Russia)', language: 'ru-RU', quality: 'Default' },
   { identifier: 'ru-RU-SvetlanaNeural', name: 'Microsoft Svetlana Online (Natural) - Russian (Russia)', language: 'ru-RU', quality: 'Enhanced' },
+  { identifier: 'tr-TR-AhmetNeural', name: 'Microsoft Ahmet - Turkish (Türkiye)', language: 'tr-TR', quality: 'Default' },
+  { identifier: 'tr-TR-EmelNeural', name: 'Microsoft Emel Online (Natural) - Turkish (Türkiye)', language: 'tr-TR', quality: 'Enhanced' },
   { identifier: 'fr-FR-DeniseNeural', name: 'Microsoft Denise - French (France)', language: 'fr-FR', quality: 'Enhanced' },
 ];
 globalThis.__VOICES__ = VOICES;
@@ -230,6 +232,9 @@ check('German picks the female neural voice, never the male one',
 check('Russian picks the female neural voice, never the male one',
   device.pickNarratorVoice(VOICES, 'ru-RU')?.identifier === 'ru-RU-SvetlanaNeural',
   device.pickNarratorVoice(VOICES, 'ru-RU')?.identifier);
+check('Turkish picks the Istanbul female neural voice, never the male one',
+  device.pickNarratorVoice(VOICES, 'tr-TR')?.identifier === 'tr-TR-EmelNeural',
+  device.pickNarratorVoice(VOICES, 'tr-TR')?.identifier);
 check('A female voice outranks a male voice of the same language',
   device.scoreNarratorVoice(VOICES[1], 'en-US') > device.scoreNarratorVoice(VOICES[0], 'en-US'));
 check('Voice labels are human readable',
@@ -311,6 +316,12 @@ const ruSrc = String((globalThis.__AUDIOS__ ?? []).at(-1)?.lastPlayedSrc ?? '');
 check('Russian cloud narrator sends stress-free Cyrillic text to ElevenLabs/Supabase',
   ruSrc.includes('lang=ru') && !/%CC%81/i.test(ruSrc),
   ruSrc);
+
+await cloud.narrate('Merhaba! İyiyim, teşekkürler.', 'tr-TR');
+const trSrc = String((globalThis.__AUDIOS__ ?? []).at(-1)?.lastPlayedSrc ?? '');
+check('Turkish cloud narrator requests native tr audio from Supabase narration-tts',
+  trSrc.includes('lang=tr') && trSrc.includes('Merhaba'),
+  trSrc);
 
 section('Automatic narration switch');
 cloud.setNarratorAuto(false);

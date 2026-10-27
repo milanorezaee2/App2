@@ -18,7 +18,7 @@ const BYPASS_GATE: boolean = IS_ADMIN_APP || !FEATURES.learnerLogin;
 type Mode = 'register' | 'login';
 type Stage = 'email' | 'code';
 
-export function RegistrationGate({ children }: PropsWithChildren) {
+export function RegistrationGate({ children, onAuthenticated }: PropsWithChildren<{ onAuthenticated?: () => void }>) {
   const [checking, setChecking] = useState(!BYPASS_GATE);
   const [ready, setReady] = useState(BYPASS_GATE);
   const [mode, setMode] = useState<Mode>('register');
@@ -85,7 +85,7 @@ export function RegistrationGate({ children }: PropsWithChildren) {
     setBusy(true); setError(''); setNotice('');
     try {
       await verifyEmailCode(email, code, fullName);
-      setReady(true); setStage('email'); setCode(''); setNotice('ورود موفق بود.');
+      setReady(true); setStage('email'); setCode(''); setNotice('ورود موفق بود.'); onAuthenticated?.();
       void inspect();
     } catch (reason) {
       setError(registrationError(reason));

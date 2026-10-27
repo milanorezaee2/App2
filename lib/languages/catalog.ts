@@ -1,5 +1,5 @@
 import type { LanguageDefinition } from './types';
-import { LANGUAGE_META, LANGUAGES } from './catalogMeta';
+import { ALL_LANGUAGE_META, LANGUAGES } from './catalogMeta';
 import { SENTENCE_LESSONS } from '../courseContent';
 import { GERMAN_SENTENCE_LESSONS } from './germanSentenceCourse';
 import { RUSSIAN_LESSONS, russianProgress } from './russian';
@@ -25,7 +25,7 @@ if (process.env.NODE_ENV !== 'production') {
     ru: { lessons: RUSSIAN_LESSONS.length, sentences: RUSSIAN_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0) },
     tr: { lessons: TURKISH_LESSONS.length, sentences: TURKISH_LESSONS.reduce((sum, lesson) => sum + lesson.sentences.length, 0) },
   } as const;
-  for (const meta of LANGUAGE_META) {
+  for (const meta of ALL_LANGUAGE_META) {
     const live = liveCounts[meta.id];
     if (meta.lessonsCount !== live.lessons || meta.sentencesCount !== live.sentences) {
       throw new Error(

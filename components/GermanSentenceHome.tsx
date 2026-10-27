@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -107,10 +107,12 @@ export default function GermanSentenceHome() {
     total: row.metrics.lessonCount,
   }])) as Partial<Record<CourseLevelId, { completed: number; total: number }>>;
   const lessonCount = GERMAN_SENTENCE_LESSONS.length;
-  const totalSentenceCount = GERMAN_SENTENCE_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0);
-  const uniqueWordCount = new Set(
-    GERMAN_SENTENCE_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word))),
-  ).size;
+  const { totalSentenceCount, uniqueWordCount } = useMemo(() => ({
+    totalSentenceCount: GERMAN_SENTENCE_LESSONS.reduce((count, lesson) => count + lesson.sentences.length, 0),
+    uniqueWordCount: new Set(
+      GERMAN_SENTENCE_LESSONS.flatMap(lesson => lesson.sentences.flatMap(sentence => sentence.vocabulary.map(item => item.word))),
+    ).size,
+  }), []);
   const progressPercent = lessonCount ? (completed / lessonCount) * 100 : 0;
   const isCourseComplete = lessonCount > 0 && completed === lessonCount;
   const heroGradient = LUXURY_JOURNEY_GRADIENTS[currentLevel.id] ?? LUXURY_JOURNEY_GRADIENTS[0];
