@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import { AppState } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import {
   getNarratorSnapshot,
@@ -63,6 +64,15 @@ export function useLessonNarrator(params: {
   useEffect(() => {
     if (!focused) { lastRead.current = ''; stopNarration(); }
     return () => { lastRead.current = ''; stopNarration(); };
+  }, [focused]);
+
+  useEffect(() => {
+    if (!focused) return;
+    const subscription = AppState.addEventListener('change', state => {
+      const status = getNarratorSnapshot().status;
+      if (state !== 'active' && (status === 'speaking' || status === 'loading')) void pauseNarration();
+    });
+    return () => subscription.remove();
   }, [focused]);
 
   const replay = useCallback(() => {

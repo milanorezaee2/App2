@@ -6,7 +6,7 @@ import { FEATURES, MANAGEMENT_BUILD } from '@/lib/features';
 import { LearnerSetup, journeyStyles as s } from '@/components/LearnerSetup';
 import { useLearnerJourney } from '@/components/LearnerJourneyGate';
 import { useLearnerLanguageAccess } from '@/components/LearnerLanguageAccess';
-import { FAMILIARITIES, JOURNEY_GOALS, isJourneyLanguage, journeyLibrary, suggestedLevel, type JourneyLanguage } from '@/lib/learnerJourney';
+import { isJourneyLanguage, journeyLibrary, suggestedLevel, type JourneyLanguage } from '@/lib/learnerJourney';
 import { loadJourneyReport, type JourneyReport } from '@/lib/learnerProgressSummary';
 import { setActiveLanguage } from '@/lib/activeLanguage';
 
@@ -82,7 +82,6 @@ export default function LearnerProgressDashboard() {
     <View style={styles.card}>
       <Text accessibilityRole="header" style={s.title}>{access.loadingAccess ? 'در حال بررسی دسترسی به کریدور…' : selected ? `کریدور ${selected.name}` : language ? 'زبان انتخابی فعلاً غیرفعال است' : 'برای شروع، زبانت را انتخاب کن'}</Text>
       <Text style={s.body}>شروع مسیر: از سطح مقدماتی</Text>
-      <Text style={s.body}>هدف: {JOURNEY_GOALS.find(item => item.id === path?.goal)?.title}</Text>
       {!!selectedLevel && <Text style={s.body}>سطح شروع دوره: {selectedLevel.title} · {selectedLevel.cefr}</Text>}
       <Text style={s.caption}>همه از اولین سطح شروع می‌کنند. محتوای آموزشی و سابقهٔ قبلی دست‌نخورده باقی می‌مانند.</Text>
       {selected && <>
