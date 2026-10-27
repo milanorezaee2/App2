@@ -79,7 +79,7 @@ export async function requestEmailCode(email: string, fullName?: string): Promis
   const { error } = await supabase.auth.signInWithOtp({
     email: value,
     options: {
-      shouldCreateUser: true,
+      shouldCreateUser: Boolean(fullName?.trim()),
       data: fullName?.trim() ? { full_name: fullName.trim() } : undefined,
     },
   });

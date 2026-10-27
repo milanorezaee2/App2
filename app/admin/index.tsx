@@ -1734,33 +1734,6 @@ function EducationAdmin() {
                     style={[s.input, { minHeight: 88, textAlignVertical: 'top' }]}
                   />
 
-                  {/* Immediate Publish Action right after required Title + Body */}
-                  <View style={s.publishInlineBox}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="انتشار فوری پاپ‌آپ"
-                      disabled={busy}
-                      onPress={() => submitPopupForm(true)}
-                      style={[s.publishPrimaryBtn, busy && { opacity: 0.6 }]}
-                    >
-                      {busy ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
-                      ) : (
-                        <>
-                          <Send size={16} color="#FFFFFF" />
-                          <Text style={s.publishPrimaryBtnText}>
-                            {editingPopupId
-                              ? 'ذخیره و انتشار آنی تغییرات پاپ‌آپ'
-                              : 'انتشار فوری پاپ‌آپ در اپ با لاگین'}
-                          </Text>
-                        </>
-                      )}
-                    </Pressable>
-                    <Text style={s.small}>
-                      فیلدهای ۵ تا ۷ اختیاری هستند؛ همین الان می‌توانید پاپ‌آپ را منتشر کنید یا در ادامه دکمه و زمان‌بندی اضافه کنید.
-                    </Text>
-                  </View>
-
                   <Text style={s.label}>۵. دکمهٔ اقدام هوشمند (CTA — اختیاری)</Text>
                   <TextInput
                     accessibilityLabel="متن دکمه اقدام"
@@ -1921,26 +1894,6 @@ function EducationAdmin() {
                       onDismiss={popupDisplayMode === 'persistent_blocking' ? undefined : () => undefined}
                     />
                   </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="اعمال و انتشار پاپ‌آپ از پیش‌نمایش"
-                    disabled={busy}
-                    onPress={() => submitPopupForm(true)}
-                    style={[s.publishPrimaryBtn, busy && { opacity: 0.6 }]}
-                  >
-                    {busy ? (
-                      <ActivityIndicator color="#FFFFFF" size="small" />
-                    ) : (
-                      <>
-                        <Megaphone size={16} color="#FFFFFF" />
-                        <Text style={s.publishPrimaryBtnText}>
-                          {editingPopupId
-                            ? 'تأیید پیش‌نمایش و انتشار تغییرات'
-                            : 'تأیید و انتشار فوری این پاپ‌آپ'}
-                        </Text>
-                      </>
-                    )}
-                  </Pressable>
                   <Text style={s.small}>
                     نکته: به‌محض فشردن دکمهٔ انتشار، هر زبان‌آموزی که اپ زبان‌آموز با لاگین روی گوشی یا مرورگرش باز باشد در لحظه این پاپ‌آپ را می‌بیند.
                   </Text>
@@ -2735,43 +2688,6 @@ function EducationAdmin() {
           )}
         </ScrollView>
 
-        {/* Sticky Always-Visible Publish Action Bar when inside Pop-ups Studio */}
-        {tab === 'popups' && (
-          <View style={s.stickyPublishBar}>
-            <View style={{ flex: 1, minWidth: 110 }}>
-              <Text style={s.stickyPublishStatus} numberOfLines={1}>
-                {popupTitle.trim() && popupBody.trim()
-                  ? `آمادهٔ انتشار: «${popupTitle.trim()}»`
-                  : 'عنوان و متن پاپ‌آپ را بنویسید یا قالب آماده بزنید'}
-              </Text>
-              <Text style={s.small} numberOfLines={1}>
-                {popupTargetScope === 'user'
-                  ? selectedTargetUser
-                    ? `گیرنده: ${selectedTargetUser.full_name}`
-                    : 'گیرنده: کاربر مشخص (انتخاب کنید)'
-                  : 'گیرنده: همهٔ کاربران اپ با لاگین'}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="دکمه انتشار پاپ‌آپ"
-              disabled={busy}
-              onPress={() => submitPopupForm(true)}
-              style={[s.stickyPublishBtn, busy && { opacity: 0.6 }]}
-            >
-              {busy ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <>
-                  <Send size={12} color="#FFFFFF" />
-                  <Text style={s.stickyPublishBtnText}>
-                    {editingPopupId ? 'انتشار تغییرات' : 'انتشار پاپ‌آپ'}
-                  </Text>
-                </>
-              )}
-            </Pressable>
-          </View>
-        )}
       </View>
     </View>
   );
@@ -2928,15 +2844,6 @@ const s = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
   },
-  publishInlineBox: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 14,
-    padding: 10,
-    gap: 7,
-    marginTop: 4,
-  },
   publishPrimaryBtn: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -2956,49 +2863,6 @@ const s = StyleSheet.create({
   publishPrimaryBtnText: {
     fontFamily: 'Vazir-Bold',
     fontSize: 12,
-    color: '#FFFFFF',
-  },
-  stickyPublishBar: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 7,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderColor: '#C9DFFF',
-    shadowColor: '#102A56',
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 8,
-  },
-  stickyPublishStatus: {
-    fontFamily: 'Vazir-Bold',
-    fontSize: 11,
-    color: '#102A56',
-    textAlign: 'right',
-  },
-  stickyPublishBtn: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    minHeight: 30,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: '#059669',
-    shadowColor: '#059669',
-    shadowOpacity: 0.24,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  stickyPublishBtnText: {
-    fontFamily: 'Vazir-Bold',
-    fontSize: 9,
     color: '#FFFFFF',
   },
 });
