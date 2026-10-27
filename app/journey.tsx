@@ -128,6 +128,7 @@ function JourneyDashboard() {
       <Text style={s.body}>همگام‌سازی شخصیِ موجود برای انگلیسی و آلمانی است؛ ترکی و انتخاب‌های مسیر فعلاً روی دستگاه‌اند. خروج از حساب یا تغییر زبان، سابقهٔ درس‌ها را پاک نمی‌کند. این گزارش را با گواهی تسلط یا نسخهٔ پشتیبان اشتباه نگیر.</Text>
       <Action label={syncing ? 'در حال همگام‌سازی…' : 'همگام‌سازی سابقهٔ انگلیسی و آلمانی'} disabled={syncing} onPress={() => void sync()} />
       {!!syncMessage && <Text accessibilityRole="alert" style={s.body}>{syncMessage}</Text>}
+      <Action secondary label="حساب من و خروج" onPress={() => router.push('/personal-sync' as never)} />
       <Action secondary label="دیدن همهٔ زبان‌های فعال" onPress={() => router.push('/languages' as never)} />
       <Action secondary label="تازه‌سازی گزارش محلی" disabled={loading} onPress={() => void refresh()} />
     </View>

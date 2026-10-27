@@ -100,13 +100,11 @@ function CompanionRuntime() {
  * made router.replace throw "Attempted to navigate before mounting the Root
  * Layout component").
  */
-function NavigatorMountProbe({ onMounted }: { onMounted: () => void }) {
-  const mounted = useRef(false);
+function NavigatorMountProbe({ onMounted, onUnmounted }: { onMounted: () => void; onUnmounted: () => void }) {
   useEffect(() => {
-    if (mounted.current) return;
-    mounted.current = true;
     onMounted();
-  }, [onMounted]);
+    return onUnmounted;
+  }, [onMounted, onUnmounted]);
   return null;
 }
 
@@ -119,8 +117,8 @@ export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const navigationRef = useNavigationContainerRef();
-  const [navigatorMounted, setNavigatorMounted] = useState(false);
-  const handleNavigatorMounted = useCallback(() => setNavigatorMounted(true), []);
+  const [navigatorMounted, setNavigatorMounted] = useState(0);
+  const stackMounted = useRef(false);
   const homeRoute = IS_ADMIN_APP
     ? '/admin'
     : RUSSIAN_ONLY_BUILD
@@ -129,6 +127,18 @@ export default function RootLayout() {
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
+  const handleNavigatorMounted = useCallback(() => {
+    // Auth/account changes and app locking can unmount the Stack. Each new
+    // mount must land on the correct home, including after a new account's
+    // setup deferred navigator creation.
+    startupRouteLocked.current = false;
+    stackMounted.current = true;
+    setNavigatorMounted(count => count + 1);
+  }, []);
+  const handleNavigatorUnmounted = useCallback(() => {
+    stackMounted.current = false;
+    setNavigatorMounted(count => count + 1);
+  }, []);
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   // `swap` is web-only: text paints immediately with a fallback face and the
   // custom font takes over when it finishes downloading, instead of staying
@@ -197,15 +207,6 @@ export default function RootLayout() {
     pathnameRef.current = pathname;
   }, [pathname]);
 
-  const forceNavigateHome = useCallback(() => {
-    setTimeout(() => {
-      if (!navigationRef.isReady()) return;
-      if (pathnameRef.current !== homeRoute) {
-        router.replace(homeRoute as never);
-      }
-    }, 80);
-  }, [homeRoute, navigationRef, router]);
-
   // Returning to the app after leaving it should always start from the same
   // language chooser/home, not the last nested lesson, library, or conversation.
   // Only a real background -> active transition triggers this; temporary native
@@ -219,7 +220,7 @@ export default function RootLayout() {
       }
       if (state === 'active' && wasBackgrounded.current) {
         wasBackgrounded.current = false;
-        if (navigationRef.isReady() && pathnameRef.current !== homeRoute) {
+        if (stackMounted.current && navigationRef.isReady() && pathnameRef.current !== homeRoute) {
           router.replace(homeRoute as never);
         }
       }
@@ -232,7 +233,7 @@ export default function RootLayout() {
   // Stack, and fonts keep RootLayout at `return null`; isReady() is the exact
   // readiness check expo-router performs before accepting a navigation call.
   useEffect(() => {
-    if (!introComplete || !navigatorMounted || !navigationRef.isReady() || startupRouteLocked.current) return;
+    if (!introComplete || !navigatorMounted || !stackMounted.current || !navigationRef.isReady() || startupRouteLocked.current) return;
     startupRouteLocked.current = true;
     if (pathname !== homeRoute) router.replace(homeRoute as never);
   }, [homeRoute, introComplete, pathname, navigatorMounted, navigationRef, router]);
@@ -245,6 +246,7 @@ export default function RootLayout() {
     const onVisible = () => {
       if (
         document.visibilityState === 'visible'
+        && stackMounted.current
         && navigationRef.isReady()
         && pathnameRef.current !== homeRoute
       ) {
@@ -268,8 +270,8 @@ export default function RootLayout() {
       <ErrorBoundary>
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <AppLockGate>
-            <RegistrationGate onAuthenticated={forceNavigateHome}>
-              <LearnerLanguageAccessProvider>
+            <RegistrationGate>
+              <LearnerLanguageAccessProvider navigationReady={stackMounted.current}>
                 <LearnerJourneyGate>
                   {!IS_ADMIN_APP && <RuntimeGate />}
                   <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
@@ -281,7 +283,7 @@ export default function RootLayout() {
                     <Stack.Screen name="lang" />
                     <Stack.Screen name="+not-found" />
                   </Stack>
-                  <NavigatorMountProbe onMounted={handleNavigatorMounted} />
+                  <NavigatorMountProbe onMounted={handleNavigatorMounted} onUnmounted={handleNavigatorUnmounted} />
                   {(IS_ADMIN_APP || FEATURES.learnerLogin) && <ChatNotificationBridge />}
                   {!IS_ADMIN_APP && FEATURES.learnerLogin && <LearnerPopupBridge />}
                 </LearnerJourneyGate>

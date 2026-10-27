@@ -118,7 +118,8 @@ state.failRead = false;
 const read = path => readFileSync(`${root}${path}`, 'utf8');
 check('onboarding protects authenticated app only; home and OAuth land on journey', () => {
   assert.match(read('components/LearnerJourneyGate.tsx'), /MANAGEMENT_BUILD \|\| !FEATURES\.learnerLogin/);
-  assert.match(read('app/_layout.tsx'), /<LearnerLanguageAccessProvider>\s*<LearnerJourneyGate>/);
+  assert.match(read('app/_layout.tsx'), /<LearnerLanguageAccessProvider navigationReady=\{stackMounted\.current\}>\s*<LearnerJourneyGate>/);
+  assert.match(read('app/_layout.tsx'), /startupRouteLocked\.current = false;\s*stackMounted\.current = true;\s*setNavigatorMounted\(count => count \+ 1\)/, 'every authenticated navigator remount returns to the dashboard');
   for (const path of ['app/_layout.tsx', 'app/index.tsx', 'app/auth/callback.tsx']) assert.match(read(path), /FEATURES\.learnerLogin \? ['"]\/journey['"] : ['"]\/languages['"]/);
 });
 check('setup honors available languages and never calls completion APIs', () => {

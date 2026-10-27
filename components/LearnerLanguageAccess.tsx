@@ -63,7 +63,7 @@ function detectCourseLanguageFromPathname(pathname: string): LanguageId | null {
   return null;
 }
 
-export function LearnerLanguageAccessProvider({ children }: PropsWithChildren) {
+export function LearnerLanguageAccessProvider({ children, navigationReady = true }: PropsWithChildren<{ navigationReady?: boolean }>) {
   const router = useRouter();
   const pathname = usePathname();
   const navigation = useNavigationContainerRef();
@@ -118,13 +118,13 @@ export function LearnerLanguageAccessProvider({ children }: PropsWithChildren) {
   // Real-time active route guard: kick learner back to /languages immediately if
   // they are inside a build-disabled or Admin-disabled course.
   useEffect(() => {
-    if (MANAGEMENT_BUILD || !rootState?.key || !navigation.isReady()) return;
+    if (MANAGEMENT_BUILD || !navigationReady || !rootState?.key || !navigation.isReady()) return;
     const activeLang = detectCourseLanguageFromPathname(pathname);
     if (!activeLang) return;
     if (!isLanguageAllowed(activeLang)) {
       router.replace('/languages' as never);
     }
-  }, [pathname, isLanguageAllowed, router, navigation, rootState?.key]);
+  }, [pathname, isLanguageAllowed, router, navigation, navigationReady, rootState?.key]);
 
   const value = useMemo<LearnerLanguageAccessContextValue>(
     () => ({
