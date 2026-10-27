@@ -50,8 +50,8 @@ export function LessonNarrator({
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(halo, { toValue: 1, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-        Animated.timing(halo, { toValue: 0, duration: 900, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+        Animated.timing(halo, { toValue: 1, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+        Animated.timing(halo, { toValue: 0, duration: 900, easing: Easing.in(Easing.ease), useNativeDriver: false }),
       ]),
     );
     loop.start();
@@ -62,7 +62,7 @@ export function LessonNarrator({
     status === 'loading'
       ? 'در حال آماده‌سازی تلفظ صوتی…'
       : status === 'speaking'
-        ? engine === 'device' ? 'در حال خواندن با صدای کمکی دستگاه…' : 'در حال خواندن جمله با نریتور اصلی…'
+        ? 'در حال خواندن جمله با صدای طبیعی…'
         : paused
           ? 'پخش متوقف شد؛ برای ادامه ضربه بزنید.'
           : status === 'blocked'
@@ -73,7 +73,7 @@ export function LessonNarrator({
                 ? 'پخش خودکار روشن است.'
                 : 'پخش خودکار خاموش است.';
 
-  const voiceTag = engine === 'device' ? voiceLabel : engine === 'cloud' || (cloudAvailable && cloudChecked)
+  const voiceTag = engine === 'cloud' || (cloudAvailable && cloudChecked)
     ? 'صدای تأییدشدهٔ CDN/ابری'
     : voiceLabel;
 
@@ -203,12 +203,8 @@ export function LessonNarrator({
       ) : null}
 
       {status === 'error' && narrator.message ? (
-        <>
-          <Text accessibilityRole="alert" style={styles.errorText}>{narrator.message}</Text>
-          {engine !== 'device' && <Pressable accessibilityRole="button" onPress={narrator.useDeviceVoice} style={styles.blockedBanner}><Text style={styles.blockedText}>استفاده از صدای کمکی دستگاه در این زبان</Text></Pressable>}
-        </>
+        <Text accessibilityRole="alert" style={styles.errorText}>{narrator.message}</Text>
       ) : null}
-      {engine === 'device' && <Pressable accessibilityRole="button" onPress={narrator.useOriginalVoice} style={styles.blockedBanner}><Text style={styles.blockedText}>صدای کمکی دستگاه فعال است؛ بازگشت به نریتور اصلی</Text></Pressable>}
     </View>
   );
 }

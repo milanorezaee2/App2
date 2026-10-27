@@ -26,6 +26,7 @@ import { LuxuryTopBar } from '@/components/LuxuryLanguageShell';
 import { LUXURY_JOURNEY_GRADIENTS, luxuryHomeStyles as styles } from '@/components/luxuryHomeStyles';
 import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
 import { getCourseProgress, type CourseProgress } from '@/lib/courseProgress';
+import { syncPersonalLearningData } from '@/lib/personalLearningSync';
 import { toPersianDigits } from '@/lib/format';
 import { freshSession, loadStudy, saveLessonSession, studyDay } from '@/lib/englishStudyState';
 import { ENGLISH_ENGINE_BLUEPRINT, getEnglishLevelMetrics } from '@/lib/englishLearningEngine';
@@ -61,7 +62,11 @@ export default function LearningHome() {
   useFocusEffect(useCallback(() => {
     let alive = true;
     const refreshCourse = () => getCourseProgress().then(next => { if (alive) setProgress(next); });
-    void refreshCourse().catch(() => { if (alive) setTimeError(true); });
+    void refreshCourse();
+    void syncPersonalLearningData().then(result => {
+      if (result.status === 'synced') return refreshCourse();
+      return undefined;
+    }).catch(() => undefined);
     return () => { alive = false; };
   }, []));
 

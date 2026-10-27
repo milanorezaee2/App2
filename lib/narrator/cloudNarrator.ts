@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { SUPABASE_PUBLIC_URL } from '@/lib/supabaseConfig';
-import { cacheAudioFile, cachedAudioFile, invalidateCachedAudio } from './audioCache';
+import { cacheAudioFile } from './audioCache';
 import { NARRATOR_PERSONA_TAG, prepareTextForTts, type NarratorLocale } from './voiceCast';
 
 /**
@@ -66,17 +66,13 @@ export function cloudNarratorEndpoint(): string | null {
 }
 
 function readStoredHealth(): boolean | null {
-  if (health) {
-    const age = Date.now() - health.checkedAt;
-    if (age >= 0 && age < (health.ok ? HEALTH_TTL_MS : 15000)) return health.ok;
-    health = null;
-  }
+  if (health) return health.ok;
   try {
     if (typeof window === 'undefined' || !window.sessionStorage) return null;
     const raw = window.sessionStorage.getItem(HEALTH_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { ok?: boolean; checkedAt?: number };
-    if (typeof parsed.checkedAt !== 'number' || Date.now() < parsed.checkedAt || Date.now() - parsed.checkedAt > (parsed.ok ? HEALTH_TTL_MS : 15000)) return null;
+    if (typeof parsed.checkedAt !== 'number' || Date.now() - parsed.checkedAt > HEALTH_TTL_MS) return null;
     health = { ok: parsed.ok === true, checkedAt: parsed.checkedAt };
     return health.ok;
   } catch {
@@ -143,18 +139,18 @@ function audioUrls(text: string, locale: NarratorLocale): string[] {
 
 async function fetchWithTimeout(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
-    return await Promise.race([
-      fetch(url, { method: 'GET', signal: controller?.signal, headers: { Accept: 'audio/*' } }),
-      new Promise<never>((_, reject) => { timer = setTimeout(() => {
-        controller?.abort(); reject(new NarratorCloudUnavailableError('Narrator request timed out.'));
-      }, timeoutMs); }),
-    ]);
-  } finally { if (timer) clearTimeout(timer); }
+    return await fetch(url, {
+      method: 'GET',
+      signal: controller?.signal,
+      headers: { Accept: 'audio/mpeg' },
+    });
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
-let healthRequest: Promise<boolean> | null = null;
 /** Asks the Edge Function once per session whether a human voice is available. */
 export async function checkCloudNarrator(): Promise<boolean> {
   if (!cloudNarratorEndpoint() && !narratorCdnEndpoint()) return false;
@@ -165,8 +161,6 @@ export async function checkCloudNarrator(): Promise<boolean> {
   const stored = readStoredHealth();
   if (stored !== null) return stored;
 
-  if (healthRequest) return healthRequest;
-  healthRequest = (async () => {
   try {
     const endpoint = cloudNarratorEndpoint();
     if (!endpoint) { storeHealth(true); return true; }
@@ -182,8 +176,6 @@ export async function checkCloudNarrator(): Promise<boolean> {
     storeHealth(false);
     return false;
   }
-  })();
-  try { return await healthRequest; } finally { healthRequest = null; }
 }
 
 export function isCloudNarratorActive(): boolean {
@@ -221,7 +213,7 @@ export async function unlockCloudPlayback(): Promise<boolean> {
 export function pauseCloudNarration(): boolean {
   if (webAudio && !webAudio.paused) {
     try {
-      webAudio.pause(); playing = false;
+      webAudio.pause();
       return true;
     } catch {
       return false;
@@ -229,7 +221,7 @@ export function pauseCloudNarration(): boolean {
   }
   if (nativePlayer?.playing) {
     try {
-      nativePlayer.pause(); playing = false;
+      nativePlayer.pause();
       return true;
     } catch {
       return false;
@@ -241,11 +233,7 @@ export function pauseCloudNarration(): boolean {
 export function resumeCloudNarration(): boolean {
   if (webAudio && webAudio.paused && webAudio.src) {
     try {
-      const resumed = webAudio.play();
-      if (resumed && typeof resumed.catch === 'function') void resumed.catch(error => {
-        playing = false;
-        finishCurrent?.((error as {name?: string})?.name === 'NotAllowedError' ? new NarratorBlockedError() : new NarratorCloudUnavailableError('Audio resume failed.'));
-      });
+      void webAudio.play();
       playing = true;
       return true;
     } catch {
@@ -301,19 +289,14 @@ function playWeb(url: string, cancelled: () => boolean, playbackRate: number): P
   return new Promise<void>((resolve, reject) => {
     const audio = ensureWebAudio();
     let settled = false;
-    let loadTimer: ReturnType<typeof setTimeout> | undefined;
     const finish = (error?: Error) => {
       if (settled) return;
       settled = true;
       playing = false;
-      if (loadTimer) clearTimeout(loadTimer);
       if (finishCurrent === finish) finishCurrent = null;
       audio.onended = null;
       audio.onerror = null;
-      if (error) {
-        try { audio.pause(); audio.removeAttribute('src'); audio.load(); } catch { /* released element */ }
-        reject(error);
-      }
+      if (error) reject(error);
       else resolve();
     };
     finishCurrent = finish;
@@ -334,14 +317,11 @@ function playWeb(url: string, cancelled: () => boolean, playbackRate: number): P
       return;
     }
 
-    loadTimer = setTimeout(() => finish(new NarratorCloudUnavailableError('Audio did not start.')), 8000);
-    let started: Promise<void> | undefined;
-    try { started = audio.play(); } catch { finish(new NarratorCloudUnavailableError('Audio did not start.')); return; }
+    const started = audio.play();
     playing = true;
     if (started && typeof started.then === 'function') {
       started.then(
         () => {
-          if (loadTimer) clearTimeout(loadTimer);
           if (cancelled()) {
             try { audio.pause(); } catch { /* ignore */ }
             finish();
@@ -360,39 +340,37 @@ function playWeb(url: string, cancelled: () => boolean, playbackRate: number): P
 
 function playNative(url: string, cancelled: () => boolean, playbackRate: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const player = createAudioPlayer({ uri: url }, { updateInterval: 250, downloadFirst: false });
+    const player = createAudioPlayer({ uri: url }, { updateInterval: 250, downloadFirst: true });
     nativePlayer = player;
     let settled = false;
-    let loaded = false;
-    let subscription: { remove: () => void } | undefined;
-    let playingMs = 0;
-    const loadTimer = setTimeout(() => finish(new NarratorCloudUnavailableError('Audio did not load.')), 8000);
-    const watchdog = setInterval(() => {
-      if (cancelled()) { finish(); return; }
-      if (loaded && playing) playingMs += 1000;
-      if (playingMs > 120000) finish(new NarratorCloudUnavailableError('Audio did not finish.'));
-    }, 1000);
     const finish = (error?: Error) => {
       if (settled) return;
-      settled = true; playing = false;
-      clearTimeout(loadTimer); clearInterval(watchdog);
-      try { subscription?.remove(); } catch { /* native listener already removed */ }
+      settled = true;
+      playing = false;
       if (finishCurrent === finish) finishCurrent = null;
-      try { player.remove(); } catch { /* already released */ }
+      try { player.remove(); } catch { /* ignore */ }
       if (nativePlayer === player) nativePlayer = null;
-      if (error) reject(error); else resolve();
+      if (error) reject(error);
+      else resolve();
     };
     finishCurrent = finish;
+
+    player.addListener('playbackStatusUpdate', status => {
+      if (cancelled()) {
+        finish();
+        return;
+      }
+      if (status.didJustFinish) finish();
+    });
+
     try {
-      subscription = player.addListener('playbackStatusUpdate', status => {
-        if (cancelled()) { finish(); return; }
-        if ((status as { error?: unknown }).error) { finish(new NarratorCloudUnavailableError('Audio decode failed.')); return; }
-        if (status.isLoaded) { loaded = true; clearTimeout(loadTimer); }
-        if (status.didJustFinish) finish();
-      });
       player.playbackRate = playbackRate;
-      player.play(); playing = true;
-    } catch { finish(new NarratorCloudUnavailableError('Narrator audio could not start.')); }
+      player.play();
+      playing = true;
+    } catch {
+      finish(new NarratorCloudUnavailableError('Narrator audio could not start.'));
+    }
+
     if (cancelled()) finish();
   });
 }
@@ -408,37 +386,29 @@ export async function playCloudNarration(params: {
   cancelled: () => boolean;
 }): Promise<void> {
   const { text, locale, playbackRate = 1, cancelled } = params;
+  if (!(await checkCloudNarrator())) throw new NarratorCloudUnavailableError();
   if (cancelled()) return;
+
   const key = `${locale}|${text}`;
-  const cacheKey = `${languageCode(locale)}-${stableAudioKey(text)}`;
-  const cachedUrl = prefetchedPlayableUrls.get(key);
-  const urls = [...new Set([cachedUrl, ...audioUrls(text, locale)].filter((url): url is string => Boolean(url)))];
-  if (!urls.length) throw new NarratorCloudUnavailableError('No narrator endpoint configured.');
-  let lastError: unknown;
-  // A health probe is advisory, never a prerequisite for cached/CDN playback.
-  const cachedSources = Platform.OS === 'web' ? [] : (await Promise.all(urls.map(async url =>
-    await cachedAudioFile(url, cacheKey).catch(() => null) ? url : null
-  ))).filter((url): url is string => url !== null);
-  const orderedUrls = [...new Set([...cachedSources, ...urls])];
-  for (const url of orderedUrls) {
-    if (cancelled()) return;
-    try {
-      stopCloudNarration();
-      const playable = Platform.OS === 'web' ? url : await cacheAudioFile(url, cacheKey);
-      if (cancelled()) return;
-      if (Platform.OS === 'web') await playWeb(playable, cancelled, playbackRate);
-      else await playNative(playable, cancelled, playbackRate);
-      return;
-    } catch (error) {
-      if (cancelled()) return;
-      if (error instanceof NarratorBlockedError) throw error;
-      lastError = error;
-      prefetchedPlayableUrls.delete(key); prefetched.delete(key);
-      if (url.startsWith('blob:') && typeof URL !== 'undefined') URL.revokeObjectURL(url);
-      if (Platform.OS !== 'web') await invalidateCachedAudio(url, cacheKey).catch(() => undefined);
-    }
+  let selectedUrl = prefetchedPlayableUrls.get(key) ?? null;
+  if (!selectedUrl) {
+    const urls = audioUrls(text, locale);
+    if (!urls.length) throw new NarratorCloudUnavailableError('No CDN or cloud narrator endpoint is configured.');
+    // Do not make a second health/download request before playback. The audio
+    // element/player reports decode or network failure and the prefetch cache
+    // will handle the next visit without adding a full extra round trip.
+    selectedUrl = urls[0] ?? null;
   }
-  throw lastError ?? new NarratorCloudUnavailableError();
+  if (!selectedUrl) throw new NarratorCloudUnavailableError('Narrator audio is unavailable.');
+  if (cancelled()) return;
+
+  stopCloudNarration();
+  const playableUrl = Platform.OS === 'web'
+    ? selectedUrl
+    : await cacheAudioFile(selectedUrl, `${languageCode(locale)}-${stableAudioKey(text)}`);
+  if (cancelled()) return;
+  if (Platform.OS === 'web') return playWeb(playableUrl, cancelled, playbackRate);
+  return playNative(playableUrl, cancelled, playbackRate);
 }
 
 const prefetched = new Set<string>();
@@ -454,7 +424,7 @@ export async function prefetchCloudNarration(text: string, locale: NarratorLocal
   const key = `${locale}|${clean}`;
   if (prefetched.has(key)) return;
   prefetched.add(key);
-  if (prefetched.size > 24) {
+  if (prefetched.size > 60) {
     const oldest = prefetched.values().next().value;
     if (oldest) {
       prefetched.delete(oldest);
@@ -464,27 +434,23 @@ export async function prefetchCloudNarration(text: string, locale: NarratorLocal
     }
   }
   try {
-    const cacheKey = `${languageCode(locale)}-${stableAudioKey(clean)}`;
-    for (const url of audioUrls(clean, locale)) {
-      try {
+    if (!(await checkCloudNarrator())) return;
+    const url = audioUrls(clean, locale)[0];
+    if (url) {
+      const response = await fetchWithTimeout(url);
+      if (response.ok) {
         if (Platform.OS !== 'web') {
-          // One cancellable atomic download, not fetch + download of the same file.
-          await cacheAudioFile(url, cacheKey);
+          await cacheAudioFile(url, `${languageCode(locale)}-${stableAudioKey(clean)}`);
           prefetchedPlayableUrls.set(key, url);
+        } else if (typeof URL !== 'undefined' && typeof response.blob === 'function') {
+          const blob = await response.blob();
+          prefetchedPlayableUrls.set(key, URL.createObjectURL(blob));
         } else {
-          const response = await fetchWithTimeout(url);
-          const type = response.headers?.get?.('content-type') || '';
-          if (!response.ok || /json|text\/|html/i.test(type)) continue;
-          if (typeof URL !== 'undefined' && typeof response.blob === 'function') {
-            const blob = await response.blob();
-            if (!blob.size || blob.size > 3 * 1024 * 1024) continue;
-            prefetchedPlayableUrls.set(key, URL.createObjectURL(blob));
-          } else prefetchedPlayableUrls.set(key, url);
+          prefetchedPlayableUrls.set(key, url);
         }
-        return;
-      } catch { /* Try the next configured source; playback remains available. */ }
+      }
     }
-  } finally {
-    if (!prefetchedPlayableUrls.has(key)) prefetched.delete(key);
+  } catch {
+    // Prefetch is an optimisation only; playback has its own error handling.
   }
 }

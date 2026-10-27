@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
-import { AppState } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { isCloudNarratorActive } from './cloudNarrator';
 import {
   getNarratorSnapshot,
   narrate,
   pauseNarration,
-  chooseDeviceNarration,
-  chooseOriginalNarration,
+  prefetchSentence,
+  primeNarrator,
   resumeNarration,
   setNarratorAuto,
   setNarratorSpeed,
@@ -26,8 +25,6 @@ import type { NarratorLocale, NarratorSpeed } from './voiceCast';
  */
 export interface LessonNarratorControls extends NarratorSnapshot {
   replay: () => void;
-  useDeviceVoice: () => void;
-  useOriginalVoice: () => void;
   stop: () => void;
   togglePause: () => void;
   setAuto: (auto: boolean) => void;
@@ -42,38 +39,38 @@ export function useLessonNarrator(params: {
   enabled?: boolean;
 }): LessonNarratorControls {
   const { text, locale, enabled = true } = params;
-  const focused = useIsFocused();
   const snapshot = useSyncExternalStore(subscribeNarrator, getNarratorSnapshot, getNarratorSnapshot);
   const lastRead = useRef<string>('');
   const cleanText = text.replace(/\s+/g, ' ').trim();
   const readKey = `${locale}|${cleanText}`;
 
   useEffect(() => {
-    if (!enabled || !focused || !cleanText) return;
+    void primeNarrator(locale).catch(() => undefined);
+  }, [locale]);
+
+  // Warm the sentence audio ahead of the automatic reading.
+  useEffect(() => {
+    if (cleanText) prefetchSentence(cleanText, locale);
+  }, [cleanText, locale]);
+
+  useEffect(() => {
+    if (!enabled || !cleanText) return;
     if (!snapshot.settingsReady || !snapshot.auto) return;
     if (lastRead.current === readKey) return;
 
     const timer = setTimeout(() => {
+      // The lesson narrator is cloud/CDN-only. Do not inspect or depend on the
+      // device speech engine: it can report unrelated app audio and create a
+      // race that clips the approved native recording.
+      if (isCloudNarratorActive()) return;
       lastRead.current = readKey;
       void narrate(cleanText, locale).catch(() => undefined);
     }, 10);
     return () => clearTimeout(timer);
-  }, [readKey, cleanText, enabled, focused, locale, snapshot.auto, snapshot.settingsReady]);
+  }, [readKey, cleanText, enabled, locale, snapshot.auto, snapshot.settingsReady]);
 
   // Leaving the lesson always silences the narrator.
-  useEffect(() => {
-    if (!focused) { lastRead.current = ''; stopNarration(); }
-    return () => { lastRead.current = ''; stopNarration(); };
-  }, [focused]);
-
-  useEffect(() => {
-    if (!focused) return;
-    const subscription = AppState.addEventListener('change', state => {
-      const status = getNarratorSnapshot().status;
-      if (state !== 'active' && (status === 'speaking' || status === 'loading')) void pauseNarration();
-    });
-    return () => subscription.remove();
-  }, [focused]);
+  useEffect(() => () => stopNarration(), []);
 
   const replay = useCallback(() => {
     if (!cleanText) return;
@@ -119,8 +116,6 @@ export function useLessonNarrator(params: {
   return {
     ...snapshot,
     replay,
-    useDeviceVoice: () => { void chooseDeviceNarration(cleanText, locale).catch(() => undefined); },
-    useOriginalVoice: () => { void chooseOriginalNarration(cleanText, locale).catch(() => undefined); },
     stop,
     togglePause,
     setAuto,

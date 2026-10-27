@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
-import { FEATURES, MANAGEMENT_BUILD } from '@/lib/features';
 import ArrowRight from 'lucide-react-native/dist/esm/icons/arrow-right';
 import Home from 'lucide-react-native/dist/esm/icons/house';
 
@@ -41,7 +40,7 @@ export function PageNavigation({
         accessibilityRole="button"
         accessibilityLabel="بازگشت به صفحهٔ اصلی اپ"
         hitSlop={6}
-        onPress={() => router.replace((!MANAGEMENT_BUILD && FEATURES.learnerLogin ? '/journey' : '/languages') as never)}
+        onPress={() => router.replace('/languages' as never)}
         style={({ pressed }) => [styles.button, dark ? styles.buttonDark : styles.buttonLight, !dark && borderColor ? { borderColor } : null, pressed && styles.pressed]}
       >
         <Home size={18} color={iconColor} strokeWidth={2.2} />

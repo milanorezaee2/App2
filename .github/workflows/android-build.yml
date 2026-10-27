@@ -3,10 +3,6 @@ name: Build MiloMultilang Android APK
 on:
   workflow_dispatch:
     inputs:
-      reuse_run:
-        description: 'Re-test signed APK artifacts from this workflow run without rebuilding'
-        type: string
-        default: ''
       russian_only:
         description: 'Build only the Russian learner APK (MiloRussian.apk) and publish it as a release'
         type: boolean
@@ -26,7 +22,6 @@ on:
 
 permissions:
   contents: write
-  actions: read
 
 concurrency:
   group: android-apk-${{ github.ref }}
@@ -34,8 +29,7 @@ concurrency:
 
 jobs:
   build-android-apk:
-    if: ${{ (github.event_name != 'workflow_dispatch' || inputs.reuse_run == '') && !contains(github.event.head_commit.message, '[apk-verify-only]') && !contains(github.event.head_commit.message, '[apk-retest:') }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       CI: "1"
@@ -59,9 +53,6 @@ jobs:
         run: |
           npm run typecheck
           npm run validate:email-login
-          npm run validate:google-login
-          npm run validate:learner-journey
-          npm run validate:stability-repair
           npm run validate:android-fonts
           npm run validate:admin
           npm run validate:admin-popups
@@ -290,16 +281,6 @@ jobs:
           print('App 4 (Login EN+DE+TR + Turkish Narrator) APK verified:', cfg['android']['package'], cfg['android']['versionCode'])
           PY
 
-      - name: Enable hardware acceleration for reliable emulator input
-        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          sudo udevadm settle
-          sudo chmod 0666 /dev/kvm
-          test -r /dev/kvm && test -w /dev/kvm
-
       - name: Smoke-test all 4 APKs on Android emulator
         if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         uses: reactivecircus/android-emulator-runner@v2
@@ -324,7 +305,6 @@ jobs:
             ${{ runner.temp }}/milomultilang-emulator-logcat.txt
             ${{ runner.temp }}/milomultilang-emulator-window.xml
             ${{ runner.temp }}/milomultilang-emulator-screen.png
-            ${{ runner.temp }}/milomultilang-language-choices.xml.log
           if-no-files-found: warn
           retention-days: 3
 
@@ -346,16 +326,12 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: "Milo Android Suite #${{ github.run_number }} (Clean v2.0 — Ordered 4-APK Release)"
           body: |
-            مجموعهٔ به‌روز ۴ فایل نصبی اندروید با شناسه‌های جداگانهٔ `.v2`؛ ساخت، امضا و تست نصب و بازشدن در شبیه‌ساز Android بررسی شده است. این بررسی‌ها تضمین نبودن باگ روی همهٔ گوشی‌ها نیست.
+            مجموعهٔ رسمی، سبک‌شده و بدون تداخل ۴ فایل نصبی اندروید (نسخهٔ `v2.0.0` با شناسه‌های پکیج جدید `.v2` برای نصب مستقیم و بدون هیچ خطای تداخل روی همهٔ گوشی‌ها):
 
             1. **1-MiloAdmin.apk** (`1-MiloAdmin` / `com.devicecontrol.miloadmin.v2`) — اپ ادمین: مدیریت اختصاصی اپ با لاگین، فعال/غیرفعال‌سازی تک‌تک یا همهٔ زبان‌ها، ارسال پاپ‌آپ زنده
             2. **2-MiloNoLogin-EN-RU.apk** (`2-Milo EN-RU` / `com.devicecontrol.mml.v2`) — اپ زبان‌آموز بدون لاگین: فقط انگلیسی و روسی
             3. **3-MiloNoLogin-All4.apk** (`3-Milo All4` / `com.devicecontrol.miloall.v2`) — اپ زبان‌آموز بدون لاگین: انگلیسی، آلمانی، روسی و ترکی استانبولی
             4. **4-MiloLogin-EN-DE-TR.apk** (`4-Milo Login` / `com.devicecontrol.milomultilang.v2`) — اپ زبان‌آموز با لاگین: انگلیسی، آلمانی و ترکی استانبولی + نریتور اتوماتیک ترکی استانبولی (بدون روسی)
-
-            تغییرات این نسخه: انتخاب سریع زبان و شروع همه از سطح مقدماتی بدون سؤال تعیین سطح، گزارش اختیاری به‌جای بارگذاری سنگین هنگام ورود، حفظ محل درس هنگام بازگشت به برنامه، اصلاح کش صوت و پخش پشتیبان CDN/ابری و امکان انتخاب صریح صدای کمکی دستگاه. متن، تعداد، ترتیب و محتوای آموزشی تغییر نکرده‌اند و سابقه پاک نمی‌شود. دسترسی واقعی به نریتور اصلی همچنان به سرویس صوتی وابسته است.
-
-            نکته: ورود واقعی Google نیاز به فعال‌سازی ارائه‌دهنده در Supabase و تنظیم OAuth در Google Cloud دارد؛ نمایش دکمه به‌معنی تکمیل تنظیمات سرویس نیست.
           prerelease: false
           make_latest: true
           files: |
@@ -397,7 +373,7 @@ jobs:
           retention-days: 7
 
       - name: Upload APK artifacts
-        if: ${{ always() && env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
+        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: Milo-android-apks
@@ -408,112 +384,3 @@ jobs:
             4-MiloLogin-EN-DE-TR.apk
           if-no-files-found: error
           retention-days: 7
-
-  verify-existing-apks:
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.reuse_run != '') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[apk-retest:')) }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    env:
-      GH_TOKEN: ${{ github.token }}
-      SOURCE_RUN: ${{ inputs.reuse_run }}
-    steps:
-      - uses: actions/checkout@v5
-      - name: Validate source build and record provenance
-        shell: bash
-        run: |
-          if [[ -z "$SOURCE_RUN" ]]; then
-            SOURCE_RUN="$(git log -1 --pretty=%B | sed -n 's/.*\[apk-retest:\([0-9]*\)\].*/\1/p')"
-          fi
-          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
-          echo "SOURCE_RUN=$SOURCE_RUN" >> "$GITHUB_ENV"
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > source-run.json
-          python3 - <<'PYPROVENANCE'
-          import json, os
-          run = json.load(open('source-run.json'))
-          assert run['path'] == '.github/workflows/android-build.yml', run['path']
-          assert run['head_branch'] == os.environ['GITHUB_REF_NAME'], run['head_branch']
-          assert run['status'] == 'completed', run['status']
-          with open(os.environ['GITHUB_ENV'], 'a') as env:
-              env.write('SOURCE_SHA=' + run['head_sha'] + '\n')
-              env.write('SOURCE_NUMBER=' + str(run['run_number']) + '\n')
-          PYPROVENANCE
-      - name: Download original signed APKs
-        uses: actions/download-artifact@v4
-        with:
-          name: Milo-android-apks
-          github-token: ${{ github.token }}
-          run-id: ${{ env.SOURCE_RUN }}
-      - name: Verify all four APK signatures and identities again
-        shell: bash
-        run: |
-          SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
-          test -n "$SIGNER"
-          for apk in 1-MiloAdmin.apk 2-MiloNoLogin-EN-RU.apk 3-MiloNoLogin-All4.apk 4-MiloLogin-EN-DE-TR.apk; do
-            "$SIGNER" verify --verbose "$apk"
-          done
-          python3 - <<'PYVERIFY'
-          import json
-          from zipfile import ZipFile
-          expected = [
-            ('1-MiloAdmin.apk','com.devicecontrol.miloadmin.v2','admin',None),
-            ('2-MiloNoLogin-EN-RU.apk','com.devicecontrol.mml.v2','en_ru',False),
-            ('3-MiloNoLogin-All4.apk','com.devicecontrol.miloall.v2','all_four',False),
-            ('4-MiloLogin-EN-DE-TR.apk','com.devicecontrol.milomultilang.v2','login_en_de_tr',True),
-          ]
-          for name, package, edition, login in expected:
-              with ZipFile(name) as apk:
-                  assert apk.testzip() is None, name
-                  names = apk.namelist()
-                  assert 'AndroidManifest.xml' in names and 'assets/index.android.bundle' in names, name
-                  assert any(n.endswith('classes.dex') for n in names), name
-                  config = json.loads(apk.read('assets/app.config'))
-              assert config['android']['package'] == package, name
-              assert config['android']['versionCode'] >= 200, name
-              assert config['extra']['edition'] == edition, name
-              if login is not None: assert config['extra']['learnerLogin'] is login, name
-              else: assert config['extra']['appRole'] == 'admin', name
-              print('Verified original signed APK:', name, config['android']['versionCode'])
-          PYVERIFY
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          sudo udevadm settle
-          sudo chmod 0666 /dev/kvm
-          test -r /dev/kvm && test -w /dev/kvm
-      - name: Re-test all four signed APKs on Android
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          arch: x86_64
-          target: default
-          cores: 4
-          ram-size: 4096M
-          heap-size: 512M
-          emulator-boot-timeout: 900
-          disable-animations: true
-          script: bash .github/scripts/android-emulator-smoke-test.sh
-      - name: Upload retest diagnostics
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-retest-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/milomultilang-emulator-*
-            ${{ runner.temp }}/milomultilang-language-choices.xml.log
-          if-no-files-found: warn
-          retention-days: 3
-      - name: Publish only after the emulator retest succeeds
-        shell: bash
-        run: |
-          if gh release view "milomultilang-android-$SOURCE_NUMBER" >/dev/null 2>&1; then
-            gh release upload "milomultilang-android-$SOURCE_NUMBER" --clobber \
-              1-MiloAdmin.apk 2-MiloNoLogin-EN-RU.apk 3-MiloNoLogin-All4.apk 4-MiloLogin-EN-DE-TR.apk
-          else
-          gh release create "milomultilang-android-$SOURCE_NUMBER" \
-            --target "$SOURCE_SHA" \
-            --title "Milo Android Suite #$SOURCE_NUMBER — Updated UI and Google button" \
-            --notes "Four original signed APKs from source run $SOURCE_RUN ($SOURCE_SHA), successfully reverified and smoke-tested on Android in run $GITHUB_RUN_ID. Includes the updated compact hero, full Turkish language card title and Google sign-in button. Google login still requires server-side OAuth provider setup; email OTP remains available." \
-            1-MiloAdmin.apk 2-MiloNoLogin-EN-RU.apk 3-MiloNoLogin-All4.apk 4-MiloLogin-EN-DE-TR.apk
-          fi

@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useNavigationContainerRef, usePathname, useRootNavigationState, useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { FEATURES, MANAGEMENT_BUILD } from '@/lib/features';
 import {
   LANGUAGE_META,
@@ -63,11 +63,9 @@ function detectCourseLanguageFromPathname(pathname: string): LanguageId | null {
   return null;
 }
 
-export function LearnerLanguageAccessProvider({ children, navigationReady = true }: PropsWithChildren<{ navigationReady?: boolean }>) {
+export function LearnerLanguageAccessProvider({ children }: PropsWithChildren) {
   const router = useRouter();
   const pathname = usePathname();
-  const navigation = useNavigationContainerRef();
-  const rootState = useRootNavigationState();
   const enforced = !MANAGEMENT_BUILD && FEATURES.learnerLogin;
 
   const [enabledIds, setEnabledIds] = useState<readonly LoginAppLanguageId[]>(LOGIN_APP_LANGUAGE_IDS);
@@ -118,13 +116,13 @@ export function LearnerLanguageAccessProvider({ children, navigationReady = true
   // Real-time active route guard: kick learner back to /languages immediately if
   // they are inside a build-disabled or Admin-disabled course.
   useEffect(() => {
-    if (MANAGEMENT_BUILD || !navigationReady || !rootState?.key || !navigation.isReady()) return;
+    if (MANAGEMENT_BUILD) return;
     const activeLang = detectCourseLanguageFromPathname(pathname);
     if (!activeLang) return;
     if (!isLanguageAllowed(activeLang)) {
       router.replace('/languages' as never);
     }
-  }, [pathname, isLanguageAllowed, router, navigation, navigationReady, rootState?.key]);
+  }, [pathname, isLanguageAllowed, router]);
 
   const value = useMemo<LearnerLanguageAccessContextValue>(
     () => ({

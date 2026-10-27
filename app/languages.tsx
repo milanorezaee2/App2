@@ -184,7 +184,6 @@ export default function LanguagesHome() {
               <MiloLogoMotion size="header" play={false} />
             </View>
             <View style={styles.headerActions}>
-              {FEATURES.learnerLogin && <Pressable accessibilityRole="button" accessibilityLabel="مسیر من و گزارش پیشرفت" style={styles.actionIconBtn} onPress={() => router.push('/journey' as never)}><BarChart3 size={17} color={LuxuryPalette.primary} /></Pressable>}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="گفتگو با پشتیبانی"

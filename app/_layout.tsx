@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts, FontDisplay } from 'expo-font';
 import { SplashScreen } from 'expo-router';
 import Constants from 'expo-constants';
-import { I18nManager, InteractionManager, Platform, Text, TextInput } from 'react-native';
+import { AppState, I18nManager, InteractionManager, Platform, Text, TextInput } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardProvider } from '@/components/KeyboardRuntime';
 import { createAudioPlayer } from 'expo-audio';
@@ -20,7 +20,6 @@ import { AppLockGate } from '@/components/AppLockGate';
 import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
 import { LearnerLanguageAccessProvider } from '@/components/LearnerLanguageAccess';
 import { LearnerPopupBridge } from '@/components/LearnerPopupBridge';
-import { LearnerJourneyGate } from '@/components/LearnerJourneyGate';
 import { RegistrationGate } from '@/components/RegistrationGate';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
 import { isSupabaseConfigured } from '@/lib/pairing';
@@ -100,11 +99,13 @@ function CompanionRuntime() {
  * made router.replace throw "Attempted to navigate before mounting the Root
  * Layout component").
  */
-function NavigatorMountProbe({ onMounted, onUnmounted }: { onMounted: () => void; onUnmounted: () => void }) {
+function NavigatorMountProbe({ onMounted }: { onMounted: () => void }) {
+  const mounted = useRef(false);
   useEffect(() => {
+    if (mounted.current) return;
+    mounted.current = true;
     onMounted();
-    return onUnmounted;
-  }, [onMounted, onUnmounted]);
+  }, [onMounted]);
   return null;
 }
 
@@ -117,26 +118,16 @@ export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const navigationRef = useNavigationContainerRef();
-  const [navigatorMounted, setNavigatorMounted] = useState(0);
-  const stackMounted = useRef(false);
+  const [navigatorMounted, setNavigatorMounted] = useState(false);
+  const handleNavigatorMounted = useCallback(() => setNavigatorMounted(true), []);
   const homeRoute = IS_ADMIN_APP
     ? '/admin'
     : RUSSIAN_ONLY_BUILD
       ? '/learn/ru'
-      : FEATURES.learnerLogin ? '/journey' : '/languages';
+      : '/languages';
+  const pathnameRef = useRef(pathname);
+  const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
-  const handleNavigatorMounted = useCallback(() => {
-    // Auth/account changes and app locking can unmount the Stack. Each new
-    // mount must land on the correct home, including after a new account's
-    // setup deferred navigator creation.
-    startupRouteLocked.current = false;
-    stackMounted.current = true;
-    setNavigatorMounted(count => count + 1);
-  }, []);
-  const handleNavigatorUnmounted = useCallback(() => {
-    stackMounted.current = false;
-    setNavigatorMounted(count => count + 1);
-  }, []);
   const [introComplete, setIntroComplete] = useState(Platform.OS === 'web');
   // `swap` is web-only: text paints immediately with a fallback face and the
   // custom font takes over when it finishes downloading, instead of staying
@@ -201,18 +192,67 @@ export default function RootLayout() {
     });
   }, [fontsLoaded, fontError]);
 
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  const forceNavigateHome = useCallback(() => {
+    setTimeout(() => {
+      if (!navigationRef.isReady()) return;
+      if (pathnameRef.current !== homeRoute) {
+        router.replace(homeRoute as never);
+      }
+    }, 80);
+  }, [homeRoute, navigationRef, router]);
+
+  // Returning to the app after leaving it should always start from the same
+  // language chooser/home, not the last nested lesson, library, or conversation.
+  // Only a real background -> active transition triggers this; temporary native
+  // dialogs and permission prompts do not reset navigation.
+  useEffect(() => {
+    if (Platform.OS === 'web' || !introComplete) return;
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'background') {
+        wasBackgrounded.current = true;
+        return;
+      }
+      if (state === 'active' && wasBackgrounded.current) {
+        wasBackgrounded.current = false;
+        if (navigationRef.isReady() && pathnameRef.current !== homeRoute) {
+          router.replace(homeRoute as never);
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [homeRoute, introComplete, navigationRef, router]);
+
   // Wait for our own Stack to be mounted before normalizing an Android-restored
   // route. AppLockGate/RegistrationGate can temporarily defer mounting the
   // Stack, and fonts keep RootLayout at `return null`; isReady() is the exact
   // readiness check expo-router performs before accepting a navigation call.
   useEffect(() => {
-    if (!introComplete || !navigatorMounted || !stackMounted.current || !navigationRef.isReady() || startupRouteLocked.current) return;
+    if (!introComplete || !navigatorMounted || !navigationRef.isReady() || startupRouteLocked.current) return;
     startupRouteLocked.current = true;
     if (pathname !== homeRoute) router.replace(homeRoute as never);
   }, [homeRoute, introComplete, pathname, navigatorMounted, navigationRef, router]);
 
-  // Foregrounding, changing tabs, and audio/permission dialogs preserve the
-  // current lesson. Only a real navigator mount normalizes the entry route.
+  // On web, AppState is unavailable — use page visibility instead so that
+  // returning to the tab also starts from the home screen, not the last
+  // lesson/library/conversation that was open before.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !introComplete) return;
+    const onVisible = () => {
+      if (
+        document.visibilityState === 'visible'
+        && navigationRef.isReady()
+        && pathnameRef.current !== homeRoute
+      ) {
+        router.replace(homeRoute as never);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [homeRoute, introComplete, navigationRef, router]);
 
   // Native must wait for the registered faces: the global Vazir Text defaults
   // applied above can measure/crash before the font module is ready. On web
@@ -227,23 +267,21 @@ export default function RootLayout() {
       <ErrorBoundary>
         <SafeAreaView style={{ flex: 1, ...RtlDirection }} edges={['top', 'bottom']}>
           <AppLockGate>
-            <RegistrationGate>
-              <LearnerLanguageAccessProvider navigationReady={stackMounted.current}>
-                <LearnerJourneyGate>
-                  {!IS_ADMIN_APP && <RuntimeGate />}
-                  <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="admin/index" />
-                    <Stack.Screen name="agent" />
-                    <Stack.Screen name="permissions" />
-                    <Stack.Screen name="app-lock" />
-                    <Stack.Screen name="lang" />
-                    <Stack.Screen name="+not-found" />
-                  </Stack>
-                  <NavigatorMountProbe onMounted={handleNavigatorMounted} onUnmounted={handleNavigatorUnmounted} />
-                  {(IS_ADMIN_APP || FEATURES.learnerLogin) && <ChatNotificationBridge />}
-                  {!IS_ADMIN_APP && FEATURES.learnerLogin && <LearnerPopupBridge />}
-                </LearnerJourneyGate>
+            <RegistrationGate onAuthenticated={forceNavigateHome}>
+              <LearnerLanguageAccessProvider>
+                {!IS_ADMIN_APP && <RuntimeGate />}
+                <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="admin/index" />
+                  <Stack.Screen name="agent" />
+                  <Stack.Screen name="permissions" />
+                  <Stack.Screen name="app-lock" />
+                  <Stack.Screen name="lang" />
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+                <NavigatorMountProbe onMounted={handleNavigatorMounted} />
+                {(IS_ADMIN_APP || FEATURES.learnerLogin) && <ChatNotificationBridge />}
+                {!IS_ADMIN_APP && FEATURES.learnerLogin && <LearnerPopupBridge />}
               </LearnerLanguageAccessProvider>
             </RegistrationGate>
           </AppLockGate>

@@ -35,6 +35,7 @@ import {
 } from '@/lib/languages/germanSentenceCourse';
 import { clearGermanSentenceSession, loadGermanSentenceSession } from '@/lib/languages/germanSentenceSession';
 import { germanProgress } from '@/lib/languages/catalog';
+import { syncPersonalLearningData } from '@/lib/personalLearningSync';
 import type { CourseProgress } from '@/lib/createCourseProgressStore';
 import { preloadSpeechVoices, resolveRequiredSpeechOptions } from '@/lib/speechLanguage';
 import { germanHomeStyles as styles } from './germanHomeStyles';
@@ -70,6 +71,10 @@ export default function GermanSentenceHome() {
       })
       .catch(() => { if (alive) setError('پیشرفت ذخیره‌شده خوانده نشد؛ درس‌ها همچنان از کتابخانه در دسترس‌اند.'); });
     void refreshLocal();
+    void syncPersonalLearningData().then(result => {
+      if (result.status === 'synced') return refreshLocal();
+      return undefined;
+    }).catch(() => undefined);
     return () => { alive = false; void Speech.stop(); };
   }, [retry]));
 

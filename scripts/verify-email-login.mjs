@@ -8,7 +8,6 @@ const calls = [];
 const user = { id: 'learner', email: 'learner@gmail.com', email_confirmed_at: '2026-10-27T00:00:00Z', is_anonymous: false, user_metadata: { full_name: 'Learner' } };
 let session = null;
 let verifyError = null;
-let profileExists = true;
 globalThis.__emailLoginTest = {
   auth: {
     async signInWithOtp(args) { calls.push(['send', args]); return { error: null }; },
@@ -17,8 +16,8 @@ globalThis.__emailLoginTest = {
   },
   from() {
     return {
-      async upsert(profile) { calls.push(['profile', profile]); profileExists = true; session = { user }; return { error: null }; },
-      select() { return { eq() { return { async maybeSingle() { return { data: profileExists ? { user_id: user.id, email: user.email, full_name: 'Learner' } : null, error: null }; } }; } }; },
+      async upsert(profile) { calls.push(['profile', profile]); session = { user }; return { error: null }; },
+      select() { return { eq() { return { async maybeSingle() { return { data: { user_id: user.id, email: user.email, full_name: 'Learner' }, error: null }; } }; } }; },
     };
   },
 };
@@ -64,14 +63,6 @@ assert.equal((await auth.getRegisteredSession()).session.user.id, user.id);
 session = null;
 assert.deepEqual(await auth.getRegisteredSession(), { session: null, profile: null });
 assert.equal(globalThis.__emailLoginCache.at(-1), 'clear');
-// Google profiles may expose `name` instead of `full_name`, or no usable name.
-for (const [metadata, expected] of [[{ name: 'Google Learner' }, 'Google Learner'], [{ name: 'X' }, 'زبان‌آموز']]) {
-  user.user_metadata = metadata;
-  session = { user };
-  profileExists = false;
-  assert.ok((await auth.getRegisteredSession()).profile);
-  assert.equal(calls.filter(([kind]) => kind === 'profile').at(-1)[1].full_name, expected);
-}
 assert.match(auth.registrationError(new Error('email rate limit exceeded')), /تعداد درخواست/);
 assert.match(auth.registrationError(new Error('Error sending OTP via SMTP')), /تنظیم نشده/);
 

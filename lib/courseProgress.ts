@@ -258,17 +258,47 @@ async function uploadProgress(progress: CourseProgress): Promise<void> {
 
 async function saveProgress(progress: CourseProgress): Promise<CourseProgress> {
   await writeRaw(JSON.stringify(progress));
-  void uploadProgress(progress);
+  await uploadProgress(progress);
   void import('./personalLearningSync')
     .then(({ schedulePersonalLearningSync }) => schedulePersonalLearningSync())
     .catch(() => undefined);
   return progress;
 }
 
-/** Local read only: opening a lesson must never wait for cloud sync or write. */
 export async function getCourseProgress(): Promise<CourseProgress> {
-  const raw = await readRaw();
-  return normalizeProgress(raw === null ? {} : JSON.parse(raw) as Partial<CourseProgress>);
+  try {
+    const raw = await readRaw();
+    let progress = normalizeProgress(raw ? JSON.parse(raw) as Partial<CourseProgress> : {});
+    const userId = await progressUserId();
+    if (userId) {
+      const { data } = await supabase
+        .from('learning_progress')
+        .select('progress,updated_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (data?.progress) {
+        const remote = parseCourseProgressBackup(data.progress);
+        // A newly linked email account may already have progress from another
+        // device. Union completion/review evidence with this device instead of
+        // replacing one side based only on timestamps.
+        const merged = mergeSharedCourseProgress(progress, remote);
+        const changed = JSON.stringify(merged) !== JSON.stringify(remote);
+        progress = merged;
+        if (changed) await uploadProgress(progress);
+      } else {
+        await uploadProgress(progress);
+      }
+    }
+    await writeRaw(JSON.stringify(progress));
+    return progress;
+  } catch {
+    try {
+      const raw = await readRaw();
+      return normalizeProgress(raw ? JSON.parse(raw) as Partial<CourseProgress> : {});
+    } catch {
+      return initialProgress();
+    }
+  }
 }
 
 export async function completeSentenceLesson(lessonId: string, nextLessonId?: string): Promise<CourseProgress> {

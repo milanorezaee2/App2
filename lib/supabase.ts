@@ -1,4 +1,3 @@
-import { createBoundedFetch } from './boundedFetch';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -58,9 +57,6 @@ const webSafeStorage = {
 };
 
 const authOptions = {
-  // Google OAuth uses authorization-code + PKCE, never tokens in a URL hash.
-  // Email OTP verification and existing persisted sessions remain supported.
-  flowType: 'pkce' as const,
   persistSession: true,
   autoRefreshToken: true,
   detectSessionInUrl: false,
@@ -71,7 +67,6 @@ function createSafeClient() {
   try {
     return createClient(supabaseUrl, supabaseAnonKey, {
       auth: authOptions,
-      global: { fetch: createBoundedFetch() },
     });
   } catch (error) {
     console.error(
@@ -80,7 +75,6 @@ function createSafeClient() {
     );
     return createClient(FALLBACK_URL, FALLBACK_KEY, {
       auth: authOptions,
-      global: { fetch: createBoundedFetch() },
     });
   }
 }

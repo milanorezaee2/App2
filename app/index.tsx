@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import Constants from 'expo-constants';
 import { Redirect, useRouter } from 'expo-router';
-import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
+import { RUSSIAN_ONLY_BUILD } from '@/lib/features';
 
 /** Each APK has a single clear role: learner catalog or private management. */
 export default function Index() {
@@ -12,7 +12,7 @@ export default function Index() {
     ? '/admin'
     : RUSSIAN_ONLY_BUILD
       ? '/learn/ru'
-      : FEATURES.learnerLogin ? '/journey' : '/languages';
+      : '/languages';
 
   useEffect(() => {
     router.replace(target as never);
