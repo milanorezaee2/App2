@@ -306,6 +306,7 @@ jobs:
             ${{ runner.temp }}/milomultilang-emulator-logcat.txt
             ${{ runner.temp }}/milomultilang-emulator-window.xml
             ${{ runner.temp }}/milomultilang-emulator-screen.png
+            ${{ runner.temp }}/milomultilang-language-choices.xml.log
           if-no-files-found: warn
           retention-days: 3
 
@@ -378,7 +379,7 @@ jobs:
           retention-days: 7
 
       - name: Upload APK artifacts
-        if: ${{ env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
+        if: ${{ always() && env.EXPO_PUBLIC_RUSSIAN_ONLY != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: Milo-android-apks

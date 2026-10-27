@@ -93,14 +93,35 @@ collect_language_cards() {
   local attempt label complete
   choices_file="$diag_dir/milomultilang-language-choices.xml.log"
   : > "$choices_file"
-  for attempt in 1 2 3 4; do
+  # Use the real home CTA to move directly to the chooser. Coordinate-only
+  # flings can be swallowed on heavily loaded hosted emulators during first paint.
+  local chooser_coords chooser_x chooser_y
+  chooser_coords="$(python3 - "$ui_file" <<'PYCOORDS'
+import re, sys, xml.etree.ElementTree as ET
+for node in ET.parse(sys.argv[1]).getroot().iter():
+    if node.attrib.get('content-desc') == 'انتخاب زبان برای شروع یادگیری':
+        match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+        if match:
+            x1, y1, x2, y2 = map(int, match.groups())
+            if x2 > x1 and y2 > y1:
+                print((x1+x2)//2, (y1+y2)//2)
+                break
+PYCOORDS
+)"
+  if [[ -n "$chooser_coords" ]]; then
+    read -r chooser_x chooser_y <<< "$chooser_coords"
+    adb shell input tap "$chooser_x" "$chooser_y"
+    sleep 8
+    capture_ui
+  fi
+  for attempt in 1 2 3 4 5 6; do
     cat "$ui_file" >> "$choices_file"
     complete=true
     for label in "$@"; do
       if ! grep -Fq "ورود به زبان $label" "$choices_file"; then complete=false; fi
     done
     if [[ "$complete" == true ]]; then return 0; fi
-    if [[ "$attempt" != 4 ]]; then swipe_up; fi
+    if [[ "$attempt" != 6 ]]; then swipe_up; fi
   done
   echo "Not all expected language cards were reachable: $*"
   return 1
