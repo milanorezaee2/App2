@@ -35,7 +35,7 @@ concurrency:
 jobs:
   build-android-apk:
     if: ${{ (github.event_name != 'workflow_dispatch' || inputs.reuse_run == '') && !contains(github.event.head_commit.message, '[apk-verify-only]') && !contains(github.event.head_commit.message, '[apk-retest:') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
       CI: "1"
@@ -60,6 +60,7 @@ jobs:
           npm run typecheck
           npm run validate:email-login
           npm run validate:google-login
+          npm run validate:learner-journey
           npm run validate:android-fonts
           npm run validate:admin
           npm run validate:admin-popups
@@ -294,6 +295,8 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          sudo udevadm settle
+          sudo chmod 0666 /dev/kvm
           test -r /dev/kvm && test -w /dev/kvm
 
       - name: Smoke-test all 4 APKs on Android emulator
@@ -349,7 +352,7 @@ jobs:
             3. **3-MiloNoLogin-All4.apk** (`3-Milo All4` / `com.devicecontrol.miloall.v2`) — اپ زبان‌آموز بدون لاگین: انگلیسی، آلمانی، روسی و ترکی استانبولی
             4. **4-MiloLogin-EN-DE-TR.apk** (`4-Milo Login` / `com.devicecontrol.milomultilang.v2`) — اپ زبان‌آموز با لاگین: انگلیسی، آلمانی و ترکی استانبولی + نریتور اتوماتیک ترکی استانبولی (بدون روسی)
 
-            تغییرات این نسخه: هیروی جمع‌وجور و تصویر جدید، کارت‌های خوانای زبان با نام کامل ترکی استانبولی و دکمهٔ ورود Google در نسخهٔ با لاگین؛ ورود با کد ایمیلی حفظ شده است.
+            تغییرات این نسخه: راه‌اندازی شخصی پس از ورود در اپ شمارهٔ ۴ (زبان، آشنایی، هدف و تأیید مسیر)، گزارش پیشرفت واقعی همهٔ زبان‌های فعال، پیشرفت هر سطح و انتخاب درس‌های سطح پیشنهادی بدون پاک‌کردن سابقه یا تکمیل صوری درس‌ها. انتخاب‌های هر حساب روی دستگاه ذخیره می‌شوند؛ محدودیت‌های زبان ادمین و ورود Google/کد ایمیلی حفظ شده‌اند.
 
             نکته: ورود واقعی Google نیاز به فعال‌سازی ارائه‌دهنده در Supabase و تنظیم OAuth در Google Cloud دارد؛ نمایش دکمه به‌معنی تکمیل تنظیمات سرویس نیست.
           prerelease: false

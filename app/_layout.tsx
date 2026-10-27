@@ -20,6 +20,7 @@ import { AppLockGate } from '@/components/AppLockGate';
 import { ChatNotificationBridge } from '@/components/ChatNotificationBridge';
 import { LearnerLanguageAccessProvider } from '@/components/LearnerLanguageAccess';
 import { LearnerPopupBridge } from '@/components/LearnerPopupBridge';
+import { LearnerJourneyGate } from '@/components/LearnerJourneyGate';
 import { RegistrationGate } from '@/components/RegistrationGate';
 import { getPairingState, isOnboardingComplete } from '@/lib/storage';
 import { isSupabaseConfigured } from '@/lib/pairing';
@@ -124,7 +125,7 @@ export default function RootLayout() {
     ? '/admin'
     : RUSSIAN_ONLY_BUILD
       ? '/learn/ru'
-      : '/languages';
+      : FEATURES.learnerLogin ? '/journey' : '/languages';
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
@@ -269,19 +270,21 @@ export default function RootLayout() {
           <AppLockGate>
             <RegistrationGate onAuthenticated={forceNavigateHome}>
               <LearnerLanguageAccessProvider>
-                {!IS_ADMIN_APP && <RuntimeGate />}
-                <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-                  <Stack.Screen name="index" />
-                  <Stack.Screen name="admin/index" />
-                  <Stack.Screen name="agent" />
-                  <Stack.Screen name="permissions" />
-                  <Stack.Screen name="app-lock" />
-                  <Stack.Screen name="lang" />
-                  <Stack.Screen name="+not-found" />
-                </Stack>
-                <NavigatorMountProbe onMounted={handleNavigatorMounted} />
-                {(IS_ADMIN_APP || FEATURES.learnerLogin) && <ChatNotificationBridge />}
-                {!IS_ADMIN_APP && FEATURES.learnerLogin && <LearnerPopupBridge />}
+                <LearnerJourneyGate>
+                  {!IS_ADMIN_APP && <RuntimeGate />}
+                  <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="admin/index" />
+                    <Stack.Screen name="agent" />
+                    <Stack.Screen name="permissions" />
+                    <Stack.Screen name="app-lock" />
+                    <Stack.Screen name="lang" />
+                    <Stack.Screen name="+not-found" />
+                  </Stack>
+                  <NavigatorMountProbe onMounted={handleNavigatorMounted} />
+                  {(IS_ADMIN_APP || FEATURES.learnerLogin) && <ChatNotificationBridge />}
+                  {!IS_ADMIN_APP && FEATURES.learnerLogin && <LearnerPopupBridge />}
+                </LearnerJourneyGate>
               </LearnerLanguageAccessProvider>
             </RegistrationGate>
           </AppLockGate>

@@ -140,5 +140,5 @@ assert.match(read('components/RegistrationGate.tsx'), /<GoogleSignInButton disab
 assert.match(read('components/RegistrationGate.tsx'), /await verifyEmailCode\(email, code, fullName\)/, 'OTP stays available');
 assert.match(read('components/GoogleSignInButton.tsx'), /accessibilityLabel="ادامه با حساب گوگل"/);
 assert.match(read('components/GoogleSignInButton.tsx'), /borderRadius: 25/);
-assert.match(read('app/auth/callback.tsx'), /Redirect href="\/languages"/);
+assert.match(read('app/auth/callback.tsx'), /Redirect href=\{FEATURES\.learnerLogin \? "\/journey" : "\/languages"\}/);
 console.log('Google PKCE login: web/native, cold-start, duplicate callback, cancellation, unverified session, profile failure and OTP coexistence checks passed.');

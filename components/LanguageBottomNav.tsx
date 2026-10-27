@@ -1,5 +1,6 @@
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
+import { FEATURES, MANAGEMENT_BUILD } from '@/lib/features';
 import BookOpen from 'lucide-react-native/dist/esm/icons/book-open';
 import ClipboardList from 'lucide-react-native/dist/esm/icons/clipboard-list';
 import Home from 'lucide-react-native/dist/esm/icons/house';
@@ -28,7 +29,7 @@ export function LanguageBottomNav({ language }: { language: LearningLanguage }) 
   const [chatUnreadCount, setChatUnreadCount] = useState(getChatUnreadCount());
   const route = routes[language];
   const items = [
-    { path: '/languages', label: 'خانه', icon: Home },
+    { path: !MANAGEMENT_BUILD && FEATURES.learnerLogin ? '/journey' : '/languages', label: FEATURES.learnerLogin ? 'مسیر من' : 'خانه', icon: Home },
     { path: route.home, label: 'یادگیری', icon: BookOpen },
     { path: route.pronunciation, label: 'تلفظ', icon: Volume2 },
     { path: '/conversations', label: 'مکالمه', icon: MessageCircle },

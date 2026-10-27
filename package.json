@@ -11,6 +11,7 @@
     "preview:web": "PORT=8081 node scripts/serve-preview.mjs",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
+    "validate:learner-journey": "node scripts/verify-learner-journey.mjs",
     "validate:content": "node scripts/validate-course-content.mjs",
     "android": "node scripts/run-expo.mjs run:android",
     "ios": "node scripts/run-expo.mjs run:ios",
