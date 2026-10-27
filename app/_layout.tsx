@@ -194,7 +194,7 @@ export default function RootLayout() {
   const forceNavigateHome = useCallback(() => {
     setTimeout(() => {
       if (!navigationRef.isReady()) return;
-      if (pathnameRef.current !== '/' && pathnameRef.current !== homeRoute) {
+      if (pathnameRef.current !== homeRoute) {
         router.replace(homeRoute as never);
       }
     }, 80);
@@ -228,7 +228,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (!introComplete || !navigatorMounted || !navigationRef.isReady() || startupRouteLocked.current) return;
     startupRouteLocked.current = true;
-    if (pathname !== '/' && pathname !== homeRoute) router.replace(homeRoute as never);
+    if (pathname !== homeRoute) router.replace(homeRoute as never);
   }, [homeRoute, introComplete, pathname, navigatorMounted, navigationRef, router]);
 
   // On web, AppState is unavailable — use page visibility instead so that

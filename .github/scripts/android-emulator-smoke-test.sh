@@ -137,6 +137,17 @@ PY
 done
 
 failed_step="capturing the launched screen"
+for app2_attempt in 1 2 3; do
+  if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" || grep -Fq 'شروع مسیر یادگیری' "$ui_file" || grep -Fq 'آکادمی چندزبانهٔ میلو' "$ui_file" || grep -Fq 'هر روز، یک قدم' "$ui_file"; then
+    break
+  fi
+  if [[ "$app2_attempt" == 3 ]]; then
+    break
+  fi
+  echo "App 2 accessibility tree not ready yet (attempt $app2_attempt/3); waiting 15s."
+  sleep 15
+  capture_ui
+done
 if ! timeout 30s adb exec-out screencap -p > "$screenshot_file"; then
   echo 'Warning: screenshot capture failed; continuing with the UI hierarchy check.'
 fi
