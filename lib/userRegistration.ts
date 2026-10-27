@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
 import * as Application from 'expo-application';
-import * as Crypto from 'expo-crypto';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { clearCachedRegistration, writeCachedRegistration } from './registrationCache';
@@ -17,9 +16,7 @@ export type RegistrationProfile = {
 };
 
 export function isPermanentLearner(user: User | null | undefined): boolean {
-  // Anonymous learner sessions never contain an email. During a safe upgrade,
-  // Supabase may retain the old provider marker until the refreshed token arrives.
-  return !!user?.email;
+  return !!user?.email && !user.is_anonymous;
 }
 
 async function saveProfile(user: User, fullName: string): Promise<void> {
@@ -66,83 +63,63 @@ export async function getRegisteredSession(): Promise<{ session: Session | null;
   return { session, profile: (profile || null) as RegistrationProfile | null };
 }
 
-export async function generateLoginCode(): Promise<string> {
-  const bytes = await Crypto.getRandomBytesAsync(4);
-  const value = (((bytes[0] << 24) >>> 0) + (bytes[1] << 16) + (bytes[2] << 8) + bytes[3]) >>> 0;
-  return String(100000 + (value % 900000));
+function cleanEmail(email: string) {
+  return email.trim().toLowerCase();
 }
 
-function toAuthPassword(loginCode: string): string {
-  // The learner remembers only six digits. Supabase receives a deterministic
-  // strong password that also satisfies projects configured with stricter rules.
-  return `Milo!${loginCode}Aa`;
+function assertEmail(email: string) {
+  const value = cleanEmail(email);
+  if (!/^\S+@\S+\.\S+$/.test(value)) throw new Error('EMAIL_INVALID');
+  return value;
 }
 
-export async function registerLearner(fullName: string, email: string, loginCode: string): Promise<'ready'> {
-  await clearCachedRegistration();
-  const cleanName = fullName.trim();
-  const cleanEmail = email.trim().toLowerCase();
-  if (cleanName.length < 2 || cleanName.length > 80) throw new Error('NAME_INVALID');
-  if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) throw new Error('EMAIL_INVALID');
-  if (!/^\d{6}$/.test(loginCode)) throw new Error('CODE_INVALID');
-
-  const authPassword = toAuthPassword(loginCode);
-  const current = await supabase.auth.getSession();
-  let user: User | null = null;
-  let hasSession = false;
-  if (current.data.session && !isPermanentLearner(current.data.session.user)) {
-    const result = await supabase.auth.updateUser({ email: cleanEmail, password: authPassword, data: { full_name: cleanName } });
-    if (result.error) throw result.error;
-    user = result.data.user;
-    hasSession = true;
-  } else {
-    if (current.data.session) await supabase.auth.signOut();
-    const result = await supabase.auth.signUp({
-      email: cleanEmail,
-      password: authPassword,
-      options: { data: { full_name: cleanName } },
-    });
-    if (result.error) throw result.error;
-    user = result.data.user;
-    hasSession = !!result.data.session;
-  }
-
-  // Learners must never be sent through an email-confirmation flow. Hosted
-  // Supabase Email Auth must have Confirm email disabled for this product.
-  if (!user || !hasSession || !user.email_confirmed_at) {
-    throw new Error('EMAIL_CONFIRMATION_ENABLED');
-  }
-  await saveProfile(user, cleanName);
-  return 'ready';
-}
-
-export async function loginLearner(email: string, passwordOrCode: string): Promise<void> {
-  const cleanEmail = email.trim().toLowerCase();
-  // A persisted Supabase session may already be available while the gate was
-  // waiting on its background profile check. Do not send the user through a
-  // second network login request in that case.
-  const existing = await supabase.auth.getSession();
-  if (existing.data.session?.user.email?.trim().toLowerCase() === cleanEmail) return;
-  const isSimpleCode = /^\d{6}$/.test(passwordOrCode);
-  let result = await supabase.auth.signInWithPassword({
-    email: cleanEmail,
-    password: isSimpleCode ? toAuthPassword(passwordOrCode) : passwordOrCode,
+/** Sends the one-time verification code through the configured Supabase email provider. */
+export async function requestEmailCode(email: string, fullName?: string): Promise<void> {
+  const value = assertEmail(email);
+  const { error } = await supabase.auth.signInWithOtp({
+    email: value,
+    options: {
+      shouldCreateUser: true,
+      data: fullName?.trim() ? { full_name: fullName.trim() } : undefined,
+    },
   });
-  // Version 25 briefly stored a raw six-digit password. Keep those test
-  // accounts usable while all new accounts use the hardened representation.
-  if (result.error && isSimpleCode && /Invalid login credentials/i.test(result.error.message)) {
-    result = await supabase.auth.signInWithPassword({ email: cleanEmail, password: passwordOrCode });
-  }
+  if (error) throw error;
+}
+
+/** Verifies the code that arrived in the learner's email and creates/repairs the profile. */
+export async function verifyEmailCode(email: string, token: string, fullName?: string): Promise<void> {
+  const value = assertEmail(email);
+  const cleanToken = token.trim();
+  if (!/^\d{6}$/.test(cleanToken)) throw new Error('CODE_INVALID');
+  const { data, error } = await supabase.auth.verifyOtp({ email: value, token: cleanToken, type: 'email' });
+  if (error) throw error;
+  if (!data.user || !data.session || !isPermanentLearner(data.user)) throw new Error('EMAIL_NOT_VERIFIED');
+  const existingName = String(data.user.user_metadata?.full_name || '').trim();
+  await saveProfile(data.user, fullName?.trim() || existingName || 'زبان‌آموز');
+  await writeCachedRegistration({
+    userId: data.user.id,
+    email: value,
+    createdAt: Date.now(),
+    profile: (await getRegisteredSession()).profile as RegistrationProfile,
+  });
+}
+
+/** Kept as a compatibility wrapper for older callers; new flow always sends an email OTP. */
+export async function registerLearner(fullName: string, email: string): Promise<'pending'> {
+  const cleanName = fullName.trim();
+  if (cleanName.length < 2 || cleanName.length > 80) throw new Error('NAME_INVALID');
+  await clearCachedRegistration();
+  await requestEmailCode(email, cleanName);
+  return 'pending';
+}
+
+/** Compatibility entry point: password login remains available for existing accounts. */
+export async function loginLearner(email: string, password: string): Promise<void> {
+  const clean = assertEmail(email);
+  const result = await supabase.auth.signInWithPassword({ email: clean, password });
   if (result.error) throw result.error;
   const name = String(result.data.user.user_metadata?.full_name || '').trim();
-  // Authentication is sufficient to enter the app. Profile repair is useful
-  // for admin reporting but must not keep the learner on the login screen when
-  // the profile request is slow or temporarily unavailable.
-  if (name) {
-    void saveProfile(result.data.user, name).catch(error => {
-      console.warn('[registration] profile repair deferred:', error);
-    });
-  }
+  if (name) void saveProfile(result.data.user, name).catch(error => console.warn('[registration] profile repair deferred:', error));
 }
 
 export async function touchLearnerActivity(): Promise<void> {
@@ -161,14 +138,13 @@ export function registrationError(error: unknown): string {
   const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
   if (/NAME_INVALID/.test(message)) return 'نام و نام خانوادگی را کامل وارد کنید.';
   if (/EMAIL_INVALID|invalid.*email/i.test(message)) return 'ایمیل معتبر وارد کنید.';
-  if (/CODE_INVALID|password.*6/i.test(message)) return 'کد ورود باید دقیقاً ۶ رقم باشد.';
-  if (/already registered|already been registered|user already exists/i.test(message)) return 'این ایمیل قبلاً ثبت شده است؛ از بخش ورود استفاده کنید.';
+  if (/CODE_INVALID|token.*(invalid|expired)|otp/i.test(message)) return 'کد واردشده نادرست یا منقضی شده است.';
+  if (/EMAIL_NOT_VERIFIED|not verified/i.test(message)) return 'تأیید ایمیل کامل نشد؛ دوباره کد بگیرید.';
+  if (/rate limit|too many requests/i.test(message)) return 'تعداد درخواست‌ها زیاد شده است؛ چند دقیقه صبر کنید و دوباره امتحان کنید.';
+  if (/email provider|smtp|sending/i.test(message)) return 'ارسال ایمیل روی Supabase تنظیم نشده است؛ تنظیمات Email را بررسی کنید.';
   if (/Invalid login credentials/i.test(message)) return 'ایمیل یا رمز عبور صحیح نیست.';
-  if (/EMAIL_CONFIRMATION_ENABLED|Email not confirmed/i.test(message)) return 'ورود ساده هنوز در تنظیمات سرور فعال نشده است؛ مدیر باید گزینه Confirm email را خاموش کند.';
-  if (/rate limit/i.test(message)) return 'تعداد تلاش‌ها زیاد شده است؛ چند دقیقه صبر کنید و دوباره امتحان کنید.';
-  if (/signup.*disabled|signups not allowed/i.test(message)) return 'ثبت‌نام کاربران در تنظیمات Supabase غیرفعال است.';
   if (/row-level security|permission denied/i.test(message)) return 'مجوز ثبت پروفایل روی سرور کامل نیست؛ migration ثبت‌نام را بررسی کنید.';
   if (/app_user_profiles|schema cache|does not exist/i.test(message)) return 'زیرساخت ثبت‌نام هنوز روی سرور فعال نشده است.';
   if (/fetch|network|internet|timeout/i.test(message)) return 'ارتباط با سرور برقرار نشد؛ اینترنت یا VPN را بررسی کنید.';
-  return message ? `ثبت‌نام انجام نشد: ${message.slice(0, 140)}` : 'ثبت‌نام انجام نشد؛ دوباره تلاش کنید.';
+  return message ? `ورود انجام نشد: ${message.slice(0, 140)}` : 'ورود انجام نشد؛ دوباره تلاش کنید.';
 }

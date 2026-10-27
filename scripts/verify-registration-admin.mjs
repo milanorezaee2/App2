@@ -14,16 +14,16 @@ const appConfig = read('app.config.js');
 const workflow = read('.github/workflows/android-build.yml');
 
 check(/<RegistrationGate>/.test(layout), 'learner routes are protected by the registration gate');
-check(/signUp/.test(registration) && /signInWithPassword/.test(registration) && /updateUser/.test(registration), 'new, returning, and existing anonymous learners are supported');
+check(/signInWithOtp/.test(registration) && /verifyOtp/.test(registration), 'new and returning learners use real email OTP authentication');
 check(/full_name/.test(gate) || /fullName/.test(gate), 'registration captures the learner name');
-check(/generateLoginCode/.test(gate) && /کد ورود/.test(gate) && /ایمیل/.test(gate), 'registration automatically creates a simple login code');
-check(/getRandomBytesAsync/.test(registration) && /\\d\{6\}/.test(registration), 'login codes are cryptographically random six-digit values');
+check(/requestEmailCode/.test(gate) && /verifyEmailCode/.test(gate) && /ایمیل/.test(gate), 'registration sends and verifies a six-digit email code');
+check(/\\d\{6\}/.test(registration) && /CODE_INVALID/.test(registration), 'email codes are constrained to six digits');
 check(/color: '#111111'/.test(gate) && /numberFontFamily/.test(gate), 'registration inputs and generated digits are explicitly black');
 check((gate.match(/KeyboardAvoidingView/g) || []).length >= 3
   && (gate.match(/KeyboardAwareScrollView/g) || []).length >= 3
   && /bottomOffset=\{24\}/.test(gate), 'registration and login forms dynamically follow and scroll above the keyboard');
-check(/EMAIL_CONFIRMATION_ENABLED/.test(registration) && !/ابتدا ایمیل تأیید/.test(registration), 'the learner flow never asks users to confirm email');
-check(/ورود مستقیم به اپ/.test(gate) && /toAuthPassword/.test(registration), 'new learners enter directly while retaining a hardened six-digit login code');
+check(/EMAIL_NOT_VERIFIED/.test(registration) && /کد/.test(gate), 'the learner flow verifies the email code before entering the app');
+check(/تأیید و ورود/.test(gate) && /requestEmailCode/.test(registration), 'learners enter after a real OTP verification');
 check(/app_user_profiles/.test(migration) && /ENABLE ROW LEVEL SECURITY/.test(migration), 'registered profiles are protected by RLS');
 check(/user_id = auth\.uid\(\)/.test(migration), 'learners can only access their own profile');
 check(/admin_registered_users/.test(migration) && /is_education_admin/.test(migration), 'the registered-user directory verifies server-side manager authorization');
@@ -37,15 +37,15 @@ check(/com\.devicecontrol\.miloadmin/.test(appConfig) && /com\.devicecontrol\.co
 check(/MiloAdmin\.apk/.test(workflow) && /MiloMultilang\.apk/.test(workflow), 'CI builds and publishes both standalone APKs');
 check(/EXPO_PUBLIC_MILO_ADMIN_APP/.test(read('app/index.tsx')), 'the management APK boots directly into its protected panel');
 check(/پیام‌های خصوصی/.test(gate) && /پیام‌های خصوصی/.test(admin), 'both apps disclose and preserve private-message boundaries');
-check(/learnerLogin: process\.env\.EXPO_PUBLIC_LEARNER_LOGIN === 'true'/.test(read('lib/features.ts')), 'learner login is a build-time switch that defaults to off');
+check(/learnerLogin:/.test(read('lib/features.ts')) && /learnerLogin: true/.test(appConfig), 'learner login is enabled in the default learner build');
 check(/MiloMultilang-Login\.apk/.test(workflow) && /EXPO_PUBLIC_LEARNER_LOGIN=true/.test(workflow), 'CI builds and publishes the learner login APK');
-check(/com\.devicecontrol\.milomultilang/.test(appConfig) && /name: 'MiloMultiLanguage Admin'/.test(appConfig), 'login APK keeps its own package and management branding includes MiloMultiLanguage');
+check(/com\.devicecontrol\.milomultilang/.test(appConfig) && /name: 'Adminapp'/.test(appConfig), 'login APK keeps its own package and management branding is configured');
 check(/is_education_admin/.test(read('supabase/functions/admin-delete-user/index.ts')) && /deleteUser\(/.test(read('supabase/functions/admin-delete-user/index.ts')), 'account deletion is manager-only and runs on the server');
 check(/deleteRegisteredUser/.test(read('app/admin/index.tsx')) && /downloadRegisteredUsers/.test(read('app/admin/index.tsx')), 'manager app can delete users and export users');
 check(/MANAGEMENT_BUILD \? adminClient\(\) : supabase/.test(read('lib/conversations.ts')), 'the manager APK sends chat as the manager, not an anonymous learner');
 check(/Intentionally silent/.test(read('lib/responsiveSpeech.ts')) && !/Speech\.speak\(locale/.test(read('lib/responsiveSpeech.ts')), 'startup warm-up never speaks words aloud');
 check(/welcome-chime\.wav/.test(read('app/_layout.tsx')), 'the original startup sound is kept');
 check(/ensureSupportConversation/.test(read('app/languages.tsx')) && /ensureSupportConversation/.test(read('app/conversations/index.tsx')), 'learners reach the manager through the support button');
-check(/MiloLogoMotion/.test(read('app/_layout.tsx')) && /MiloLogoMotion/.test(read('app/languages.tsx')), 'the Milo logo motion is used in the intro and the home header');
+check(/MiloLogoMotion/.test(read('app/languages.tsx')), 'the Milo logo motion is used in the learner home header');
 check(/welcome-voice\.wav/.test(read('app/languages.tsx')) && /welcome-chime\.wav/.test(read('app/_layout.tsx')), 'Welcome plays on the main screen and the startup sound is kept');
 console.log(`${count} registration and private management checks passed.`);

@@ -1,5 +1,5 @@
 import type { LanguageDefinition, LanguageId } from './types';
-import { TURKISH_EDITION } from '../features';
+import { FEATURES, RUSSIAN_ONLY_BUILD } from '../features';
 
 /**
  * Lightweight language catalog — zero course-data imports.
@@ -66,14 +66,15 @@ const ALL_LANGUAGE_META: readonly LanguageMeta[] = [
 ];
 
 /**
- * Two editions, one code base:
- *  - default edition → English, German, Russian
- *  - Turkish edition (`EXPO_PUBLIC_TURKISH_EDITION=true`) → English, German, Turkish
- * The Russian card disappears from the Turkish edition, and the Turkish card is
- * not advertised in the original edition, so the two versions stay distinct.
+ * The learner catalog is feature-driven so a future language can be added by
+ * adding one metadata entry and one feature flag, without changing the flow.
  */
 export const LANGUAGE_META: readonly LanguageMeta[] = ALL_LANGUAGE_META.filter(
-  language => (TURKISH_EDITION ? language.id !== 'ru' : language.id !== 'tr'),
+  language => language.id === 'ru'
+    ? FEATURES.russianCourse || RUSSIAN_ONLY_BUILD
+    : language.id === 'tr'
+      ? FEATURES.turkishCourse
+      : !RUSSIAN_ONLY_BUILD,
 );
 
 /** Same shape as the old `LANGUAGES` export, without the extra count field. */

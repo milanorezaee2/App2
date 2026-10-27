@@ -22,8 +22,8 @@ export const FEATURES = Object.freeze({
    */
   // Read from Expo extra so release APKs keep the login identity at runtime;
   // Metro does not reliably preserve arbitrary build-shell environment flags.
-  learnerLogin: Constants.expoConfig?.extra?.learnerLogin === true
-    || process.env.EXPO_PUBLIC_LEARNER_LOGIN === 'true',
+  learnerLogin: Constants.expoConfig?.extra?.learnerLogin !== false
+    && process.env.EXPO_PUBLIC_LEARNER_LOGIN !== 'false',
   adminPanel: educationAdminEnabled,
   educationEnrollment: educationAdminEnabled,
   // Roadmap modules are not implemented yet. Enabling a boolean cannot build them.
@@ -33,7 +33,7 @@ export const FEATURES = Object.freeze({
   billing: false,
   germanAI: false,
   /** Russian track follows the edition: hidden in the Turkish edition. */
-  russianCourse: !TURKISH_EDITION,
-  /** Turkish track is only advertised in the Turkish edition. */
-  turkishCourse: TURKISH_EDITION,
+  russianCourse: RUSSIAN_ONLY_BUILD,
+  /** English, German and Turkish are the learner-facing default catalog. */
+  turkishCourse: true,
 });

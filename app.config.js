@@ -50,7 +50,7 @@ const build = () => {
       slug: 'mml',
       android: { ...base.android, package: 'com.devicecontrol.mml' },
       ios: { ...base.ios, bundleIdentifier: 'com.devicecontrol.mml' },
-      extra: { ...base.extra, learnerLogin: false },
+      extra: { ...base.extra, learnerLogin: true },
     };
   }
   return {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +31,8 @@ import { LANGUAGES, TOTAL_LESSON_COUNT, TOTAL_SENTENCE_COUNT } from '@/lib/langu
 import { ensureSupportConversation } from '@/lib/conversations';
 import { readableSupabaseError } from '@/lib/errors';
 import { FEATURES, RUSSIAN_ONLY_BUILD } from '@/lib/features';
+import { getActiveLanguage, setActiveLanguage } from '@/lib/activeLanguage';
+import type { LanguageId } from '@/lib/languages/types';
 import { LuxuryPalette, LuxuryShadows } from '@/components/luxuryTheme';
 import { toPersianDigits as fa } from '@/lib/format';
 import { LtrDirection, Typography } from '@/lib/theme';
@@ -112,6 +115,7 @@ const productFeatures = [
 export default function LanguagesHome() {
   const router = useRouter();
   const [openingSupport, setOpeningSupport] = useState(false);
+  const [switchingLanguage, setSwitchingLanguage] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const languageSectionY = useRef(0);
 
@@ -127,6 +131,30 @@ export default function LanguagesHome() {
       )
       .catch(cause => Alert.alert('پشتیبانی', readableSupabaseError(cause)))
       .finally(() => setOpeningSupport(false));
+  };
+
+  const openLanguage = async (languageId: LanguageId, home: string) => {
+    if (switchingLanguage) return;
+    setSwitchingLanguage(true);
+    try {
+      const previous = await getActiveLanguage();
+      if (previous && previous !== languageId) {
+        const previousName = languageMeta[previous as keyof typeof languageMeta]?.persianName ?? previous;
+        const nextName = languageMeta[languageId as keyof typeof languageMeta]?.persianName ?? languageId;
+        const message = `مسیر «${previousName}» بسته نمی‌شود و پیشرفت آن محفوظ می‌ماند. می‌خواهی وارد مسیر «${nextName}» شوی؟`;
+        const confirmed = Platform.OS === 'web'
+          ? typeof window !== 'undefined' && window.confirm(message)
+          : await new Promise<boolean>(resolve => Alert.alert('تغییر مسیر یادگیری', message, [
+            { text: 'ادامه در همین مسیر', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'تغییر زبان', onPress: () => resolve(true) },
+          ]));
+        if (!confirmed) return;
+      }
+      await setActiveLanguage(languageId);
+      router.push(home as never);
+    } finally {
+      setSwitchingLanguage(false);
+    }
   };
 
   const { width } = useWindowDimensions();
@@ -247,7 +275,7 @@ export default function LanguagesHome() {
                     key={language.id}
                     accessibilityRole="button"
                     accessibilityLabel={`ورود به زبان ${language.name}، ${fa(language.lessonsCount)} درس`}
-                    onPress={() => router.push(language.home as never)}
+                    onPress={() => void openLanguage(language.id, language.home)}
                     style={({ pressed }) => [styles.languageRowCard, styles.languageRowCardCompact, pressed && styles.pressed]}
                   >
                     <View style={styles.languageCompactTop}>
@@ -278,7 +306,7 @@ export default function LanguagesHome() {
                     key={language.id}
                     accessibilityRole="button"
                     accessibilityLabel={`ورود به زبان ${language.name}`}
-                    onPress={() => router.push(language.home as never)}
+                    onPress={() => void openLanguage(language.id, language.home)}
                     style={({ pressed }) => [
                       styles.languageCard,
                       styles.languageCardDesktop,
