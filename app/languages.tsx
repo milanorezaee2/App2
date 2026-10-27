@@ -217,26 +217,19 @@ export default function LanguagesHome() {
               </View>
             </View>
 
-            {/*
-              Compact (mobile) uses a plain column with visual-first JSX order instead of
-              column-reverse: some Android Paper Yoga builds drop the card's horizontal padding
-              for reversed subtrees, which pushed this block (and its CTA) flush to the card
-              edges. The visual-first order with a normal column renders identically.
-            */}
+            {/* Keep the artwork above the copy on mobile, in a bounded banner. */}
             <View style={[styles.heroMain, compact && styles.heroMainCompact]}>
               <View style={[styles.heroVisual, compact && styles.heroVisualCompact]}>
-                <LinearGradient colors={['#315FD4', '#10265D']} style={styles.heroArtDisk} />
-                <View pointerEvents="none" style={styles.heroArtRing} />
                 <Image
-                  source={require('../assets/images/milo-hero-sculpture-cutout.png')}
+                  source={require('../assets/images/milo-language-atelier.jpg')}
                   resizeMode="contain"
-                  accessibilityLabel="کتاب باز با جریان طلایی و سه حباب گفت‌وگو"
+                  accessibilityLabel="کتاب باز و سه حباب شیشه‌ای گفت‌وگو"
                   style={styles.heroArtwork}
                 />
               </View>
 
               <View style={[styles.heroCopy, !compact && styles.heroCopyDesktop]}>
-                <Text accessibilityRole="header" style={[styles.heroTitle, tiny && styles.heroTitleTiny]}>
+                <Text accessibilityRole="header" style={[styles.heroTitle, compact && styles.heroTitleCompact, tiny && styles.heroTitleTiny]}>
                   با جمله‌های واقعی،{`\n`}روان‌تر حرف بزن
                 </Text>
                 <Text style={styles.heroDescription}>
@@ -291,13 +284,13 @@ export default function LanguagesHome() {
                     </View>
 
                     <View style={styles.languageIdentityCompact}>
-                      <Text style={styles.languagePersianNameCompact} numberOfLines={1}>{meta.persianName}</Text>
+                      <Text style={styles.languagePersianNameCompact}>{meta.persianName}</Text>
                       <Text style={styles.languageNativeNameCompact} numberOfLines={1}>{meta.nativeName}</Text>
                       <Text style={styles.languageLessonCompact} numberOfLines={2}>{fa(language.lessonsCount)} درس جمله‌محور</Text>
                     </View>
 
                     <View style={styles.languageArrowCompact}>
-                      <Text style={styles.enterText}>ورود</Text>
+                      <Text style={[styles.enterText, styles.enterTextCompact]}>ورود</Text>
                       <ArrowLeft size={13} color="#FFFFFF" strokeWidth={2.5} />
                     </View>
                   </Pressable>
@@ -516,9 +509,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 22,
     gap: 15,
-    backgroundColor: '#FBF8F0',
+    backgroundColor: '#0B1927',
     borderWidth: 1,
-    borderColor: '#E8DCC3',
+    borderColor: '#29454C',
     ...LuxuryShadows.soft,
   },
   heroCompact: {
@@ -526,8 +519,8 @@ const styles = StyleSheet.create({
     // Horizontal padding is intentionally 0 on compact: the topline and heroMain carry
     // their own horizontal margins so Android Paper Yoga cannot drop the insets.
     paddingHorizontal: 0,
-    paddingVertical: 16,
-    gap: 7,
+    paddingVertical: 14,
+    gap: 4,
   },
   heroToplineCompact: { marginHorizontal: 16 },
   heroGoldEdge: {
@@ -536,7 +529,7 @@ const styles = StyleSheet.create({
     left: 24,
     right: 24,
     height: 1,
-    backgroundColor: '#D8B76E',
+    backgroundColor: '#BCA77B',
   },
   heroTopline: {
     flexDirection: 'row-reverse',
@@ -551,13 +544,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#142C36',
     borderWidth: 1,
-    borderColor: '#E7D9BB',
+    borderColor: '#3E514B',
   },
   eyebrowText: {
     fontFamily: Typography.fontFamily,
-    color: '#806027',
+    color: '#E6D5AF',
     fontSize: 10.5,
     fontWeight: '800',
     writingDirection: 'rtl',
@@ -589,19 +582,20 @@ const styles = StyleSheet.create({
   heroTitle: {
     width: '100%',
     fontFamily: Typography.fontFamily,
-    color: LuxuryPalette.ink,
+    color: '#F7F6EF',
     fontSize: 31,
     lineHeight: 44,
     fontWeight: '900',
     textAlign: 'right',
     writingDirection: 'rtl',
   },
-  heroTitleTiny: { fontSize: 25, lineHeight: 36 },
+  heroTitleCompact: { fontSize: 25, lineHeight: 36 },
+  heroTitleTiny: { fontSize: 23, lineHeight: 34 },
   heroDescription: {
     width: '100%',
     fontFamily: Typography.fontFamily,
-    color: LuxuryPalette.inkSoft,
-    fontSize: 13.5,
+    color: '#BDCDD4',
+    fontSize: 13,
     lineHeight: 22,
     fontWeight: '500',
     textAlign: 'right',
@@ -618,12 +612,12 @@ const styles = StyleSheet.create({
     marginTop: 3,
     paddingHorizontal: 17,
     borderRadius: 14,
-    backgroundColor: '#1D4FC4',
+    backgroundColor: '#14675F',
     borderWidth: 1,
-    borderColor: '#416FE0',
+    borderColor: '#408B7F',
     ...LuxuryShadows.soft,
   },
-  heroCtaCompact: { alignSelf: 'stretch' },
+  heroCtaCompact: { alignSelf: 'stretch', minHeight: 44 },
   heroCtaText: {
     fontFamily: Typography.fontFamily,
     color: '#FFFFFF',
@@ -639,29 +633,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   heroVisualCompact: {
-    // Stretched by heroMainCompact (alignItems: 'stretch'); no percentage width, which
-    // also resolves against the wrong box on some Android Yoga builds.
-    height: 218,
-    marginTop: -5,
-    marginBottom: 2,
-  },
-  heroArtDisk: {
-    position: 'absolute',
-    width: 166,
-    height: 166,
-    borderRadius: 83,
-    alignSelf: 'center',
-    top: 24,
-  },
-  heroArtRing: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    alignSelf: 'center',
-    top: 7,
-    borderWidth: 1,
-    borderColor: 'rgba(184, 134, 40, 0.38)',
+    width: '100%',
+    height: 132,
+    marginTop: 0,
+    marginBottom: 6,
+    borderRadius: 16,
   },
   heroArtwork: { width: '100%', height: '100%' },
   languageSection: { width: '100%', gap: 11 },
@@ -698,9 +674,9 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   languageGridCompact: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'column',
     alignItems: 'stretch',
-    gap: 8,
+    gap: 10,
   },
   languageRowCard: {
     flexDirection: 'row-reverse',
@@ -716,75 +692,91 @@ const styles = StyleSheet.create({
     ...LuxuryShadows.card,
   },
   languageRowCardCompact: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 146,
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    justifyContent: 'space-between',
-    gap: 8,
-    borderRadius: 18,
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-  },
-  languageCompactTop: {
     width: '100%',
+    minHeight: 104,
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
+    borderRadius: 20,
+    borderColor: '#DCE7E9',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    shadowColor: '#163F44',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  languageCompactTop: {
+    width: 48,
+    height: 48,
+    flexShrink: 0,
   },
   monogramWrapCompact: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
   languageIdentityCompact: {
-    width: '100%',
-    alignItems: 'center',
-    gap: 2,
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'flex-end',
+    gap: 4,
   },
   languagePersianNameCompact: {
-    fontFamily: Typography.fontFamily,
-    color: LuxuryPalette.ink,
-    fontSize: 14.5,
-    lineHeight: 21,
-    fontWeight: '900',
-    textAlign: 'center',
+    width: '100%',
+    fontFamily: Typography.boldFontFamily,
+    color: '#102D38',
+    fontSize: 15,
+    lineHeight: 24,
+    textAlign: 'right',
     writingDirection: 'rtl',
+    flexShrink: 1,
   },
   languageNativeNameCompact: {
     fontFamily: 'Inter-ExtraBold',
-    color: LuxuryPalette.inkMuted,
-    fontSize: 9.5,
-    fontWeight: '700',
-    textAlign: 'center',
+    color: '#71888E',
+    fontSize: 10,
+    textAlign: 'right',
     writingDirection: 'ltr',
   },
   languageLessonCompact: {
     fontFamily: Typography.fontFamily,
-    color: LuxuryPalette.primaryDeep,
-    fontSize: 9.5,
-    lineHeight: 14,
-    fontWeight: '800',
-    textAlign: 'center',
+    color: '#436A71',
+    fontSize: 10,
+    lineHeight: 16,
+    textAlign: 'right',
     writingDirection: 'rtl',
   },
-  flagCompact: { fontSize: 16 },
+  flagCompact: {
+    position: 'absolute',
+    bottom: -5,
+    right: -5,
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 7,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
   languageArrowCompact: {
-    alignSelf: 'center',
+    flexShrink: 0,
+    minWidth: 48,
+    minHeight: 44,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 11,
-    backgroundColor: LuxuryPalette.primary,
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 13,
+    backgroundColor: '#14675F',
   },
+  enterTextCompact: { fontSize: 10 },
   languageCard: {
     backgroundColor: LuxuryPalette.surface,
     borderRadius: 24,
@@ -823,9 +815,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
     writingDirection: 'ltr',
   },
-  languageIdentity: { flex: 1, alignItems: 'flex-end', gap: 2 },
-  languageNameRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  languageIdentity: { flex: 1, minWidth: 0, alignItems: 'flex-end', gap: 2 },
+  languageNameRow: { width: '100%', flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   languagePersianName: {
+    flexShrink: 1,
     fontFamily: Typography.fontFamily,
     color: LuxuryPalette.ink,
     fontSize: 18,

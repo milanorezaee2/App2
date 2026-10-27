@@ -79,6 +79,33 @@ capture_ui() {
   return 1
 }
 
+# New mobile language cards are full-width rows. Inspect actual cards while
+# scrolling instead of assuming all cards fit above the fold of every device.
+swipe_up() {
+  local screen_width screen_height
+  read -r screen_width screen_height <<< "$(adb shell wm size | python3 -c 'import re,sys; sizes=re.findall(r"(\d+)x(\d+)", sys.stdin.read()); print(*sizes[-1])')"
+  adb shell input swipe "$((screen_width / 2))" "$((screen_height * 4 / 5))" "$((screen_width / 2))" "$((screen_height / 3))" 450
+  sleep 2
+  capture_ui
+}
+
+collect_language_cards() {
+  local attempt label complete
+  choices_file="$diag_dir/milomultilang-language-choices.xml.log"
+  : > "$choices_file"
+  for attempt in 1 2 3 4; do
+    cat "$ui_file" >> "$choices_file"
+    complete=true
+    for label in "$@"; do
+      if ! grep -Fq "ورود به زبان $label" "$choices_file"; then complete=false; fi
+    done
+    if [[ "$complete" == true ]]; then return 0; fi
+    if [[ "$attempt" != 4 ]]; then swipe_up; fi
+  done
+  echo "Not all expected language cards were reachable: $*"
+  return 1
+}
+
 printf 'Testing standalone APK: %s\n' "$apk_path"
 printf 'Diagnostics will be saved under: %s\n' "$diag_dir"
 
@@ -160,11 +187,8 @@ if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'سا
   echo 'Android emulator opened MiloMultilang and rendered its mandatory registration gate.'
 elif grep -Fq 'شروع مسیر یادگیری' "$ui_file" || grep -Fq 'آکادمی چندزبانهٔ میلو' "$ui_file"; then
   direct_catalog_home=true
-  if ! grep -Fq 'انگلیسی' "$ui_file" || ! grep -Fq 'روسی' "$ui_file"; then
-    echo 'App 2 (No-Login EN+RU) did not display both English and Russian on the catalog home.'
-    exit 1
-  fi
-  if grep -Fq 'آلمانی' "$ui_file" || grep -Fq 'ترکی' "$ui_file"; then
+  collect_language_cards 'انگلیسی' 'روسی'
+  if grep -Fq 'ورود به زبان آلمانی' "$choices_file" || grep -Fq 'ورود به زبان ترکی' "$choices_file"; then
     echo 'App 2 (No-Login EN+RU) leaked German or Turkish onto its catalog home.'
     exit 1
   fi
@@ -437,21 +461,8 @@ if [[ -s "$all4_apk_path" ]]; then
   sleep 20
   capture_ui
   failed_step="verifying App 3 rendered all 4 languages without login"
-  all4_rendered=false
-  for all4_attempt in 1 2 3; do
-    if grep -Fq 'انگلیسی' "$ui_file" && grep -Fq 'آلمانی' "$ui_file" && grep -Fq 'روسی' "$ui_file" && grep -Fq 'ترکی' "$ui_file"; then
-      all4_rendered=true
-      echo 'Android emulator launched 3-MiloNoLogin-All4.apk and verified all 4 languages (EN, DE, RU, TR).'
-      break
-    fi
-    if [[ "$all4_attempt" == 3 ]]; then break; fi
-    sleep 15
-    capture_ui
-  done
-  if [[ "$all4_rendered" != true ]]; then
-    echo 'App 3 (3-MiloNoLogin-All4.apk) did not render all 4 languages.'
-    exit 1
-  fi
+  collect_language_cards 'انگلیسی' 'آلمانی' 'روسی' 'ترکی استانبولی'
+  echo 'Android emulator verified all 4 reachable language cards, including the full Turkish title.'
   if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
     echo 'App 3 (No-Login All 4) unexpectedly showed the login gate.'
     exit 1
@@ -474,7 +485,7 @@ if [[ -s "$login_apk_path" ]]; then
   failed_step="verifying App 4 registration gate rendered"
   login_rendered=false
   for login_attempt in 1 2 3; do
-    if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'دریافت کد ورود' "$ui_file"; then
+    if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'ادامه با حساب گوگل' "$ui_file"; then
       login_rendered=true
       echo 'Android emulator launched 4-MiloLogin-EN-DE-TR.apk and verified its registration gate.'
       break
@@ -490,6 +501,13 @@ if [[ -s "$login_apk_path" ]]; then
     echo 'App 4 (4-MiloLogin-EN-DE-TR.apk) did not render the registration gate.'
     exit 1
   fi
+  failed_step="verifying email OTP remains reachable alongside Google sign-in"
+  for otp_attempt in 1 2 3; do
+    if grep -Fq 'دریافت کد ورود' "$ui_file"; then break; fi
+    swipe_up
+  done
+  grep -Fq 'دریافت کد ورود' "$ui_file" || { echo 'Email OTP entry is missing or unreachable.'; exit 1; }
+  echo 'App 4 renders the Google account button and retains the email OTP entry.'
 fi
 
 failed_step="verifying all 4 APKs coexist simultaneously without conflict"

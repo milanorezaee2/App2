@@ -53,6 +53,7 @@ jobs:
         run: |
           npm run typecheck
           npm run validate:email-login
+          npm run validate:google-login
           npm run validate:android-fonts
           npm run validate:admin
           npm run validate:admin-popups
@@ -326,12 +327,16 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: "Milo Android Suite #${{ github.run_number }} (Clean v2.0 — Ordered 4-APK Release)"
           body: |
-            مجموعهٔ رسمی، سبک‌شده و بدون تداخل ۴ فایل نصبی اندروید (نسخهٔ `v2.0.0` با شناسه‌های پکیج جدید `.v2` برای نصب مستقیم و بدون هیچ خطای تداخل روی همهٔ گوشی‌ها):
+            مجموعهٔ به‌روز ۴ فایل نصبی اندروید با شناسه‌های جداگانهٔ `.v2`؛ ساخت، امضا و تست نصب و بازشدن در شبیه‌ساز Android بررسی شده است. این بررسی‌ها تضمین نبودن باگ روی همهٔ گوشی‌ها نیست.
 
             1. **1-MiloAdmin.apk** (`1-MiloAdmin` / `com.devicecontrol.miloadmin.v2`) — اپ ادمین: مدیریت اختصاصی اپ با لاگین، فعال/غیرفعال‌سازی تک‌تک یا همهٔ زبان‌ها، ارسال پاپ‌آپ زنده
             2. **2-MiloNoLogin-EN-RU.apk** (`2-Milo EN-RU` / `com.devicecontrol.mml.v2`) — اپ زبان‌آموز بدون لاگین: فقط انگلیسی و روسی
             3. **3-MiloNoLogin-All4.apk** (`3-Milo All4` / `com.devicecontrol.miloall.v2`) — اپ زبان‌آموز بدون لاگین: انگلیسی، آلمانی، روسی و ترکی استانبولی
             4. **4-MiloLogin-EN-DE-TR.apk** (`4-Milo Login` / `com.devicecontrol.milomultilang.v2`) — اپ زبان‌آموز با لاگین: انگلیسی، آلمانی و ترکی استانبولی + نریتور اتوماتیک ترکی استانبولی (بدون روسی)
+
+            تغییرات این نسخه: هیروی جمع‌وجور و تصویر جدید، کارت‌های خوانای زبان با نام کامل ترکی استانبولی و دکمهٔ ورود Google در نسخهٔ با لاگین؛ ورود با کد ایمیلی حفظ شده است.
+
+            نکته: ورود واقعی Google نیاز به فعال‌سازی ارائه‌دهنده در Supabase و تنظیم OAuth در Google Cloud دارد؛ نمایش دکمه به‌معنی تکمیل تنظیمات سرویس نیست.
           prerelease: false
           make_latest: true
           files: |

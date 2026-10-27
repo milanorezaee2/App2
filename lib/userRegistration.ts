@@ -49,11 +49,10 @@ export async function getRegisteredSession(): Promise<{ session: Session | null;
     .maybeSingle();
   if (profileError) throw profileError;
   if (!profile) {
-    const fallbackName = String(session.user.user_metadata?.full_name || '').trim();
-    if (fallbackName) {
-      await saveProfile(session.user, fallbackName);
-      return getRegisteredSession();
-    }
+    const metadataName = String(session.user.user_metadata?.full_name || session.user.user_metadata?.name || '').trim().slice(0, 80);
+    const fallbackName = metadataName.length >= 2 ? metadataName : 'زبان‌آموز';
+    await saveProfile(session.user, fallbackName);
+    return getRegisteredSession();
   }
   if (profile) {
     await writeCachedRegistration({
@@ -139,6 +138,13 @@ export async function touchLearnerActivity(): Promise<void> {
 
 export function registrationError(error: unknown): string {
   const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
+  if (/GOOGLE_SECURE_CONTEXT_REQUIRED/.test(message)) return 'ورود امن گوگل در دسترس نیست؛ در وب از آدرس HTTPS و در گوشی از نسخهٔ جدید اپ استفاده کنید.';
+  if (/GOOGLE_NATIVE_BUILD_REQUIRED/.test(message)) return 'ورود گوگل را در نسخهٔ نصب‌شدهٔ جدید اپ امتحان کنید؛ در Expo Go فعال نیست.';
+  if (/GOOGLE_ACCESS_DENIED/.test(message)) return 'اجازهٔ ورود با گوگل داده نشد؛ می‌توانید دوباره امتحان کنید یا کد ایمیلی بگیرید.';
+  if (/GOOGLE_SESSION_FAILED|GOOGLE_CALLBACK_FAILED/.test(message)) return 'ورود گوگل کامل نشد یا مهلت آن گذشته است؛ دوباره روی آیکون گوگل بزنید.';
+  if (/GOOGLE_PROFILE_FAILED/.test(message)) return 'حساب گوگل تأیید شد، اما پروفایل آماده نشد؛ دوباره ورود را امتحان کنید.';
+  if (/GOOGLE_URL_MISSING|GOOGLE_BROWSER_REQUIRED/.test(message)) return 'صفحهٔ ورود گوگل باز نشد؛ دوباره امتحان کنید.';
+  if (/provider.*(not enabled|disabled|unsupported)|unsupported.*provider|oauth.*(not enabled|disabled)/i.test(message)) return 'ورود گوگل هنوز در تنظیمات Supabase فعال نشده است.';
   if (/NAME_INVALID/.test(message)) return 'نام و نام خانوادگی را کامل وارد کنید.';
   if (/EMAIL_INVALID|invalid.*email/i.test(message)) return 'ایمیل معتبر وارد کنید.';
   if (/EMAIL_NOT_VERIFIED|not verified/i.test(message)) return 'تأیید ایمیل کامل نشد؛ دوباره کد بگیرید.';

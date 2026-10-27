@@ -2,6 +2,9 @@ import { type PropsWithChildren, useCallback, useEffect, useRef, useState } from
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
+import * as Linking from 'expo-linking';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
+import { completeGoogleCallback, isGoogleCallback, resumeGoogleSignIn, signInWithGoogle } from '@/lib/googleSignIn';
 import BookOpenCheck from 'lucide-react-native/dist/esm/icons/book-open-check';
 import MailCheck from 'lucide-react-native/dist/esm/icons/mail-check';
 import ShieldCheck from 'lucide-react-native/dist/esm/icons/shield-check';
@@ -27,13 +30,16 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [cooldown, setCooldown] = useState(0);
   const verifying = useRef(false);
+  const authenticatedCallback = useRef(onAuthenticated);
+  authenticatedCallback.current = onAuthenticated;
 
   const inspect = useCallback(async () => {
-    if (BYPASS_GATE) return;
+    if (BYPASS_GATE || verifying.current) return;
     try {
       const state = await getRegisteredSession();
       const complete = !!state.session && !!state.profile;
@@ -49,14 +55,39 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
   useEffect(() => {
     if (BYPASS_GATE) return;
     let alive = true;
+    // Complete browser/cold-start redirects before inspecting the profile.
     // A cached profile is display data, never proof of authentication.
-    void inspect();
+    const restore = async (url?: string) => {
+      verifying.current = true;
+      setChecking(true);
+      try {
+        const completed = url ? await completeGoogleCallback(url) : await resumeGoogleSignIn();
+        if (!alive) return;
+        if (completed) {
+          setReady(true);
+          authenticatedCallback.current?.();
+        } else {
+          verifying.current = false;
+          await inspect();
+        }
+      } catch (reason) {
+        if (alive) { setError(registrationError(reason)); setReady(false); }
+      } finally {
+        verifying.current = false;
+        if (alive) setChecking(false);
+      }
+    };
+    void restore();
+    const linkSubscription = Linking.addEventListener('url', ({ url }) => {
+      // openAuthSessionAsync owns warm links while its browser is open.
+      if (!verifying.current && isGoogleCallback(url)) void restore(url);
+    });
     const { data } = supabase.auth.onAuthStateChange(() => {
       // Run outside Supabase's auth lock; avoid opening routes mid-verification.
       setTimeout(() => { if (alive && !verifying.current) void inspect(); }, 0);
     });
     const appState = AppState.addEventListener('change', state => { if (state === 'active') void inspect(); });
-    return () => { alive = false; data.subscription.unsubscribe(); appState.remove(); };
+    return () => { alive = false; data.subscription.unsubscribe(); appState.remove(); linkSubscription.remove(); };
   }, [inspect]);
 
   useEffect(() => {
@@ -64,6 +95,26 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
     const timer = setInterval(() => setCooldown(value => Math.max(0, value - 1)), 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
+
+  const googleLogin = async () => {
+    if (busy || verifying.current) return;
+    verifying.current = true;
+    setBusy(true); setGoogleBusy(true); setError(''); setNotice('');
+    try {
+      const result = await signInWithGoogle();
+      if (result === 'authenticated') {
+        setReady(true);
+        authenticatedCallback.current?.();
+      } else if (result === 'cancelled') {
+        setNotice('ورود با گوگل لغو شد؛ می‌توانید دوباره امتحان کنید یا کد ایمیلی بگیرید.');
+      }
+    } catch (reason) {
+      setError(registrationError(reason));
+    } finally {
+      verifying.current = false;
+      setBusy(false); setGoogleBusy(false);
+    }
+  };
 
   const sendCode = async () => {
     if (busy || cooldown > 0) return;
@@ -103,11 +154,13 @@ export function RegistrationGate({ children, onAuthenticated }: PropsWithChildre
           <Text style={styles.title}>{stage === 'email' ? (mode === 'register' ? 'ساخت حساب زبان‌آموز' : 'ورود به حساب') : 'کد ایمیل را وارد کن'}</Text>
           <Text style={styles.subtitle}>
             {stage === 'email'
-              ? 'ایمیل خودت را وارد کن؛ یک کد واقعی و یک‌بارمصرف به صندوق ایمیلت فرستاده می‌شود.'
+              ? 'با حساب گوگل ادامه بده یا با کد یک‌بارمصرف ایمیلی وارد شو.'
               : `کد ارسال‌شده به ${email.trim().toLowerCase()} را وارد کن. کد فقط چند دقیقه اعتبار دارد.`}
           </Text>
 
           {stage === 'email' ? <>
+            <GoogleSignInButton disabled={busy} loading={googleBusy} onPress={() => void googleLogin()} />
+            <View style={styles.divider}><View style={styles.dividerLine} /><Text style={styles.dividerText}>یا با ایمیل</Text><View style={styles.dividerLine} /></View>
             <View style={styles.switcher}>
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => { setMode('register'); setError(''); setNotice(''); }} style={[styles.switchButton, mode === 'register' && styles.switchActive]}><UserPlus size={17} color={mode === 'register' ? '#FFFFFF' : Colors.primary[700]} /><Text style={[styles.switchText, mode === 'register' && styles.switchTextActive]}>ثبت‌نام</Text></Pressable>
               <Pressable accessibilityRole="button" disabled={busy} onPress={() => { setMode('login'); setError(''); setNotice(''); }} style={[styles.switchButton, mode === 'login' && styles.switchActive]}><LogIn size={17} color={mode === 'login' ? '#FFFFFF' : Colors.primary[700]} /><Text style={[styles.switchText, mode === 'login' && styles.switchTextActive]}>ورود</Text></Pressable>
@@ -140,6 +193,7 @@ const styles = StyleSheet.create({
   card: { width: '100%', maxWidth: 500, alignSelf: 'center', borderRadius: 28, borderWidth: 1, borderColor: '#D7E7FA', padding: 22, shadowColor: '#2D6FB7', shadowOpacity: .12, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 5 },
   logo: { width: 58, height: 58, borderRadius: 19, backgroundColor: Colors.primary[600], alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 13 }, eyebrow: { fontFamily: Typography.latinFontFamily, fontSize: 9, fontWeight: '800', letterSpacing: 1.3, color: Colors.primary[600], textAlign: 'center', writingDirection: 'ltr' }, title: { fontFamily: Typography.boldFontFamily, fontSize: 23, lineHeight: 35, color: '#102A56', textAlign: 'center', marginTop: 5 }, subtitle: { fontFamily: Typography.fontFamily, fontSize: 13, lineHeight: 23, color: '#344761', textAlign: 'center', marginTop: 5, marginBottom: 17 },
   switcher: { flexDirection: 'row-reverse', borderRadius: Radius.full, backgroundColor: '#E9F2FD', padding: 4, marginBottom: 17 }, switchButton: { flex: 1, minHeight: 42, borderRadius: Radius.full, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }, switchActive: { backgroundColor: Colors.primary[600] }, switchText: { fontFamily: Typography.boldFontFamily, fontSize: 12, color: Colors.primary[700] }, switchTextActive: { color: '#FFFFFF' },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 17 }, dividerLine: { flex: 1, height: 1, backgroundColor: '#D7E2F0' }, dividerText: { fontFamily: Typography.fontFamily, color: '#64748B', fontSize: 11 },
   label: { fontFamily: Typography.boldFontFamily, fontSize: 12, color: '#111827', textAlign: 'right', marginBottom: 6, marginTop: 9 }, input: { minHeight: 50, borderRadius: 15, borderWidth: 1, borderColor: '#AFC4DE', backgroundColor: '#FFFFFF', paddingHorizontal: 14, fontFamily: Typography.fontFamily, fontSize: 14, fontWeight: '700', color: '#111111', writingDirection: 'rtl' }, ltr: { fontFamily: Typography.latinFontFamily, textAlign: 'left', writingDirection: 'ltr', fontWeight: '800' }, codeInput: { fontFamily: Typography.numberFontFamily, textAlign: 'center', writingDirection: 'ltr', fontSize: 24, letterSpacing: 7 }, resend: { fontFamily: Typography.boldFontFamily, color: Colors.primary[700], textAlign: 'center', marginTop: 12 }, resendDisabled: { color: '#8799B2' }, changeEmail: { fontFamily: Typography.boldFontFamily, color: Colors.primary[700], textAlign: 'center', marginTop: 12 },
   error: { fontFamily: Typography.fontFamily, color: '#B42318', backgroundColor: '#FEECEB', padding: 10, borderRadius: 12, textAlign: 'right', marginTop: 12 }, notice: { fontFamily: Typography.fontFamily, color: '#16603F', backgroundColor: '#E9F8F0', padding: 10, borderRadius: 12, textAlign: 'right', marginTop: 12 }, submit: { minHeight: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary[600], marginTop: 17 }, submitText: { fontFamily: Typography.boldFontFamily, color: '#FFFFFF', fontSize: 14 }, disabled: { opacity: .55 }, privacy: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 8, backgroundColor: '#EBF8F3', borderRadius: 14, padding: 11, marginTop: 14 }, privacyText: { flex: 1, fontFamily: Typography.fontFamily, fontSize: 10, lineHeight: 18, color: '#32604F', textAlign: 'right' },
 });
