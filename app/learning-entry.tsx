@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useLearnerLanguageAccess } from '@/components/LearnerLanguageAccess';
 import { setActiveLanguage } from '@/lib/activeLanguage';
@@ -35,13 +35,26 @@ function LearningEntry() {
     if (!access.loadingAccess && language && !access.isLanguageAllowed(language)) setLanguage(null);
   }, [access.loadingAccess, access.isLanguageAllowed, language]);
 
+  // Load only the chosen route module while the learner reads question two.
+  // Importing a module does not mount its screen or read/write learning records.
+  useEffect(() => {
+    if (!language) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      const warm = language === 'en' ? import('./lang/index')
+        : language === 'de' ? import('../components/GermanSentenceHome')
+        : import('../components/TurkishHome');
+      void warm.catch(() => undefined);
+    });
+    return () => task.cancel();
+  }, [language]);
+
   const answerFamiliarity = async (_answer: typeof FAMILIARITY_ANSWERS[number]) => {
     if (!selected || opening.current || access.loadingAccess || !access.isLanguageAllowed(selected.id)) return;
     opening.current = true; setBusy(true); setError('');
     try {
       // Familiarity is self-report only, not a placement decision. Every answer
       // leads to exactly the same existing home for the selected language.
-      await setActiveLanguage(selected.id);
+      void setActiveLanguage(selected.id);
       if (!alive.current) return;
       if (currentAccess.current.loadingAccess || !currentAccess.current.isLanguageAllowed(selected.id)) throw Error('Language access changed');
       router.replace(selected.home as never);

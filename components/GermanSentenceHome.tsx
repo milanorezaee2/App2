@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { InteractionManager, Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from '@/lib/narration';
@@ -35,7 +35,6 @@ import {
 } from '@/lib/languages/germanSentenceCourse';
 import { clearGermanSentenceSession, loadGermanSentenceSession } from '@/lib/languages/germanSentenceSession';
 import { germanProgress } from '@/lib/languages/catalog';
-import { syncPersonalLearningData } from '@/lib/personalLearningSync';
 import type { CourseProgress } from '@/lib/createCourseProgressStore';
 import { preloadSpeechVoices, resolveRequiredSpeechOptions } from '@/lib/speechLanguage';
 import { germanHomeStyles as styles } from './germanHomeStyles';
@@ -71,11 +70,18 @@ export default function GermanSentenceHome() {
       })
       .catch(() => { if (alive) setError('پیشرفت ذخیره‌شده خوانده نشد؛ درس‌ها همچنان از کتابخانه در دسترس‌اند.'); });
     void refreshLocal();
-    void syncPersonalLearningData().then(result => {
-      if (result.status === 'synced') return refreshLocal();
-      return undefined;
-    }).catch(() => undefined);
-    return () => { alive = false; void Speech.stop(); };
+    // Preserve automatic sync, but never load both course trees on the entry path.
+    let syncTask: ReturnType<typeof InteractionManager.runAfterInteractions> | undefined;
+    const syncTimer = setTimeout(() => {
+      syncTask = InteractionManager.runAfterInteractions(() => {
+        if (!alive) return;
+        void import('@/lib/personalLearningSync').then(({ syncPersonalLearningData }) => syncPersonalLearningData()).then(result => {
+          if (result.status === 'synced') return refreshLocal();
+          return undefined;
+        }).catch(() => undefined);
+      });
+    }, 1500);
+    return () => { alive = false; clearTimeout(syncTimer); syncTask?.cancel(); void Speech.stop(); };
   }, [retry]));
 
   const speakGerman = useCallback((text: string) => {

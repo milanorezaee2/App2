@@ -5,6 +5,8 @@ import { setAudioModeAsync } from 'expo-audio';
 import { Platform } from 'react-native';
 import {
   checkCloudNarrator,
+  cloudNarratorEndpoint,
+  narratorCdnEndpoint,
   isCloudNarratorActive,
   NarratorBlockedError,
   NarratorCloudUnavailableError,
@@ -186,7 +188,7 @@ function haltPlayback(): void {
   stopCloudNarration();
   internalStop = true;
   try {
-    void Speech.stop();
+    void Speech.stop().catch(() => undefined);
   } finally {
     internalStop = false;
   }
@@ -218,7 +220,7 @@ export async function narrate(
 
   update({ status: 'loading', message: '', locale, text: clean });
 
-  const cloud = await checkCloudNarrator();
+  const cloud = Boolean(cloudNarratorEndpoint() || narratorCdnEndpoint());
   if (id !== requestId) return;
   update({ cloudAvailable: cloud, cloudChecked: true });
 
@@ -268,14 +270,14 @@ export async function narrate(
 export function stopNarration(): void {
   requestId += 1;
   stopCloudNarration();
-  void Speech.stop();
+  void Speech.stop().catch(() => undefined);
   update({ status: 'idle', message: '', engine: null });
 }
 
 /** Pauses the approved cloud/CDN narrator. */
 export async function pauseNarration(): Promise<void> {
   if (snapshot.status !== 'speaking' && snapshot.status !== 'loading') return;
-  pauseCloudNarration();
+  if (!pauseCloudNarration()) { requestId += 1; haltPlayback(); }
   update({ status: 'paused' });
 }
 

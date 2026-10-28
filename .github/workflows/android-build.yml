@@ -57,8 +57,12 @@ jobs:
           npm run validate:admin
           npm run validate:admin-popups
           npm run validate:narrator
+          node scripts/verify-entry-audio-reliability.mjs
           npm run validate:turkish
           node scripts/verify-russian-course.cjs
+
+      - name: Check live narrator audio using APK public configuration
+        run: node scripts/check-live-narrator.mjs
 
       - name: Configure Expo project id for push notifications
         run: |
