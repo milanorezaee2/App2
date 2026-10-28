@@ -265,11 +265,7 @@ async function saveProgress(progress: CourseProgress): Promise<CourseProgress> {
   return progress;
 }
 
-export async function getCourseProgress(options?: { localOnly?: boolean }): Promise<CourseProgress> {
-  if (options?.localOnly) {
-    const raw = await readRaw();
-    return normalizeProgress(raw === null ? {} : JSON.parse(raw) as Partial<CourseProgress>);
-  }
+export async function getCourseProgress(): Promise<CourseProgress> {
   try {
     const raw = await readRaw();
     let progress = normalizeProgress(raw ? JSON.parse(raw) as Partial<CourseProgress> : {});

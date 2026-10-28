@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { InteractionManager, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Speech from '@/lib/narration';
@@ -26,6 +26,7 @@ import { LuxuryTopBar } from '@/components/LuxuryLanguageShell';
 import { LUXURY_JOURNEY_GRADIENTS, luxuryHomeStyles as styles } from '@/components/luxuryHomeStyles';
 import { COURSE_LEVELS, SENTENCE_LESSONS } from '@/lib/courseContent';
 import { getCourseProgress, type CourseProgress } from '@/lib/courseProgress';
+import { syncPersonalLearningData } from '@/lib/personalLearningSync';
 import { toPersianDigits } from '@/lib/format';
 import { freshSession, loadStudy, saveLessonSession, studyDay } from '@/lib/englishStudyState';
 import { ENGLISH_ENGINE_BLUEPRINT, getEnglishLevelMetrics } from '@/lib/englishLearningEngine';
@@ -60,20 +61,13 @@ export default function LearningHome() {
 
   useFocusEffect(useCallback(() => {
     let alive = true;
-    const refreshCourse = () => getCourseProgress({ localOnly: true }).then(next => { if (alive) setProgress(next); }).catch(() => { if (alive) setTimeError(true); });
+    const refreshCourse = () => getCourseProgress().then(next => { if (alive) setProgress(next); });
     void refreshCourse();
-    // Preserve automatic sync, but never load both course trees on the entry path.
-    let syncTask: ReturnType<typeof InteractionManager.runAfterInteractions> | undefined;
-    const syncTimer = setTimeout(() => {
-      syncTask = InteractionManager.runAfterInteractions(() => {
-        if (!alive) return;
-        void import('@/lib/personalLearningSync').then(({ syncPersonalLearningData }) => syncPersonalLearningData()).then(result => {
-          if (result.status === 'synced') return refreshCourse();
-          return undefined;
-        }).catch(() => undefined);
-      });
-    }, 1500);
-    return () => { alive = false; clearTimeout(syncTimer); syncTask?.cancel(); };
+    void syncPersonalLearningData().then(result => {
+      if (result.status === 'synced') return refreshCourse();
+      return undefined;
+    }).catch(() => undefined);
+    return () => { alive = false; };
   }, []));
 
   const speakEnglish = useCallback((text: string) => {

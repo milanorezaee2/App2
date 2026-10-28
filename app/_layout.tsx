@@ -99,10 +99,12 @@ function CompanionRuntime() {
  * made router.replace throw "Attempted to navigate before mounting the Root
  * Layout component").
  */
-function NavigatorMountProbe({ onMounted }: { onMounted: (mounted: boolean) => void }) {
+function NavigatorMountProbe({ onMounted }: { onMounted: () => void }) {
+  const mounted = useRef(false);
   useEffect(() => {
-    onMounted(true);
-    return () => onMounted(false);
+    if (mounted.current) return;
+    mounted.current = true;
+    onMounted();
   }, [onMounted]);
   return null;
 }
@@ -117,14 +119,12 @@ export default function RootLayout() {
   const pathname = usePathname();
   const navigationRef = useNavigationContainerRef();
   const [navigatorMounted, setNavigatorMounted] = useState(false);
-  const handleNavigatorMounted = useCallback((mounted: boolean) => setNavigatorMounted(mounted), []);
-  const [postLoginPending, setPostLoginPending] = useState(false);
+  const handleNavigatorMounted = useCallback(() => setNavigatorMounted(true), []);
   const homeRoute = IS_ADMIN_APP
     ? '/admin'
     : RUSSIAN_ONLY_BUILD
       ? '/learn/ru'
       : '/languages';
-  const loginLandingRoute = FEATURES.learnerLogin && !IS_ADMIN_APP ? '/learning-entry' : homeRoute;
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
@@ -196,9 +196,14 @@ export default function RootLayout() {
     pathnameRef.current = pathname;
   }, [pathname]);
 
-  // Authentication can finish before the protected Stack is mounted. Queue the
-  // existing home destination rather than dropping it after an arbitrary timer.
-  const forceNavigateHome = useCallback(() => setPostLoginPending(true), []);
+  const forceNavigateHome = useCallback(() => {
+    setTimeout(() => {
+      if (!navigationRef.isReady()) return;
+      if (pathnameRef.current !== homeRoute) {
+        router.replace(homeRoute as never);
+      }
+    }, 80);
+  }, [homeRoute, navigationRef, router]);
 
   // Returning to the app after leaving it should always start from the same
   // language chooser/home, not the last nested lesson, library, or conversation.
@@ -213,7 +218,7 @@ export default function RootLayout() {
       }
       if (state === 'active' && wasBackgrounded.current) {
         wasBackgrounded.current = false;
-        if (navigationRef.isReady() && pathnameRef.current !== '/learning-entry' && pathnameRef.current !== homeRoute) {
+        if (navigationRef.isReady() && pathnameRef.current !== homeRoute) {
           router.replace(homeRoute as never);
         }
       }
@@ -226,21 +231,10 @@ export default function RootLayout() {
   // Stack, and fonts keep RootLayout at `return null`; isReady() is the exact
   // readiness check expo-router performs before accepting a navigation call.
   useEffect(() => {
-    if (!introComplete || !navigatorMounted || (startupRouteLocked.current && !postLoginPending)) return;
-    let landed = false;
-    const goIfReady = () => {
-      if (landed || !navigationRef.isReady()) return;
-      landed = true;
-      startupRouteLocked.current = true;
-      if (postLoginPending) setPostLoginPending(false);
-      if (pathname !== loginLandingRoute) router.replace(loginLandingRoute as never);
-    };
-    const offReady = navigationRef.addListener('ready', goIfReady);
-    const offState = navigationRef.addListener('state', goIfReady);
-    goIfReady();
-    return () => { offReady(); offState(); };
-  }, [loginLandingRoute, introComplete, pathname, navigatorMounted, postLoginPending, navigationRef, router]);
-
+    if (!introComplete || !navigatorMounted || !navigationRef.isReady() || startupRouteLocked.current) return;
+    startupRouteLocked.current = true;
+    if (pathname !== homeRoute) router.replace(homeRoute as never);
+  }, [homeRoute, introComplete, pathname, navigatorMounted, navigationRef, router]);
 
   // On web, AppState is unavailable — use page visibility instead so that
   // returning to the tab also starts from the home screen, not the last
@@ -251,7 +245,6 @@ export default function RootLayout() {
       if (
         document.visibilityState === 'visible'
         && navigationRef.isReady()
-        && pathnameRef.current !== '/learning-entry'
         && pathnameRef.current !== homeRoute
       ) {
         router.replace(homeRoute as never);
