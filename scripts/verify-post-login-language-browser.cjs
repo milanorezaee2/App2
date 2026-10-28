@@ -17,23 +17,35 @@ try{
  await page.addInitScript(({user})=>{if(sessionStorage.getItem('fixture-ready'))return;sessionStorage.setItem('fixture-ready','true');const encode=o=>btoa(JSON.stringify(o)).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');const expires_at=Math.floor(Date.now()/1000)+86400;localStorage.setItem('sb-doagwkssxtxseuavrxnr-auth-token',JSON.stringify({access_token:encode({alg:'HS256',typ:'JWT'})+'.'+encode({sub:user.id,exp:expires_at,aud:'authenticated',role:'authenticated'})+'.fixture-not-a-real-token',refresh_token:'fixture-not-a-real-refresh-token',token_type:'bearer',expires_in:86400,expires_at,user}));},{user});
  const base=process.env.BROWSER_BASE_URL||'http://127.0.0.1:8081';
  const button=name=>page.getByRole('button',name.startsWith('ورود به زبان ')?{name:new RegExp('^'+name)}:{name,exact:true});
+ const firstQuestion=()=>page.getByRole('heading',{name:'چه زبانی می‌خواهی یاد بگیری؟',exact:true});
+ const secondQuestion=()=>page.getByRole('heading',{name:'چقدر با این زبان آشنایی داری؟',exact:true});
  await page.goto(base+'/App2/learn/de/library');
- await page.waitForURL('**/languages',{timeout:45000});
- await button('ورود به زبان انگلیسی').waitFor({timeout:10000}).catch(async e=>{console.log(await page.locator('body').innerText());console.log('REQUESTS',requests);console.log(await page.getByRole('button').allTextContents());throw e});console.log('PASS restored authenticated route lands at existing language choice');
- assert.equal(await page.getByRole('radio').count(),0);assert.equal(await page.getByRole('progressbar').count(),0);
- for(const [name,target] of [['آلمانی','/learn/de'],['ترکی استانبولی','/learn/tr'],['انگلیسی','/lang']]){
-  await button('ورود به زبان '+name).click();await page.waitForURL(url=>url.pathname.endsWith(target));
-  console.log('PASS one language tap opens existing course: '+target);
-  if(target!='/lang'){await button('بازگشت به صفحهٔ اصلی اپ').filter({visible:true}).first().click();await page.waitForURL('**/languages');}
+ await page.waitForURL('**/learning-entry',{timeout:45000});await firstQuestion().waitFor();
+ assert.equal(await secondQuestion().count(),0);
+ assert.equal(await button('انتخاب زبان روسی').count(),0);
+ console.log('PASS authenticated entry asks language instead of displaying the original app home');
+ const historyBefore=await page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).filter(([key])=>key.startsWith('sentence_course_progress')))));
+ await button('انتخاب زبان آلمانی').click();await secondQuestion().waitFor();
+ await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));assert(page.url().endsWith('/learning-entry'));await secondQuestion().waitFor();
+ assert.equal(await page.evaluate(()=>JSON.stringify(Object.fromEntries(Object.entries(localStorage).filter(([key])=>key.startsWith('sentence_course_progress'))))),historyBefore);
+ await button('بازگشت به انتخاب زبان').click();await firstQuestion().waitFor();
+ console.log('PASS question order, back button, foreground preservation and no learning-record writes');
+ for(const [name,target,answer] of [['آلمانی','/learn/de','تازه شروع می‌کنم'],['ترکی استانبولی','/learn/tr','چند کلمه و جمله بلدم'],['انگلیسی','/lang','تا حدی می‌توانم صحبت کنم']]){
+  await button('انتخاب زبان '+name).click();await secondQuestion().waitFor();
+  await button(answer).click();await page.waitForURL(url=>url.pathname.endsWith(target));
+  assert.equal(new URL(page.url()).searchParams.has('level'),false);
+  console.log('PASS answering familiarity opens only the existing selected-language home: '+target);
+  if(target!='/lang'){await page.goto(base+'/App2/');await page.waitForURL('**/learning-entry');await firstQuestion().waitFor();}
  }
  for(let i=0;i<2;i++){
   await button('ورود ایمیلی و همگام‌سازی شخصی').click();
   await button('خروج از حساب (دادهٔ محلی پاک نمی‌شود)').click();await button('ورود').waitFor();
   user={...user,id:i===0?'66666666-7777-4888-8999-aaaaaaaaaaaa':'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff',email:'account'+i+'@example.invalid'};
   await button('ورود').click();await page.getByRole('textbox',{name:'ایمیل حساب',exact:true}).fill(user.email);await button('دریافت کد ورود').click();await page.getByRole('textbox',{name:'کد تأیید ایمیل',exact:true}).fill('123456');await button('تأیید و ورود').click();
-  await page.waitForURL('**/languages');await button('ورود به زبان انگلیسی').waitFor();console.log('PASS logout and subsequent OTP login '+(i+1)+' lands on language choice, not old course');
-  await button('ورود به زبان انگلیسی').click();await page.waitForURL(url=>url.pathname.endsWith('/lang'));
+  await page.waitForURL('**/learning-entry');await firstQuestion().waitFor();
+  await button('انتخاب زبان انگلیسی').click();await secondQuestion().waitFor();
+  await button('تازه شروع می‌کنم').click();await page.waitForURL(url=>url.pathname.endsWith('/lang'));
+  console.log('PASS logout and subsequent OTP login '+(i+1)+' asks both questions and does not restore an old course directly');
  }
- assert.equal(await page.getByRole('radio').count(),0);
  assert.deepEqual(errors,[]);console.log('PASS no React/navigation errors; HTTP auth responses are fixtures, not real OTP delivery');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

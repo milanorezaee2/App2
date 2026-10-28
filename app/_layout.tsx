@@ -124,6 +124,7 @@ export default function RootLayout() {
     : RUSSIAN_ONLY_BUILD
       ? '/learn/ru'
       : '/languages';
+  const loginLandingRoute = FEATURES.learnerLogin && !IS_ADMIN_APP ? '/learning-entry' : homeRoute;
   const pathnameRef = useRef(pathname);
   const wasBackgrounded = useRef(false);
   const startupRouteLocked = useRef(false);
@@ -212,7 +213,7 @@ export default function RootLayout() {
       }
       if (state === 'active' && wasBackgrounded.current) {
         wasBackgrounded.current = false;
-        if (navigationRef.isReady() && pathnameRef.current !== homeRoute) {
+        if (navigationRef.isReady() && pathnameRef.current !== '/learning-entry' && pathnameRef.current !== homeRoute) {
           router.replace(homeRoute as never);
         }
       }
@@ -232,13 +233,13 @@ export default function RootLayout() {
       landed = true;
       startupRouteLocked.current = true;
       if (postLoginPending) setPostLoginPending(false);
-      if (pathname !== homeRoute) router.replace(homeRoute as never);
+      if (pathname !== loginLandingRoute) router.replace(loginLandingRoute as never);
     };
     const offReady = navigationRef.addListener('ready', goIfReady);
     const offState = navigationRef.addListener('state', goIfReady);
     goIfReady();
     return () => { offReady(); offState(); };
-  }, [homeRoute, introComplete, pathname, navigatorMounted, postLoginPending, navigationRef, router]);
+  }, [loginLandingRoute, introComplete, pathname, navigatorMounted, postLoginPending, navigationRef, router]);
 
 
   // On web, AppState is unavailable — use page visibility instead so that
@@ -250,6 +251,7 @@ export default function RootLayout() {
       if (
         document.visibilityState === 'visible'
         && navigationRef.isReady()
+        && pathnameRef.current !== '/learning-entry'
         && pathnameRef.current !== homeRoute
       ) {
         router.replace(homeRoute as never);
