@@ -79,3 +79,12 @@ assert.ok(!admin.includes('s.publishPrimaryBtn, { flex: 1, minWidth: 210 }'));
 assert.match(admin, /publishPrimaryBtnText: \{\s*fontFamily: 'Vazir-Bold',\s*fontSize: 10/);
 assert.ok(admin.indexOf('<View style={s.popupPublishToolbar}>') < admin.indexOf('<PopupCardPreview'), 'publish toolbar stays outside and before the image preview');
 console.log('Email OTP behavior, verified-session gate, direct language navigation and compact publish regressions passed.');
+
+const layout = read('app/_layout.tsx');
+assert.match(layout, /const \[postLoginPending, setPostLoginPending\] = useState\(false\)/);
+assert.match(layout, /forceNavigateHome = useCallback\(\(\) => setPostLoginPending\(true\), \[\]\)/);
+assert.match(layout, /return \(\) => onMounted\(false\)/, 'logout must invalidate navigator readiness');
+assert.match(layout, /startupRouteLocked.current && !postLoginPending/, 'every subsequent login must return to the existing language chooser');
+assert.ok(!layout.includes('}, 80)'), 'login landing must not depend on a timer');
+assert.ok(!layout.includes('LearnerJourneyGate') && !layout.includes('/journey'), 'no new onboarding/report flow');
+console.log('Post-login language-only landing is queued until the protected navigator mounts; no extra user step.');

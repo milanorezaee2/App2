@@ -79,6 +79,73 @@ capture_ui() {
   return 1
 }
 
+# New mobile language cards are full-width rows. Inspect actual cards while
+# scrolling instead of assuming all cards fit above the fold of every device.
+swipe_up() {
+  local swipe_coords swipe_x swipe_start swipe_end
+  # Start in the scroll view's blank edge, not in the email input. A swipe
+  # originating inside Android EditText can be consumed as text selection.
+  swipe_coords="$(python3 - "$ui_file" <<'PYSCROLL'
+import re, sys, xml.etree.ElementTree as ET
+for node in ET.parse(sys.argv[1]).getroot().iter():
+    if node.attrib.get('scrollable') != 'true': continue
+    bounds = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+    if not bounds: continue
+    x1,y1,x2,y2=map(int,bounds.groups())
+    if y2-y1 < 200: continue
+    print(x1+max(8,(x2-x1)//25), y1+(y2-y1)*4//5, y1+(y2-y1)//5)
+    break
+PYSCROLL
+)"
+  if [[ -z "$swipe_coords" ]]; then
+    echo 'No scrollable Android view was found.'
+    return 1
+  fi
+  read -r swipe_x swipe_start swipe_end <<< "$swipe_coords"
+  echo "Scrolling at blank edge x=$swipe_x from y=$swipe_start to y=$swipe_end"
+  adb shell input touchscreen swipe "$swipe_x" "$swipe_start" "$swipe_x" "$swipe_end" 900
+  sleep 3
+  capture_ui
+}
+
+collect_language_cards() {
+  local attempt label complete
+  choices_file="$diag_dir/milomultilang-language-choices.xml.log"
+  : > "$choices_file"
+  # Use the real home CTA to move directly to the chooser. Coordinate-only
+  # flings can be swallowed on heavily loaded hosted emulators during first paint.
+  local chooser_coords chooser_x chooser_y
+  chooser_coords="$(python3 - "$ui_file" <<'PYCOORDS'
+import re, sys, xml.etree.ElementTree as ET
+for node in ET.parse(sys.argv[1]).getroot().iter():
+    if node.attrib.get('content-desc') == 'انتخاب زبان برای شروع یادگیری':
+        match = re.search(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds', ''))
+        if match:
+            x1, y1, x2, y2 = map(int, match.groups())
+            if x2 > x1 and y2 > y1:
+                print((x1+x2)//2, (y1+y2)//2)
+                break
+PYCOORDS
+)"
+  if [[ -n "$chooser_coords" ]]; then
+    read -r chooser_x chooser_y <<< "$chooser_coords"
+    adb shell input tap "$chooser_x" "$chooser_y"
+    sleep 8
+    capture_ui
+  fi
+  for attempt in 1 2 3 4 5 6; do
+    cat "$ui_file" >> "$choices_file"
+    complete=true
+    for label in "$@"; do
+      if ! grep -Fq "ورود به زبان $label" "$choices_file"; then complete=false; fi
+    done
+    if [[ "$complete" == true ]]; then return 0; fi
+    if [[ "$attempt" != 6 ]]; then swipe_up; fi
+  done
+  echo "Not all expected language cards were reachable: $*"
+  return 1
+}
+
 printf 'Testing standalone APK: %s\n' "$apk_path"
 printf 'Diagnostics will be saved under: %s\n' "$diag_dir"
 
@@ -160,11 +227,8 @@ if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file" && grep -Fq 'سا
   echo 'Android emulator opened MiloMultilang and rendered its mandatory registration gate.'
 elif grep -Fq 'شروع مسیر یادگیری' "$ui_file" || grep -Fq 'آکادمی چندزبانهٔ میلو' "$ui_file"; then
   direct_catalog_home=true
-  if ! grep -Fq 'انگلیسی' "$ui_file" || ! grep -Fq 'روسی' "$ui_file"; then
-    echo 'App 2 (No-Login EN+RU) did not display both English and Russian on the catalog home.'
-    exit 1
-  fi
-  if grep -Fq 'آلمانی' "$ui_file" || grep -Fq 'ترکی' "$ui_file"; then
+  collect_language_cards 'انگلیسی' 'روسی'
+  if grep -Fq 'ورود به زبان آلمانی' "$choices_file" || grep -Fq 'ورود به زبان ترکی' "$choices_file"; then
     echo 'App 2 (No-Login EN+RU) leaked German or Turkish onto its catalog home.'
     exit 1
   fi
@@ -437,21 +501,8 @@ if [[ -s "$all4_apk_path" ]]; then
   sleep 20
   capture_ui
   failed_step="verifying App 3 rendered all 4 languages without login"
-  all4_rendered=false
-  for all4_attempt in 1 2 3; do
-    if grep -Fq 'انگلیسی' "$ui_file" && grep -Fq 'آلمانی' "$ui_file" && grep -Fq 'روسی' "$ui_file" && grep -Fq 'ترکی' "$ui_file"; then
-      all4_rendered=true
-      echo 'Android emulator launched 3-MiloNoLogin-All4.apk and verified all 4 languages (EN, DE, RU, TR).'
-      break
-    fi
-    if [[ "$all4_attempt" == 3 ]]; then break; fi
-    sleep 15
-    capture_ui
-  done
-  if [[ "$all4_rendered" != true ]]; then
-    echo 'App 3 (3-MiloNoLogin-All4.apk) did not render all 4 languages.'
-    exit 1
-  fi
+  collect_language_cards 'انگلیسی' 'آلمانی' 'روسی' 'ترکی استانبولی'
+  echo 'Android emulator verified all 4 reachable language cards, including the full Turkish title.'
   if grep -Fq 'ساخت حساب زبان‌آموز' "$ui_file"; then
     echo 'App 3 (No-Login All 4) unexpectedly showed the login gate.'
     exit 1

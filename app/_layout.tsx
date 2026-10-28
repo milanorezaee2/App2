@@ -99,12 +99,10 @@ function CompanionRuntime() {
  * made router.replace throw "Attempted to navigate before mounting the Root
  * Layout component").
  */
-function NavigatorMountProbe({ onMounted }: { onMounted: () => void }) {
-  const mounted = useRef(false);
+function NavigatorMountProbe({ onMounted }: { onMounted: (mounted: boolean) => void }) {
   useEffect(() => {
-    if (mounted.current) return;
-    mounted.current = true;
-    onMounted();
+    onMounted(true);
+    return () => onMounted(false);
   }, [onMounted]);
   return null;
 }
@@ -119,7 +117,8 @@ export default function RootLayout() {
   const pathname = usePathname();
   const navigationRef = useNavigationContainerRef();
   const [navigatorMounted, setNavigatorMounted] = useState(false);
-  const handleNavigatorMounted = useCallback(() => setNavigatorMounted(true), []);
+  const handleNavigatorMounted = useCallback((mounted: boolean) => setNavigatorMounted(mounted), []);
+  const [postLoginPending, setPostLoginPending] = useState(false);
   const homeRoute = IS_ADMIN_APP
     ? '/admin'
     : RUSSIAN_ONLY_BUILD
@@ -196,14 +195,9 @@ export default function RootLayout() {
     pathnameRef.current = pathname;
   }, [pathname]);
 
-  const forceNavigateHome = useCallback(() => {
-    setTimeout(() => {
-      if (!navigationRef.isReady()) return;
-      if (pathnameRef.current !== homeRoute) {
-        router.replace(homeRoute as never);
-      }
-    }, 80);
-  }, [homeRoute, navigationRef, router]);
+  // Authentication can finish before the protected Stack is mounted. Queue the
+  // existing home destination rather than dropping it after an arbitrary timer.
+  const forceNavigateHome = useCallback(() => setPostLoginPending(true), []);
 
   // Returning to the app after leaving it should always start from the same
   // language chooser/home, not the last nested lesson, library, or conversation.
@@ -231,10 +225,11 @@ export default function RootLayout() {
   // Stack, and fonts keep RootLayout at `return null`; isReady() is the exact
   // readiness check expo-router performs before accepting a navigation call.
   useEffect(() => {
-    if (!introComplete || !navigatorMounted || !navigationRef.isReady() || startupRouteLocked.current) return;
+    if (!introComplete || !navigatorMounted || !navigationRef.isReady() || (startupRouteLocked.current && !postLoginPending)) return;
     startupRouteLocked.current = true;
+    if (postLoginPending) setPostLoginPending(false);
     if (pathname !== homeRoute) router.replace(homeRoute as never);
-  }, [homeRoute, introComplete, pathname, navigatorMounted, navigationRef, router]);
+  }, [homeRoute, introComplete, pathname, navigatorMounted, postLoginPending, navigationRef, router]);
 
   // On web, AppState is unavailable — use page visibility instead so that
   // returning to the tab also starts from the home screen, not the last
