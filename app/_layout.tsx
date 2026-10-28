@@ -225,11 +225,21 @@ export default function RootLayout() {
   // Stack, and fonts keep RootLayout at `return null`; isReady() is the exact
   // readiness check expo-router performs before accepting a navigation call.
   useEffect(() => {
-    if (!introComplete || !navigatorMounted || !navigationRef.isReady() || (startupRouteLocked.current && !postLoginPending)) return;
-    startupRouteLocked.current = true;
-    if (postLoginPending) setPostLoginPending(false);
-    if (pathname !== homeRoute) router.replace(homeRoute as never);
+    if (!introComplete || !navigatorMounted || (startupRouteLocked.current && !postLoginPending)) return;
+    let landed = false;
+    const goIfReady = () => {
+      if (landed || !navigationRef.isReady()) return;
+      landed = true;
+      startupRouteLocked.current = true;
+      if (postLoginPending) setPostLoginPending(false);
+      if (pathname !== homeRoute) router.replace(homeRoute as never);
+    };
+    const offReady = navigationRef.addListener('ready', goIfReady);
+    const offState = navigationRef.addListener('state', goIfReady);
+    goIfReady();
+    return () => { offReady(); offState(); };
   }, [homeRoute, introComplete, pathname, navigatorMounted, postLoginPending, navigationRef, router]);
+
 
   // On web, AppState is unavailable — use page visibility instead so that
   // returning to the tab also starts from the home screen, not the last

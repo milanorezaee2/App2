@@ -88,3 +88,5 @@ assert.match(layout, /startupRouteLocked.current && !postLoginPending/, 'every s
 assert.ok(!layout.includes('}, 80)'), 'login landing must not depend on a timer');
 assert.ok(!layout.includes('LearnerJourneyGate') && !layout.includes('/journey'), 'no new onboarding/report flow');
 console.log('Post-login language-only landing is queued until the protected navigator mounts; no extra user step.');
+assert.match(layout, /navigationRef.addListener\('ready', goIfReady\)/, 'wait for real navigator readiness without an arbitrary timeout');
+assert.match(layout, /landed \|\| !navigationRef.isReady\(\)/, 'redirect can happen only once when navigation is ready');
